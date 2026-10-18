@@ -156,7 +156,7 @@
       "message": "Download History"
    },
    "history_warning": {
-      "message": "We do not record your download history. Do you want Video Download Helper to remember your download history?"
+      "message": "We do not record your download history. Do you want My Video App to remember your download history?"
    },
    "history_warning_2": {
       "message": "Don't worry, everything stays on your machine. We value your privacy."
@@ -168,7 +168,7 @@
       "message": "Leave a review"
    },
    "leave_review_description": {
-      "message": "We hope you're enjoying Video Download Helper :) Would you mind writing a nice review on the addon website?"
+      "message": "We hope you're enjoying My Video App :) Would you mind writing a nice review on the addon website?"
    },
    "max_parallel_downloads": {
       "message": "Max concurrent downloads"
@@ -294,7 +294,7 @@
       "message": "Private browsing"
    },
    "private_browsing_warning": {
-      "message": "Video Download Helper is not enabled in a Private/Incognito windows. You need to turn on that option manually (this is not required)."
+      "message": "My Video App is not enabled in a Private/Incognito windows. You need to turn on that option manually (this is not required)."
    },
    "remove_lang": {
       "message": "Remove language"
@@ -384,7 +384,7 @@
       "message": "Accept"
    },
    "tos_description": {
-      "message": "Video Download Helper is intended for lawful use only. You are responsible for the content you download and how you use it. By clicking Accept, you agree to our Terms Of Service"
+      "message": "My Video App is intended for lawful use only. You are responsible for the content you download and how you use it. By clicking Accept, you agree to our Terms Of Service"
    },
    "tos_details": {
       "message": "Terms Of Service"

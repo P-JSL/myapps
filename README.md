@@ -1,6 +1,6 @@
-# Video Download Helper · TypeScript 보안 강화 및 로컬 업스케일링
+# My Video App · TypeScript 보안 강화 및 로컬 업스케일링
 
-첨부된 10.6.1.2 배포본을 분석해 원본 다운로드 엔진을 보존하고, 사이트 브리지와
+Video Download Helper 10.6.1.2 배포본을 분석해 원본 다운로드 엔진을 보존하고, 사이트 브리지와
 메시지 보안 경계를 TypeScript로 재작성한 개발용 확장입니다. 다운로드 완료 후
 선택적으로 로컬에서 2x/4x 확대본을 만들 수 있습니다.
 
@@ -15,10 +15,16 @@
 
 ## 설치
 
-1. 설치용 ZIP을 압축 해제합니다.
+1. [My Video App 설치용 ZIP](artifacts/my-video-app-extension.zip)을 다운로드하고 압축 해제합니다.
 2. 기존 설치/설정과 충돌하지 않도록 **별도 Chrome 프로필**을 사용합니다.
 3. `chrome://extensions`에서 개발자 모드를 켜고 **압축 해제된 확장 프로그램 로드**를 누릅니다.
-4. `manifest.json`이 들어 있는 `vdh-extension` 폴더를 선택합니다. 소스에서 빌드했다면 `dist`를 선택합니다.
+4. `manifest.json`이 들어 있는 `my-video-app` 폴더를 선택합니다. 소스에서 빌드했다면 `dist`를 선택합니다.
+
+[전체 소스 ZIP](artifacts/my-video-app-source.zip)도 제공합니다. 이전 `vdh-typescript-upscale-*.zip`
+경로는 같은 최신 파일을 제공하는 호환용 별칭입니다.
+
+설치본의 확장 이름, 아이콘 툴팁, 사이드패널 타이틀과 화면의 제품 표시를
+`My Video App`으로 통일했습니다. 원본 보존본과 제3자 저작권 표시는 그대로 유지합니다.
 
 원본 엔진이 확장 ID를 확인하므로 원본 공개 manifest key를 유지했습니다. 같은
 프로필의 공식 확장과 동시에 설치하려고 하지 마세요. 공식 배포/서명 파일이 아니며

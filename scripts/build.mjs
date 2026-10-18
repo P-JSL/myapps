@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 const root = fileURLToPath(new URL('../', import.meta.url));
 process.chdir(root);
 const hash = data => createHash('sha256').update(data).digest('hex');
+const productName = 'My Video App';
 const originals = JSON.parse(await readFile('reports/original-hashes.json', 'utf8'));
 async function files(dir, prefix = '') {
   const result = [];
@@ -72,12 +73,29 @@ for (const name of ['youtube', 'vimeo', 'iq', 'bilibili', 'javrank']) await buil
 await build({ ...common, entryPoints: ['src/bridges/taiav.ts'], format: 'iife', outfile: 'dist/injected/taiav.js' });
 
 const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
+manifest.name = productName;
+manifest.short_name = productName;
+manifest.action.default_title = productName;
+manifest.side_panel.default_title = productName;
 manifest.version_name = `${manifest.version} · TypeScript hardening + local upscale`;
 manifest.options_ui = { page: 'upscale/index.html', open_in_tab: true };
 manifest.content_security_policy.extension_pages = "script-src 'self' 'wasm-unsafe-eval'; object-src 'none'; base-uri 'none'";
 // Store auto-update would overwrite this locally modified build. Keep public identity for original runtime compatibility.
 delete manifest.update_url;
 await writeFile('dist/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+// Rename display text in the installed build while preserving the uploaded engine verbatim.
+for (const name of await files('dist')) {
+  if (!(name.endsWith('.html') || (name.startsWith('_locales/') && name.endsWith('/messages.json')))) continue;
+  const source = await readFile(`dist/${name}`, 'utf8');
+  const renamed = source.replaceAll('Video Download Helper', productName).replaceAll('VIDEO DOWNLOAD HELPER', productName.toUpperCase());
+  if (source !== renamed) {
+    await writeFile(`dist/${name}`, renamed);
+    changes.push(`Rename visible product text: ${name}`);
+  }
+}
+assert.equal(manifest.name, productName);
+assert.equal(manifest.action.default_title, productName);
+assert.equal(manifest.side_panel.default_title, productName);
 await mkdir('dist/licenses', { recursive: true });
 await cp('THIRD_PARTY_NOTICES.md', 'dist/licenses/THIRD_PARTY_NOTICES.md');
 await cp('licenses/ffmpeg-GPL-2.0.txt', 'dist/licenses/ffmpeg-GPL-2.0.txt');

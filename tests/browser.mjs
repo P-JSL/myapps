@@ -90,7 +90,7 @@ async function convert(filename, scale, destination) {
 }
 try {
   await checks('Built UI loads with CSP; actual FFmpeg Worker assets available', async () => {
-    await openTools(); assert.equal(await page.title(), '업스케일링 · Video Download Helper');
+    await openTools(); assert.equal(await page.title(), '업스케일링 · My Video App');
     assert.equal(await page.locator('#start').isDisabled(), true);
     assert.equal(await (await context.request.get(`${origin}/vendor/ffmpeg/ffmpeg-core.wasm`)).status(), 200);
   });

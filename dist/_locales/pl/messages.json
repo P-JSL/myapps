@@ -153,7 +153,7 @@
       "message": "Historia pobierania"
    },
    "history_warning": {
-      "message": "Nie rejestrujemy historii pobierania. Czy chcesz, aby Video Download Helper zapamiętywał historię pobierania?"
+      "message": "Nie rejestrujemy historii pobierania. Czy chcesz, aby My Video App zapamiętywał historię pobierania?"
    },
    "history_warning_2": {
       "message": "Nie martw się, wszystko pozostanie w twoim komputerze. Cenimy twoją prywatność."
@@ -162,7 +162,7 @@
       "message": "Zostaw recenzję"
    },
    "leave_review_description": {
-      "message": "Mamy nadzieję, że podoba ci się Video Download Helper :) Czy zechciałbyś napisać miłą recenzję na stronie dodatku?"
+      "message": "Mamy nadzieję, że podoba ci się My Video App :) Czy zechciałbyś napisać miłą recenzję na stronie dodatku?"
    },
    "max_parallel_downloads": {
       "message": "Maksymalna liczba równoczesnych pobrań"
@@ -285,7 +285,7 @@
       "message": "Prywatne przeglądanie"
    },
    "private_browsing_warning": {
-      "message": "Narzędzie Video Download Helper nie jest włączone w oknach prywatnych/incognito. Musisz ręcznie włączyć tę opcję (nie jest to wymagane)."
+      "message": "Narzędzie My Video App nie jest włączone w oknach prywatnych/incognito. Musisz ręcznie włączyć tę opcję (nie jest to wymagane)."
    },
    "remove_lang": {
       "message": "Usuń język"
@@ -375,7 +375,7 @@
       "message": "Akceptuję"
    },
    "tos_description": {
-      "message": "Video Download Helper jest przeznaczony wyłącznie do zgodnego z prawem użytku. Odpowiadasz za pobierane treści i za sposób ich wykorzystania. Klikając Akceptuję, zgadzasz się na nasze warunki korzystania z usługi"
+      "message": "My Video App jest przeznaczony wyłącznie do zgodnego z prawem użytku. Odpowiadasz za pobierane treści i za sposób ich wykorzystania. Klikając Akceptuję, zgadzasz się na nasze warunki korzystania z usługi"
    },
    "tos_details": {
       "message": "Warunki korzystania z usługi"

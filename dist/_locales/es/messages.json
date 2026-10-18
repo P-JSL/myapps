@@ -93,7 +93,7 @@
       "message": "Historial de descargas"
    },
    "history_warning": {
-      "message": "No registramos su historial de descargas. ¿Desea que Video Download Helper recuerde su historial de descargas?"
+      "message": "No registramos su historial de descargas. ¿Desea que My Video App recuerde su historial de descargas?"
    },
    "history_warning_2": {
       "message": "No se preocupe, todo permanece en su equipo. Valoramos su privacidad."
@@ -102,7 +102,7 @@
       "message": "Dejar una reseña"
    },
    "leave_review_description": {
-      "message": "Hola 🤚 Video Download Helper es de uso gratuito. ¿Le importaría dejar una buena reseña? Me sería de gran ayuda 😊."
+      "message": "Hola 🤚 My Video App es de uso gratuito. ¿Le importaría dejar una buena reseña? Me sería de gran ayuda 😊."
    },
    "max_parallel_downloads": {
       "message": "Descargas simultáneas máximas"
@@ -171,7 +171,7 @@
       "message": "Navegación privada"
    },
    "private_browsing_warning": {
-      "message": "Video Download Helper no está habilitado en la navegación privada."
+      "message": "My Video App no está habilitado en la navegación privada."
    },
    "report": {
       "message": "Informar"
@@ -234,7 +234,7 @@
       "message": "Aceptar"
    },
    "tos_description": {
-      "message": "Video Download Helper está destinado únicamente a un uso lícito. Usted es responsable del contenido que descarga y del uso que hace de él. Al hacer clic en Aceptar, acepta nuestras condiciones del servicio"
+      "message": "My Video App está destinado únicamente a un uso lícito. Usted es responsable del contenido que descarga y del uso que hace de él. Al hacer clic en Aceptar, acepta nuestras condiciones del servicio"
    },
    "tos_details": {
       "message": "Condiciones del servicio"

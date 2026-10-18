@@ -156,7 +156,7 @@
       "message": "Downloadchronik"
    },
    "history_warning": {
-      "message": "Aktuell wird keine Downloadchronik angelegt. Möchten Sie, dass Video Download Helper eine Downloadchronik anlegt?"
+      "message": "Aktuell wird keine Downloadchronik angelegt. Möchten Sie, dass My Video App eine Downloadchronik anlegt?"
    },
    "history_warning_2": {
       "message": "Keine Sorge, alles bleibt auf Ihrem Gerät. Wir respektieren Ihre Privatsphäre."
@@ -165,7 +165,7 @@
       "message": "Eine Bewertung hinterlassen"
    },
    "leave_review_description": {
-      "message": "Wir hoffen, Ihnen gefällt Video Download Helper. Würden Sie uns bitte eine positive Bewertung auf der Add-on-Seite hinterlassen."
+      "message": "Wir hoffen, Ihnen gefällt My Video App. Würden Sie uns bitte eine positive Bewertung auf der Add-on-Seite hinterlassen."
    },
    "max_parallel_downloads": {
       "message": "Maximal gleichzeitige Downloads"
@@ -288,7 +288,7 @@
       "message": "Privates Surfen"
    },
    "private_browsing_warning": {
-      "message": "In Privat-/Inkognito-Fenstern ist Video Download Helper nicht aktiviert. Sie müssen diese Option manuell aktivieren (dies ist nicht erforderlich)."
+      "message": "In Privat-/Inkognito-Fenstern ist My Video App nicht aktiviert. Sie müssen diese Option manuell aktivieren (dies ist nicht erforderlich)."
    },
    "remove_lang": {
       "message": "Sprache entfernen"
@@ -378,7 +378,7 @@
       "message": "Akzeptieren"
    },
    "tos_description": {
-      "message": "Video Download Helper ist ausschließlich für die rechtmäßige Nutzung bestimmt. Sie sind für die Inhalte, die Sie herunterladen, und für deren Verwendung verantwortlich. Wenn Sie auf Akzeptieren klicken, stimmen Sie unseren Nutzungsbedingungen zu"
+      "message": "My Video App ist ausschließlich für die rechtmäßige Nutzung bestimmt. Sie sind für die Inhalte, die Sie herunterladen, und für deren Verwendung verantwortlich. Wenn Sie auf Akzeptieren klicken, stimmen Sie unseren Nutzungsbedingungen zu"
    },
    "tos_details": {
       "message": "Nutzungsbedingungen"

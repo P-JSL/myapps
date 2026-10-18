@@ -1,5 +1,5 @@
 {
-  "buildSha256": "1497ad5134ca8e63a3bdb3e62214846736d8cd7700b02f7ade03363531505417",
+  "buildSha256": "02af9cf42c30706ce601846bcbbf0ecacd0422f559f4855dc890c91ffbaf7ca1",
   "browser": "154.0.8037.57",
   "mode": "localhost harness: real browser/Wasm/OPFS; Chrome extension APIs mocked",
   "extensionInstallation": {

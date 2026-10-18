@@ -165,7 +165,7 @@
       "message": "Laissez un commentaire"
    },
    "leave_review_description": {
-      "message": "Nous espérons que vous appréciez Video Download Helper :) Voudriez-vous laisser un gentil commentaire sur le site de l'addon ?"
+      "message": "Nous espérons que vous appréciez My Video App :) Voudriez-vous laisser un gentil commentaire sur le site de l'addon ?"
    },
    "max_parallel_downloads": {
       "message": "Téléchargements simultanés maximum "
@@ -288,7 +288,7 @@
       "message": "Navigation privée"
    },
    "private_browsing_warning": {
-      "message": "Video Download Helper n'est pas activé en mode navigation privée. Vous devez activer cette option à la main. (ce n'est pas obligatoire)"
+      "message": "My Video App n'est pas activé en mode navigation privée. Vous devez activer cette option à la main. (ce n'est pas obligatoire)"
    },
    "remove_lang": {
       "message": "Supprimer la langue"
@@ -378,7 +378,7 @@
       "message": "Accepter"
    },
    "tos_description": {
-      "message": "Video Download Helper est destiné à un usage légal uniquement. Vous êtes responsable du contenu que vous téléchargez et de l'usage que vous en faites. En cliquant sur Accepter, vous acceptez nos conditions d'utilisation"
+      "message": "My Video App est destiné à un usage légal uniquement. Vous êtes responsable du contenu que vous téléchargez et de l'usage que vous en faites. En cliquant sur Accepter, vous acceptez nos conditions d'utilisation"
    },
    "tos_details": {
       "message": "Conditions d'utilisation"

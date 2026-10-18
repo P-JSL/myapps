@@ -141,7 +141,7 @@
       "message": "ダウンロード履歴"
    },
    "history_warning": {
-      "message": "ダウンロード履歴は記録されていません。Video Download Helper でダウンロード履歴を記録しますか？"
+      "message": "ダウンロード履歴は記録されていません。My Video App でダウンロード履歴を記録しますか？"
    },
    "history_warning_2": {
       "message": "ご安心ください。データはすべてお使いの端末内に保存されます。我々はプライバシーを尊重しています。"
@@ -150,7 +150,7 @@
       "message": "レビューする"
    },
    "leave_review_description": {
-      "message": "Video Download Helper をお楽しみいただければ幸いです :) アドオン Web サイトに素敵なレビューを書いていただけませんか?"
+      "message": "My Video App をお楽しみいただければ幸いです :) アドオン Web サイトに素敵なレビューを書いていただけませんか?"
    },
    "max_parallel_downloads": {
       "message": "最大同時ダウンロード数"
@@ -252,7 +252,7 @@
       "message": "プライベートブラウズモード"
    },
    "private_browsing_warning": {
-      "message": "Video Download Helperは プライベート/シークレット ウィンドウで有効化されません。使用するには、手動で有効にする必要があります（必須ではありません）。"
+      "message": "My Video Appは プライベート/シークレット ウィンドウで有効化されません。使用するには、手動で有効にする必要があります（必須ではありません）。"
    },
    "rename_short": {
       "message": "名前を変更"
@@ -333,7 +333,7 @@
       "message": "同意する"
    },
    "tos_description": {
-      "message": "Video Download Helper は合法的な用途にのみ使用してください。ダウンロードするコンテンツとその使い方については、お客様が責任を負います。「同意する」をクリックすると、当社の利用規約に同意したことになります"
+      "message": "My Video App は合法的な用途にのみ使用してください。ダウンロードするコンテンツとその使い方については、お客様が責任を負います。「同意する」をクリックすると、当社の利用規約に同意したことになります"
    },
    "tos_details": {
       "message": "利用規約"

@@ -153,7 +153,7 @@
       "message": "İndirme Geçmişi"
    },
    "history_warning": {
-      "message": "İndirme geçmişinizi kaydetmiyoruz. Video Download Helper'ın indirme geçmişini hatırlamasını ister misin?"
+      "message": "İndirme geçmişinizi kaydetmiyoruz. My Video App'ın indirme geçmişini hatırlamasını ister misin?"
    },
    "history_warning_2": {
       "message": "Endişelenmeyin, her şey bilgisayarınızda kalır. Gizliliğinize değer veriyoruz."
@@ -162,7 +162,7 @@
       "message": "İnceleme yaz"
    },
    "leave_review_description": {
-      "message": "Video Download Helper'ı beğendiğini umuyoruz :) Eklenti web sitesine hoş bir inceleme yazman mümkün mü?"
+      "message": "My Video App'ı beğendiğini umuyoruz :) Eklenti web sitesine hoş bir inceleme yazman mümkün mü?"
    },
    "max_parallel_downloads": {
       "message": "Maks eş zamanlı indirme"
@@ -285,7 +285,7 @@
       "message": "Gizli gezinme"
    },
    "private_browsing_warning": {
-      "message": "Video Download Helper, Özel/Gizli pencerelerde etkin değil. Bu seçeneği manuel olarak açmanız gerekiyor (zorunlu değil)."
+      "message": "My Video App, Özel/Gizli pencerelerde etkin değil. Bu seçeneği manuel olarak açmanız gerekiyor (zorunlu değil)."
    },
    "remove_lang": {
       "message": "Dili Kaldır"
@@ -375,7 +375,7 @@
       "message": "Kabul Et"
    },
    "tos_description": {
-      "message": "Video Download Helper yalnızca yasal kullanım içindir. İndirdiğiniz içerikten ve onu nasıl kullandığınızdan siz sorumlusunuz. Kabul Et düğmesine tıklayarak Hizmet Şartlarımızı kabul etmiş olursunuz"
+      "message": "My Video App yalnızca yasal kullanım içindir. İndirdiğiniz içerikten ve onu nasıl kullandığınızdan siz sorumlusunuz. Kabul Et düğmesine tıklayarak Hizmet Şartlarımızı kabul etmiş olursunuz"
    },
    "tos_details": {
       "message": "Hizmet Şartları"

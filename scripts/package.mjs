@@ -23,11 +23,11 @@ assert.equal(identity, report.buildSha256, 'dist changed since successful browse
 const script = String.raw`
 from pathlib import Path
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
-import hashlib, json
+import hashlib, json, shutil
 root=Path.cwd()
 out=root/'artifacts'
 out.mkdir(exist_ok=True)
-packages=[('vdh-typescript-upscale-extension.zip',root/'dist','vdh-extension'),('vdh-typescript-upscale-source.zip',root,'vdh-typescript-upscale')]
+packages=[('my-video-app-extension.zip',root/'dist','my-video-app'),('my-video-app-source.zip',root,'my-video-app-source')]
 for name,source,prefix in packages:
     with ZipFile(out/name,'w',compression=ZIP_DEFLATED,compresslevel=9) as z:
         for p in sorted(source.rglob('*')):
@@ -40,8 +40,11 @@ for name,source,prefix in packages:
             info.external_attr=0o100644<<16
             z.writestr(info,p.read_bytes())
     print(name,(out/name).stat().st_size,'bytes')
+aliases={'vdh-typescript-upscale-extension.zip':'my-video-app-extension.zip','vdh-typescript-upscale-source.zip':'my-video-app-source.zip'}
+for alias,name in aliases.items():
+    shutil.copyfile(out/name,out/alias)
 lines=[]
-for name,_,_ in packages:
+for name in [p[0] for p in packages]+list(aliases):
     p=out/name
     lines.append(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+name)
 (out/'SHA256SUMS').write_text('\n'.join(lines)+'\n')

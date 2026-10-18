@@ -96,7 +96,7 @@
       "message": "下載紀錄"
    },
    "history_warning": {
-      "message": "我們不會記錄您的下載紀錄。是否要 Video Download Helper 記住您的下載紀錄？"
+      "message": "我們不會記錄您的下載紀錄。是否要 My Video App 記住您的下載紀錄？"
    },
    "history_warning_2": {
       "message": "別擔心，一切都會保留在您的電腦上。我們重視您的隱私。"
@@ -105,7 +105,7 @@
       "message": "發表評論"
    },
    "leave_review_description": {
-      "message": "希望您喜歡 Video Download Helper， 您介意在外網上給予好評嗎？"
+      "message": "希望您喜歡 My Video App， 您介意在外網上給予好評嗎？"
    },
    "max_parallel_downloads": {
       "message": "最大同時下載數量"
@@ -174,7 +174,7 @@
       "message": "私密瀏覽"
    },
    "private_browsing_warning": {
-      "message": "Video Download Helper 於無痕視窗中未啟用自動偵測，請手動啟用 (如非必要)"
+      "message": "My Video App 於無痕視窗中未啟用自動偵測，請手動啟用 (如非必要)"
    },
    "report": {
       "message": "回報"
@@ -237,7 +237,7 @@
       "message": "接受"
    },
    "tos_description": {
-      "message": "Video Download Helper 僅供合法用途使用。您須對所下載的內容及其使用方式負責。點擊「接受」即表示您同意我們的服務條款"
+      "message": "My Video App 僅供合法用途使用。您須對所下載的內容及其使用方式負責。點擊「接受」即表示您同意我們的服務條款"
    },
    "tos_details": {
       "message": "服務條款"

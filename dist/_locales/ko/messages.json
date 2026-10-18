@@ -114,7 +114,7 @@
       "message": "다운로드 기록"
    },
    "history_warning": {
-      "message": "저희는 귀하의 다운로드 기록을 저장하지 않습니다. Video Download Helper가 귀하의 다운로드 기록을 기억하도록 하시겠습니까?"
+      "message": "저희는 귀하의 다운로드 기록을 저장하지 않습니다. My Video App가 귀하의 다운로드 기록을 기억하도록 하시겠습니까?"
    },
    "history_warning_2": {
       "message": "걱정하지 마세요, 모든 것은 귀하의 기기에만 저장됩니다. 저희는 귀하의 프라이버시를 소중히 여깁니다."
@@ -123,7 +123,7 @@
       "message": "리뷰 남기기"
    },
    "leave_review_description": {
-      "message": "Video Download Helper를 즐겁게 사용하시길 바랍니다 :) 애드온 웹사이트에 좋은 리뷰를 남겨주시겠어요?"
+      "message": "My Video App를 즐겁게 사용하시길 바랍니다 :) 애드온 웹사이트에 좋은 리뷰를 남겨주시겠어요?"
    },
    "max_parallel_downloads": {
       "message": "최대 동시 다운로드 수"
@@ -207,7 +207,7 @@
       "message": "시크릿 브라우징"
    },
    "private_browsing_warning": {
-      "message": "Video Download Helper는 시크릿/비공개 창에서 활성화되어 있지 않습니다. 이 옵션을 수동으로 켜야 합니다 (필수는 아님)."
+      "message": "My Video App는 시크릿/비공개 창에서 활성화되어 있지 않습니다. 이 옵션을 수동으로 켜야 합니다 (필수는 아님)."
    },
    "rename_short": {
       "message": "이름 변경"
@@ -282,7 +282,7 @@
       "message": "동의"
    },
    "tos_description": {
-      "message": "Video Download Helper는 합법적인 용도로만 사용해야 합니다. 다운로드하는 콘텐츠와 그 사용 방식에 대한 책임은 사용자에게 있습니다. 동의를 클릭하면 당사의 서비스 약관에 동의하는 것입니다"
+      "message": "My Video App는 합법적인 용도로만 사용해야 합니다. 다운로드하는 콘텐츠와 그 사용 방식에 대한 책임은 사용자에게 있습니다. 동의를 클릭하면 당사의 서비스 약관에 동의하는 것입니다"
    },
    "tos_details": {
       "message": "서비스 약관"

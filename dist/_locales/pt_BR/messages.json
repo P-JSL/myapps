@@ -141,7 +141,7 @@
       "message": "Histórico de Downloads"
    },
    "history_warning": {
-      "message": "Não registramos seu histórico de downloads. Você quer que o Video Download Helper se lembre do seu histórico de downloads?"
+      "message": "Não registramos seu histórico de downloads. Você quer que o My Video App se lembre do seu histórico de downloads?"
    },
    "history_warning_2": {
       "message": "Não se preocupe, tudo fica no seu computador. Valorizamos sua privacidade."
@@ -150,7 +150,7 @@
       "message": "Deixe um comentário"
    },
    "leave_review_description": {
-      "message": "Esperamos que você esteja gostando do Video Download Helper :) Você se importaria de escrever uma boa crítica na página da extensão?"
+      "message": "Esperamos que você esteja gostando do My Video App :) Você se importaria de escrever uma boa crítica na página da extensão?"
    },
    "max_parallel_downloads": {
       "message": "Máximo de downloads simultâneos"
@@ -252,7 +252,7 @@
       "message": "Navegação privada"
    },
    "private_browsing_warning": {
-      "message": "Video Download Helper não está habilitado em janelas privadas/anônimas. Você precisa ativar essa opção manualmente (isso não é obrigatório)."
+      "message": "My Video App não está habilitado em janelas privadas/anônimas. Você precisa ativar essa opção manualmente (isso não é obrigatório)."
    },
    "rename_short": {
       "message": "Renomear"
@@ -330,7 +330,7 @@
       "message": "Aceitar"
    },
    "tos_description": {
-      "message": "O Video Download Helper destina-se apenas a uso legal. Você é responsável pelo conteúdo que baixa e pela forma como o utiliza. Ao clicar em Aceitar, você concorda com nossos Termos de Serviço"
+      "message": "O My Video App destina-se apenas a uso legal. Você é responsável pelo conteúdo que baixa e pela forma como o utiliza. Ao clicar em Aceitar, você concorda com nossos Termos de Serviço"
    },
    "tos_details": {
       "message": "Termos de Serviço"

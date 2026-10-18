@@ -153,7 +153,7 @@
       "message": "Historie stahování"
    },
    "history_warning": {
-      "message": "Nezaznamenáváme vaši historii stahování. Chcete, aby si Video Download Helper pamatoval vaši historii stahování?"
+      "message": "Nezaznamenáváme vaši historii stahování. Chcete, aby si My Video App pamatoval vaši historii stahování?"
    },
    "history_warning_2": {
       "message": "Buďte v klidu, všechno zůstává na vašem počítači. Ceníme si vašeho soukromí."
@@ -162,7 +162,7 @@
       "message": "Zanechat recenzi"
    },
    "leave_review_description": {
-      "message": "Jsme rádi, že si užíváte Video Download Helper :) Nechtěl byste napsat hezkou recenzi na stránkách obchodu s addony? "
+      "message": "Jsme rádi, že si užíváte My Video App :) Nechtěl byste napsat hezkou recenzi na stránkách obchodu s addony? "
    },
    "max_parallel_downloads": {
       "message": "Maximální počet souběžných stahování"
@@ -285,7 +285,7 @@
       "message": "Soukromé procházení"
    },
    "private_browsing_warning": {
-      "message": "Video Download Helper není povolen v soukromých/anonymních oknech. Musíte to povolit ručně (není vyžadováno)."
+      "message": "My Video App není povolen v soukromých/anonymních oknech. Musíte to povolit ručně (není vyžadováno)."
    },
    "remove_lang": {
       "message": "Odstraňit jazyk"
@@ -375,7 +375,7 @@
       "message": "Přijmout"
    },
    "tos_description": {
-      "message": "Video Download Helper je určen pouze k zákonnému použití. Za obsah, který stahujete, a za způsob jeho použití odpovídáte vy. Kliknutím na Přijmout souhlasíte s našimi podmínkami služby"
+      "message": "My Video App je určen pouze k zákonnému použití. Za obsah, který stahujete, a za způsob jeho použití odpovídáte vy. Kliknutím na Přijmout souhlasíte s našimi podmínkami služby"
    },
    "tos_details": {
       "message": "Podmínky služby"

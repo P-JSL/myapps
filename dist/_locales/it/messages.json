@@ -156,7 +156,7 @@
       "message": "Cronologia download"
    },
    "history_warning": {
-      "message": "Non registriamo la cronologia download. Vuoi che Video Download Helper ricordi la cronologia download?"
+      "message": "Non registriamo la cronologia download. Vuoi che My Video App ricordi la cronologia download?"
    },
    "history_warning_2": {
       "message": "Non ti preoccupare, tutto rimane in questo computer. Apprezziamo la tua privacy."
@@ -168,7 +168,7 @@
       "message": "Scrivi una recensione"
    },
    "leave_review_description": {
-      "message": "Ci auguriamo che Video Download Helper ti piaccia :) Ti dispiacerebbe scrivere una recensione positiva nel sito web dell'estensione?"
+      "message": "Ci auguriamo che My Video App ti piaccia :) Ti dispiacerebbe scrivere una recensione positiva nel sito web dell'estensione?"
    },
    "max_parallel_downloads": {
       "message": "Numero massimo download contemporanei"
@@ -294,7 +294,7 @@
       "message": "Navigazione anonima"
    },
    "private_browsing_warning": {
-      "message": "Video Download Helper non è abilitato alla navigazione anonima."
+      "message": "My Video App non è abilitato alla navigazione anonima."
    },
    "remove_lang": {
       "message": "Rimuovi lingua"
@@ -384,7 +384,7 @@
       "message": "Accetta"
    },
    "tos_description": {
-      "message": "Video Download Helper è destinato esclusivamente all'uso lecito. Sei responsabile del contenuto che scarichi e di come lo utilizzi. Facendo clic su Accetta, approvi i nostri Termini di Servizio"
+      "message": "My Video App è destinato esclusivamente all'uso lecito. Sei responsabile del contenuto che scarichi e di come lo utilizzi. Facendo clic su Accetta, approvi i nostri Termini di Servizio"
    },
    "tos_details": {
       "message": "Termini di Servizio"

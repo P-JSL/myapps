@@ -1,4 +1,9 @@
-# Video Download Helper 10.6.1.2 분석 및 재작성 범위
+# My Video App · 원본 분석 및 재작성 범위
+
+설치본의 제품 이름은 `My Video App`이다. 원본 Video Download Helper 10.6.1.2의
+manifest 이름/툴팁/사이드패널 타이틀과 HTML·언어 리소스의 제품 표시를 빌드할 때
+바꾼다. `vendor/original` 및 `dist-compat`는 비교를 위한 원래 이름을 보존한다.
+구독/활성화 검증과 유료 기능의 권한 판정은 원본 로직을 따른다.
 
 ## 입력과 구조
 
