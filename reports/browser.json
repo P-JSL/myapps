@@ -1,6 +1,7 @@
 {
-  "buildSha256": "02af9cf42c30706ce601846bcbbf0ecacd0422f559f4855dc890c91ffbaf7ca1",
+  "buildSha256": "f716b8d80276ab8e2b529932ebbae6f584e2c29bd74719d1607dc5c59bbd136b",
   "browser": "154.0.8037.57",
+  "engine": "independent-local",
   "mode": "localhost harness: real browser/Wasm/OPFS; Chrome extension APIs mocked",
   "extensionInstallation": {
     "status": "blocked",
@@ -12,7 +13,7 @@
       "status": "passed"
     },
     {
-      "name": "Unchanged original download worker preserves every MP4 byte",
+      "name": "Local install uses independent entry points without an account/activation engine",
       "status": "passed"
     },
     {
@@ -52,11 +53,59 @@
       "status": "passed"
     },
     {
+      "name": "Independent HLS VOD remux preserves video frames and audio",
+      "status": "passed"
+    },
+    {
+      "name": "HLS master handles its separate default audio track",
+      "status": "passed"
+    },
+    {
+      "name": "HLS byte ranges produce a complete decodable MP4",
+      "status": "passed"
+    },
+    {
+      "name": "Independent static DASH remux preserves separate video and audio tracks",
+      "status": "passed"
+    },
+    {
+      "name": "Encrypted HLS and protected DASH are rejected without any key/license requests",
+      "status": "passed"
+    },
+    {
+      "name": "Cancelling stream preparation terminates the real worker and allows a new task",
+      "status": "passed"
+    },
+    {
+      "name": "Website collectors cannot invoke download/history commands or impersonate the app",
+      "status": "passed"
+    },
+    {
+      "name": "Media collector discovers DOM video sources without initiating downloads",
+      "status": "passed"
+    },
+    {
+      "name": "Local app downloads detected MP4 byte-for-byte and records completion using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "Concurrent duplicate requests are coalesced and native cancellation updates history using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "Clearing local history leaves downloaded files intact",
+      "status": "passed"
+    },
+    {
+      "name": "Restart reconciliation releases interrupted preparation slots and cleans owned temp files using API doubles",
+      "status": "passed"
+    },
+    {
       "name": "No outbound requests or page exceptions in new processing workflow",
       "status": "passed"
     }
   ],
-  "originalFixtureSha256": "a8536eaaa80e192769a341d98dc6c62e5fa489b81df82b06455feecb12fe3efe",
+  "directFixtureSha256": "a8536eaaa80e192769a341d98dc6c62e5fa489b81df82b06455feecb12fe3efe",
   "outboundRequests": [],
   "pageErrors": []
 }

@@ -1,0 +1,5 @@
+#EXTM3U
+#EXT-X-KEY:METHOD=AES-128,URI="https://invalid.example/key"
+#EXTINF:1,
+clip.mp4
+#EXT-X-ENDLIST

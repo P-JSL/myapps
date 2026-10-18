@@ -1,7 +1,5 @@
 * text=auto eol=lf
-vendor/original/** -text
 dist/** -text
-dist-compat/** -text
 artifacts/** -text
 *.wasm binary
 *.png binary

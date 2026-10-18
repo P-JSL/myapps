@@ -1,4 +1,5 @@
 Observed browser: Chromium 154.0.8037.57 (Debian)
+Rechecked: 2026-10-18, My Video App 1.1.0 independent-local build
 Attempt: Playwright persistent test profile with --load-extension=/workspace/myapps/dist
 Observed diagnostic from Chromium:
 Extension error: Failed to load extension from: /workspace/myapps/dist. Loading of unpacked extensions is disabled by the administrator.

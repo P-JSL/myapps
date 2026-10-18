@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "My Video App",
+  "short_name": "My Video App",
+  "version": "1.1.0",
+  "version_name": "1.1.0 · 개인용 로컬 버전",
+  "description": "계정·구독 없이 미디어를 감지하고 다운로드하며, 기록과 업스케일링을 브라우저 안에서 처리합니다.",
+  "minimum_chrome_version": "120",
+  "background": { "service_worker": "local/background.js", "type": "module" },
+  "action": { "default_title": "My Video App", "default_icon": { "128": "bitmaps/logo-128-color.png" } },
+  "icons": { "128": "bitmaps/logo-128-nooutline.png" },
+  "side_panel": { "default_path": "local/index.html" },
+  "options_ui": { "page": "upscale/index.html", "open_in_tab": true },
+  "permissions": ["tabs", "webRequest", "downloads", "storage", "unlimitedStorage", "offscreen", "sidePanel", "notifications", "contextMenus"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "content_scripts": [{ "matches": ["http://*/*", "https://*/*"], "js": ["local/collect.js"], "all_frames": true, "run_at": "document_idle" }],
+  "content_security_policy": { "extension_pages": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' http: https:; img-src 'self' blob: data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'" },
+  "commands": {
+    "_execute_action": { "suggested_key": { "default": "Alt+Up", "mac": "Ctrl+Shift+Up" } },
+    "default-action": { "suggested_key": { "default": "Alt+Down", "mac": "Ctrl+Shift+Down" }, "description": "현재 탭의 첫 미디어 다운로드" }
+  },
+  "incognito": "split"
+}

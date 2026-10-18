@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 process.chdir(fileURLToPath(new URL('../', import.meta.url)));
 await access('dist/manifest.json');
 const report = JSON.parse(await readFile('reports/browser.json', 'utf8'));
-assert(report.outcomes.length >= 12 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current browser harness results required');
+assert(report.outcomes.length >= 24 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app browser harness results required');
+assert.equal(JSON.parse(await readFile('reports/build.json', 'utf8')).engine, 'independent-local');
 async function files(dir, prefix = '') {
   const names = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
