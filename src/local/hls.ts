@@ -1,5 +1,6 @@
 import { MAX_SEGMENTS, mediaURL } from './model.ts';
 import { validRange, type ByteRange } from './network.ts';
+import { chooseQuality, downloadOptions, type DownloadOptions } from './preferences.ts';
 
 export interface RemoteAsset { url: string; filename: string; range?: ByteRange; }
 export interface StreamInput { filename: string; playlist?: string; parts?: string[]; }
@@ -24,32 +25,34 @@ export function parseByteRange(value: string, offset = 0): ByteRange {
   const range = { length: Number(match[1]), offset: match[2] === undefined ? offset : Number(match[2]) };
   validRange(range); return range;
 }
-export async function planHls(url: string, load: (url: string) => Promise<string>): Promise<StreamPlan> {
+export async function planHls(url: string, load: (url: string) => Promise<string>, options: DownloadOptions = downloadOptions()): Promise<StreamPlan> {
   const assets: RemoteAsset[] = [];
   const inputs: StreamInput[] = [];
   async function playlist(address: string, depth: number, ancestors: Set<string>, includeAudio: boolean): Promise<void> {
     if (depth > 3 || ancestors.has(address)) throw new Error('HLS 목록이 순환하거나 너무 깊습니다.');
     const next = new Set(ancestors).add(address);
     const lines = check(await load(address));
-    const variants: Array<{ url: string; bandwidth: number; audio?: string }> = [];
+    const variants: Array<{ url: string; bandwidth: number; height: number; audio?: string }> = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!;
       if (!line.startsWith('#EXT-X-STREAM-INF:')) continue;
       const attr = attributes(line.slice(line.indexOf(':') + 1));
       const child = lines[i + 1];
       if (!child || child.startsWith('#')) throw new Error('HLS 변형 목록이 불완전합니다.');
-      const variant: { url: string; bandwidth: number; audio?: string } = { url: mediaURL(child, address).href, bandwidth: Number(attr.BANDWIDTH) || 0 };
+      const variant: { url: string; bandwidth: number; height: number; audio?: string } = { url: mediaURL(child, address).href, bandwidth: Number(attr.BANDWIDTH) || 0, height: Number(attr.RESOLUTION?.match(/^\d+x(\d+)$/)?.[1]) || 0 };
       if (attr.AUDIO) variant.audio = attr.AUDIO;
       variants.push(variant);
     }
     if (variants.length) {
-      const chosen = variants.sort((a, b) => b.bandwidth - a.bandwidth)[0]!;
-      await playlist(chosen.url, depth + 1, next, false);
+      const chosen = chooseQuality(variants, options.quality, item => item.height, item => item.bandwidth)!;
+      let audio: Record<string, string> | undefined;
       if (includeAudio && chosen.audio) {
-        const audio = lines.filter(line => line.startsWith('#EXT-X-MEDIA:')).map(line => attributes(line.slice(line.indexOf(':') + 1)))
+        audio = lines.filter(line => line.startsWith('#EXT-X-MEDIA:')).map(line => attributes(line.slice(line.indexOf(':') + 1)))
           .filter(a => a.TYPE === 'AUDIO' && a['GROUP-ID'] === chosen.audio && a.URI).sort((a, b) => Number(b.DEFAULT === 'YES') - Number(a.DEFAULT === 'YES'))[0];
-        if (audio?.URI) await playlist(mediaURL(audio.URI, address).href, depth + 1, next, false);
       }
+      if (options.output !== 'original' && audio?.URI) { await playlist(mediaURL(audio.URI, address).href, depth + 1, next, false); return; }
+      await playlist(chosen.url, depth + 1, next, false);
+      if (audio?.URI) await playlist(mediaURL(audio.URI, address).href, depth + 1, next, false);
       return;
     }
     if (!lines.includes('#EXT-X-ENDLIST')) throw new Error('현재 로컬 버전은 완료된 VOD 목록만 지원합니다.');

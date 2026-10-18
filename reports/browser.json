@@ -1,5 +1,5 @@
 {
-  "buildSha256": "f716b8d80276ab8e2b529932ebbae6f584e2c29bd74719d1607dc5c59bbd136b",
+  "buildSha256": "030ccc359fefda8f71e5cf2310946c5b3fc1c257e3fe9fe2e432ec3923ffe278",
   "browser": "154.0.8037.57",
   "engine": "independent-local",
   "mode": "localhost harness: real browser/Wasm/OPFS; Chrome extension APIs mocked",
@@ -26,6 +26,46 @@
     },
     {
       "name": "MP4 2x preserves duration and audio in separate H.264/AAC output",
+      "status": "passed"
+    },
+    {
+      "name": "Local video conversion writes decodable MP4 with its expected codecs",
+      "status": "passed"
+    },
+    {
+      "name": "Local video conversion writes decodable MKV with its expected codecs",
+      "status": "passed"
+    },
+    {
+      "name": "Local video conversion writes decodable WEBM with its expected codecs",
+      "status": "passed"
+    },
+    {
+      "name": "Local audio extraction writes MP3 with the original audible tone",
+      "status": "passed"
+    },
+    {
+      "name": "Local audio extraction writes M4A with the original audible tone",
+      "status": "passed"
+    },
+    {
+      "name": "Local audio extraction writes WAV with the original audible tone",
+      "status": "passed"
+    },
+    {
+      "name": "Local MP4 merge copies video and replaces its audio with the chosen file",
+      "status": "passed"
+    },
+    {
+      "name": "Local MKV merge copies video and replaces its audio with the chosen file",
+      "status": "passed"
+    },
+    {
+      "name": "Standalone audio files can be converted without a video track",
+      "status": "passed"
+    },
+    {
+      "name": "Missing audio is rejected and conversion cancellation allows the next job",
       "status": "passed"
     },
     {
@@ -69,6 +109,38 @@
       "status": "passed"
     },
     {
+      "name": "HLS highest quality selects the larger rendition even at lower declared bitrate",
+      "status": "passed"
+    },
+    {
+      "name": "HLS height ceiling selects the actual available lower rendition",
+      "status": "passed"
+    },
+    {
+      "name": "DASH highest quality selects the actual larger rendition",
+      "status": "passed"
+    },
+    {
+      "name": "DASH height ceiling selects the actual available lower rendition",
+      "status": "passed"
+    },
+    {
+      "name": "HLS separate audio can be saved as a decodable MP3",
+      "status": "passed"
+    },
+    {
+      "name": "DASH audio can be saved as a decodable M4A",
+      "status": "passed"
+    },
+    {
+      "name": "Direct MP4 can be downloaded as audio through the same local worker",
+      "status": "passed"
+    },
+    {
+      "name": "Local video conversion applies a real height ceiling",
+      "status": "passed"
+    },
+    {
       "name": "Encrypted HLS and protected DASH are rejected without any key/license requests",
       "status": "passed"
     },
@@ -86,6 +158,10 @@
     },
     {
       "name": "Local app downloads detected MP4 byte-for-byte and records completion using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "Local download UI passes the chosen audio format through background and offscreen using API doubles",
       "status": "passed"
     },
     {

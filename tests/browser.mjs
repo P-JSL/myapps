@@ -22,13 +22,18 @@ function command(binary, args) {
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=160x90:rate=12:duration=1', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100:duration=1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', '-y', `${fixtures}/clip.mp4`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=64x48', '-frames:v', '1', '-threads', '1', '-y', `${fixtures}/image.png`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=size=8192x2', '-frames:v', '1', '-threads', '1', '-y', `${fixtures}/wide.png`]);
-for (const directory of ['hls', 'dash', 'range', 'video', 'audio']) await mkdir(`${fixtures}/${directory}`, { recursive: true });
+for (const directory of ['hls', 'dash', 'range', 'video', 'audio', 'low', 'high', 'quality-dash']) await mkdir(`${fixtures}/${directory}`, { recursive: true });
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-c:v', 'libx264', '-g', '6', '-keyint_min', '6', '-c:a', 'aac', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-hls_segment_filename', `${fixtures}/hls/seg-%03d.ts`, '-y', `${fixtures}/hls/list.m3u8`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-map', '0', '-c', 'copy', '-seg_duration', '0.5', '-use_template', '1', '-use_timeline', '1', '-f', 'dash', '-y', `${fixtures}/dash/list.mpd`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-c', 'copy', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-hls_flags', 'single_file', '-y', `${fixtures}/range/list.m3u8`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-map', '0:v:0', '-c', 'copy', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-y', `${fixtures}/video/list.m3u8`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-map', '0:a:0', '-c', 'copy', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-y', `${fixtures}/audio/list.m3u8`]);
 await writeFile(`${fixtures}/master.m3u8`, '#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",DEFAULT=YES,URI="audio/list.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=200000,AUDIO="audio"\nvideo/list.m3u8\n');
+command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-map', '0:v:0', '-c', 'copy', '-y', `${fixtures}/video-only.mp4`]);
+command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=frequency=880:sample_rate=44100:duration=1', '-c:a', 'aac', '-y', `${fixtures}/audio-only.m4a`]);
+for (const [name, size] of [['low', '640:360'], ['high', '960:540']]) command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-vf', `scale=${size}`, '-c:v', 'libx264', '-c:a', 'copy', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-y', `${fixtures}/${name}/list.m3u8`]);
+await writeFile(`${fixtures}/quality.m3u8`, '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=900000,RESOLUTION=640x360\nlow/list.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=960x540\nhigh/list.m3u8\n');
+command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-map', '0:v:0', '-map', '0:v:0', '-map', '0:a:0', '-filter:v:0', 'scale=640:360', '-filter:v:1', 'scale=960:540', '-c:v', 'libx264', '-c:a', 'copy', '-f', 'dash', '-y', `${fixtures}/quality-dash/list.mpd`]);
 await writeFile(`${fixtures}/encrypted.m3u8`, '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="https://invalid.example/key"\n#EXTINF:1,\nclip.mp4\n#EXT-X-ENDLIST\n');
 await writeFile(`${fixtures}/protected.mpd`, '<MPD type="static" mediaPresentationDuration="PT1S"><Period><AdaptationSet mimeType="video/mp4"><ContentProtection schemeIdUri="urn:uuid:protected"/><Representation id="v" bandwidth="1"><BaseURL>https://invalid.example/private.mp4</BaseURL></Representation></AdaptationSet></Period></MPD>');
 await writeFile(`${fixtures}/malicious.mp4`, '<html><script>fetch("https://invalid.example/upload")</script></html>');
@@ -74,7 +79,7 @@ await context.addInitScript(() => {
     runtime: { id: 'test-double-only', getURL: path => `${location.origin}/${path.replace(/^\//, '')}`, onInstalled: listeners(), onStartup: listeners(), onMessage: listeners(), sendMessage: async message => {
       if (message.scope === 'my-video-app/offscreen') {
         const module = await import('/local/offscreen.js');
-        if (message.type === 'prepare') { try { return await module.prepareLocal(message.id, message.url, message.kind); } catch (error) { await module.disposeLocal(message.id); return { ok: false, error: error.message }; } }
+        if (message.type === 'prepare') { try { return await module.prepareLocal(message.id, message.url, message.kind, message.options); } catch (error) { await module.disposeLocal(message.id); return { ok: false, error: error.message }; } }
         if (message.type === 'cancel') { module.cancelLocal(message.id); return { ok: true }; }
         if (message.type === 'dispose') { await module.disposeLocal(message.id); return { ok: true }; }
       }
@@ -129,13 +134,13 @@ async function convert(filename, scale, destination) {
   assert.equal(await download.failure(), null);
   return JSON.parse(command('ffprobe', ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', destination]));
 }
-async function remux(playlist, kind, filename) {
-  const prepared = await page.evaluate(async ({ url, kind }) => {
+async function remux(playlist, kind, filename, options, expectedHeight = 90) {
+  const prepared = await page.evaluate(async ({ url, kind, options }) => {
     const offscreen = await import('/local/offscreen.js');
     const id = crypto.randomUUID();
-    const result = await offscreen.prepareLocal(id, url, kind);
+    const result = await offscreen.prepareLocal(id, url, kind, options);
     return { id, ...result };
-  }, { url: `${origin}/fixtures/${playlist}`, kind });
+  }, { url: `${origin}/fixtures/${playlist}`, kind, options });
   try {
     const pending = page.waitForEvent('download');
     await page.evaluate(({ url, filename }) => { const link = document.createElement('a'); link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove(); }, { url: prepared.url, filename });
@@ -143,20 +148,41 @@ async function remux(playlist, kind, filename) {
     const probe = JSON.parse(command('ffprobe', ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', `${results}/${filename}`]));
     const video = probe.streams.find(stream => stream.codec_type === 'video');
     const audio = probe.streams.find(stream => stream.codec_type === 'audio');
-    assert.equal(video.codec_name, 'h264'); assert.equal(Number(video.nb_frames), 12); assert.equal(audio.codec_name, 'aac');
+    if (options?.output && options.output !== 'original') { assert.equal(video, undefined); assert.equal(audio.codec_name, options.output === 'mp3' ? 'mp3' : 'aac'); }
+    else { assert.equal(video.codec_name, 'h264'); assert.equal(Number(video.nb_frames), 12); assert.equal(video.height, expectedHeight); assert.equal(audio.codec_name, 'aac'); }
     assert(Number(probe.format.duration) >= 0.9 && Number(probe.format.duration) < 1.5);
     command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${results}/${filename}`, '-f', 'null', '-']);
   } finally { await page.evaluate(async id => { const module = await import('/local/offscreen.js'); await module.disposeLocal(id); }, prepared.id); }
 }
+async function processFile(mode, format, destination, input = `${fixtures}/clip.mp4`, secondary) {
+  await page.locator('#mode').selectOption(mode);
+  await page.locator('#file').setInputFiles(input);
+  await page.locator(mode === 'audio' ? '#audio-format' : mode === 'merge' ? '#merge-format' : '#video-format').selectOption(format);
+  if (secondary) await page.locator('#audio-file').setInputFiles(secondary);
+  await page.locator('#start').click();
+  await page.waitForFunction(() => !document.querySelector('#save').hidden || (!document.querySelector('#start').disabled && document.querySelector('#progress').value === 0), undefined, { timeout: 60_000 });
+  assert.equal(await page.locator('#save').isVisible(), true, await page.locator('#status').innerText());
+  const pending = page.waitForEvent('download'); await page.locator('#save').click();
+  const file = await pending; await file.saveAs(destination); assert.equal(await file.failure(), null);
+  command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', destination, '-f', 'null', '-']);
+  return JSON.parse(command('ffprobe', ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', destination]));
+}
+function toneFrequency(filename) {
+  // Measure steady audio after codec priming; AAC in Matroska retains initial delay samples.
+  const result = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', filename, '-ss', '0.1', '-map', '0:a:0', '-t', '0.7', '-ac', '1', '-ar', '44100', '-f', 's16le', '-'], { maxBuffer: 1024 * 1024 });
+  assert.equal(result.status, 0); const bytes = result.stdout; let crossings = 0;
+  for (let i = 2; i < bytes.length; i += 2) if (bytes.readInt16LE(i - 2) <= 0 && bytes.readInt16LE(i) > 0) crossings++;
+  return crossings * 44100 / (bytes.length / 2);
+}
 try {
   await checks('Built UI loads with CSP; actual FFmpeg Worker assets available', async () => {
-    await openTools(); assert.equal(await page.title(), '업스케일링 · My Video App');
+    await openTools(); assert.equal(await page.title(), '미디어 도구 · My Video App');
     assert.equal(await page.locator('#start').isDisabled(), true);
     assert.equal(await (await context.request.get(`${origin}/vendor/ffmpeg/ffmpeg-core.wasm`)).status(), 200);
   });
   await checks('Local install uses independent entry points without an account/activation engine', async () => {
     const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
-    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.1.0');
+    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.2.0');
     assert.equal(manifest.key, undefined); assert.equal(manifest.update_url, undefined);
     const result = await context.request.get(`${origin}/service/main.js`); assert.equal(result.status(), 404);
   });
@@ -178,6 +204,43 @@ try {
     assert(Math.abs(Number(probe.format.duration) - 1) < 0.15);
     assert.equal(createHash('sha256').update(await readFile(`${fixtures}/clip.mp4`)).digest('hex'), originalHash);
     command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${results}/clip-2x.mp4`, '-f', 'null', '-']);
+  });
+  for (const format of ['mp4', 'mkv', 'webm']) await checks(`Local video conversion writes decodable ${format.toUpperCase()} with its expected codecs`, async () => {
+    const result = await processFile('convert', format, `${results}/converted.${format}`);
+    const video = result.streams.find(s => s.codec_type === 'video'); const audio = result.streams.find(s => s.codec_type === 'audio');
+    assert.equal(video.codec_name, format === 'webm' ? 'vp8' : 'h264'); assert.equal(audio.codec_name, format === 'webm' ? 'opus' : 'aac');
+    assert.equal(video.width, 160); assert.equal(video.height, 90);
+    assert(Math.abs(Number(result.format.duration) - 1) < 0.2);
+  });
+  for (const format of ['mp3', 'm4a', 'wav']) await checks(`Local audio extraction writes ${format.toUpperCase()} with the original audible tone`, async () => {
+    const filename = `${results}/extracted.${format}`;
+    const result = await processFile('audio', format, filename);
+    assert.equal(result.streams.filter(s => s.codec_type === 'video').length, 0);
+    assert.equal(result.streams[0].codec_name, { mp3: 'mp3', m4a: 'aac', wav: 'pcm_s16le' }[format]);
+    assert(Math.abs(toneFrequency(filename) - 440) < 10);
+  });
+  for (const format of ['mp4', 'mkv']) await checks(`Local ${format.toUpperCase()} merge copies video and replaces its audio with the chosen file`, async () => {
+    const filename = `${results}/merged.${format}`;
+    const result = await processFile('merge', format, filename, `${fixtures}/video-only.mp4`, `${fixtures}/audio-only.m4a`);
+    assert.equal(result.streams.find(s => s.codec_type === 'video').codec_name, 'h264');
+    const hash = name => command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', name, '-map', '0:v:0', '-c', 'copy', '-f', 'streamhash', '-hash', 'sha256', '-']);
+    assert.equal(hash(filename), hash(`${fixtures}/video-only.mp4`));
+    assert(Math.abs(toneFrequency(filename) - 880) < 10);
+  });
+  await checks('Standalone audio files can be converted without a video track', async () => {
+    const result = await processFile('audio', 'm4a', `${results}/audio-reencoded.m4a`, `${results}/extracted.mp3`);
+    assert.equal(result.streams.length, 1); assert.equal(result.streams[0].codec_name, 'aac');
+  });
+  await checks('Missing audio is rejected and conversion cancellation allows the next job', async () => {
+    await page.locator('#mode').selectOption('audio'); await page.locator('#file').setInputFiles(`${fixtures}/video-only.mp4`); await page.locator('#start').click();
+    await page.waitForFunction(() => document.querySelector('#status').textContent.includes('오디오 트랙이 없습니다'));
+    assert.equal(await page.locator('#save').isVisible(), false);
+    await page.locator('#mode').selectOption('convert'); await page.locator('#file').setInputFiles(`${fixtures}/clip.mp4`); await page.locator('#start').click();
+    assert.equal(await page.locator('#mode').isDisabled(), true); await page.locator('#cancel').click();
+    assert.equal(await page.locator('#mode').isDisabled(), false); assert.equal(await page.locator('#save').isVisible(), false);
+    await processFile('convert', 'mp4', `${results}/converted-after-cancel.mp4`);
+    await page.screenshot({ path: `${results}/media-tools.png`, fullPage: true });
+    await page.locator('#mode').selectOption('upscale');
   });
   await checks('HTML disguised as MP4 is rejected before decode', async () => {
     await page.locator('#file').setInputFiles(`${fixtures}/malicious.mp4`); await page.locator('#start').click();
@@ -252,6 +315,20 @@ try {
   await checks('HLS master handles its separate default audio track', () => remux('master.m3u8', 'hls', 'local-master.mp4'));
   await checks('HLS byte ranges produce a complete decodable MP4', () => remux('range/list.m3u8', 'hls', 'local-range.mp4'));
   await checks('Independent static DASH remux preserves separate video and audio tracks', () => remux('dash/list.mpd', 'dash', 'local-dash.mp4'));
+  await checks('HLS highest quality selects the larger rendition even at lower declared bitrate', () => remux('quality.m3u8', 'hls', 'quality-highest-hls.mp4', { quality: 'highest', output: 'original' }, 540));
+  await checks('HLS height ceiling selects the actual available lower rendition', () => remux('quality.m3u8', 'hls', 'quality-lower-hls.mp4', { quality: '480', output: 'original' }, 360));
+  await checks('DASH highest quality selects the actual larger rendition', () => remux('quality-dash/list.mpd', 'dash', 'quality-highest-dash.mp4', { quality: 'highest', output: 'original' }, 540));
+  await checks('DASH height ceiling selects the actual available lower rendition', () => remux('quality-dash/list.mpd', 'dash', 'quality-lower-dash.mp4', { quality: '480', output: 'original' }, 360));
+  await checks('HLS separate audio can be saved as a decodable MP3', () => remux('master.m3u8', 'hls', 'download-hls.mp3', { quality: 'highest', output: 'mp3' }));
+  await checks('DASH audio can be saved as a decodable M4A', () => remux('dash/list.mpd', 'dash', 'download-dash.m4a', { quality: 'highest', output: 'm4a' }));
+  await checks('Direct MP4 can be downloaded as audio through the same local worker', () => remux('clip.mp4', 'file', 'download-direct.mp3', { quality: 'highest', output: 'mp3' }));
+  await checks('Local video conversion applies a real height ceiling', async () => {
+    await page.locator('#mode').selectOption('convert');
+    await page.locator('#convert-quality').selectOption('480');
+    const result = await processFile('convert', 'mp4', `${results}/converted-lower.mp4`, `${results}/quality-highest-hls.mp4`);
+    assert.equal(result.streams.find(s => s.codec_type === 'video').height, 480);
+    assert.equal(result.streams.find(s => s.codec_type === 'video').width, 852);
+  });
   await checks('Encrypted HLS and protected DASH are rejected without any key/license requests', async () => {
     const messages = await page.evaluate(async origin => {
       const offscreen = await import('/local/offscreen.js'); const messages = [];
@@ -310,6 +387,15 @@ try {
     assert.match(await page.locator('#history').innerText(), /로컬 테스트 영상\.mp4/);
     await page.waitForFunction(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1?.length === 1);
     assert.equal(await page.evaluate(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1.length), 1);
+  });
+  await checks('Local download UI passes the chosen audio format through background and offscreen using API doubles', async () => {
+    await page.locator('#media-tab').click();
+    await page.locator('#download-output').selectOption('mp3'); await page.locator('#quality').selectOption('720');
+    const pending = page.waitForEvent('download'); await page.locator('#media li button').first().click();
+    const file = await pending; assert(file.suggestedFilename().endsWith('.mp3')); await file.saveAs(`${results}/local-ui-audio.mp3`);
+    await page.waitForFunction(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.filename.endsWith('.mp3') && row.state === 'complete'));
+    assert(Math.abs(toneFrequency(`${results}/local-ui-audio.mp3`) - 440) < 10);
+    await page.locator('#download-output').selectOption('original'); await page.locator('#quality').selectOption('highest');
   });
   await checks('Concurrent duplicate requests are coalesced and native cancellation updates history using API doubles', async () => {
     await page.evaluate(async () => { window.__holdDownloads = true; await chrome.storage.local.set({ vdh_upscale_offer_v1: false }); });

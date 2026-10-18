@@ -79,6 +79,26 @@ function record(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+// src/local/preferences.ts
+var QUALITIES = ["highest", "2160", "1080", "720", "480"];
+
+// src/upscale/processing.ts
+function processingOptions(value) {
+  if (!record(value)) throw new Error("\uCC98\uB9AC \uC124\uC815\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+  if (value.mode === "upscale" && (value.factor === 2 || value.factor === 4)) return { mode: "upscale", factor: value.factor };
+  if (value.mode === "convert" && ["mp4", "webm", "mkv"].includes(String(value.format)) && QUALITIES.includes(value.quality)) return { mode: "convert", format: value.format, quality: value.quality };
+  if (value.mode === "audio" && ["mp3", "m4a", "wav"].includes(String(value.format))) return { mode: "audio", format: value.format };
+  if (value.mode === "merge" && ["mp4", "mkv"].includes(String(value.format))) return { mode: "merge", format: value.format };
+  throw new Error("\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uCC98\uB9AC \uC124\uC815\uC785\uB2C8\uB2E4.");
+}
+var MIME = { mp4: "video/mp4", webm: "video/webm", mkv: "video/x-matroska", mp3: "audio/mpeg", m4a: "audio/mp4", wav: "audio/wav", png: "image/png" };
+function processedName(filename, options, kind) {
+  if (options.mode === "upscale") return outputName(filename, options.factor, kind === "image" ? "image" : "video");
+  let base = safeBasename(filename).replace(/\.[^.]+$/, "") || "media";
+  if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(base)) base = `_${base}`;
+  return `${base}-${options.mode === "audio" ? "audio" : options.mode === "merge" ? "merged" : "converted"}.${options.format}`;
+}
+
 // src/ui/app.ts
 function element(id) {
   const node = document.getElementById(id);
@@ -95,6 +115,8 @@ var save = element("save");
 var factor = element("factor");
 var progress = element("progress");
 var offer = element("offer");
+var mode = element("mode");
+var audioInput = element("audio-file");
 var input;
 var worker;
 var watchdog;
@@ -107,15 +129,31 @@ function releaseOutput() {
   output = void 0;
   save.hidden = true;
 }
+function toggleControls(disabled) {
+  for (const control of document.querySelectorAll("#convert-title ~ input, #convert-title ~ select, #upscale-settings select, #convert-settings select, #audio-settings select, #merge-settings input, #merge-settings select")) control.disabled = disabled;
+}
 function stop() {
   worker?.terminate();
   worker = void 0;
   clearTimeout(watchdog);
   watchdog = void 0;
-  start.disabled = !input;
+  toggleControls(false);
+  start.disabled = !input || mode.value === "merge" && !audioInput.files?.[0];
   cancel.disabled = true;
-  factor.disabled = false;
-  fileInput.disabled = false;
+}
+function settings() {
+  return processingOptions({ mode: mode.value, factor: Number(factor.value), format: element(mode.value === "audio" ? "audio-format" : mode.value === "merge" ? "merge-format" : "video-format").value, quality: element("convert-quality").value });
+}
+function changeMode() {
+  if (worker) return;
+  releaseOutput();
+  progress.value = 0;
+  for (const name of ["upscale", "convert", "audio", "merge"]) element(`${name}-settings`).hidden = mode.value !== name;
+  const hints = { upscale: "Lanczos 2x/4x \uBCF4\uAC04\uC785\uB2C8\uB2E4. AI \uBCF5\uC6D0\uC740 \uC544\uB2D9\uB2C8\uB2E4. \uC601\uC0C1\uC740 MP4(H.264/AAC), \uC774\uBBF8\uC9C0\uB294 PNG\uB85C \uC800\uC7A5\uD569\uB2C8\uB2E4.", convert: "MP4\xB7MKV\uB294 H.264/AAC, WebM\uC740 VP8/Opus\uB85C \uBCC0\uD658\uD569\uB2C8\uB2E4. \uC120\uD0DD \uB192\uC774\uB294 \uC0C1\uD55C\uC774\uBA70 \uC791\uC740 \uC6D0\uBCF8\uC744 \uD655\uB300\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", audio: "\uC601\uC0C1 \uB610\uB294 \uC624\uB514\uC624\uC758 \uCCAB \uC74C\uC131 \uD2B8\uB799\uC744 \uC800\uC7A5\uD569\uB2C8\uB2E4. MP3/M4A\uB294 192kbps\uB85C \uC778\uCF54\uB529\uD558\uBA70 WAV\uB294 \uC6D0\uBCF8\uC5D0\uC11C \uB514\uCF54\uB529\uD55C PCM\uC785\uB2C8\uB2E4.", merge: "\uC601\uC0C1 \uD30C\uC77C\uACFC \uBCC4\uB3C4 \uC74C\uC131 \uD30C\uC77C\uC744 \uC120\uD0DD\uD558\uC138\uC694. \uC601\uC0C1\uC758 \uAE30\uC874 \uC74C\uC131 \uB300\uC2E0 \uC120\uD0DD\uD55C \uD30C\uC77C\uC758 \uCCAB \uC74C\uC131 \uD2B8\uB799\uC744 \uC0AC\uC6A9\uD569\uB2C8\uB2E4." };
+  element("mode-hint").textContent = hints[mode.value] ?? "";
+  start.textContent = { upscale: "\uD655\uB300 \uC2DC\uC791", convert: "\uC601\uC0C1 \uBCC0\uD658", audio: "\uC624\uB514\uC624 \uB9CC\uB4E4\uAE30", merge: "\uBCD1\uD569 \uC2DC\uC791" }[mode.value] ?? "\uC2DC\uC791";
+  start.disabled = !input || mode.value === "merge" && !audioInput.files?.[0];
+  status.textContent = "\uD30C\uC77C\uACFC \uCC98\uB9AC \uC124\uC815\uC744 \uC120\uD0DD\uD55C \uB4A4 \uC2DC\uC791\uD558\uC138\uC694.";
 }
 function select(file) {
   if (worker) return;
@@ -131,8 +169,7 @@ function select(file) {
   }
   input = file;
   selected.textContent = `${file.name} \xB7 ${(file.size / 1024 / 1024).toFixed(2)} MiB`;
-  start.disabled = false;
-  status.textContent = "\uD655\uB300 \uBC30\uC728\uC744 \uACE0\uB978 \uB4A4 \uD655\uB300 \uC2DC\uC791\uC744 \uB204\uB974\uC138\uC694.";
+  changeMode();
 }
 async function selectJob(job) {
   try {
@@ -172,6 +209,8 @@ async function refresh() {
 fileInput.addEventListener("change", () => {
   if (fileInput.files?.[0]) select(fileInput.files[0]);
 });
+mode.addEventListener("change", changeMode);
+audioInput.addEventListener("change", changeMode);
 element("refresh").addEventListener("click", () => {
   void refresh().catch(showError);
 });
@@ -194,11 +233,15 @@ start.addEventListener("click", () => {
   if (!input || worker) return;
   releaseOutput();
   const chosen = input;
-  const scale = factor.value === "4" ? 4 : 2;
+  const options = settings();
+  const audio = audioInput.files?.[0];
+  if (options.mode === "merge" && (!audio || !audio.size || input.size + audio.size > MAX_INPUT_BYTES)) {
+    showError(new Error("\uBCD1\uD569\uD560 \uB450 \uD30C\uC77C\uC740 0\uBC14\uC774\uD2B8\uBCF4\uB2E4 \uD06C\uACE0 \uD569\uACC4 256MiB \uC774\uD558\uC5EC\uC57C \uD569\uB2C8\uB2E4."));
+    return;
+  }
   start.disabled = true;
   cancel.disabled = false;
-  factor.disabled = true;
-  fileInput.disabled = true;
+  toggleControls(true);
   progress.removeAttribute("value");
   status.textContent = "\uBBF8\uB514\uC5B4\uB97C \uD655\uC778\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4\u2026";
   details.textContent = "";
@@ -209,6 +252,7 @@ start.addEventListener("click", () => {
   }, MAX_RUNTIME_MS + 3e4);
   worker.addEventListener("error", () => {
     stop();
+    progress.value = 0;
     showError(new Error("\uCC98\uB9AC \uC5D4\uC9C4\uC744 \uC2E4\uD589\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uD655\uC7A5 \uD504\uB85C\uADF8\uB7A8\uC744 \uB2E4\uC2DC \uB85C\uB4DC\uD558\uC138\uC694."));
   });
   worker.addEventListener("message", (event) => {
@@ -216,25 +260,26 @@ start.addEventListener("click", () => {
     if (!record(message)) return;
     if (message.type === "status" && typeof message.message === "string") status.textContent = message.message;
     else if (message.type === "metadata" && record(message.info) && record(message.output)) {
-      details.textContent = `${message.info.width} \xD7 ${message.info.height} \u2192 ${message.output.width} \xD7 ${message.output.height}`;
+      details.textContent = options.mode === "audio" ? "\uCCAB \uC624\uB514\uC624 \uD2B8\uB799\uC744 \uBCC4\uB3C4 \uD30C\uC77C\uB85C \uC800\uC7A5\uD569\uB2C8\uB2E4." : `${message.info.width} \xD7 ${message.info.height} \u2192 ${message.output.width} \xD7 ${message.output.height}`;
       progress.value = 0;
-      status.textContent = "\uD655\uB300\uBCF8\uC744 \uB9CC\uB4E4\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uC774 \uD0ED\uC744 \uC5F4\uC5B4 \uB450\uC138\uC694.";
+      status.textContent = "\uACB0\uACFC\uB97C \uB9CC\uB4E4\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uC774 \uD0ED\uC744 \uC5F4\uC5B4 \uB450\uC138\uC694.";
     } else if (message.type === "progress" && typeof message.value === "number") progress.value = message.value;
     else if (message.type === "error") {
       stop();
       showError(new Error(typeof message.message === "string" ? message.message : "\uBCC0\uD658\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."));
       progress.value = 0;
     } else if (message.type === "done" && message.bytes instanceof ArrayBuffer && record(message.info)) {
-      const kind = message.info.kind === "image" ? "image" : "video";
-      output = { url: URL.createObjectURL(new Blob([message.bytes], { type: kind === "image" ? "image/png" : "video/mp4" })), filename: outputName(chosen.name, scale, kind) };
+      const kind = message.info.kind === "image" ? "image" : message.info.kind === "audio" ? "audio" : "video";
+      const format = typeof message.format === "string" && Object.hasOwn(MIME, message.format) ? message.format : "mp4";
+      output = { url: URL.createObjectURL(new Blob([message.bytes], { type: MIME[format] })), filename: processedName(chosen.name, options, kind) };
       stop();
       progress.value = 1;
-      status.textContent = "\uD655\uB300\uBCF8\uC774 \uC900\uBE44\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uBCC4\uB3C4 \uD30C\uC77C\uB85C \uC800\uC7A5\uD558\uC138\uC694.";
+      status.textContent = "\uACB0\uACFC\uAC00 \uC900\uBE44\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uBCC4\uB3C4 \uD30C\uC77C\uB85C \uC800\uC7A5\uD558\uC138\uC694.";
       save.hidden = false;
       void refresh().catch(showError);
     }
   });
-  worker.postMessage({ file: chosen, factor: scale });
+  worker.postMessage({ file: chosen, options, ...options.mode === "merge" ? { audio } : {} });
   void refresh().catch(showError);
 });
 save.addEventListener("click", () => {

@@ -78,6 +78,14 @@ async function fetchBytes(url, maximum, signal, range) {
   }
 }
 
+// src/local/preferences.ts
+var QUALITIES = ["highest", "2160", "1080", "720", "480"];
+function downloadOptions(value) {
+  if (value === void 0) return { quality: "highest", output: "original" };
+  if (!record(value) || !QUALITIES.includes(value.quality) || !["original", "mp3", "m4a"].includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+  return { quality: value.quality, output: value.output };
+}
+
 // src/local/stream-worker.ts
 var scope = globalThis;
 var busy = false;
@@ -88,9 +96,10 @@ scope.onmessage = async (event) => {
     const data = event.data;
     if (!record(data) || !record(data.plan) || !Array.isArray(data.plan.assets) || !Array.isArray(data.plan.inputs) || !data.plan.assets.length || data.plan.assets.length > MAX_SEGMENTS || !data.plan.inputs.length || data.plan.inputs.length > 2) throw new Error("\uC798\uBABB\uB41C \uC2A4\uD2B8\uB9BC \uC791\uC5C5\uC785\uB2C8\uB2E4.");
     const plan = data.plan;
+    const options = downloadOptions(data.options);
     const names = /* @__PURE__ */ new Set();
     for (const asset of plan.assets) {
-      if (!/^asset-\d+\.(ts|m4s)$|^dash-\d+\.m4s$/.test(asset.filename) || names.has(asset.filename)) throw new Error("\uC798\uBABB\uB41C \uC870\uAC01 \uD30C\uC77C\uBA85\uC785\uB2C8\uB2E4.");
+      if (!/^asset-\d+\.(ts|m4s|data)$|^dash-\d+\.m4s$/.test(asset.filename) || names.has(asset.filename)) throw new Error("\uC798\uBABB\uB41C \uC870\uAC01 \uD30C\uC77C\uBA85\uC785\uB2C8\uB2E4.");
       mediaURL(asset.url);
       names.add(asset.filename);
     }
@@ -131,11 +140,17 @@ scope.onmessage = async (event) => {
         args.push("-protocol_whitelist", "file,pipe", "-i", input.filename);
       } else throw new Error("\uC2A4\uD2B8\uB9BC \uC785\uB825\uC744 \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
     }
-    args.push("-map", "0:v:0?", "-map", plan.inputs.length === 2 ? "1:a:0?" : "0:a:0?", "-c", "copy", "-movflags", "+faststart", "-fs", String(MAX_STREAM_BYTES), "-y", "output.mp4");
+    const outputName = `output.${options.output === "original" ? "mp4" : options.output}`;
+    if (options.output === "original") args.push("-map", "0:v:0?", "-map", plan.inputs.length === 2 ? "1:a:0?" : "0:a:0?", "-c", "copy", "-movflags", "+faststart");
+    else {
+      args.push("-map", plan.inputs.length === 2 ? "1:a:0" : "0:a:0", "-vn", "-c:a", options.output === "mp3" ? "libmp3lame" : "aac", "-b:a", "192k", "-threads", "1");
+      if (options.output === "m4a") args.push("-movflags", "+faststart");
+    }
+    args.push("-fs", String(MAX_STREAM_BYTES), "-y", outputName);
     core.setTimeout(12e4);
     const result = core.exec(...args);
-    if (result !== 0) throw new Error(`\uC2A4\uD2B8\uB9BC\uC744 MP4\uB85C \uD569\uCE60 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. ${log}`);
-    const output = core.FS.readFile("output.mp4");
+    if (result !== 0) throw new Error(`\uBBF8\uB514\uC5B4\uB97C \uC800\uC7A5 \uD615\uC2DD\uC73C\uB85C \uCC98\uB9AC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. ${log}`);
+    const output = core.FS.readFile(outputName);
     if (!(output instanceof Uint8Array) || !output.length || output.length >= MAX_STREAM_BYTES - 1024 * 1024) throw new Error("\uACB0\uACFC\uAC00 \uBE44\uC5B4 \uC788\uAC70\uB098 \uC548\uC804\uD55C \uCD9C\uB825 \uC6A9\uB7C9\uC744 \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
     const buffer = new Uint8Array(output).buffer;
     scope.postMessage({ type: "done", bytes: buffer }, [buffer]);

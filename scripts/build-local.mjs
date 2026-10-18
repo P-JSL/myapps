@@ -33,7 +33,7 @@ for (const name of ['ffmpeg-core.js', 'ffmpeg-core.wasm']) await cp(`node_module
 await mkdir('dist/licenses', { recursive: true });
 await cp('THIRD_PARTY_NOTICES.md', 'dist/licenses/THIRD_PARTY_NOTICES.md');
 await cp('licenses/ffmpeg-GPL-2.0.txt', 'dist/licenses/ffmpeg-GPL-2.0.txt');
-await cp('reports/LOCAL_MODE.ko.md', 'dist/LOCAL_MODE.ko.md');
+for (const name of ['LOCAL_MODE.ko.md', 'FEATURES.ko.md']) await cp(`reports/${name}`, `dist/${name}`);
 const names = await files('dist');
 const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
 assert.equal(manifest.name, 'My Video App');
@@ -46,5 +46,5 @@ for (const name of names.filter(n => /\.(js|mjs|html|json)$/.test(n))) {
 }
 const buildSha256 = hash((await Promise.all(names.map(async name => `${name}\0${hash(await readFile(`dist/${name}`))}`))).join('\n'));
 const wasm = await readFile('dist/vendor/ffmpeg/ffmpeg-core.wasm');
-await writeFile('reports/build.json', JSON.stringify({ engine: 'independent-local', productName: manifest.name, version: manifest.version, buildSha256, originalRuntimeIncluded: false, accountActivationIncluded: false, capabilities: ['http-media-detection', 'native-download', 'unencrypted-hls-vod', 'unencrypted-dash-vod', 'local-history', 'local-upscale'], ffmpeg: { package: '@ffmpeg/core', version: '0.12.10', wasmSha256: hash(wasm), bytes: wasm.length }, distFiles: names.length, distBytes: (await Promise.all(names.map(name => stat(`dist/${name}`).then(s => s.size)))).reduce((a, b) => a + b, 0) }, null, 2) + '\n');
+await writeFile('reports/build.json', JSON.stringify({ engine: 'independent-local', productName: manifest.name, version: manifest.version, buildSha256, originalRuntimeIncluded: false, accountActivationIncluded: false, capabilities: ['http-media-detection', 'native-download', 'unencrypted-hls-vod', 'unencrypted-dash-vod', 'local-history', 'local-upscale', 'stream-quality-selection', 'audio-download', 'local-transcode', 'audio-extract', 'local-track-merge'], ffmpeg: { package: '@ffmpeg/core', version: '0.12.10', wasmSha256: hash(wasm), bytes: wasm.length }, distFiles: names.length, distBytes: (await Promise.all(names.map(name => stat(`dist/${name}`).then(s => s.size)))).reduce((a, b) => a + b, 0) }, null, 2) + '\n');
 console.log(`Local build complete: ${names.length} files; no original account/activation engine included.`);

@@ -1,8 +1,8 @@
 {
   "engine": "independent-local",
   "productName": "My Video App",
-  "version": "1.1.0",
-  "buildSha256": "f716b8d80276ab8e2b529932ebbae6f584e2c29bd74719d1607dc5c59bbd136b",
+  "version": "1.2.0",
+  "buildSha256": "030ccc359fefda8f71e5cf2310946c5b3fc1c257e3fe9fe2e432ec3923ffe278",
   "originalRuntimeIncluded": false,
   "accountActivationIncluded": false,
   "capabilities": [
@@ -11,7 +11,12 @@
     "unencrypted-hls-vod",
     "unencrypted-dash-vod",
     "local-history",
-    "local-upscale"
+    "local-upscale",
+    "stream-quality-selection",
+    "audio-download",
+    "local-transcode",
+    "audio-extract",
+    "local-track-merge"
   ],
   "ffmpeg": {
     "package": "@ffmpeg/core",
@@ -19,6 +24,6 @@
     "wasmSha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7",
     "bytes": 32232419
   },
-  "distFiles": 21,
-  "distBytes": 32483956
+  "distFiles": 22,
+  "distBytes": 32507555
 }

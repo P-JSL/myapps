@@ -1,6 +1,7 @@
 import { MAX_SEGMENTS, mediaURL } from './model.ts';
 import { validRange, type ByteRange } from './network.ts';
 import type { RemoteAsset, StreamPlan } from './hls.ts';
+import { chooseQuality, downloadOptions, type DownloadOptions } from './preferences.ts';
 
 function child(node: Element, name: string): Element | undefined { return Array.from(node.children).find(e => e.localName === name); }
 function children(node: Element, name: string): Element[] { return Array.from(node.children).filter(e => e.localName === name); }
@@ -14,7 +15,7 @@ function range(text: string | null): ByteRange | undefined {
   if (!match) throw new Error('DASH 바이트 범위가 올바르지 않습니다.');
   const result = { offset: Number(match[1]), length: Number(match[2]) - Number(match[1]) + 1 }; validRange(result); return result;
 }
-export function planDash(text: string, address: string): StreamPlan {
+export function planDash(text: string, address: string, options: DownloadOptions = downloadOptions()): StreamPlan {
   if (text.length > 2 * 1024 * 1024 || /<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error('지원하지 않는 DASH 문서입니다.');
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   const root = doc.documentElement;
@@ -32,8 +33,11 @@ export function planDash(text: string, address: string): StreamPlan {
       if (/^(video|audio)/.test(type)) selections.push({ adaptation, representation, type: type.startsWith('video') ? 'video' : 'audio' });
     }
   }
-  const picked = ['video', 'audio'].map(type => selections.filter(s => s.type === type)
-    .sort((a, b) => Number(b.representation.getAttribute('bandwidth')) - Number(a.representation.getAttribute('bandwidth')))[0]).filter(s => s !== undefined);
+  const audio = selections.filter(s => s.type === 'audio').sort((a, b) => Number(b.representation.getAttribute('bandwidth')) - Number(a.representation.getAttribute('bandwidth')))[0];
+  const video = chooseQuality(selections.filter(s => s.type === 'video'), options.quality,
+    item => Number(item.representation.getAttribute('height') ?? item.adaptation.getAttribute('height')),
+    item => Number(item.representation.getAttribute('bandwidth')));
+  const picked = (options.output !== 'original' && audio ? [audio] : [video, audio]).filter(s => s !== undefined);
   if (!picked.length) throw new Error('DASH 미디어 트랙이 없습니다.');
   const plan: StreamPlan = { assets: [], inputs: [] };
   for (const item of picked) {

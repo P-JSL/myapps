@@ -81,6 +81,24 @@ async function fetchManifest(url, signal) {
   return new TextDecoder("utf-8", { fatal: true }).decode(await fetchBytes(url, 2 * 1024 * 1024, signal));
 }
 
+// src/local/preferences.ts
+var QUALITIES = ["highest", "2160", "1080", "720", "480"];
+function downloadOptions(value) {
+  if (value === void 0) return { quality: "highest", output: "original" };
+  if (!record(value) || !QUALITIES.includes(value.quality) || !["original", "mp3", "m4a"].includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+  return { quality: value.quality, output: value.output };
+}
+function chooseQuality(items, quality, height, bandwidth) {
+  const known = items.filter((item) => Number.isFinite(height(item)) && height(item) > 0);
+  const ranked = (values) => [...values].sort((a, b) => height(b) - height(a) || bandwidth(b) - bandwidth(a))[0];
+  if (!known.length) return [...items].sort((a, b) => bandwidth(b) - bandwidth(a))[0];
+  if (quality === "highest") return ranked(known);
+  const eligible = known.filter((item) => height(item) <= Number(quality));
+  if (eligible.length) return ranked(eligible);
+  const minimum = Math.min(...known.map(height));
+  return ranked(known.filter((item) => height(item) === minimum));
+}
+
 // src/local/hls.ts
 function attributes(value) {
   const result = /* @__PURE__ */ Object.create(null);
@@ -103,7 +121,7 @@ function parseByteRange(value, offset = 0) {
   validRange(range2);
   return range2;
 }
-async function planHls(url, load) {
+async function planHls(url, load, options = downloadOptions()) {
   const assets = [];
   const inputs = [];
   async function playlist(address, depth, ancestors, includeAudio) {
@@ -117,17 +135,22 @@ async function planHls(url, load) {
       const attr = attributes(line.slice(line.indexOf(":") + 1));
       const child2 = lines[i + 1];
       if (!child2 || child2.startsWith("#")) throw new Error("HLS \uBCC0\uD615 \uBAA9\uB85D\uC774 \uBD88\uC644\uC804\uD569\uB2C8\uB2E4.");
-      const variant = { url: mediaURL(child2, address).href, bandwidth: Number(attr.BANDWIDTH) || 0 };
+      const variant = { url: mediaURL(child2, address).href, bandwidth: Number(attr.BANDWIDTH) || 0, height: Number(attr.RESOLUTION?.match(/^\d+x(\d+)$/)?.[1]) || 0 };
       if (attr.AUDIO) variant.audio = attr.AUDIO;
       variants.push(variant);
     }
     if (variants.length) {
-      const chosen = variants.sort((a, b) => b.bandwidth - a.bandwidth)[0];
-      await playlist(chosen.url, depth + 1, next, false);
+      const chosen = chooseQuality(variants, options.quality, (item) => item.height, (item) => item.bandwidth);
+      let audio;
       if (includeAudio && chosen.audio) {
-        const audio = lines.filter((line) => line.startsWith("#EXT-X-MEDIA:")).map((line) => attributes(line.slice(line.indexOf(":") + 1))).filter((a) => a.TYPE === "AUDIO" && a["GROUP-ID"] === chosen.audio && a.URI).sort((a, b) => Number(b.DEFAULT === "YES") - Number(a.DEFAULT === "YES"))[0];
-        if (audio?.URI) await playlist(mediaURL(audio.URI, address).href, depth + 1, next, false);
+        audio = lines.filter((line) => line.startsWith("#EXT-X-MEDIA:")).map((line) => attributes(line.slice(line.indexOf(":") + 1))).filter((a) => a.TYPE === "AUDIO" && a["GROUP-ID"] === chosen.audio && a.URI).sort((a, b) => Number(b.DEFAULT === "YES") - Number(a.DEFAULT === "YES"))[0];
       }
+      if (options.output !== "original" && audio?.URI) {
+        await playlist(mediaURL(audio.URI, address).href, depth + 1, next, false);
+        return;
+      }
+      await playlist(chosen.url, depth + 1, next, false);
+      if (audio?.URI) await playlist(mediaURL(audio.URI, address).href, depth + 1, next, false);
       return;
     }
     if (!lines.includes("#EXT-X-ENDLIST")) throw new Error("\uD604\uC7AC \uB85C\uCEEC \uBC84\uC804\uC740 \uC644\uB8CC\uB41C VOD \uBAA9\uB85D\uB9CC \uC9C0\uC6D0\uD569\uB2C8\uB2E4.");
@@ -201,7 +224,7 @@ function range(text) {
   validRange(result);
   return result;
 }
-function planDash(text, address) {
+function planDash(text, address, options = downloadOptions()) {
   if (text.length > 2 * 1024 * 1024 || /<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error("\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 DASH \uBB38\uC11C\uC785\uB2C8\uB2E4.");
   const doc = new DOMParser().parseFromString(text, "application/xml");
   const root = doc.documentElement;
@@ -219,7 +242,14 @@ function planDash(text, address) {
       if (/^(video|audio)/.test(type)) selections.push({ adaptation, representation, type: type.startsWith("video") ? "video" : "audio" });
     }
   }
-  const picked = ["video", "audio"].map((type) => selections.filter((s) => s.type === type).sort((a, b) => Number(b.representation.getAttribute("bandwidth")) - Number(a.representation.getAttribute("bandwidth")))[0]).filter((s) => s !== void 0);
+  const audio = selections.filter((s) => s.type === "audio").sort((a, b) => Number(b.representation.getAttribute("bandwidth")) - Number(a.representation.getAttribute("bandwidth")))[0];
+  const video = chooseQuality(
+    selections.filter((s) => s.type === "video"),
+    options.quality,
+    (item) => Number(item.representation.getAttribute("height") ?? item.adaptation.getAttribute("height")),
+    (item) => Number(item.representation.getAttribute("bandwidth"))
+  );
+  const picked = (options.output !== "original" && audio ? [audio] : [video, audio]).filter((s) => s !== void 0);
   if (!picked.length) throw new Error("DASH \uBBF8\uB514\uC5B4 \uD2B8\uB799\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
   const plan = { assets: [], inputs: [] };
   for (const item of picked) {
@@ -320,8 +350,9 @@ function cancelLocal(id) {
   active.worker?.terminate();
   active.reject?.(new Error("\uC791\uC5C5\uC744 \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4."));
 }
-async function prepareLocal(id, url, kind) {
+async function prepareLocal(id, url, kind, settings) {
   if (active) throw new Error("\uB2E4\uB978 \uD30C\uC77C\uC744 \uC900\uBE44\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC138\uC694.");
+  const options = downloadOptions(settings);
   const task = { id, controller: new AbortController() };
   active = task;
   const timeout = setTimeout(() => cancelLocal(id), PREPARE_TIMEOUT_MS);
@@ -331,9 +362,9 @@ async function prepareLocal(id, url, kind) {
   }, 15e3);
   try {
     let data;
-    if (kind === "file") data = await fetchBytes(url, MAX_INPUT_BYTES, task.controller.signal);
+    if (kind === "file" && options.output === "original") data = await fetchBytes(url, MAX_INPUT_BYTES, task.controller.signal);
     else {
-      const plan = kind === "hls" ? await planHls(url, (address) => fetchManifest(address, task.controller.signal)) : planDash(await fetchManifest(url, task.controller.signal), url);
+      const plan = kind === "file" ? { assets: [{ url, filename: "asset-00000.data" }], inputs: [{ filename: "input-0.mp4", parts: ["asset-00000.data"] }] } : kind === "hls" ? await planHls(url, (address) => fetchManifest(address, task.controller.signal), options) : planDash(await fetchManifest(url, task.controller.signal), url, options);
       data = await new Promise((resolve, reject) => {
         task.reject = reject;
         const worker = new Worker(chrome.runtime.getURL("local/stream-worker.js"), { type: "module" });
@@ -344,7 +375,7 @@ async function prepareLocal(id, url, kind) {
           if (event.data.type === "done" && event.data.bytes instanceof ArrayBuffer) resolve(new Uint8Array(event.data.bytes));
           else if (event.data.type === "error") reject(new Error(typeof event.data.message === "string" ? event.data.message : "\uC2A4\uD2B8\uB9BC \uCC98\uB9AC \uC624\uB958"));
         });
-        worker.postMessage({ plan });
+        worker.postMessage({ plan, options });
       });
     }
     if (task.controller.signal.aborted) throw new Error("\uC791\uC5C5\uC744 \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.");
@@ -391,7 +422,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     reply({ ok: false, error: "\uBBF8\uB514\uC5B4 \uC8FC\uC18C\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4." });
     return false;
   }
-  void prepareLocal(id, url, String(message.kind)).then(reply).catch(async (error) => {
+  void prepareLocal(id, url, String(message.kind), message.options).then(reply).catch(async (error) => {
     await disposeLocal(id).catch(() => {
     });
     reply({ ok: false, error: error instanceof Error ? error.message : "\uD30C\uC77C \uC900\uBE44 \uC624\uB958" });

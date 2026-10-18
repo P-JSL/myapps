@@ -15,6 +15,14 @@ function isHistory(value) {
   return record(value) && typeof value.id === "string" && /^[a-f0-9-]{36}$/.test(value.id) && typeof value.url === "string" && typeof value.filename === "string" && ["file", "hls", "dash"].includes(String(value.kind)) && ["preparing", "downloading", "complete", "cancelled", "error"].includes(String(value.state)) && typeof value.createdAt === "number" && Number.isFinite(value.createdAt) && typeof value.incognito === "boolean";
 }
 
+// src/local/preferences.ts
+var QUALITIES = ["highest", "2160", "1080", "720", "480"];
+function downloadOptions(value) {
+  if (value === void 0) return { quality: "highest", output: "original" };
+  if (!record(value) || !QUALITIES.includes(value.quality) || !["original", "mp3", "m4a"].includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+  return { quality: value.quality, output: value.output };
+}
+
 // src/local/ui.ts
 function node(id) {
   const element = document.getElementById(id);
@@ -32,6 +40,9 @@ async function request(type, data = {}) {
 function error(value) {
   hasError = true;
   status.textContent = value instanceof Error ? value.message : "\uC694\uCCAD \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.";
+}
+function options() {
+  return downloadOptions({ quality: node("quality").value, output: node("download-output").value });
 }
 function button(text, action, secondary = false) {
   const element = document.createElement("button");
@@ -58,7 +69,7 @@ function mediaRow(item) {
   const controls = document.createElement("div");
   controls.className = "actions";
   controls.append(button("\uB2E4\uC6B4\uB85C\uB4DC", async () => {
-    await request("download", { id: item.id });
+    await request("download", { id: item.id, options: options() });
     status.textContent = "\uD30C\uC77C\uC744 \uC900\uBE44\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uAE30\uB85D \uD0ED\uC5D0\uC11C \uC9C4\uD589 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694.";
   }));
   row.append(kind, title, source, controls);
@@ -123,7 +134,7 @@ node("clear-history").addEventListener("click", () => {
 node("url-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const url = node("url").value;
-  void request("download-url", { url }).then(() => {
+  void request("download-url", { url, options: options() }).then(() => {
     hasError = false;
     status.textContent = "\uD30C\uC77C\uC744 \uC900\uBE44\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4.";
     show(true);

@@ -3,6 +3,7 @@ import { record } from '../security/validation.ts';
 import { MAX_SEGMENTS, MAX_STREAM_BYTES, mediaURL } from './model.ts';
 import { fetchBytes } from './network.ts';
 import type { StreamPlan } from './hls.ts';
+import { downloadOptions } from './preferences.ts';
 
 const scope = globalThis as unknown as { onmessage: ((event: MessageEvent<unknown>) => void) | null; postMessage(value: unknown, transfer?: Transferable[]): void };
 let busy = false;
@@ -13,9 +14,10 @@ scope.onmessage = async event => {
     if (!record(data) || !record(data.plan) || !Array.isArray(data.plan.assets) || !Array.isArray(data.plan.inputs)
       || !data.plan.assets.length || data.plan.assets.length > MAX_SEGMENTS || !data.plan.inputs.length || data.plan.inputs.length > 2) throw new Error('잘못된 스트림 작업입니다.');
     const plan = data.plan as unknown as StreamPlan;
+    const options = downloadOptions(data.options);
     const names = new Set<string>();
     for (const asset of plan.assets) {
-      if (!/^asset-\d+\.(ts|m4s)$|^dash-\d+\.m4s$/.test(asset.filename) || names.has(asset.filename)) throw new Error('잘못된 조각 파일명입니다.');
+      if (!/^asset-\d+\.(ts|m4s|data)$|^dash-\d+\.m4s$/.test(asset.filename) || names.has(asset.filename)) throw new Error('잘못된 조각 파일명입니다.');
       mediaURL(asset.url); names.add(asset.filename);
     }
     const core = await createFFmpegCore();
@@ -49,11 +51,17 @@ scope.onmessage = async event => {
         args.push('-protocol_whitelist', 'file,pipe', '-i', input.filename);
       } else throw new Error('스트림 입력을 읽을 수 없습니다.');
     }
-    args.push('-map', '0:v:0?', '-map', plan.inputs.length === 2 ? '1:a:0?' : '0:a:0?', '-c', 'copy', '-movflags', '+faststart', '-fs', String(MAX_STREAM_BYTES), '-y', 'output.mp4');
+    const outputName = `output.${options.output === 'original' ? 'mp4' : options.output}`;
+    if (options.output === 'original') args.push('-map', '0:v:0?', '-map', plan.inputs.length === 2 ? '1:a:0?' : '0:a:0?', '-c', 'copy', '-movflags', '+faststart');
+    else {
+      args.push('-map', plan.inputs.length === 2 ? '1:a:0' : '0:a:0', '-vn', '-c:a', options.output === 'mp3' ? 'libmp3lame' : 'aac', '-b:a', '192k', '-threads', '1');
+      if (options.output === 'm4a') args.push('-movflags', '+faststart');
+    }
+    args.push('-fs', String(MAX_STREAM_BYTES), '-y', outputName);
     core.setTimeout(120_000);
     const result = core.exec(...args);
-    if (result !== 0) throw new Error(`스트림을 MP4로 합칠 수 없습니다. ${log}`);
-    const output = core.FS.readFile('output.mp4');
+    if (result !== 0) throw new Error(`미디어를 저장 형식으로 처리할 수 없습니다. ${log}`);
+    const output = core.FS.readFile(outputName);
     if (!(output instanceof Uint8Array) || !output.length || output.length >= MAX_STREAM_BYTES - 1024 * 1024) throw new Error('결과가 비어 있거나 안전한 출력 용량을 초과했습니다.');
     const buffer = new Uint8Array(output).buffer;
     scope.postMessage({ type: 'done', bytes: buffer }, [buffer]);

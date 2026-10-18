@@ -1,5 +1,6 @@
 import { record } from '../security/validation.ts';
 import { safeBasename } from '../upscale/policy.ts';
+import type { DownloadOptions } from './preferences.ts';
 
 export const SCOPE = 'my-video-app/local';
 export const OFFSCREEN_SCOPE = 'my-video-app/offscreen';
@@ -17,7 +18,7 @@ export interface MediaItem {
 export type DownloadState = 'preparing' | 'downloading' | 'complete' | 'cancelled' | 'error';
 export interface HistoryItem {
   id: string; url: string; filename: string; kind: MediaKind; state: DownloadState;
-  createdAt: number; incognito: boolean; downloadId?: number; error?: string;
+  createdAt: number; incognito: boolean; downloadId?: number; error?: string; options?: DownloadOptions;
 }
 export function mediaURL(value: unknown, base?: string): URL {
   if (typeof value !== 'string' || !value || value.length > 8192) throw new Error('미디어 주소가 올바르지 않습니다.');

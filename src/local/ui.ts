@@ -1,5 +1,6 @@
 import { record } from '../security/validation.ts';
 import { SCOPE, isHistory, type MediaItem, type HistoryItem } from './model.ts';
+import { downloadOptions } from './preferences.ts';
 
 function node<T extends HTMLElement>(id: string): T { const element = document.getElementById(id); if (!element) throw new Error(`Missing ${id}`); return element as T; }
 const status = node('status');
@@ -11,6 +12,7 @@ async function request(type: string, data: Record<string, unknown> = {}): Promis
   return result;
 }
 function error(value: unknown) { hasError = true; status.textContent = value instanceof Error ? value.message : '요청 중 오류가 발생했습니다.'; }
+function options() { return downloadOptions({ quality: node<HTMLSelectElement>('quality').value, output: node<HTMLSelectElement>('download-output').value }); }
 function button(text: string, action: () => Promise<unknown>, secondary = false): HTMLButtonElement {
   const element = document.createElement('button'); element.textContent = text; if (secondary) element.className = 'secondary';
   element.addEventListener('click', () => { hasError = false; element.disabled = true; void action().then(() => refresh()).catch(error).finally(() => { element.disabled = false; }); });
@@ -22,7 +24,7 @@ function mediaRow(item: MediaItem) {
   const title = document.createElement('h3'); title.textContent = item.title || new URL(item.url).pathname.split('/').at(-1) || '미디어';
   const source = document.createElement('p'); source.textContent = new URL(item.url).hostname + (item.size ? ` · ${(item.size / 1024 / 1024).toFixed(1)} MiB` : '');
   const controls = document.createElement('div'); controls.className = 'actions';
-  controls.append(button('다운로드', async () => { await request('download', { id: item.id }); status.textContent = '파일을 준비하고 있습니다. 기록 탭에서 진행 상태를 확인하세요.'; }));
+  controls.append(button('다운로드', async () => { await request('download', { id: item.id, options: options() }); status.textContent = '파일을 준비하고 있습니다. 기록 탭에서 진행 상태를 확인하세요.'; }));
   row.append(kind, title, source, controls); return row;
 }
 const stateLabels = { preparing: '파일 준비 중', downloading: '다운로드 중', complete: '완료', cancelled: '취소됨', error: '실패' };
@@ -61,7 +63,7 @@ node('clear-history').addEventListener('click', () => { void request('clear-hist
 node('url-form').addEventListener('submit', event => {
   event.preventDefault();
   const url = node<HTMLInputElement>('url').value;
-  void request('download-url', { url }).then(() => { hasError = false; status.textContent = '파일을 준비하고 있습니다.'; show(true); }).catch(error);
+  void request('download-url', { url, options: options() }).then(() => { hasError = false; status.textContent = '파일을 준비하고 있습니다.'; show(true); }).catch(error);
 });
 const timer = setInterval(() => { if (!document.hidden) void refresh().catch(error); }, 2000);
 addEventListener('pagehide', () => clearInterval(timer), { once: true });

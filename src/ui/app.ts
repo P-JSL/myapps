@@ -1,5 +1,6 @@
 import { cleanup, deleteJob, directory, jobs } from '../upscale/storage.ts';
-import { OFFER_KEY, MAX_INPUT_BYTES, MAX_RUNTIME_MS, isJobId, outputName, type Factor, type Job, type MediaInfo } from '../upscale/policy.ts';
+import { OFFER_KEY, MAX_INPUT_BYTES, MAX_RUNTIME_MS, isJobId, type Job } from '../upscale/policy.ts';
+import { MIME, processedName, processingOptions, type TrackInfo } from '../upscale/processing.ts';
 import { record } from '../security/validation.ts';
 
 function element<T extends HTMLElement>(id: string): T { const node = document.getElementById(id); if (!node) throw new Error(`Missing element: ${id}`); return node as T; }
@@ -13,6 +14,8 @@ const save = element<HTMLButtonElement>('save');
 const factor = element<HTMLSelectElement>('factor');
 const progress = element<HTMLProgressElement>('progress');
 const offer = element<HTMLInputElement>('offer');
+const mode = element<HTMLSelectElement>('mode');
+const audioInput = element<HTMLInputElement>('audio-file');
 let input: File | undefined;
 let worker: Worker | undefined;
 let watchdog: ReturnType<typeof setTimeout> | undefined;
@@ -20,13 +23,26 @@ let output: { url: string; filename: string } | undefined;
 
 function showError(error: unknown) { status.textContent = error instanceof Error ? error.message : '처리 중 오류가 발생했습니다.'; }
 function releaseOutput() { if (output) URL.revokeObjectURL(output.url); output = undefined; save.hidden = true; }
-function stop() { worker?.terminate(); worker = undefined; clearTimeout(watchdog); watchdog = undefined; start.disabled = !input; cancel.disabled = true; factor.disabled = false; fileInput.disabled = false; }
+function toggleControls(disabled: boolean) { for (const control of document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('#convert-title ~ input, #convert-title ~ select, #upscale-settings select, #convert-settings select, #audio-settings select, #merge-settings input, #merge-settings select')) control.disabled = disabled; }
+function stop() { worker?.terminate(); worker = undefined; clearTimeout(watchdog); watchdog = undefined; toggleControls(false); start.disabled = !input || (mode.value === 'merge' && !audioInput.files?.[0]); cancel.disabled = true; }
+function settings() {
+  return processingOptions({ mode: mode.value, factor: Number(factor.value), format: element<HTMLSelectElement>(mode.value === 'audio' ? 'audio-format' : mode.value === 'merge' ? 'merge-format' : 'video-format').value, quality: element<HTMLSelectElement>('convert-quality').value });
+}
+function changeMode() {
+  if (worker) return;
+  releaseOutput(); progress.value = 0;
+  for (const name of ['upscale', 'convert', 'audio', 'merge']) element(`${name}-settings`).hidden = mode.value !== name;
+  const hints: Record<string, string> = { upscale: 'Lanczos 2x/4x 보간입니다. AI 복원은 아닙니다. 영상은 MP4(H.264/AAC), 이미지는 PNG로 저장합니다.', convert: 'MP4·MKV는 H.264/AAC, WebM은 VP8/Opus로 변환합니다. 선택 높이는 상한이며 작은 원본을 확대하지 않습니다.', audio: '영상 또는 오디오의 첫 음성 트랙을 저장합니다. MP3/M4A는 192kbps로 인코딩하며 WAV는 원본에서 디코딩한 PCM입니다.', merge: '영상 파일과 별도 음성 파일을 선택하세요. 영상의 기존 음성 대신 선택한 파일의 첫 음성 트랙을 사용합니다.' };
+  element('mode-hint').textContent = hints[mode.value] ?? '';
+  start.textContent = ({ upscale: '확대 시작', convert: '영상 변환', audio: '오디오 만들기', merge: '병합 시작' } as Record<string, string>)[mode.value] ?? '시작';
+  start.disabled = !input || (mode.value === 'merge' && !audioInput.files?.[0]);
+  status.textContent = '파일과 처리 설정을 선택한 뒤 시작하세요.';
+}
 function select(file: File) {
   if (worker) return;
   releaseOutput(); input = undefined; details.textContent = ''; progress.value = 0;
   if (!file.size || file.size > MAX_INPUT_BYTES) { selected.textContent = '선택한 파일 없음'; showError(new Error('파일은 0바이트보다 크고 256MiB 이하여야 합니다.')); start.disabled = true; return; }
-  input = file; selected.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MiB`; start.disabled = false;
-  status.textContent = '확대 배율을 고른 뒤 확대 시작을 누르세요.';
+  input = file; selected.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MiB`; changeMode();
 }
 async function selectJob(job: Job) {
   try { const file = await (await (await directory()).getFileHandle(job.id)).getFile(); fileInput.value = ''; select(new File([file], job.filename)); }
@@ -45,6 +61,8 @@ async function refresh() {
   }
 }
 fileInput.addEventListener('change', () => { if (fileInput.files?.[0]) select(fileInput.files[0]); });
+mode.addEventListener('change', changeMode);
+audioInput.addEventListener('change', changeMode);
 element('refresh').addEventListener('click', () => { void refresh().catch(showError); });
 element('clear').addEventListener('click', () => { void (async () => { for (const job of await jobs()) await deleteJob(job); await refresh(); })().catch(showError); });
 offer.addEventListener('change', () => { void chrome.storage.local.set({ [OFFER_KEY]: offer.checked }).catch(showError); });
@@ -54,29 +72,32 @@ start.addEventListener('click', () => {
   if (!input || worker) return;
   releaseOutput();
   const chosen = input;
-  const scale: Factor = factor.value === '4' ? 4 : 2;
-  start.disabled = true; cancel.disabled = false; factor.disabled = true; fileInput.disabled = true;
+  const options = settings();
+  const audio = audioInput.files?.[0];
+  if (options.mode === 'merge' && (!audio || !audio.size || input.size + audio.size > MAX_INPUT_BYTES)) { showError(new Error('병합할 두 파일은 0바이트보다 크고 합계 256MiB 이하여야 합니다.')); return; }
+  start.disabled = true; cancel.disabled = false; toggleControls(true);
   progress.removeAttribute('value'); status.textContent = '미디어를 확인하고 있습니다…'; details.textContent = '';
   worker = new Worker(chrome.runtime.getURL('hardening/upscale-worker.js'), { type: 'module' });
   watchdog = setTimeout(() => { stop(); showError(new Error('처리 시간 5분을 초과해 중단했습니다. 더 작은 파일을 사용하세요.')); }, MAX_RUNTIME_MS + 30_000);
-  worker.addEventListener('error', () => { stop(); showError(new Error('처리 엔진을 실행할 수 없습니다. 확장 프로그램을 다시 로드하세요.')); });
+  worker.addEventListener('error', () => { stop(); progress.value = 0; showError(new Error('처리 엔진을 실행할 수 없습니다. 확장 프로그램을 다시 로드하세요.')); });
   worker.addEventListener('message', (event: MessageEvent<unknown>) => {
     const message = event.data;
     if (!record(message)) return;
     if (message.type === 'status' && typeof message.message === 'string') status.textContent = message.message;
     else if (message.type === 'metadata' && record(message.info) && record(message.output)) {
-      details.textContent = `${message.info.width} × ${message.info.height} → ${message.output.width} × ${message.output.height}`;
-      progress.value = 0; status.textContent = '확대본을 만들고 있습니다. 이 탭을 열어 두세요.';
+      details.textContent = options.mode === 'audio' ? '첫 오디오 트랙을 별도 파일로 저장합니다.' : `${message.info.width} × ${message.info.height} → ${message.output.width} × ${message.output.height}`;
+      progress.value = 0; status.textContent = '결과를 만들고 있습니다. 이 탭을 열어 두세요.';
     } else if (message.type === 'progress' && typeof message.value === 'number') progress.value = message.value;
     else if (message.type === 'error') { stop(); showError(new Error(typeof message.message === 'string' ? message.message : '변환에 실패했습니다.')); progress.value = 0; }
     else if (message.type === 'done' && message.bytes instanceof ArrayBuffer && record(message.info)) {
-      const kind: MediaInfo['kind'] = message.info.kind === 'image' ? 'image' : 'video';
-      output = { url: URL.createObjectURL(new Blob([message.bytes], { type: kind === 'image' ? 'image/png' : 'video/mp4' })), filename: outputName(chosen.name, scale, kind) };
-      stop(); progress.value = 1; status.textContent = '확대본이 준비되었습니다. 별도 파일로 저장하세요.'; save.hidden = false;
+      const kind: TrackInfo['kind'] = message.info.kind === 'image' ? 'image' : message.info.kind === 'audio' ? 'audio' : 'video';
+      const format = typeof message.format === 'string' && Object.hasOwn(MIME, message.format) ? message.format as keyof typeof MIME : 'mp4';
+      output = { url: URL.createObjectURL(new Blob([message.bytes], { type: MIME[format] })), filename: processedName(chosen.name, options, kind) };
+      stop(); progress.value = 1; status.textContent = '결과가 준비되었습니다. 별도 파일로 저장하세요.'; save.hidden = false;
       void refresh().catch(showError);
     }
   });
-  worker.postMessage({ file: chosen, factor: scale });
+  worker.postMessage({ file: chosen, options, ...(options.mode === 'merge' ? { audio } : {}) });
   void refresh().catch(showError);
 });
 save.addEventListener('click', () => {

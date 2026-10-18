@@ -239,6 +239,14 @@ function trustedCapture(sender, id) {
   }
 }
 
+// src/local/preferences.ts
+var QUALITIES = ["highest", "2160", "1080", "720", "480"];
+function downloadOptions(value) {
+  if (value === void 0) return { quality: "highest", output: "original" };
+  if (!record(value) || !QUALITIES.includes(value.quality) || !["original", "mp3", "m4a"].includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+  return { quality: value.quality, output: value.output };
+}
+
 // src/local/background.ts
 var media = /* @__PURE__ */ new Map();
 var privateHistory = /* @__PURE__ */ new Map();
@@ -317,12 +325,13 @@ async function finish(download2) {
     finalizing.delete(download2.id);
   }
 }
-async function download(item) {
+async function download(item, options = downloadOptions()) {
   const tab = item.tabId < 0 ? { incognito: chrome.extension.inIncognitoContext } : await chrome.tabs.get(item.tabId);
-  const entry = { id: crypto.randomUUID(), url: item.url, filename: filenameFor(item), kind: item.kind, state: "preparing", createdAt: Date.now(), incognito: !!tab.incognito || chrome.extension.inIncognitoContext };
+  const filename = filenameFor(item);
+  const entry = { id: crypto.randomUUID(), url: item.url, filename: options.output === "original" ? filename : filename.replace(/\.[^.]+$/, "") + "." + options.output, kind: item.kind, state: "preparing", createdAt: Date.now(), incognito: !!tab.incognito || chrome.extension.inIncognitoContext, options };
   await navigator.locks.request("my-video-app-start", async () => {
     const active = (await history()).filter((row) => row.state === "preparing" || row.state === "downloading");
-    if (active.some((row) => row.url === item.url)) throw new Error("\uAC19\uC740 \uBBF8\uB514\uC5B4\uB97C \uC774\uBBF8 \uCC98\uB9AC\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4.");
+    if (active.some((row) => row.url === item.url && (row.options?.quality ?? "highest") === options.quality && (row.options?.output ?? "original") === options.output)) throw new Error("\uAC19\uC740 \uBBF8\uB514\uC5B4\uB97C \uC774\uBBF8 \uCC98\uB9AC\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4.");
     if (active.length >= 8) throw new Error("\uB3D9\uC2DC\uC5D0 \uC900\uBE44\xB7\uB2E4\uC6B4\uB85C\uB4DC\uD558\uB294 \uD30C\uC77C\uC740 \uCD5C\uB300 8\uAC1C\uC785\uB2C8\uB2E4.");
     await update(entry);
   });
@@ -330,14 +339,14 @@ async function download(item) {
     try {
       let address = item.url;
       const offers = (await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] !== false;
-      if (item.kind !== "file" || offers && !entry.incognito && (!item.size || item.size <= MAX_INPUT_BYTES)) {
+      if (options.output !== "original" || item.kind !== "file" || offers && !entry.incognito && (!item.size || item.size <= MAX_INPUT_BYTES)) {
         try {
           await ensureOffscreen();
-          const result = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: "prepare", id: entry.id, url: item.url, kind: item.kind });
+          const result = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: "prepare", id: entry.id, url: item.url, kind: item.kind, options });
           if (!record(result) || result.ok !== true || typeof result.url !== "string" || !result.url.startsWith(`blob:${chrome.runtime.getURL("")}`)) throw new Error(record(result) && typeof result.error === "string" ? result.error : "\uD30C\uC77C\uC744 \uC900\uBE44\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
           address = result.url;
         } catch (error) {
-          if (item.kind !== "file" || cancelled.has(entry.id)) throw error;
+          if (options.output !== "original" || item.kind !== "file" || cancelled.has(entry.id)) throw error;
           address = item.url;
         }
       }
@@ -386,11 +395,11 @@ async function handleLocalMessage(value, sender) {
   if (value.type === "download" && typeof value.id === "string") {
     const item = Array.from(media.values()).flatMap((map) => Array.from(map.values())).find((row) => row.id === value.id);
     if (!item) throw new Error("\uBBF8\uB514\uC5B4\uAC00 \uB9CC\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC6D0\uB798 \uD398\uC774\uC9C0\uB97C \uC0C8\uB85C\uACE0\uCE68\uD558\uC138\uC694.");
-    return { ok: true, item: await download(item) };
+    return { ok: true, item: await download(item, downloadOptions(value.options)) };
   }
   if (value.type === "download-url" && typeof value.url === "string") {
     const url = mediaURL(value.url).href;
-    return { ok: true, item: await download({ id: crypto.randomUUID(), tabId: -1, url, title: "", mime: "", kind: mediaKind(url) ?? "file", createdAt: Date.now() }) };
+    return { ok: true, item: await download({ id: crypto.randomUUID(), tabId: -1, url, title: "", mime: "", kind: mediaKind(url) ?? "file", createdAt: Date.now() }, downloadOptions(value.options)) };
   }
   if (value.type === "cancel" && typeof value.id === "string") {
     const item = (await history()).find((row) => row.id === value.id);

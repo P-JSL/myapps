@@ -2,9 +2,12 @@
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Video App</title><link rel="stylesheet" href="style.css"><script type="module" src="ui.js"></script></head>
 <body><main>
   <header><span class="eyebrow">PERSONAL · LOCAL</span><h1>My Video App</h1><p>선택한 영상을 저장하고, 이 브라우저에 기록합니다.</p></header>
-  <nav aria-label="기능"><button id="media-tab" aria-pressed="true">미디어</button><button id="history-tab" aria-pressed="false">기록</button><button id="upscale" class="secondary">업스케일링 ↗</button></nav>
+  <nav aria-label="기능"><button id="media-tab" aria-pressed="true">미디어</button><button id="history-tab" aria-pressed="false">기록</button><button id="upscale" class="secondary">미디어 도구 ↗</button></nav>
   <p id="status" role="status" aria-live="polite">미디어를 확인하고 있습니다…</p>
-  <section id="media-view" aria-label="미디어 목록"><div class="heading"><h2>현재 탭의 미디어</h2><button id="refresh" class="secondary">새로고침</button></div><p id="empty" class="hint">영상이 있는 페이지를 새로고침하고 재생해 주세요. 이 화면은 HTTP 미디어 주소와 암호화되지 않은 HLS/DASH VOD를 감지합니다.</p><ul id="media"></ul>
+  <section id="media-view" aria-label="미디어 목록"><div class="heading"><h2>현재 탭의 미디어</h2><button id="refresh" class="secondary">새로고침</button></div>
+    <div class="download-settings"><label for="quality">스트림 화질</label><select id="quality"><option value="highest">제공되는 최고 화질</option><option value="2160">2160p 이하</option><option value="1080">1080p 이하</option><option value="720">720p 이하</option><option value="480">480p 이하</option></select><label for="download-output">저장 형식</label><select id="download-output"><option value="original">영상·음성</option><option value="mp3">오디오만 · MP3</option><option value="m4a">오디오만 · M4A</option></select></div>
+    <p class="hint">화질 선택은 HLS/DASH에 제공된 트랙을 선택하며 새 화질을 만들지 않습니다. 선택값 이하가 없으면 가장 낮은 제공 화질을 사용합니다. 오디오 저장은 192kbps로 변환하며 입력 128MiB 한도가 있습니다.</p>
+    <p id="empty" class="hint">영상이 있는 페이지를 새로고침하고 재생해 주세요. 이 화면은 HTTP 미디어 주소와 암호화되지 않은 HLS/DASH VOD를 감지합니다.</p><ul id="media"></ul>
     <details><summary>미디어 주소 직접 입력</summary><form id="url-form"><label for="url">영상·오디오 또는 VOD 목록 주소</label><input id="url" type="url" placeholder="https://example.com/video.mp4" required><button type="submit">주소에서 다운로드</button></form></details>
   </section>
   <section id="history-view" aria-label="다운로드 기록" hidden><div class="heading"><h2>로컬 기록</h2><button id="clear-history" class="secondary">완료 기록 삭제</button></div><p class="hint">기록을 삭제해도 저장한 파일은 그대로 남습니다.</p><ul id="history"></ul><p id="history-empty" class="hint">저장한 다운로드 기록이 없습니다.</p></section>

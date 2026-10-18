@@ -2,6 +2,7 @@ import { boundedData, record } from '../security/validation.ts';
 import { offerUpscale } from '../upscale/completion.ts';
 import { OFFER_KEY, MAX_INPUT_BYTES } from '../upscale/policy.ts';
 import { SCOPE, OFFSCREEN_SCOPE, HISTORY_KEY, MAX_HISTORY, MAX_MEDIA_PER_TAB, filenameFor, isHistory, mediaKind, mediaURL, trustedCapture, trustedUI, type MediaItem, type HistoryItem } from './model.ts';
+import { downloadOptions, type DownloadOptions } from './preferences.ts';
 
 const media = new Map<number, Map<string, MediaItem>>();
 const privateHistory = new Map<string, HistoryItem>();
@@ -68,12 +69,13 @@ async function finish(download: chrome.downloads.DownloadItem) {
     cancelled.delete(item.id);
   } finally { finalizing.delete(download.id); }
 }
-async function download(item: MediaItem) {
+async function download(item: MediaItem, options: DownloadOptions = downloadOptions()) {
   const tab = item.tabId < 0 ? { incognito: chrome.extension.inIncognitoContext } : await chrome.tabs.get(item.tabId);
-  const entry: HistoryItem = { id: crypto.randomUUID(), url: item.url, filename: filenameFor(item), kind: item.kind, state: 'preparing', createdAt: Date.now(), incognito: !!tab.incognito || chrome.extension.inIncognitoContext };
+  const filename = filenameFor(item);
+  const entry: HistoryItem = { id: crypto.randomUUID(), url: item.url, filename: options.output === 'original' ? filename : filename.replace(/\.[^.]+$/, '') + '.' + options.output, kind: item.kind, state: 'preparing', createdAt: Date.now(), incognito: !!tab.incognito || chrome.extension.inIncognitoContext, options };
   await navigator.locks.request('my-video-app-start', async () => {
     const active = (await history()).filter(row => row.state === 'preparing' || row.state === 'downloading');
-    if (active.some(row => row.url === item.url)) throw new Error('같은 미디어를 이미 처리하고 있습니다.');
+    if (active.some(row => row.url === item.url && (row.options?.quality ?? 'highest') === options.quality && (row.options?.output ?? 'original') === options.output)) throw new Error('같은 미디어를 이미 처리하고 있습니다.');
     if (active.length >= 8) throw new Error('동시에 준비·다운로드하는 파일은 최대 8개입니다.');
     await update(entry);
   });
@@ -81,14 +83,14 @@ async function download(item: MediaItem) {
     try {
       let address = item.url;
       const offers = (await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] !== false;
-      if (item.kind !== 'file' || (offers && !entry.incognito && (!item.size || item.size <= MAX_INPUT_BYTES))) {
+      if (options.output !== 'original' || item.kind !== 'file' || (offers && !entry.incognito && (!item.size || item.size <= MAX_INPUT_BYTES))) {
         try {
           await ensureOffscreen();
-          const result: unknown = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: 'prepare', id: entry.id, url: item.url, kind: item.kind });
+          const result: unknown = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: 'prepare', id: entry.id, url: item.url, kind: item.kind, options });
           if (!record(result) || result.ok !== true || typeof result.url !== 'string' || !result.url.startsWith(`blob:${chrome.runtime.getURL('')}`)) throw new Error(record(result) && typeof result.error === 'string' ? result.error : '파일을 준비할 수 없습니다.');
           address = result.url;
         } catch (error) {
-          if (item.kind !== 'file' || cancelled.has(entry.id)) throw error;
+          if (options.output !== 'original' || item.kind !== 'file' || cancelled.has(entry.id)) throw error;
           // A native direct download still works when optional local prefetch fails.
           address = item.url;
         }
@@ -134,11 +136,11 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
   if (value.type === 'download' && typeof value.id === 'string') {
     const item = Array.from(media.values()).flatMap(map => Array.from(map.values())).find(row => row.id === value.id);
     if (!item) throw new Error('미디어가 만료되었습니다. 원래 페이지를 새로고침하세요.');
-    return { ok: true, item: await download(item) };
+    return { ok: true, item: await download(item, downloadOptions(value.options)) };
   }
   if (value.type === 'download-url' && typeof value.url === 'string') {
     const url = mediaURL(value.url).href;
-    return { ok: true, item: await download({ id: crypto.randomUUID(), tabId: -1, url, title: '', mime: '', kind: mediaKind(url) ?? 'file', createdAt: Date.now() }) };
+    return { ok: true, item: await download({ id: crypto.randomUUID(), tabId: -1, url, title: '', mime: '', kind: mediaKind(url) ?? 'file', createdAt: Date.now() }, downloadOptions(value.options)) };
   }
   if (value.type === 'cancel' && typeof value.id === 'string') {
     const item = (await history()).find(row => row.id === value.id);
