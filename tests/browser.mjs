@@ -79,11 +79,24 @@ await context.addInitScript(() => {
     const handlers = [];
     return { addListener(fn) { handlers.push(fn); }, removeListener(fn) { const index = handlers.indexOf(fn); if (index >= 0) handlers.splice(index, 1); }, fire(...args) { for (const fn of handlers) fn(...args); } };
   };
+  const blobs = new Map();
+  const createObjectURL = URL.createObjectURL.bind(URL); const revokeObjectURL = URL.revokeObjectURL.bind(URL);
+  URL.createObjectURL = blob => { const url = createObjectURL(blob); blobs.set(url, blob); return url; };
+  URL.revokeObjectURL = url => { blobs.delete(url); revokeObjectURL(url); };
   const storageKey = 'VDH_TEST_CHROME_STORAGE';
   const read = () => JSON.parse(localStorage.getItem(storageKey) ?? '{}');
   const downloads = new Map(); let sequence = 0; let hasOffscreen = false;
+  window.__testDownloads = downloads;
   const api = {
-    runtime: { id: 'test-double-only', getURL: path => `${location.origin}/${path.replace(/^\//, '')}`, onInstalled: listeners(), onStartup: listeners(), onMessage: listeners(), sendMessage: async message => {
+    permissions: { contains: async () => window.__avPermission !== false, request: async () => { window.__avPermission = true; return true; } },
+    runtime: { connectNative: () => {
+      const port = { onMessage: listeners(), onDisconnect: listeners(), disconnect() {}, postMessage: request => {
+        window.__avRequests = [...(window.__avRequests || []), request];
+        const file = Array.from(downloads.values()).find(item => item.filename === request.path);
+        const respond = () => port.onMessage.fire({ version: 1, requestId: request.requestId, status: window.__avStatus || 'clean', engine: 'Test double; no actual AV', sha256: file?.testSha256 || 'a'.repeat(64), size: file?.fileSize ?? 12, ...(window.__avStatus === 'infected' ? { threats: ['Harmless test detection <img src=x onerror=alert(1)>'] } : {}) });
+        if (window.__avHold) window.__avRelease = respond; else queueMicrotask(respond);
+      } }; return port;
+    }, id: 'test-double-only', getURL: path => `${location.origin}/${path.replace(/^\//, '')}`, onInstalled: listeners(), onStartup: listeners(), onMessage: listeners(), sendMessage: async message => {
       if (message.scope === 'my-video-app/offscreen') {
         const module = await import('/local/offscreen.js');
         if (message.type === 'prepare') { try { return await module.prepareLocal(message.id, message.url, message.kind, message.options); } catch (error) { await module.disposeLocal(message.id); return { ok: false, error: error.message }; } }
@@ -105,13 +118,15 @@ await context.addInitScript(() => {
       create: async (id, options) => { localStorage.setItem('VDH_TEST_NOTIFICATION', JSON.stringify({ id, options })); return id; },
     },
     contextMenus: { onClicked: listeners(), create() {} },
-    tabs: { create: async options => options, query: async () => [{ id: 7, url: `${location.origin}/example-page`, active: true, incognito: false }], get: async id => ({ id, url: `${location.origin}/example-page`, incognito: false }), onRemoved: listeners(), onUpdated: listeners(), onActivated: listeners() },
+    tabs: { create: async options => { window.__lastCreatedTab = options; return options; }, query: async () => [{ id: 7, url: `${location.origin}/example-page`, active: true, incognito: false }], get: async id => ({ id, url: `${location.origin}/example-page`, incognito: false }), onRemoved: listeners(), onUpdated: listeners(), onActivated: listeners() },
     webRequest: { onHeadersReceived: listeners() }, commands: { onCommand: listeners() },
     offscreen: { Reason: { BLOBS: 'BLOBS', WORKERS: 'WORKERS', DOM_PARSER: 'DOM_PARSER' }, hasDocument: async () => hasOffscreen, createDocument: async () => { hasOffscreen = true; } },
     sidePanel: { setPanelBehavior: async () => {} }, action: { setPopup: async () => {} },
     downloads: { onChanged: listeners(), download: async options => {
+      const bytes = options.url.startsWith('blob:') ? await blobs.get(options.url).arrayBuffer() : await (await fetch(options.url)).arrayBuffer();
+      const testSha256 = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('');
       const link = document.createElement('a'); link.href = options.url; link.download = options.filename; document.body.append(link); link.click(); link.remove();
-      const id = ++sequence; downloads.set(id, { id, state: window.__holdDownloads ? 'in_progress' : 'complete', filename: options.filename, url: options.url, incognito: false, bytesReceived: 12, totalBytes: 24 }); return id;
+      const id = ++sequence; downloads.set(id, { id, state: window.__holdDownloads ? 'in_progress' : 'complete', filename: '/test-downloads/' + options.filename, danger: window.__downloadDanger || 'safe', exists: true, fileSize: bytes.byteLength, testSha256, url: options.url, incognito: false, bytesReceived: 12, totalBytes: 24 }); return id;
     }, search: async query => {
       if (window.__duplicateCompletion && query.id !== undefined && downloads.get(query.id)?.state === 'complete') {
         window.__duplicateCompletion = false;
@@ -119,7 +134,7 @@ await context.addInitScript(() => {
         api.downloads.onChanged.fire({ id: query.id, state: { current: 'complete' } });
       }
       return query.id === undefined ? Array.from(downloads.values()) : [downloads.get(query.id)].filter(Boolean);
-    }, cancel: async id => { const item = downloads.get(id); if (item) { item.state = 'interrupted'; item.error = 'USER_CANCELED'; api.downloads.onChanged.fire({ id, state: { current: 'interrupted' } }); } }, show() {} },
+    }, cancel: async id => { const item = downloads.get(id); if (item) { item.state = 'interrupted'; item.error = 'USER_CANCELED'; api.downloads.onChanged.fire({ id, state: { current: 'interrupted' } }); } }, removeFile: async id => { if (window.__avDeleteFail) throw new Error('simulated removal failure'); const item = downloads.get(id); if (item) item.exists = false; }, show() {} },
   };
   Object.defineProperty(window, 'chrome', { value: api, configurable: true });
 });
@@ -127,6 +142,15 @@ const page = await context.newPage();
 const pageErrors = [];
 page.on('pageerror', error => pageErrors.push(error.message));
 const checks = async (name, run) => { await run(); outcomes.push({ name, status: 'passed' }); console.log(`PASS ${name}`); };
+// Playwright polls synchronous predicates; poll async storage/OPFS checks explicitly.
+async function waitForAsync(predicate, argument, timeout = 30_000) {
+  const deadline = Date.now() + timeout;
+  while (!await page.evaluate(predicate, argument)) {
+    assert(Date.now() < deadline, 'Timed out waiting for an asynchronous browser condition');
+    await new Promise(resolve => setTimeout(resolve, 25));
+  }
+}
+
 async function openTools(target = page) { await target.goto(`${origin}/upscale/index.html`); await target.waitForFunction(() => document.querySelector('#offer')?.checked === true); }
 async function convert(filename, scale, destination) {
   await page.locator('#file').setInputFiles(`${fixtures}/${filename}`);
@@ -189,7 +213,7 @@ try {
   });
   await checks('Local install uses independent entry points without an account/activation engine', async () => {
     const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
-    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.3.0');
+    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.4.0');
     assert.equal(manifest.key, undefined); assert.equal(manifest.update_url, undefined);
     const result = await context.request.get(`${origin}/service/main.js`); assert.equal(result.status(), 404);
   });
@@ -434,10 +458,10 @@ try {
     const pending = page.waitForEvent('download'); await page.locator('#media button').click();
     const file = await pending; await file.saveAs(`${results}/local-direct.mp4`);
     assert.equal(createHash('sha256').update(await readFile(`${results}/local-direct.mp4`)).digest('hex'), originalHash);
-    await page.waitForFunction(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1?.[0]?.state === 'complete');
+    await waitForAsync(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1?.[0]?.state === 'complete');
     await page.locator('#history-tab').click(); await page.waitForFunction(() => document.querySelector('#history li')?.textContent.includes('완료'));
     assert.match(await page.locator('#history').innerText(), /로컬 테스트 영상\.mp4/);
-    await page.waitForFunction(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1?.length === 1);
+    await waitForAsync(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1?.length === 1);
     assert.equal(await page.evaluate(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1.length), 1);
   });
   await checks('Local download UI passes the chosen audio format through background and offscreen using API doubles', async () => {
@@ -445,7 +469,7 @@ try {
     await page.locator('#download-output').selectOption('mp3'); await page.locator('#quality').selectOption('720');
     const pending = page.waitForEvent('download'); await page.locator('#media li button').first().click();
     const file = await pending; assert(file.suggestedFilename().endsWith('.mp3')); await file.saveAs(`${results}/local-ui-audio.mp3`);
-    await page.waitForFunction(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.filename.endsWith('.mp3') && row.state === 'complete'));
+    await waitForAsync(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.filename.endsWith('.mp3') && row.state === 'complete'));
     assert(Math.abs(toneFrequency(`${results}/local-ui-audio.mp3`) - 440) < 10);
     await page.locator('#download-output').selectOption('original'); await page.locator('#quality').selectOption('highest');
   });
@@ -460,11 +484,11 @@ try {
     }, origin);
     assert.deepEqual(result.sort(), ['fulfilled', 'rejected']);
     const saved = await pending; await saved.saveAs(`${results}/local-cancel-api-double.mp4`);
-    await page.waitForFunction(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.state === 'downloading'));
+    await waitForAsync(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.state === 'downloading'));
     const progress = await page.evaluate(async () => (await chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'list' })).history.find(row => row.state === 'downloading'));
     assert.equal(progress.receivedBytes, 12); assert.equal(progress.totalBytes, 24);
     await page.locator('#history-tab').click(); await page.getByRole('button', { name: '취소', exact: true }).click();
-    await page.waitForFunction(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.state === 'cancelled'));
+    await waitForAsync(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.state === 'cancelled'));
     await page.evaluate(async () => { window.__holdDownloads = false; await chrome.storage.local.set({ vdh_upscale_offer_v1: true }); });
   });
   await checks('History retry creates a new intact download and keeps the cancelled record using API doubles', async () => {
@@ -473,7 +497,7 @@ try {
     const pending = page.waitForEvent('download'); await row.getByRole('button', { name: '다시 시도' }).click();
     const file = await pending; await file.saveAs(`${results}/local-history-retry.mp4`);
     assert.equal(createHash('sha256').update(await readFile(`${results}/local-history-retry.mp4`)).digest('hex'), originalHash);
-    await page.waitForFunction(async () => { const rows = (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1; return rows[0]?.state === 'complete' && rows.some(row => row.state === 'cancelled'); });
+    await waitForAsync(async () => { const rows = (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1; return rows[0]?.state === 'complete' && rows.some(row => row.state === 'cancelled'); });
   });
   await checks('Cancellation while the offscreen document starts prevents the later media request using API doubles', async () => {
     const id = await page.evaluate(async origin => {
@@ -492,8 +516,75 @@ try {
         return result.item.id;
       } finally { release(); chrome.offscreen.createDocument = originalCreate; }
     }, origin);
-    await page.waitForFunction(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'cancelled', id);
+    await waitForAsync(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'cancelled', id);
     assert.equal(slowHits.get('startup-cancel'), undefined);
+  });
+  async function securityFixture(status, danger = 'safe') {
+    return page.evaluate(async ({ status, danger }) => {
+      window.__avStatus = status;
+      const id = crypto.randomUUID(); const downloadId = 5000 + window.__testDownloads.size;
+      window.__testDownloads.set(downloadId, { id: downloadId, state: 'complete', filename: '/test-downloads/review.mp4', danger, exists: true, fileSize: 12 });
+      const data = (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1 || [];
+      await chrome.storage.local.set({ my_video_app_history_v1: [{ id, downloadId, url: location.origin + '/fixtures/clip.mp4?review=' + id, filename: '검사 확인 영상.mp4', kind: 'file', state: 'downloading', createdAt: Date.now(), incognito: false }, ...data] });
+      chrome.downloads.onChanged.fire({ id: downloadId, state: { current: 'complete' } });
+      return { id, downloadId };
+    }, { status, danger });
+  }
+  let reviewFixture;
+  await checks('Infected verdict opens an explicit review dialog and renders untrusted threat names as text using API doubles', async () => {
+    reviewFixture = await securityFixture('infected');
+    await page.waitForFunction(() => document.querySelector('#security-dialog').open);
+    assert.equal(await page.locator('#security-keep').isDisabled(), true);
+    assert.equal(await page.locator('#security-dialog img').count(), 0);
+    assert.match(await page.locator('#security-threats').innerText(), /<img src=x/);
+    await page.screenshot({ path: `${results}/malware-review.png`, fullPage: true, animations: 'disabled' });
+    await page.locator('#security-later').click();
+    assert.equal(await page.locator('#security-dialog').evaluate(node => node.open), false);
+    await page.locator('#history-tab').click();
+    await page.getByRole('button', { name: '검사 결과 확인', exact: true }).click();
+    assert.equal(await page.locator('#security-dialog').evaluate(node => node.open), true);
+  });
+  await checks('Delete failure preserves review and a later explicit deletion records success using API doubles', async () => {
+    await page.evaluate(() => { window.__avDeleteFail = true; });
+    await page.locator('#security-delete').click();
+    await page.waitForFunction(() => document.querySelector('#security-dialog').open && !document.querySelector('#security-delete').disabled && document.querySelector('#security-details').textContent.includes('파일 삭제를 확인하지 못했습니다'));
+    const row = await page.evaluate(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id), reviewFixture.id);
+    assert.equal(row.state, 'review');
+    await page.evaluate(() => { window.__avDeleteFail = false; });
+    await page.locator('#security-delete').click();
+    await waitForAsync(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id).state === 'discarded', reviewFixture.id);
+    assert.equal(await page.evaluate(id => window.__testDownloads.get(id).exists, reviewFixture.downloadId), false);
+    await page.waitForFunction(() => !document.querySelector('#security-dialog').open);
+  });
+  await checks('Unavailable local scanner remains unverified until the user explicitly acknowledges keeping the file', async () => {
+    const fixture = await securityFixture('unavailable');
+    await page.waitForFunction(() => document.querySelector('#security-dialog').open);
+    assert.equal(await page.locator('#security-keep').isDisabled(), true);
+    await page.locator('#security-acknowledge').check();
+    await page.locator('#security-keep').click();
+    await waitForAsync(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id).state === 'complete', fixture.id);
+    const row = await page.evaluate(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id), fixture.id);
+    assert.equal(row.security.status, 'unavailable'); assert.equal(row.security.decision, 'keep');
+    await page.waitForFunction(() => !document.querySelector('#security-dialog').open);
+  });
+  await checks('Chrome danger offers browser review and cannot be overridden by the app keep control using API doubles', async () => {
+    const fixture = await securityFixture('clean', 'content');
+    await page.waitForFunction(() => document.querySelector('#security-dialog').open);
+    assert.equal(await page.locator('#security-native-actions').isVisible(), false);
+    assert.equal(await page.locator('#security-acknowledgement').isVisible(), false);
+    await page.locator('#security-chrome').click();
+    await page.waitForFunction(() => window.__lastCreatedTab?.url === 'chrome://downloads/');
+    assert.equal(await page.evaluate(() => window.__lastCreatedTab.url), 'chrome://downloads/');
+    await page.evaluate(id => { const item = window.__testDownloads.get(id); item.danger = 'accepted'; chrome.downloads.onChanged.fire({ id, danger: { current: 'accepted' } }); }, fixture.downloadId);
+    await waitForAsync(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id).state === 'complete', fixture.id);
+  });
+  await checks('Local antivirus permission is requested only by the visible connect button using API doubles', async () => {
+    await page.evaluate(() => { window.__avPermission = false; });
+    await page.locator('#security-connect').click();
+    await page.waitForFunction(() => !document.querySelector('#security-connect').disabled);
+    assert.equal(await page.evaluate(() => window.__avPermission), true);
+    assert.match(await page.locator('#security-connection-status').innerText(), /연결을 다시 확인/);
+    await page.evaluate(() => { window.__avStatus = 'clean'; });
   });
   await checks('Clearing local history leaves downloaded files intact', async () => {
     await page.locator('#clear-history').click(); await page.waitForFunction(() => document.querySelectorAll('#history li').length === 0);
@@ -507,8 +598,8 @@ try {
       await chrome.storage.local.set({ my_video_app_history_v1: [{ id, url: `${origin}/fixtures/clip.mp4`, filename: 'interrupted.mp4', kind: 'file', state: 'preparing', createdAt: Date.now(), incognito: false }] });
       chrome.runtime.onStartup.fire();
     }, { id, origin });
-    await page.waitForFunction(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1[0]?.state === 'error');
-    await page.waitForFunction(async id => { try { await (await navigator.storage.getDirectory()).getFileHandle(`local-${id}.media`); return false; } catch { return true; } }, id);
+    await waitForAsync(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1[0]?.state === 'error');
+    await waitForAsync(async id => { try { await (await navigator.storage.getDirectory()).getFileHandle(`local-${id}.media`); return false; } catch { return true; } }, id);
   });
   await checks('No outbound requests or page exceptions in new processing workflow', async () => { assert.deepEqual(outbound, []); assert.deepEqual(pageErrors, []); });
   await page.locator('#media-tab').click();

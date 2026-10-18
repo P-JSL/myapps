@@ -1,5 +1,5 @@
 {
-  "buildSha256": "1f0f3628500c401327e7b4aa4ea5a3752a315f1b40ea0829202a7f163f6a9ca7",
+  "buildSha256": "4c3394288b85be9b785756e1c5756a0e27bf8e9e39d70317422dd8cdb4a1f910",
   "browser": "154.0.8037.57",
   "engine": "independent-local",
   "mode": "localhost harness: real browser/Wasm/OPFS; Chrome extension APIs mocked",
@@ -194,6 +194,26 @@
     },
     {
       "name": "Cancellation while the offscreen document starts prevents the later media request using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "Infected verdict opens an explicit review dialog and renders untrusted threat names as text using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "Delete failure preserves review and a later explicit deletion records success using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "Unavailable local scanner remains unverified until the user explicitly acknowledges keeping the file",
+      "status": "passed"
+    },
+    {
+      "name": "Chrome danger offers browser review and cannot be overridden by the app keep control using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "Local antivirus permission is requested only by the visible connect button using API doubles",
       "status": "passed"
     },
     {

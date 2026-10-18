@@ -11,6 +11,15 @@
     <p id="empty" class="hint">영상이 있는 페이지를 새로고침하고 재생해 주세요. 이 화면은 HTTP 미디어 주소와 암호화되지 않은 HLS/DASH VOD를 감지합니다.</p><ul id="media"></ul>
     <details><summary>미디어 주소 직접 입력</summary><form id="url-form"><label for="url">영상·오디오 또는 VOD 목록 주소</label><input id="url" type="url" placeholder="https://example.com/video.mp4" required><button type="submit">주소에서 다운로드</button></form></details>
   </section>
-  <section id="history-view" aria-label="다운로드 기록" hidden><div class="heading"><h2>로컬 기록</h2><button id="clear-history" class="secondary">완료 기록 삭제</button></div><p class="hint">기록을 삭제해도 저장한 파일은 그대로 남습니다.</p><ul id="history"></ul><p id="history-empty" class="hint">저장한 다운로드 기록이 없습니다.</p></section>
+  <section id="history-view" aria-label="다운로드 기록" hidden><div class="heading"><h2>로컬 기록</h2><button id="clear-history" class="secondary">완료 기록 삭제</button></div><p class="hint">기록을 삭제해도 저장한 파일은 그대로 남습니다. 다운로드가 끝나면 로컬 백신으로 검사합니다. 위협 탐지·검사 실패·Chrome 경고가 있으면 확인이 필요합니다.</p><ul id="history"></ul><p id="history-empty" class="hint">저장한 다운로드 기록이 없습니다.</p></section>
+  <section class="security-connection" aria-labelledby="security-connection-title"><h2 id="security-connection-title">로컬 백신 연결</h2><p class="hint">파일을 외부 검사 서비스에 업로드하지 않습니다. 컴퓨터에 로컬 검사 도우미와 백신을 설치한 뒤 연결하세요. Chrome 기본 다운로드 보호도 그대로 적용됩니다.</p><p class="hint"><a href="../SECURITY_DOWNLOADS.ko.md" target="_blank" rel="noopener">로컬 백신 설치·연결 안내 ↗</a></p><p class="hint">설치 도우미에 사용할 확장 프로그램 ID: <code id="extension-id"></code></p><button id="security-connect" class="secondary">백신 연결</button><p id="security-connection-status" class="hint" role="status" aria-live="polite">연결하지 않거나 검사를 완료하지 못하면 파일 사용 여부를 따로 확인합니다.</p></section>
   <footer>앱 계정이나 구독이 필요하지 않습니다. 다운로드는 해당 미디어 사이트와 통신하며, 파일 처리와 기록 저장은 로컬에서 수행합니다. DRM·라이브 녹화·사이트별 전용 추출기는 지원하지 않습니다.</footer>
-</main></body></html>
+</main>
+<dialog id="security-dialog" aria-labelledby="security-dialog-title" aria-describedby="security-explanation">
+  <h2 id="security-dialog-title">다운로드 보안 확인</h2><h3 id="security-filename"></h3><p id="security-result" class="security-result"></p><p id="security-explanation"></p><div id="security-details" class="security-details"></div><ul id="security-threats" class="security-threats" aria-label="탐지된 위협" hidden></ul>
+  <label id="security-acknowledgement" class="security-acknowledgement"><input id="security-acknowledge" type="checkbox">검사 결과와 파일 실행·재생의 위험을 이해했으며 이 파일을 유지하겠습니다.</label>
+  <p id="security-dialog-error" class="security-dialog-error" role="alert"></p>
+  <div id="security-native-actions" class="actions"><button id="security-delete" class="danger" autofocus>파일 삭제 (권장)</button><button id="security-rescan" class="secondary">다시 검사</button><button id="security-keep" class="secondary" disabled>위험을 이해하고 유지</button></div>
+  <div class="actions"><button id="security-chrome" hidden>Chrome에서 검토</button><button id="security-later" class="secondary">나중에 확인</button></div>
+</dialog>
+</body></html>

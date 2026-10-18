@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "engineVersion": "ClamAV 1.4.6",
+  "signatureScope": "Private test-only local hash database; official signature database freshness/coverage not tested",
+  "nativeHost": "com.myvideoapp.antivirus",
+  "fileUpload": false,
+  "officialDatabaseVerified": false,
+  "sourceSha256": "8efef9097d4833b5bf9dffe1e4848b3133ef4716277716d1c4fdba533ec16703",
+  "outcomes": [
+    {
+      "name": "Complete native messaging scan of clean MP4 with real ClamAV",
+      "status": "passed",
+      "verdict": "clean",
+      "engine": "ClamAV"
+    },
+    {
+      "name": "Real ClamAV detects harmless custom local test signature; original retained",
+      "status": "passed",
+      "verdict": "infected",
+      "engine": "ClamAV"
+    },
+    {
+      "name": "Real ClamAV detects standard harmless antivirus marker using test-only local signature",
+      "status": "passed",
+      "verdict": "infected",
+      "engine": "ClamAV"
+    },
+    {
+      "name": "Real ClamAV invalid-database error never becomes a clean verdict",
+      "status": "passed",
+      "verdict": "error",
+      "engine": "ClamAV"
+    }
+  ]
+}

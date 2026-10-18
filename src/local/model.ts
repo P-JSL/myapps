@@ -2,6 +2,7 @@ import { record } from '../security/validation.ts';
 import { safeBasename } from '../upscale/policy.ts';
 import type { DownloadOptions } from './preferences.ts';
 import type { Transport } from './transport.ts';
+import type { FileSecurity } from './antivirus.ts';
 
 export const SCOPE = 'my-video-app/local';
 export const OFFSCREEN_SCOPE = 'my-video-app/offscreen';
@@ -16,12 +17,13 @@ export interface MediaItem {
   id: string; tabId: number; url: string; title: string; mime: string;
   kind: MediaKind; createdAt: number; size?: number; observedTransport?: Transport;
 }
-export type DownloadState = 'preparing' | 'downloading' | 'complete' | 'cancelled' | 'error';
+export type DownloadState = 'preparing' | 'downloading' | 'scanning' | 'review' | 'discarded' | 'complete' | 'cancelled' | 'error';
 export interface HistoryItem {
   id: string; url: string; filename: string; kind: MediaKind; state: DownloadState;
   createdAt: number; incognito: boolean; downloadId?: number; error?: string; options?: DownloadOptions;
   preparation?: { stage: 'queued' | 'fetching' | 'processing' | 'saving'; progress?: number; loaded?: number; total?: number };
   transferProtocols?: Transport[]; receivedBytes?: number; totalBytes?: number;
+  security?: FileSecurity;
 }
 export function mediaURL(value: unknown, base?: string): URL {
   if (typeof value !== 'string' || !value || value.length > 8192) throw new Error('미디어 주소가 올바르지 않습니다.');
@@ -51,7 +53,7 @@ export function isHistory(value: unknown): value is HistoryItem {
   return record(value) && typeof value.id === 'string' && /^[a-f0-9-]{36}$/.test(value.id)
     && typeof value.url === 'string' && typeof value.filename === 'string'
     && ['file', 'hls', 'dash'].includes(String(value.kind))
-    && ['preparing', 'downloading', 'complete', 'cancelled', 'error'].includes(String(value.state))
+    && ['preparing', 'downloading', 'scanning', 'review', 'discarded', 'complete', 'cancelled', 'error'].includes(String(value.state))
     && typeof value.createdAt === 'number' && Number.isFinite(value.createdAt) && typeof value.incognito === 'boolean';
 }
 interface LocalSender { id?: string | undefined; url?: string | undefined; tab?: { id?: number | undefined } | undefined; }

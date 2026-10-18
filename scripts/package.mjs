@@ -6,9 +6,12 @@ import assert from 'node:assert/strict';
 process.chdir(fileURLToPath(new URL('../', import.meta.url)));
 await access('dist/manifest.json');
 const report = JSON.parse(await readFile('reports/browser.json', 'utf8'));
-assert(report.outcomes.length >= 50 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
+assert(report.outcomes.length >= 55 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
 const http3 = JSON.parse(await readFile('reports/http3.json', 'utf8'));
 assert(http3.transport === 'h3' && http3.outcomes.length >= 4 && http3.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real HTTP/3 results required');
+const antivirus = JSON.parse(await readFile('reports/antivirus.json', 'utf8'));
+assert(antivirus.outcomes.length >= 3 && antivirus.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real antivirus integration results required');
+assert.equal(createHash('sha256').update(await readFile('native/antivirus_host.py')).digest('hex'), antivirus.sourceSha256, 'Native host changed since real antivirus validation');
 assert.equal(JSON.parse(await readFile('reports/build.json', 'utf8')).engine, 'independent-local');
 async function files(dir, prefix = '') {
   const names = [];
@@ -31,14 +34,15 @@ import hashlib, json, shutil
 root=Path.cwd()
 out=root/'artifacts'
 out.mkdir(exist_ok=True)
-packages=[('my-video-app-extension.zip',root/'dist','my-video-app'),('my-video-app-source.zip',root,'my-video-app-source')]
+packages=[('my-video-app-extension.zip',root/'dist','my-video-app'),('my-video-app-source.zip',root,'my-video-app-source'),('my-video-app-antivirus-helper.zip',root/'native','my-video-app-antivirus-helper')]
 for name,source,prefix in packages:
     with ZipFile(out/name,'w',compression=ZIP_DEFLATED,compresslevel=9) as z:
         for p in sorted(source.rglob('*')):
             if not p.is_file(): continue
             rel=p.relative_to(source)
             if source==root and rel.parts[0] in {'.git','node_modules','dist','dist-compat','artifacts','test-results','.cache'}: continue
-            if p.suffix=='.log': continue
+            if '__pycache__' in rel.parts or p.suffix in {'.log','.pyc','.eml','.pem','.key','.p12'}: continue
+            if source==root/'native' and rel.name.startswith('test_'): continue
             info=ZipInfo(prefix+'/'+rel.as_posix(),date_time=(2026,10,18,0,0,0))
             info.compress_type=ZIP_DEFLATED
             info.external_attr=0o100644<<16

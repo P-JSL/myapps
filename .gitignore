@@ -5,3 +5,5 @@ artifacts/
 test-results/
 .cache/
 *.log
+__pycache__/
+*.pyc

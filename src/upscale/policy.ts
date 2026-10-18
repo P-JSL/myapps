@@ -11,7 +11,7 @@ export const JOBS_KEY = 'vdh_upscale_jobs_v1';
 export const OFFER_KEY = 'vdh_upscale_offer_v1';
 export type Factor = 2 | 4;
 export interface MediaInfo { width: number; height: number; duration: number; kind: 'image' | 'video'; }
-export interface Job { id: string; filename: string; size: number; createdAt: number; }
+export interface Job { id: string; filename: string; size: number; createdAt: number; downloadId?: number; }
 
 export function isJobId(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -21,7 +21,8 @@ export function isJob(value: unknown): value is Job {
   const v = value as Partial<Job>;
   return isJobId(v.id) && typeof v.filename === 'string' && v.filename.length <= 240
     && Number.isSafeInteger(v.size) && v.size! > 0 && v.size! <= MAX_INPUT_BYTES
-    && typeof v.createdAt === 'number' && Number.isFinite(v.createdAt);
+    && typeof v.createdAt === 'number' && Number.isFinite(v.createdAt)
+    && (v.downloadId === undefined || (Number.isSafeInteger(v.downloadId) && v.downloadId >= 0));
 }
 export function outputDimensions(info: MediaInfo, factor: unknown): { width: number; height: number } {
   if (factor !== 2 && factor !== 4) throw new Error('확대 배율은 2배 또는 4배여야 합니다.');

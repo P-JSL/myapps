@@ -1,19 +1,32 @@
 import { cleanup, cleanupUnlocked, deleteJob, directory, jobs, withQueueLock } from './storage.ts';
 import { OFFER_KEY, JOBS_KEY, MAX_INPUT_BYTES, MAX_QUEUE_BYTES, MAX_JOBS, safeBasename, sniffMedia, isJobId, type Job } from './policy.ts';
 
-interface CompletedDownload { internalFilename: string; filename: string; downloadId?: number; success: boolean; incognito: boolean; }
+interface CompletedDownload {
+  internalFilename: string; filename: string; downloadId?: number; success: boolean; incognito: boolean;
+  expectedSha256?: string; expectedSize?: number;
+}
 let serial: Promise<unknown> = Promise.resolve();
+const revokedDownloads = new Set<number>();
 export async function offerUpscale(event: CompletedDownload): Promise<void> {
   // The downloader must never fail because the optional feature failed.
   const pending = serial.then(() => withQueueLock(async () => {
-    if (!event.success || event.incognito || !Number.isInteger(event.downloadId)) return;
+    const downloadId = event.downloadId;
+    if (!event.success || event.incognito || typeof downloadId !== 'number' || !Number.isSafeInteger(downloadId) || downloadId < 0 || revokedDownloads.has(downloadId)) return;
     if ((await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] === false) return;
     const root = await navigator.storage.getDirectory();
     const source = await (await root.getFileHandle(event.internalFilename)).getFile();
     if (!source.size || source.size > MAX_INPUT_BYTES || !sniffMedia(new Uint8Array(await source.slice(0, 16).arrayBuffer()))) return;
+    if (event.expectedSha256 !== undefined || event.expectedSize !== undefined) {
+      if (typeof event.expectedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(event.expectedSha256)
+        || !Number.isSafeInteger(event.expectedSize) || source.size !== event.expectedSize) return;
+      const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', await source.arrayBuffer()));
+      const sha256 = Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
+      if (sha256 !== event.expectedSha256) return;
+    }
+    if (revokedDownloads.has(downloadId)) return;
     const retained = await cleanupUnlocked();
     if (retained.length >= MAX_JOBS || retained.reduce((total, job) => total + job.size, 0) + source.size > MAX_QUEUE_BYTES) return;
-    const job: Job = { id: crypto.randomUUID(), filename: safeBasename(event.filename), size: source.size, createdAt: Date.now() };
+    const job: Job = { id: crypto.randomUUID(), filename: safeBasename(event.filename), size: source.size, createdAt: Date.now(), downloadId };
     const dir = await directory();
     const writable = await (await dir.getFileHandle(job.id, { create: true })).createWritable();
     try { await source.stream().pipeTo(writable); }
@@ -27,6 +40,28 @@ export async function offerUpscale(event: CompletedDownload): Promise<void> {
   }));
   serial = pending.catch(() => {});
   await serial;
+}
+
+/** Revoke retained copies and notifications when a previously finished download becomes unsafe. */
+export async function revokeDownloadOffers(downloadId: number): Promise<void> {
+  if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error('잘못된 다운로드 번호입니다.');
+  revokedDownloads.add(downloadId);
+  const pending = serial.then(() => withQueueLock(async () => {
+    const retained = await jobs();
+    const revoked = retained.filter(job => job.downloadId === downloadId);
+    if (!revoked.length) return;
+    // Hide the jobs before deleting files so a failed removal cannot leave them selectable.
+    await chrome.storage.local.set({ [JOBS_KEY]: retained.filter(job => job.downloadId !== downloadId) });
+    await Promise.all(revoked.map(job => chrome.notifications.clear(`vdh-upscale:${job.id}`).catch(() => {})));
+    const dir = await directory();
+    const removals = await Promise.allSettled(revoked.map(job => dir.removeEntry(job.id).catch((error: unknown) => {
+      if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error;
+    })));
+    const failed = removals.find(result => result.status === 'rejected');
+    if (failed?.status === 'rejected') throw failed.reason;
+  }));
+  serial = pending.catch(() => {});
+  await pending;
 }
 
 function openTools(job?: string) {

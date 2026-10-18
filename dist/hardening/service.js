@@ -12,7 +12,7 @@ function isJobId(value) {
 function isJob(value) {
   if (!value || typeof value !== "object") return false;
   const v = value;
-  return isJobId(v.id) && typeof v.filename === "string" && v.filename.length <= 240 && Number.isSafeInteger(v.size) && v.size > 0 && v.size <= MAX_INPUT_BYTES && typeof v.createdAt === "number" && Number.isFinite(v.createdAt);
+  return isJobId(v.id) && typeof v.filename === "string" && v.filename.length <= 240 && Number.isSafeInteger(v.size) && v.size > 0 && v.size <= MAX_INPUT_BYTES && typeof v.createdAt === "number" && Number.isFinite(v.createdAt) && (v.downloadId === void 0 || Number.isSafeInteger(v.downloadId) && v.downloadId >= 0);
 }
 function safeBasename(input) {
   return (input.split(/[\\/]/).at(-1) ?? "media").replace(/[\x00-\x1f\x7f<>:"|?*\u202a-\u202e\u2066-\u2069]/g, "_").replace(/[. ]+$/g, "").slice(0, 180) || "media";
@@ -80,16 +80,25 @@ async function cleanupUnlocked(now = Date.now()) {
 
 // src/upscale/completion.ts
 var serial = Promise.resolve();
+var revokedDownloads = /* @__PURE__ */ new Set();
 async function offerUpscale(event) {
   const pending = serial.then(() => withQueueLock(async () => {
-    if (!event.success || event.incognito || !Number.isInteger(event.downloadId)) return;
+    const downloadId = event.downloadId;
+    if (!event.success || event.incognito || typeof downloadId !== "number" || !Number.isSafeInteger(downloadId) || downloadId < 0 || revokedDownloads.has(downloadId)) return;
     if ((await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] === false) return;
     const root = await navigator.storage.getDirectory();
     const source = await (await root.getFileHandle(event.internalFilename)).getFile();
     if (!source.size || source.size > MAX_INPUT_BYTES || !sniffMedia(new Uint8Array(await source.slice(0, 16).arrayBuffer()))) return;
+    if (event.expectedSha256 !== void 0 || event.expectedSize !== void 0) {
+      if (typeof event.expectedSha256 !== "string" || !/^[a-f0-9]{64}$/.test(event.expectedSha256) || !Number.isSafeInteger(event.expectedSize) || source.size !== event.expectedSize) return;
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", await source.arrayBuffer()));
+      const sha256 = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+      if (sha256 !== event.expectedSha256) return;
+    }
+    if (revokedDownloads.has(downloadId)) return;
     const retained = await cleanupUnlocked();
     if (retained.length >= MAX_JOBS || retained.reduce((total, job2) => total + job2.size, 0) + source.size > MAX_QUEUE_BYTES) return;
-    const job = { id: crypto.randomUUID(), filename: safeBasename(event.filename), size: source.size, createdAt: Date.now() };
+    const job = { id: crypto.randomUUID(), filename: safeBasename(event.filename), size: source.size, createdAt: Date.now(), downloadId };
     const dir = await directory();
     const writable = await (await dir.getFileHandle(job.id, { create: true })).createWritable();
     try {
@@ -113,6 +122,27 @@ async function offerUpscale(event) {
   serial = pending.catch(() => {
   });
   await serial;
+}
+async function revokeDownloadOffers(downloadId) {
+  if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
+  revokedDownloads.add(downloadId);
+  const pending = serial.then(() => withQueueLock(async () => {
+    const retained = await jobs();
+    const revoked = retained.filter((job) => job.downloadId === downloadId);
+    if (!revoked.length) return;
+    await chrome.storage.local.set({ [JOBS_KEY]: retained.filter((job) => job.downloadId !== downloadId) });
+    await Promise.all(revoked.map((job) => chrome.notifications.clear(`vdh-upscale:${job.id}`).catch(() => {
+    })));
+    const dir = await directory();
+    const removals = await Promise.allSettled(revoked.map((job) => dir.removeEntry(job.id).catch((error) => {
+      if (!(error instanceof DOMException && error.name === "NotFoundError")) throw error;
+    })));
+    const failed = removals.find((result) => result.status === "rejected");
+    if (failed?.status === "rejected") throw failed.reason;
+  }));
+  serial = pending.catch(() => {
+  });
+  await pending;
 }
 function openTools(job) {
   const suffix = job && isJobId(job) ? `?job=${encodeURIComponent(job)}` : "";
@@ -150,5 +180,6 @@ chrome.contextMenus.onClicked.addListener((info) => {
   if (info.menuItemId === "vdh-upscale-tools") void openTools();
 });
 export {
-  offerUpscale
+  offerUpscale,
+  revokeDownloadOffers
 };

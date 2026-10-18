@@ -25,3 +25,7 @@ TypeScript를 사용해 브라우저 확장 API 호환성을 유지하고 메시
 현재 동작/제한은 `LOCAL_MODE.ko.md`, 검증은 `VALIDATION.ko.md`, 보안은 `SECURITY.ko.md`에
 기록한다. 원본 엔진과 최초 분석 자료는 Git 이력의 `806ef92`에서 확인할 수 있다.
 `original-hashes.json`은 과거 입력의 해시 기록이며 현재 앱의 라이선스/인증 데이터가 아니다.
+
+## 1.4.0 로컬 백신 연동
+
+완료 파일의 실제 경로는 Chrome downloads API에서만 가져와 별도 Python native messaging 도우미에 전달합니다. 도우미는 로컬 ClamAV 또는 기존 오프라인 정책의 Defender로 검사합니다. 감염·미검사·Chrome 경고를 완료와 분리해 저장하며, 사용자 확인 뒤에만 유지·삭제를 진행합니다. 자동 업스케일링 복사본은 검사 파일과 SHA-256·크기가 같아야 합니다. 자세한 범위는 `SECURITY_DOWNLOADS.ko.md` 참조.
