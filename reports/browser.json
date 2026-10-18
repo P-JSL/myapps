@@ -1,0 +1,62 @@
+{
+  "buildSha256": "1497ad5134ca8e63a3bdb3e62214846736d8cd7700b02f7ade03363531505417",
+  "browser": "154.0.8037.57",
+  "mode": "localhost harness: real browser/Wasm/OPFS; Chrome extension APIs mocked",
+  "extensionInstallation": {
+    "status": "blocked",
+    "reason": "Chromium administrator policy: Loading of unpacked extensions is disabled by the administrator. Verified separately; policy was not changed."
+  },
+  "outcomes": [
+    {
+      "name": "Built UI loads with CSP; actual FFmpeg Worker assets available",
+      "status": "passed"
+    },
+    {
+      "name": "Unchanged original download worker preserves every MP4 byte",
+      "status": "passed"
+    },
+    {
+      "name": "PNG 2x produces a real decodable 128x96 image",
+      "status": "passed"
+    },
+    {
+      "name": "PNG 4x produces a real decodable 256x192 image",
+      "status": "passed"
+    },
+    {
+      "name": "MP4 2x preserves duration and audio in separate H.264/AAC output",
+      "status": "passed"
+    },
+    {
+      "name": "HTML disguised as MP4 is rejected before decode",
+      "status": "passed"
+    },
+    {
+      "name": "Excessive output dimensions are rejected",
+      "status": "passed"
+    },
+    {
+      "name": "Cancel terminates actual Worker and allows a new job",
+      "status": "passed"
+    },
+    {
+      "name": "Completion hook stages successful file before original cleanup; other outcomes skipped",
+      "status": "passed"
+    },
+    {
+      "name": "Shared queue lock survives simultaneous offer and cleanup in two tabs",
+      "status": "passed"
+    },
+    {
+      "name": "Opt-out skips staging; TTL and delete clean real OPFS data",
+      "status": "passed"
+    },
+    {
+      "name": "No outbound requests or page exceptions in new processing workflow",
+      "status": "passed"
+    }
+  ],
+  "originalFixtureSha256": "a8536eaaa80e192769a341d98dc6c62e5fa489b81df82b06455feecb12fe3efe",
+  "outboundRequests": [],
+  "pageErrors": []
+}

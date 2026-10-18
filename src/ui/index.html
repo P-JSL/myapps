@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'; img-src 'self' blob:; media-src blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>업스케일링 · Video Download Helper</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <main>
+    <header><span class="eyebrow">VIDEO DOWNLOAD HELPER · LOCAL MEDIA</span><h1>다운로드 다음, 더 선명하게.</h1><p>원본은 그대로 보관하고, 선택한 파일의 확대본을 만듭니다.</p></header>
+    <section aria-labelledby="queue-title">
+      <div class="section-heading"><h2 id="queue-title">완료된 다운로드</h2><button id="refresh" class="secondary">새로고침</button></div>
+      <label class="setting"><input id="offer" type="checkbox">다운로드 완료 알림에 업스케일링 선택 표시</label>
+      <p class="hint">지원 파일만 임시 보관합니다. 파일당 256MiB, 최대 4개·총 512MiB이며 24시간이 지난 복사본은 다음 사용 시 정리합니다. 시크릿 창 파일은 보관하지 않습니다.</p>
+      <ul id="jobs" aria-label="업스케일링 대기 파일"></ul>
+      <p id="empty" class="hint">대기 중인 파일이 없습니다. 새 다운로드를 완료하거나 아래에서 파일을 선택하세요.</p>
+      <button id="clear" class="secondary">임시 복사본 모두 삭제</button>
+    </section>
+    <section aria-labelledby="convert-title">
+      <h2 id="convert-title">확대본 만들기</h2>
+      <label for="file">직접 파일 선택</label><input id="file" type="file" accept=".png,.jpg,.jpeg,.webp,.mp4,.mov,.webm,.mkv,.avi">
+      <p id="selected" class="selected">선택한 파일 없음</p>
+      <div class="controls"><label for="factor">확대 배율</label><select id="factor"><option value="2">2배</option><option value="4">4배</option></select><button id="start" disabled>확대 시작</button><button id="cancel" class="secondary" disabled>취소</button></div>
+      <p class="hint">Lanczos 보간으로 해상도를 확대합니다. AI 복원은 아닙니다. 동영상은 최대 10분, 결과는 최대 1,677만 픽셀입니다. 동영상은 MP4(H.264/AAC), 이미지는 PNG로 저장합니다. 확대 시 재인코딩으로 화질·용량·메타데이터가 달라질 수 있습니다.</p>
+      <progress id="progress" max="1" value="0" aria-label="업스케일링 진행률"></progress>
+      <p id="status" role="status" aria-live="polite">파일은 이 브라우저 안에서만 처리합니다.</p>
+      <p id="details" class="hint"></p>
+      <button id="save" hidden>확대본 저장</button>
+    </section>
+    <footer>새 처리 도구는 외부 서버로 파일을 전송하지 않습니다. 기존 다운로드 기능의 외부 통신과 이용 조건은 원본 엔진을 따릅니다.</footer>
+  </main>
+</body>
+</html>

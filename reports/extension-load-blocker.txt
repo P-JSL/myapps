@@ -1,0 +1,9 @@
+Observed browser: Chromium 154.0.8037.57 (Debian)
+Attempt: Playwright persistent test profile with --load-extension=/workspace/myapps/dist
+Observed diagnostic from Chromium:
+Extension error: Failed to load extension from: /workspace/myapps/dist. Loading of unpacked extensions is disabled by the administrator.
+
+The administrator policy was not changed or bypassed. Actual extension installation,
+service-worker lifecycle, Chrome downloads/notifications/sidePanel integration and
+live-site end-to-end compatibility remain unverified. The localhost harness tests
+real media/Worker/Wasm/OPFS behavior and explicitly mocks Chrome extension APIs.
