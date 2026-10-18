@@ -1,7 +1,7 @@
 import createFFmpegCore from '../vendor/ffmpeg/ffmpeg-core.js';
 import { record } from '../security/validation.ts';
 import { MAX_SEGMENTS, MAX_STREAM_BYTES, mediaURL } from './model.ts';
-import { fetchBytes } from './network.ts';
+import { downloadAssets } from './assets.ts';
 import type { StreamPlan } from './hls.ts';
 import { downloadOptions } from './preferences.ts';
 
@@ -23,15 +23,11 @@ scope.onmessage = async event => {
     const core = await createFFmpegCore();
     let log = '';
     core.setLogger(({ message }) => { log = message.slice(0, 300); });
-    let bytes = 0;
-    for (let index = 0; index < plan.assets.length; index++) {
-      const asset = plan.assets[index]!;
-      const data = await fetchBytes(asset.url, MAX_STREAM_BYTES - bytes, new AbortController().signal, asset.range);
-      bytes += data.length;
-      if (bytes > MAX_STREAM_BYTES) throw new Error('스트림은 총 128MiB 이하만 처리할 수 있습니다.');
-      core.FS.writeFile(asset.filename, data);
-      scope.postMessage({ type: 'progress', value: (index + 1) / plan.assets.length * 0.8 });
-    }
+    const protocols = new Set<string>();
+    await downloadAssets(plan.assets, (name, bytes) => core.FS.writeFile(name, bytes), new AbortController().signal,
+      completed => scope.postMessage({ type: 'progress', value: completed / plan.assets.length * 0.8, stage: 'fetching' }),
+      value => protocols.add(value));
+    scope.postMessage({ type: 'progress', value: 0.8, stage: 'processing' });
     const args = ['-hide_banner', '-nostdin', '-max_alloc', '67108864'];
     for (const input of plan.inputs) {
       if (!/^input-[01]\.(mp4|m3u8)$/.test(input.filename)) throw new Error('잘못된 입력 파일명입니다.');
@@ -64,6 +60,6 @@ scope.onmessage = async event => {
     const output = core.FS.readFile(outputName);
     if (!(output instanceof Uint8Array) || !output.length || output.length >= MAX_STREAM_BYTES - 1024 * 1024) throw new Error('결과가 비어 있거나 안전한 출력 용량을 초과했습니다.');
     const buffer = new Uint8Array(output).buffer;
-    scope.postMessage({ type: 'done', bytes: buffer }, [buffer]);
+    scope.postMessage({ type: 'done', bytes: buffer, protocols: [...protocols] }, [buffer]);
   } catch (error) { scope.postMessage({ type: 'error', message: error instanceof Error ? error.message : '스트림 처리 오류' }); }
 };

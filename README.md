@@ -1,15 +1,17 @@
 # My Video App · 개인용 로컬 버전
 
-My Video App 1.2.0은 **앱 계정·구독·활성화 서버가 없는 독립 TypeScript 확장**입니다.
+My Video App 1.3.0은 **앱 계정·구독·활성화 서버가 없는 독립 TypeScript 확장**입니다.
 미디어 감지, 일반 파일 다운로드, 비암호화 HLS/DASH VOD 저장, 로컬 기록과
 다운로드 후 선택적 2x/4x 업스케일링을 제공합니다. 파일과 기록은 브라우저에 저장합니다.
 1.2.0에서는 **최고화질·해상도 선택, MP3/M4A 오디오 다운로드, 영상/음성 변환,
 별도 영상·음성 병합**을 추가했습니다. 과금에 따른 사용 횟수·대기시간 제한은 없습니다.
+1.3.0은 HTTP/3 연결 관측, 다운로드 준비 대기열, 조각 병렬 전송, 일시 오류 재시도와 진행 표시를 제공합니다.
 
 - [설치용 ZIP](artifacts/my-video-app-extension.zip)
 - [전체 소스 ZIP](artifacts/my-video-app-source.zip)
 - [지원 범위와 한계](reports/LOCAL_MODE.ko.md)
 - [새 로컬 기능과 사용법](reports/FEATURES.ko.md)
+- [다운로드 개선·HTTP/3 사용 및 검증](reports/DOWNLOADS_HTTP3.ko.md)
 - [검증 결과](reports/VALIDATION.ko.md) · [보안 검토](reports/SECURITY.ko.md)
 
 ## 설치
@@ -30,6 +32,9 @@ My Video App 1.2.0은 **앱 계정·구독·활성화 서버가 없는 독립 Ty
 - **스트림 화질**에서 최고/2160/1080/720/480을, **저장 형식**에서 영상·음성 또는
   MP3/M4A 오디오만 저장을 선택합니다. 화질은 목록에 제공된 실제 트랙을 선택합니다.
 - **기록**에서 진행 상태·취소·저장 폴더를 확인합니다. 기록 삭제는 저장 파일을 삭제하지 않습니다.
+  실패/취소 항목의 **다시 시도**로 같은 주소·옵션을 다시 요청할 수 있습니다.
+- HTTPS는 Chrome이 HTTP/3·HTTP/2 등을 자동 협상합니다. 실제 관측값이 있으면
+  **페이지 연결/준비 연결**에 표시합니다. 서버·UDP·프록시·브라우저 설정이 HTTP/3를 허용해야 합니다.
 - 완료 알림의 **업스케일링 선택** 또는 상단 **미디어 도구**에서 별도의 확대본을 만듭니다.
 - **미디어 도구 → 작업 선택**에서 MP4/WebM/MKV 영상 변환, MP3/M4A/WAV 오디오
   추출·변환, MP4/MKV 영상·음성 병합을 실행합니다. 병합은 별도 음성 파일도 선택합니다.
@@ -75,10 +80,15 @@ Node.js 24 이상, npm, 브라우저 검증용 Chromium·FFmpeg/ffprobe가 필�
 ```sh
 npm ci --ignore-scripts --cache /tmp/my-video-app-npm-cache
 npm run verify
+python3 -m venv /workspace/.cache/my-video-app-http3
+/workspace/.cache/my-video-app-http3/bin/python -m pip install -r tests/requirements-http3.txt
+HTTP3_PYTHON=/workspace/.cache/my-video-app-http3/bin/python npm run test:http3
 npm run package
 ```
 
 `CHROMIUM_PATH`로 Chromium 경로를 지정할 수 있습니다.
+HTTP/3 검사는 Linux Chromium 154·OpenSSL·Python venv/aioquic를 사용하며 별도 임시
+프로필과 로컬 서버를 만들고 정리합니다. 제품의 자동 협상과 구분되는 시험 조건은 위 문서를 참고하세요.
 `src/local`은 감지·다운로드·기록·목록 파서, `src/upscale`은 확대와 큐,
 `src/security`는 공통 입력 검증입니다. `src/ui`는 업스케일링 화면입니다.
 원본의 계정/구독 엔진과 불필요한 사이트 전용 코드는 현재 프로젝트에서 제거했습니다.

@@ -23,6 +23,18 @@ function downloadOptions(value) {
   return { quality: value.quality, output: value.output };
 }
 
+// src/local/transport.ts
+function transport(value) {
+  if (typeof value !== "string") return void 0;
+  if (/^h3(?:-\d+)?$/.test(value)) return "h3";
+  if (value === "h2") return "h2";
+  if (value === "http/1.1") return "http/1.1";
+  return void 0;
+}
+function transportLabel(value) {
+  return value === "h3" ? "HTTP/3" : value === "h2" ? "HTTP/2" : "HTTP/1.1";
+}
+
 // src/local/ui.ts
 function node(id) {
   const element = document.getElementById(id);
@@ -66,6 +78,8 @@ function mediaRow(item) {
   title.textContent = item.title || new URL(item.url).pathname.split("/").at(-1) || "\uBBF8\uB514\uC5B4";
   const source = document.createElement("p");
   source.textContent = new URL(item.url).hostname + (item.size ? ` \xB7 ${(item.size / 1024 / 1024).toFixed(1)} MiB` : "");
+  const observed = transport(item.observedTransport);
+  if (observed) source.textContent += ` \xB7 \uD398\uC774\uC9C0 \uC5F0\uACB0 ${transportLabel(observed)}`;
   const controls = document.createElement("div");
   controls.className = "actions";
   controls.append(button("\uB2E4\uC6B4\uB85C\uB4DC", async () => {
@@ -82,7 +96,22 @@ function historyRow(item) {
   title.textContent = item.filename;
   const info = document.createElement("p");
   info.textContent = `${stateLabels[item.state]} \xB7 ${new Date(item.createdAt).toLocaleString("ko-KR")}`;
+  if (item.state === "preparing" && item.preparation) {
+    const label = { queued: "\uC900\uBE44 \uB300\uAE30 \uC911", fetching: "\uD30C\uC77C \uBC1B\uB294 \uC911", processing: "\uBBF8\uB514\uC5B4 \uD569\uCE58\uB294 \uC911", saving: "\uC800\uC7A5 \uC900\uBE44 \uC911" }[item.preparation.stage];
+    if (label) info.textContent += ` \xB7 ${label}`;
+    if (typeof item.preparation.progress === "number" && Number.isFinite(item.preparation.progress)) info.textContent += ` ${Math.round(Math.max(0, Math.min(1, item.preparation.progress)) * 100)}%`;
+  }
+  if (item.state === "downloading" && typeof item.receivedBytes === "number" && item.receivedBytes >= 0) {
+    info.textContent += ` \xB7 ${(item.receivedBytes / 1024 / 1024).toFixed(1)} MiB`;
+    if (typeof item.totalBytes === "number" && item.totalBytes > 0) info.textContent += ` / ${(item.totalBytes / 1024 / 1024).toFixed(1)} MiB`;
+  }
   row.append(title, info);
+  const protocols = (Array.isArray(item.transferProtocols) ? item.transferProtocols : []).map(transport).filter((value) => value !== void 0);
+  if (protocols.length) {
+    const connection = document.createElement("p");
+    connection.textContent = `\uC900\uBE44 \uC5F0\uACB0 ${protocols.map(transportLabel).join(", ")}`;
+    row.append(connection);
+  }
   if (item.error) {
     const message = document.createElement("p");
     message.textContent = item.error;
@@ -91,6 +120,7 @@ function historyRow(item) {
   const controls = document.createElement("div");
   controls.className = "actions";
   if (item.state === "complete") controls.append(button("\uC800\uC7A5 \uD3F4\uB354", () => request("show-file", { id: item.id }), true));
+  if (item.state === "error" || item.state === "cancelled") controls.append(button("\uB2E4\uC2DC \uC2DC\uB3C4", () => request("retry", { id: item.id }), true));
   if (item.state === "downloading" || item.state === "preparing") controls.append(button("\uCDE8\uC18C", () => request("cancel", { id: item.id }), true));
   row.append(controls);
   return row;

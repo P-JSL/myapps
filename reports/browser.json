@@ -1,5 +1,5 @@
 {
-  "buildSha256": "030ccc359fefda8f71e5cf2310946c5b3fc1c257e3fe9fe2e432ec3923ffe278",
+  "buildSha256": "1f0f3628500c401327e7b4aa4ea5a3752a315f1b40ea0829202a7f163f6a9ca7",
   "browser": "154.0.8037.57",
   "engine": "independent-local",
   "mode": "localhost harness: real browser/Wasm/OPFS; Chrome extension APIs mocked",
@@ -97,6 +97,22 @@
       "status": "passed"
     },
     {
+      "name": "Parallel segment downloads multiplex up to three requests and preserve the complete decoded video",
+      "status": "passed"
+    },
+    {
+      "name": "Transient segment failure is retried without a duplicate or missing media segment",
+      "status": "passed"
+    },
+    {
+      "name": "Concurrent preparations queue successfully and cancelling a waiting job makes no file request",
+      "status": "passed"
+    },
+    {
+      "name": "Browser-reported HTTP/1.1 is observed on a real fetch without forcing a transport",
+      "status": "passed"
+    },
+    {
       "name": "HLS master handles its separate default audio track",
       "status": "passed"
     },
@@ -157,6 +173,10 @@
       "status": "passed"
     },
     {
+      "name": "HTTP/3 observation metadata and partial-response totals preserve existing stream classification using API doubles",
+      "status": "passed"
+    },
+    {
       "name": "Local app downloads detected MP4 byte-for-byte and records completion using API doubles",
       "status": "passed"
     },
@@ -166,6 +186,14 @@
     },
     {
       "name": "Concurrent duplicate requests are coalesced and native cancellation updates history using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "History retry creates a new intact download and keeps the cancelled record using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "Cancellation while the offscreen document starts prevents the later media request using API doubles",
       "status": "passed"
     },
     {

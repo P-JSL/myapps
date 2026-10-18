@@ -22,3 +22,7 @@ exact binaries when redistributing them.
 Build/test dependencies: TypeScript (Apache-2.0), esbuild (MIT), Playwright
 (Apache-2.0), DefinitelyTyped declarations (MIT). Pinned versions and npm integrity
 hashes are in `package-lock.json`. These build tools are not extension runtime code.
+
+## HTTP/3 test tooling
+
+The optional local HTTP/3 test server uses aioquic 1.3.0 (BSD-3-Clause), installed separately in a development Python environment. It and its Python dependencies are not bundled in the extension ZIP. OpenSSL and Chromium are system test tools. Generated test certificates and private keys are temporary and are not shipped.

@@ -1,6 +1,7 @@
 import { record } from '../security/validation.ts';
 import { safeBasename } from '../upscale/policy.ts';
 import type { DownloadOptions } from './preferences.ts';
+import type { Transport } from './transport.ts';
 
 export const SCOPE = 'my-video-app/local';
 export const OFFSCREEN_SCOPE = 'my-video-app/offscreen';
@@ -13,12 +14,14 @@ export const PREPARE_TIMEOUT_MS = 300_000;
 export type MediaKind = 'file' | 'hls' | 'dash';
 export interface MediaItem {
   id: string; tabId: number; url: string; title: string; mime: string;
-  kind: MediaKind; createdAt: number; size?: number;
+  kind: MediaKind; createdAt: number; size?: number; observedTransport?: Transport;
 }
 export type DownloadState = 'preparing' | 'downloading' | 'complete' | 'cancelled' | 'error';
 export interface HistoryItem {
   id: string; url: string; filename: string; kind: MediaKind; state: DownloadState;
   createdAt: number; incognito: boolean; downloadId?: number; error?: string; options?: DownloadOptions;
+  preparation?: { stage: 'queued' | 'fetching' | 'processing' | 'saving'; progress?: number; loaded?: number; total?: number };
+  transferProtocols?: Transport[]; receivedBytes?: number; totalBytes?: number;
 }
 export function mediaURL(value: unknown, base?: string): URL {
   if (typeof value !== 'string' || !value || value.length > 8192) throw new Error('미디어 주소가 올바르지 않습니다.');

@@ -247,6 +247,15 @@ function downloadOptions(value) {
   return { quality: value.quality, output: value.output };
 }
 
+// src/local/transport.ts
+function transport(value) {
+  if (typeof value !== "string") return void 0;
+  if (/^h3(?:-\d+)?$/.test(value)) return "h3";
+  if (value === "h2") return "h2";
+  if (value === "http/1.1") return "http/1.1";
+  return void 0;
+}
+
 // src/local/background.ts
 var media = /* @__PURE__ */ new Map();
 var privateHistory = /* @__PURE__ */ new Map();
@@ -258,28 +267,33 @@ async function history() {
   const raw = (await chrome.storage.local.get(HISTORY_KEY))[HISTORY_KEY];
   return [...Array.isArray(raw) ? raw.filter(isHistory) : [], ...privateHistory.values()].sort((a, b) => b.createdAt - a.createdAt).slice(0, MAX_HISTORY);
 }
-async function update(item) {
+async function update(item, onlyIfPreparing = false) {
   if (item.incognito) {
-    privateHistory.set(item.id, item);
+    if (!onlyIfPreparing || privateHistory.get(item.id)?.state === "preparing") privateHistory.set(item.id, item);
     return;
   }
   await navigator.locks.request("my-video-app-history", async () => {
-    const existing = (await history()).filter((row) => !row.incognito && row.id !== item.id);
+    const current = await history();
+    if (onlyIfPreparing && current.find((row) => row.id === item.id)?.state !== "preparing") return;
+    const existing = current.filter((row) => !row.incognito && row.id !== item.id);
     const rows = [item, ...existing];
     const active = rows.filter((row) => row.state === "preparing" || row.state === "downloading");
     const completed = rows.filter((row) => row.state !== "preparing" && row.state !== "downloading");
     await chrome.storage.local.set({ [HISTORY_KEY]: [...active, ...completed.slice(0, Math.max(0, MAX_HISTORY - active.length))] });
   });
 }
-function add(tabId, address, mime, title, fromElement, size) {
+function add(tabId, address, mime, title, fromElement, size, observed) {
   try {
     const url = mediaURL(address).href;
-    const kind = mediaKind(url, mime, fromElement);
-    if (!kind) return;
     const items = media.get(tabId) ?? /* @__PURE__ */ new Map();
     const existing = items.get(url);
-    const item = { id: existing?.id ?? crypto.randomUUID(), tabId, url, title: title.slice(0, 200), mime: mime.slice(0, 100), kind, createdAt: Date.now() };
+    const mergedMime = mime || existing?.mime || "";
+    const kind = existing && existing.kind !== "file" ? existing.kind : mediaKind(url, mergedMime, fromElement);
+    if (!kind) return;
+    const item = { ...existing, id: existing?.id ?? crypto.randomUUID(), tabId, url, title: (title || existing?.title || "").slice(0, 200), mime: mergedMime.slice(0, 100), kind, createdAt: Date.now() };
     if (Number.isSafeInteger(size) && size > 0) item.size = size;
+    const protocol = transport(observed);
+    if (protocol) item.observedTransport = protocol;
     items.set(url, item);
     while (items.size > MAX_MEDIA_PER_TAB) items.delete(Array.from(items).find(([, entry]) => entry.kind === "file")?.[0] ?? items.keys().next().value);
     media.set(tabId, items);
@@ -338,13 +352,16 @@ async function download(item, options = downloadOptions()) {
   void (async () => {
     try {
       let address = item.url;
+      let transferProtocols = [];
       const offers = (await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] !== false;
       if (options.output !== "original" || item.kind !== "file" || offers && !entry.incognito && (!item.size || item.size <= MAX_INPUT_BYTES)) {
         try {
           await ensureOffscreen();
+          if (cancelled.has(entry.id)) throw new DOMException("\uC791\uC5C5\uC744 \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.", "AbortError");
           const result = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: "prepare", id: entry.id, url: item.url, kind: item.kind, options });
           if (!record(result) || result.ok !== true || typeof result.url !== "string" || !result.url.startsWith(`blob:${chrome.runtime.getURL("")}`)) throw new Error(record(result) && typeof result.error === "string" ? result.error : "\uD30C\uC77C\uC744 \uC900\uBE44\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
           address = result.url;
+          if (Array.isArray(result.protocols)) transferProtocols = result.protocols.map(transport).filter((value) => value !== void 0);
         } catch (error) {
           if (options.output !== "original" || item.kind !== "file" || cancelled.has(entry.id)) throw error;
           address = item.url;
@@ -352,7 +369,7 @@ async function download(item, options = downloadOptions()) {
       }
       if (cancelled.has(entry.id)) throw new Error("\uC791\uC5C5\uC744 \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.");
       const id = await chrome.downloads.download({ url: address, filename: entry.filename, saveAs: true, conflictAction: "uniquify" });
-      const downloading = { ...entry, state: "downloading", downloadId: id };
+      const downloading = { ...entry, state: "downloading", downloadId: id, transferProtocols };
       await update(downloading);
       if (cancelled.has(entry.id)) await chrome.downloads.cancel(id).catch(() => {
       });
@@ -379,18 +396,33 @@ async function handleLocalMessage(value, sender) {
   if (!record(value) || value.scope !== SCOPE || typeof value.type !== "string" || !boundedData(value, 128 * 1024)) throw new Error("\uC798\uBABB\uB41C \uC694\uCCAD\uC785\uB2C8\uB2E4.");
   if (value.type === "preparing-progress") {
     if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL("local/offscreen.html")) throw new Error("\uD5C8\uC6A9\uB418\uC9C0 \uC54A\uC740 \uBC1C\uC2E0\uC790\uC785\uB2C8\uB2E4.");
+    if (typeof value.id === "string" && ["queued", "fetching", "processing", "saving"].includes(String(value.stage))) {
+      const item = (await history()).find((row) => row.id === value.id && row.state === "preparing");
+      if (item) {
+        const preparation = { stage: value.stage };
+        if (typeof value.progress === "number" && Number.isFinite(value.progress)) preparation.progress = Math.max(0, Math.min(1, value.progress));
+        for (const key of ["loaded", "total"]) if (typeof value[key] === "number" && Number.isSafeInteger(value[key]) && value[key] >= 0 && value[key] <= MAX_INPUT_BYTES) preparation[key] = value[key];
+        await update({ ...item, preparation }, true);
+      }
+    }
     return { ok: true };
   }
   if (value.type === "capture") {
     if (!trustedCapture(sender, chrome.runtime.id) || !Array.isArray(value.items) || value.items.length > 100) throw new Error("\uD5C8\uC6A9\uB418\uC9C0 \uC54A\uC740 \uC218\uC9D1 \uC694\uCCAD\uC785\uB2C8\uB2E4.");
-    for (const item of value.items) if (record(item) && typeof item.url === "string") add(sender.tab.id, item.url, typeof item.mime === "string" ? item.mime : "", typeof item.title === "string" ? item.title : "", item.fromElement === true);
+    for (const item of value.items) if (record(item) && typeof item.url === "string") add(sender.tab.id, item.url, typeof item.mime === "string" ? item.mime : "", typeof item.title === "string" ? item.title : "", item.fromElement === true, void 0, item.observedTransport);
     return { ok: true };
   }
   if (!trustedUI(sender, chrome.runtime.id, chrome.runtime.getURL(""))) throw new Error("\uD655\uC7A5 \uD654\uBA74\uC5D0\uC11C\uB9CC \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.");
   if (value.type === "list") {
     const tabId = await currentTab();
     const items = tabId === void 0 ? [] : Array.from(media.get(tabId)?.values() ?? []).sort((a, b) => b.createdAt - a.createdAt);
-    return { ok: true, items, history: await history(), tabId };
+    const rows = await history();
+    const progress = await Promise.all(rows.map(async (row) => {
+      if (row.state !== "downloading" || row.downloadId === void 0) return row;
+      const download2 = (await chrome.downloads.search({ id: row.downloadId }).catch(() => []))[0];
+      return download2 ? { ...row, receivedBytes: download2.bytesReceived, totalBytes: download2.totalBytes } : row;
+    }));
+    return { ok: true, items, history: progress, tabId };
   }
   if (value.type === "download" && typeof value.id === "string") {
     const item = Array.from(media.values()).flatMap((map) => Array.from(map.values())).find((row) => row.id === value.id);
@@ -400,6 +432,11 @@ async function handleLocalMessage(value, sender) {
   if (value.type === "download-url" && typeof value.url === "string") {
     const url = mediaURL(value.url).href;
     return { ok: true, item: await download({ id: crypto.randomUUID(), tabId: -1, url, title: "", mime: "", kind: mediaKind(url) ?? "file", createdAt: Date.now() }, downloadOptions(value.options)) };
+  }
+  if (value.type === "retry" && typeof value.id === "string") {
+    const item = (await history()).find((row) => row.id === value.id && ["error", "cancelled"].includes(row.state));
+    if (!item) throw new Error("\uB2E4\uC2DC \uC2DC\uB3C4\uD560 \uB2E4\uC6B4\uB85C\uB4DC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
+    return { ok: true, item: await download({ id: crypto.randomUUID(), tabId: -1, url: mediaURL(item.url).href, title: item.filename, mime: "", kind: item.kind, createdAt: Date.now() }, downloadOptions(item.options)) };
   }
   if (value.type === "cancel" && typeof value.id === "string") {
     const item = (await history()).find((row) => row.id === value.id);
@@ -435,7 +472,8 @@ chrome.runtime.onMessage.addListener((value, sender, reply) => {
 chrome.webRequest.onHeadersReceived.addListener((details) => {
   if (details.tabId < 0 || details.statusCode < 200 || details.statusCode >= 300) return void 0;
   const type = details.responseHeaders?.find((h) => h.name.toLowerCase() === "content-type")?.value ?? "";
-  const size = Number(details.responseHeaders?.find((h) => h.name.toLowerCase() === "content-length")?.value);
+  const header = (name) => details.responseHeaders?.find((h) => h.name.toLowerCase() === name)?.value;
+  const size = Number(details.statusCode === 206 ? header("content-range")?.match(/^bytes \d+-\d+\/(\d+)$/i)?.[1] : header("content-length"));
   add(details.tabId, details.url, type, "", false, size);
   return void 0;
 }, { urls: ["http://*/*", "https://*/*"] }, ["responseHeaders"]);

@@ -6,7 +6,9 @@ import assert from 'node:assert/strict';
 process.chdir(fileURLToPath(new URL('../', import.meta.url)));
 await access('dist/manifest.json');
 const report = JSON.parse(await readFile('reports/browser.json', 'utf8'));
-assert(report.outcomes.length >= 43 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
+assert(report.outcomes.length >= 50 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
+const http3 = JSON.parse(await readFile('reports/http3.json', 'utf8'));
+assert(http3.transport === 'h3' && http3.outcomes.length >= 4 && http3.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real HTTP/3 results required');
 assert.equal(JSON.parse(await readFile('reports/build.json', 'utf8')).engine, 'independent-local');
 async function files(dir, prefix = '') {
   const names = [];
@@ -21,6 +23,7 @@ async function files(dir, prefix = '') {
 const hash = value => createHash('sha256').update(value).digest('hex');
 const identity = hash((await Promise.all((await files('dist')).map(async name => `${name}\0${hash(await readFile(`dist/${name}`))}`))).join('\n'));
 assert.equal(identity, report.buildSha256, 'dist changed since successful browser validation; rebuild and revalidate');
+assert.equal(identity, http3.buildSha256, 'dist changed since real HTTP/3 validation; run npm run test:http3');
 const script = String.raw`
 from pathlib import Path
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED

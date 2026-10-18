@@ -3,6 +3,7 @@ import { offerUpscale } from '../upscale/completion.ts';
 import { OFFER_KEY, MAX_INPUT_BYTES } from '../upscale/policy.ts';
 import { SCOPE, OFFSCREEN_SCOPE, HISTORY_KEY, MAX_HISTORY, MAX_MEDIA_PER_TAB, filenameFor, isHistory, mediaKind, mediaURL, trustedCapture, trustedUI, type MediaItem, type HistoryItem } from './model.ts';
 import { downloadOptions, type DownloadOptions } from './preferences.ts';
+import { transport, type Transport } from './transport.ts';
 
 const media = new Map<number, Map<string, MediaItem>>();
 const privateHistory = new Map<string, HistoryItem>();
@@ -15,25 +16,29 @@ async function history(): Promise<HistoryItem[]> {
   const raw: unknown = (await chrome.storage.local.get(HISTORY_KEY))[HISTORY_KEY];
   return [...(Array.isArray(raw) ? raw.filter(isHistory) : []), ...privateHistory.values()].sort((a, b) => b.createdAt - a.createdAt).slice(0, MAX_HISTORY);
 }
-async function update(item: HistoryItem): Promise<void> {
-  if (item.incognito) { privateHistory.set(item.id, item); return; }
+async function update(item: HistoryItem, onlyIfPreparing = false): Promise<void> {
+  if (item.incognito) { if (!onlyIfPreparing || privateHistory.get(item.id)?.state === 'preparing') privateHistory.set(item.id, item); return; }
   await navigator.locks.request('my-video-app-history', async () => {
-    const existing = (await history()).filter(row => !row.incognito && row.id !== item.id);
+    const current = await history();
+    if (onlyIfPreparing && current.find(row => row.id === item.id)?.state !== 'preparing') return;
+    const existing = current.filter(row => !row.incognito && row.id !== item.id);
     const rows = [item, ...existing];
     const active = rows.filter(row => row.state === 'preparing' || row.state === 'downloading');
     const completed = rows.filter(row => row.state !== 'preparing' && row.state !== 'downloading');
     await chrome.storage.local.set({ [HISTORY_KEY]: [...active, ...completed.slice(0, Math.max(0, MAX_HISTORY - active.length))] });
   });
 }
-function add(tabId: number, address: unknown, mime: string, title: string, fromElement: boolean, size?: number) {
+function add(tabId: number, address: unknown, mime: string, title: string, fromElement: boolean, size?: number, observed?: unknown) {
   try {
     const url = mediaURL(address).href;
-    const kind = mediaKind(url, mime, fromElement);
-    if (!kind) return;
     const items = media.get(tabId) ?? new Map<string, MediaItem>();
     const existing = items.get(url);
-    const item: MediaItem = { id: existing?.id ?? crypto.randomUUID(), tabId, url, title: title.slice(0, 200), mime: mime.slice(0, 100), kind, createdAt: Date.now() };
+    const mergedMime = mime || existing?.mime || '';
+    const kind = existing && existing.kind !== 'file' ? existing.kind : mediaKind(url, mergedMime, fromElement);
+    if (!kind) return;
+    const item: MediaItem = { ...existing, id: existing?.id ?? crypto.randomUUID(), tabId, url, title: (title || existing?.title || '').slice(0, 200), mime: mergedMime.slice(0, 100), kind, createdAt: Date.now() };
     if (Number.isSafeInteger(size) && size! > 0) item.size = size!;
+    const protocol = transport(observed); if (protocol) item.observedTransport = protocol;
     items.set(url, item);
     while (items.size > MAX_MEDIA_PER_TAB) items.delete(Array.from(items).find(([, entry]) => entry.kind === 'file')?.[0] ?? items.keys().next().value!);
     media.set(tabId, items);
@@ -82,13 +87,16 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
   void (async () => {
     try {
       let address = item.url;
+      let transferProtocols: Transport[] = [];
       const offers = (await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] !== false;
       if (options.output !== 'original' || item.kind !== 'file' || (offers && !entry.incognito && (!item.size || item.size <= MAX_INPUT_BYTES))) {
         try {
           await ensureOffscreen();
+          if (cancelled.has(entry.id)) throw new DOMException('작업을 취소했습니다.', 'AbortError');
           const result: unknown = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: 'prepare', id: entry.id, url: item.url, kind: item.kind, options });
           if (!record(result) || result.ok !== true || typeof result.url !== 'string' || !result.url.startsWith(`blob:${chrome.runtime.getURL('')}`)) throw new Error(record(result) && typeof result.error === 'string' ? result.error : '파일을 준비할 수 없습니다.');
           address = result.url;
+          if (Array.isArray(result.protocols)) transferProtocols = result.protocols.map(transport).filter((value): value is Transport => value !== undefined);
         } catch (error) {
           if (options.output !== 'original' || item.kind !== 'file' || cancelled.has(entry.id)) throw error;
           // A native direct download still works when optional local prefetch fails.
@@ -97,7 +105,7 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
       }
       if (cancelled.has(entry.id)) throw new Error('작업을 취소했습니다.');
       const id = await chrome.downloads.download({ url: address, filename: entry.filename, saveAs: true, conflictAction: 'uniquify' });
-      const downloading: HistoryItem = { ...entry, state: 'downloading', downloadId: id };
+      const downloading: HistoryItem = { ...entry, state: 'downloading', downloadId: id, transferProtocols };
       await update(downloading);
       if (cancelled.has(entry.id)) await chrome.downloads.cancel(id).catch(() => {});
       const current = (await chrome.downloads.search({ id }))[0]; if (current) await finish(current);
@@ -120,18 +128,33 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
   if (!record(value) || value.scope !== SCOPE || typeof value.type !== 'string' || !boundedData(value, 128 * 1024)) throw new Error('잘못된 요청입니다.');
   if (value.type === 'preparing-progress') {
     if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('local/offscreen.html')) throw new Error('허용되지 않은 발신자입니다.');
+    if (typeof value.id === 'string' && ['queued', 'fetching', 'processing', 'saving'].includes(String(value.stage))) {
+      const item = (await history()).find(row => row.id === value.id && row.state === 'preparing');
+      if (item) {
+        const preparation: NonNullable<HistoryItem['preparation']> = { stage: value.stage as NonNullable<HistoryItem['preparation']>['stage'] };
+        if (typeof value.progress === 'number' && Number.isFinite(value.progress)) preparation.progress = Math.max(0, Math.min(1, value.progress));
+        for (const key of ['loaded', 'total'] as const) if (typeof value[key] === 'number' && Number.isSafeInteger(value[key]) && value[key] >= 0 && value[key] <= MAX_INPUT_BYTES) preparation[key] = value[key];
+        await update({ ...item, preparation }, true);
+      }
+    }
     return { ok: true };
   }
   if (value.type === 'capture') {
     if (!trustedCapture(sender, chrome.runtime.id) || !Array.isArray(value.items) || value.items.length > 100) throw new Error('허용되지 않은 수집 요청입니다.');
-    for (const item of value.items) if (record(item) && typeof item.url === 'string') add(sender.tab!.id!, item.url, typeof item.mime === 'string' ? item.mime : '', typeof item.title === 'string' ? item.title : '', item.fromElement === true);
+    for (const item of value.items) if (record(item) && typeof item.url === 'string') add(sender.tab!.id!, item.url, typeof item.mime === 'string' ? item.mime : '', typeof item.title === 'string' ? item.title : '', item.fromElement === true, undefined, item.observedTransport);
     return { ok: true };
   }
   if (!trustedUI(sender, chrome.runtime.id, chrome.runtime.getURL(''))) throw new Error('확장 화면에서만 사용할 수 있습니다.');
   if (value.type === 'list') {
     const tabId = await currentTab();
     const items = tabId === undefined ? [] : Array.from(media.get(tabId)?.values() ?? []).sort((a, b) => b.createdAt - a.createdAt);
-    return { ok: true, items, history: await history(), tabId };
+    const rows = await history();
+    const progress = await Promise.all(rows.map(async row => {
+      if (row.state !== 'downloading' || row.downloadId === undefined) return row;
+      const download = (await chrome.downloads.search({ id: row.downloadId }).catch(() => []))[0];
+      return download ? { ...row, receivedBytes: download.bytesReceived, totalBytes: download.totalBytes } : row;
+    }));
+    return { ok: true, items, history: progress, tabId };
   }
   if (value.type === 'download' && typeof value.id === 'string') {
     const item = Array.from(media.values()).flatMap(map => Array.from(map.values())).find(row => row.id === value.id);
@@ -141,6 +164,11 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
   if (value.type === 'download-url' && typeof value.url === 'string') {
     const url = mediaURL(value.url).href;
     return { ok: true, item: await download({ id: crypto.randomUUID(), tabId: -1, url, title: '', mime: '', kind: mediaKind(url) ?? 'file', createdAt: Date.now() }, downloadOptions(value.options)) };
+  }
+  if (value.type === 'retry' && typeof value.id === 'string') {
+    const item = (await history()).find(row => row.id === value.id && ['error', 'cancelled'].includes(row.state));
+    if (!item) throw new Error('다시 시도할 다운로드가 없습니다.');
+    return { ok: true, item: await download({ id: crypto.randomUUID(), tabId: -1, url: mediaURL(item.url).href, title: item.filename, mime: '', kind: item.kind, createdAt: Date.now() }, downloadOptions(item.options)) };
   }
   if (value.type === 'cancel' && typeof value.id === 'string') {
     const item = (await history()).find(row => row.id === value.id);
@@ -172,7 +200,8 @@ chrome.runtime.onMessage.addListener((value: unknown, sender, reply) => {
 chrome.webRequest.onHeadersReceived.addListener((details): undefined => {
   if (details.tabId < 0 || details.statusCode < 200 || details.statusCode >= 300) return undefined;
   const type = details.responseHeaders?.find(h => h.name.toLowerCase() === 'content-type')?.value ?? '';
-  const size = Number(details.responseHeaders?.find(h => h.name.toLowerCase() === 'content-length')?.value);
+  const header = (name: string) => details.responseHeaders?.find(h => h.name.toLowerCase() === name)?.value;
+  const size = Number(details.statusCode === 206 ? header('content-range')?.match(/^bytes \d+-\d+\/(\d+)$/i)?.[1] : header('content-length'));
   add(details.tabId, details.url, type, '', false, size);
   return undefined;
 }, { urls: ['http://*/*', 'https://*/*'] }, ['responseHeaders']);

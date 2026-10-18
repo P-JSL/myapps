@@ -1,6 +1,7 @@
 import { record } from '../security/validation.ts';
 import { SCOPE, isHistory, type MediaItem, type HistoryItem } from './model.ts';
 import { downloadOptions } from './preferences.ts';
+import { transport, transportLabel } from './transport.ts';
 
 function node<T extends HTMLElement>(id: string): T { const element = document.getElementById(id); if (!element) throw new Error(`Missing ${id}`); return element as T; }
 const status = node('status');
@@ -23,6 +24,7 @@ function mediaRow(item: MediaItem) {
   const kind = document.createElement('span'); kind.className = 'kind'; kind.textContent = item.kind === 'file' ? 'MEDIA FILE' : `${item.kind.toUpperCase()} · VOD`;
   const title = document.createElement('h3'); title.textContent = item.title || new URL(item.url).pathname.split('/').at(-1) || '미디어';
   const source = document.createElement('p'); source.textContent = new URL(item.url).hostname + (item.size ? ` · ${(item.size / 1024 / 1024).toFixed(1)} MiB` : '');
+  const observed = transport(item.observedTransport); if (observed) source.textContent += ` · 페이지 연결 ${transportLabel(observed)}`;
   const controls = document.createElement('div'); controls.className = 'actions';
   controls.append(button('다운로드', async () => { await request('download', { id: item.id, options: options() }); status.textContent = '파일을 준비하고 있습니다. 기록 탭에서 진행 상태를 확인하세요.'; }));
   row.append(kind, title, source, controls); return row;
@@ -31,10 +33,22 @@ const stateLabels = { preparing: '파일 준비 중', downloading: '다운로드
 function historyRow(item: HistoryItem) {
   const row = document.createElement('li'); const title = document.createElement('h3'); title.textContent = item.filename;
   const info = document.createElement('p'); info.textContent = `${stateLabels[item.state]} · ${new Date(item.createdAt).toLocaleString('ko-KR')}`;
+  if (item.state === 'preparing' && item.preparation) {
+    const label = { queued: '준비 대기 중', fetching: '파일 받는 중', processing: '미디어 합치는 중', saving: '저장 준비 중' }[item.preparation.stage];
+    if (label) info.textContent += ` · ${label}`;
+    if (typeof item.preparation.progress === 'number' && Number.isFinite(item.preparation.progress)) info.textContent += ` ${Math.round(Math.max(0, Math.min(1, item.preparation.progress)) * 100)}%`;
+  }
+  if (item.state === 'downloading' && typeof item.receivedBytes === 'number' && item.receivedBytes >= 0) {
+    info.textContent += ` · ${(item.receivedBytes / 1024 / 1024).toFixed(1)} MiB`;
+    if (typeof item.totalBytes === 'number' && item.totalBytes > 0) info.textContent += ` / ${(item.totalBytes / 1024 / 1024).toFixed(1)} MiB`;
+  }
   row.append(title, info);
+  const protocols = (Array.isArray(item.transferProtocols) ? item.transferProtocols : []).map(transport).filter(value => value !== undefined);
+  if (protocols.length) { const connection = document.createElement('p'); connection.textContent = `준비 연결 ${protocols.map(transportLabel).join(', ')}`; row.append(connection); }
   if (item.error) { const message = document.createElement('p'); message.textContent = item.error; row.append(message); }
   const controls = document.createElement('div'); controls.className = 'actions';
   if (item.state === 'complete') controls.append(button('저장 폴더', () => request('show-file', { id: item.id }), true));
+  if (item.state === 'error' || item.state === 'cancelled') controls.append(button('다시 시도', () => request('retry', { id: item.id }), true));
   if (item.state === 'downloading' || item.state === 'preparing') controls.append(button('취소', () => request('cancel', { id: item.id }), true));
   row.append(controls); return row;
 }

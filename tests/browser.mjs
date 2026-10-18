@@ -22,7 +22,7 @@ function command(binary, args) {
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=160x90:rate=12:duration=1', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100:duration=1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', '-y', `${fixtures}/clip.mp4`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=64x48', '-frames:v', '1', '-threads', '1', '-y', `${fixtures}/image.png`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=size=8192x2', '-frames:v', '1', '-threads', '1', '-y', `${fixtures}/wide.png`]);
-for (const directory of ['hls', 'dash', 'range', 'video', 'audio', 'low', 'high', 'quality-dash']) await mkdir(`${fixtures}/${directory}`, { recursive: true });
+for (const directory of ['hls', 'dash', 'range', 'video', 'audio', 'low', 'high', 'quality-dash', 'parallel', 'retry']) await mkdir(`${fixtures}/${directory}`, { recursive: true });
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-c:v', 'libx264', '-g', '6', '-keyint_min', '6', '-c:a', 'aac', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-hls_segment_filename', `${fixtures}/hls/seg-%03d.ts`, '-y', `${fixtures}/hls/list.m3u8`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-map', '0', '-c', 'copy', '-seg_duration', '0.5', '-use_template', '1', '-use_timeline', '1', '-f', 'dash', '-y', `${fixtures}/dash/list.mpd`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-c', 'copy', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-hls_flags', 'single_file', '-y', `${fixtures}/range/list.m3u8`]);
@@ -34,16 +34,23 @@ command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 's
 for (const [name, size] of [['low', '640:360'], ['high', '960:540']]) command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-vf', `scale=${size}`, '-c:v', 'libx264', '-c:a', 'copy', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-y', `${fixtures}/${name}/list.m3u8`]);
 await writeFile(`${fixtures}/quality.m3u8`, '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=900000,RESOLUTION=640x360\nlow/list.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=960x540\nhigh/list.m3u8\n');
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-map', '0:v:0', '-map', '0:v:0', '-map', '0:a:0', '-filter:v:0', 'scale=640:360', '-filter:v:1', 'scale=960:540', '-c:v', 'libx264', '-c:a', 'copy', '-f', 'dash', '-y', `${fixtures}/quality-dash/list.mpd`]);
+for (const name of ['parallel', 'retry']) command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-c:v', 'libx264', '-g', '4', '-keyint_min', '4', '-c:a', 'aac', '-hls_time', '0.333333', '-hls_playlist_type', 'vod', '-hls_segment_filename', `${fixtures}/${name}/seg-%03d.ts`, '-y', `${fixtures}/${name}/list.m3u8`]);
 await writeFile(`${fixtures}/encrypted.m3u8`, '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="https://invalid.example/key"\n#EXTINF:1,\nclip.mp4\n#EXT-X-ENDLIST\n');
 await writeFile(`${fixtures}/protected.mpd`, '<MPD type="static" mediaPresentationDuration="PT1S"><Period><AdaptationSet mimeType="video/mp4"><ContentProtection schemeIdUri="urn:uuid:protected"/><Representation id="v" bandwidth="1"><BaseURL>https://invalid.example/private.mp4</BaseURL></Representation></AdaptationSet></Period></MPD>');
 await writeFile(`${fixtures}/malicious.mp4`, '<html><script>fetch("https://invalid.example/upload")</script></html>');
 const originalHash = createHash('sha256').update(await readFile(`${fixtures}/clip.mp4`)).digest('hex');
 
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png', '.mp4': 'video/mp4', '.json': 'application/json', '.m3u8': 'application/vnd.apple.mpegurl', '.mpd': 'application/dash+xml', '.ts': 'video/mp2t' };
+let parallelActive = 0, parallelPeak = 0, retrySegmentHits = 0, slowActive = 0, slowPeak = 0;
+const slowHits = new Map();
 const server = createServer(async (request, response) => {
   try {
-    const name = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+    const address = new URL(request.url, 'http://localhost');
+    const name = decodeURIComponent(address.pathname);
     if (name.includes('..') || name.includes('\\')) { response.writeHead(403).end(); return; }
+    if (name === '/fixtures/retry/seg-000.ts' && ++retrySegmentHits === 1) { response.writeHead(503, { 'Retry-After': '0' }).end('busy'); return; }
+    if (name.startsWith('/fixtures/parallel/') && name.endsWith('.ts')) { parallelActive++; parallelPeak = Math.max(parallelPeak, parallelActive); await new Promise(resolve => setTimeout(resolve, 60)); parallelActive--; }
+    if (address.searchParams.has('slow')) { const id = address.searchParams.get('slow'); slowHits.set(id, (slowHits.get(id) ?? 0) + 1); slowActive++; slowPeak = Math.max(slowPeak, slowActive); await new Promise(resolve => setTimeout(resolve, 100)); slowActive--; }
     const target = name.startsWith('/fixtures/') ? path.join(fixtures, name.slice('/fixtures/'.length)) : path.join(root, 'dist', name);
     const bytes = await readFile(target);
     if (request.headers.range) {
@@ -104,7 +111,7 @@ await context.addInitScript(() => {
     sidePanel: { setPanelBehavior: async () => {} }, action: { setPopup: async () => {} },
     downloads: { onChanged: listeners(), download: async options => {
       const link = document.createElement('a'); link.href = options.url; link.download = options.filename; document.body.append(link); link.click(); link.remove();
-      const id = ++sequence; downloads.set(id, { id, state: window.__holdDownloads ? 'in_progress' : 'complete', filename: options.filename, url: options.url, incognito: false }); return id;
+      const id = ++sequence; downloads.set(id, { id, state: window.__holdDownloads ? 'in_progress' : 'complete', filename: options.filename, url: options.url, incognito: false, bytesReceived: 12, totalBytes: 24 }); return id;
     }, search: async query => {
       if (window.__duplicateCompletion && query.id !== undefined && downloads.get(query.id)?.state === 'complete') {
         window.__duplicateCompletion = false;
@@ -182,7 +189,7 @@ try {
   });
   await checks('Local install uses independent entry points without an account/activation engine', async () => {
     const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
-    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.2.0');
+    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.3.0');
     assert.equal(manifest.key, undefined); assert.equal(manifest.update_url, undefined);
     const result = await context.request.get(`${origin}/service/main.js`); assert.equal(result.status(), 404);
   });
@@ -312,6 +319,39 @@ try {
   });
   await page.screenshot({ path: `${results}/upscaler.png`, fullPage: true });
   await checks('Independent HLS VOD remux preserves video frames and audio', () => remux('hls/list.m3u8', 'hls', 'local-hls.mp4'));
+  await checks('Parallel segment downloads multiplex up to three requests and preserve the complete decoded video', async () => {
+    await remux('parallel/list.m3u8', 'hls', 'local-parallel.mp4'); assert.equal(parallelPeak, 3);
+  });
+  await checks('Transient segment failure is retried without a duplicate or missing media segment', async () => {
+    await remux('retry/list.m3u8', 'hls', 'local-retried.mp4'); assert.equal(retrySegmentHits, 2);
+  });
+  await checks('Concurrent preparations queue successfully and cancelling a waiting job makes no file request', async () => {
+    const results = await page.evaluate(async origin => {
+      const module = await import('/local/offscreen.js');
+      const ids = Array.from({ length: 3 }, () => crypto.randomUUID());
+      const work = ids.map((id, i) => module.prepareLocal(id, `${origin}/fixtures/clip.mp4?slow=${['first', 'second', 'cancelled'][i]}`, 'file'));
+      module.cancelLocal(ids[2]);
+      const outcomes = await Promise.allSettled(work); const hashes = [];
+      for (let i = 0; i < 2; i++) {
+        if (outcomes[i].status !== 'fulfilled') throw outcomes[i].reason;
+        const file = await (await (await navigator.storage.getDirectory()).getFileHandle(outcomes[i].value.filename)).getFile();
+        const bytes = await file.arrayBuffer();
+        hashes.push(Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), x => x.toString(16).padStart(2, '0')).join(''));
+        await module.disposeLocal(ids[i]);
+      }
+      return { statuses: outcomes.map(row => row.status), hashes };
+    }, origin);
+    assert.deepEqual(results.statuses, ['fulfilled', 'fulfilled', 'rejected']); assert.deepEqual(results.hashes, [originalHash, originalHash]);
+    assert.equal(slowPeak, 1); assert.equal(slowHits.get('cancelled'), undefined);
+  });
+  await checks('Browser-reported HTTP/1.1 is observed on a real fetch without forcing a transport', async () => {
+    const observation = await page.evaluate(async origin => {
+      const module = await import('/local/offscreen.js'); const id = crypto.randomUUID();
+      try { const result = await module.prepareLocal(id, `${origin}/fixtures/clip.mp4?observe=1`, 'file'); return { protocols: result.protocols, entries: performance.getEntriesByName(`${origin}/fixtures/clip.mp4?observe=1`).map(entry => ({ protocol: entry.nextHopProtocol, start: entry.startTime, end: entry.responseEnd })) }; }
+      finally { await module.disposeLocal(id); }
+    }, origin);
+    assert(observation.protocols.includes('http/1.1'), JSON.stringify(observation));
+  });
   await checks('HLS master handles its separate default audio track', () => remux('master.m3u8', 'hls', 'local-master.mp4'));
   await checks('HLS byte ranges produce a complete decodable MP4', () => remux('range/list.m3u8', 'hls', 'local-range.mp4'));
   await checks('Independent static DASH remux preserves separate video and audio tracks', () => remux('dash/list.mpd', 'dash', 'local-dash.mp4'));
@@ -354,7 +394,7 @@ try {
   await checks('Website collectors cannot invoke download/history commands or impersonate the app', async () => {
     const result = await page.evaluate(async () => {
       const background = await import('/local/background.js'); const denied = [];
-      for (const type of ['download-url', 'clear-history', 'upscale']) {
+      for (const type of ['download-url', 'clear-history', 'upscale', 'retry', 'preparing-progress']) {
         try { await background.handleLocalMessage({ scope: 'my-video-app/local', type, url: location.origin + '/fixtures/clip.mp4' }, { id: chrome.runtime.id, url: 'https://website.example/page', tab: { id: 7 } }); denied.push(false); }
         catch { denied.push(true); }
       }
@@ -362,7 +402,7 @@ try {
       catch { denied.push(true); }
       return denied;
     });
-    assert.deepEqual(result, [true, true, true, true]);
+    assert.deepEqual(result, [true, true, true, true, true, true]);
   });
   await checks('Media collector discovers DOM video sources without initiating downloads', async () => {
     await page.goto(`${origin}/local/index.html`);
@@ -372,6 +412,18 @@ try {
     const discovered = await page.evaluate(async () => { const background = await import('/local/background.js'); return background.handleLocalMessage({ scope: 'my-video-app/local', type: 'list' }, { id: chrome.runtime.id, url: chrome.runtime.getURL('local/index.html') }); });
     assert.equal(discovered.items.length, 1); assert.match(discovered.items[0].url, /clip\.mp4$/);
     assert.equal(discovered.history.length, 0);
+  });
+  await checks('HTTP/3 observation metadata and partial-response totals preserve existing stream classification using API doubles', async () => {
+    const result = await page.evaluate(async origin => {
+      chrome.webRequest.onHeadersReceived.fire({ tabId: 7, statusCode: 200, url: `${origin}/no-extension`, responseHeaders: [{ name: 'Content-Type', value: 'application/vnd.apple.mpegurl' }] });
+      chrome.webRequest.onHeadersReceived.fire({ tabId: 7, statusCode: 206, url: `${origin}/fixtures/clip.mp4`, responseHeaders: [{ name: 'Content-Type', value: 'video/mp4' }, { name: 'Content-Length', value: '3' }, { name: 'Content-Range', value: 'bytes 2-4/1000' }] });
+      await chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'capture', items: [{ url: `${origin}/no-extension`, title: 'stream', fromElement: true }, { url: `${origin}/fixtures/clip.mp4`, observedTransport: 'h3', title: 'HTTP3 timing double', fromElement: true }] });
+      return chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'list' });
+    }, origin);
+    const stream = result.items.find(item => item.url.endsWith('/no-extension')); assert.equal(stream.kind, 'hls');
+    const file = result.items.find(item => item.url.endsWith('/clip.mp4')); assert.equal(file.size, 1000); assert.equal(file.observedTransport, 'h3');
+    await page.locator('#refresh').click(); await page.waitForFunction(() => document.querySelector('#media').textContent.includes('페이지 연결 HTTP/3'));
+    await page.evaluate(() => chrome.tabs.onUpdated.fire(7, { status: 'loading' }, { active: true, url: location.origin + '/example-page' }));
   });
   await checks('Local app downloads detected MP4 byte-for-byte and records completion using API doubles', async () => {
     await page.goto(`${origin}/local/index.html`); await page.waitForFunction(() => document.querySelector('#status').textContent.includes('미디어'));
@@ -409,9 +461,39 @@ try {
     assert.deepEqual(result.sort(), ['fulfilled', 'rejected']);
     const saved = await pending; await saved.saveAs(`${results}/local-cancel-api-double.mp4`);
     await page.waitForFunction(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.state === 'downloading'));
+    const progress = await page.evaluate(async () => (await chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'list' })).history.find(row => row.state === 'downloading'));
+    assert.equal(progress.receivedBytes, 12); assert.equal(progress.totalBytes, 24);
     await page.locator('#history-tab').click(); await page.getByRole('button', { name: '취소', exact: true }).click();
     await page.waitForFunction(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.state === 'cancelled'));
     await page.evaluate(async () => { window.__holdDownloads = false; await chrome.storage.local.set({ vdh_upscale_offer_v1: true }); });
+  });
+  await checks('History retry creates a new intact download and keeps the cancelled record using API doubles', async () => {
+    await page.locator('#history-tab').click();
+    const row = page.locator('#history li').filter({ hasText: '취소됨' });
+    const pending = page.waitForEvent('download'); await row.getByRole('button', { name: '다시 시도' }).click();
+    const file = await pending; await file.saveAs(`${results}/local-history-retry.mp4`);
+    assert.equal(createHash('sha256').update(await readFile(`${results}/local-history-retry.mp4`)).digest('hex'), originalHash);
+    await page.waitForFunction(async () => { const rows = (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1; return rows[0]?.state === 'complete' && rows.some(row => row.state === 'cancelled'); });
+  });
+  await checks('Cancellation while the offscreen document starts prevents the later media request using API doubles', async () => {
+    const id = await page.evaluate(async origin => {
+      const background = await import('/local/background.js');
+      const originalHas = chrome.offscreen.hasDocument, originalCreate = chrome.offscreen.createDocument;
+      let release, started;
+      const gate = new Promise(resolve => { release = resolve; });
+      const starting = new Promise(resolve => { started = resolve; });
+      chrome.offscreen.hasDocument = async () => false;
+      chrome.offscreen.createDocument = async options => { started(); await gate; await originalCreate(options); chrome.offscreen.hasDocument = originalHas; };
+      const sender = { id: chrome.runtime.id, url: chrome.runtime.getURL('local/index.html') };
+      try {
+        const result = await background.handleLocalMessage({ scope: 'my-video-app/local', type: 'download-url', url: `${origin}/fixtures/clip.mp4?slow=startup-cancel`, options: { quality: 'highest', output: 'mp3' } }, sender);
+        await starting;
+        await background.handleLocalMessage({ scope: 'my-video-app/local', type: 'cancel', id: result.item.id }, sender);
+        return result.item.id;
+      } finally { release(); chrome.offscreen.createDocument = originalCreate; }
+    }, origin);
+    await page.waitForFunction(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'cancelled', id);
+    assert.equal(slowHits.get('startup-cancel'), undefined);
   });
   await checks('Clearing local history leaves downloaded files intact', async () => {
     await page.locator('#clear-history').click(); await page.waitForFunction(() => document.querySelectorAll('#history li').length === 0);
