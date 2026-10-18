@@ -14,7 +14,7 @@ export class ByteBudget {
   release(bytes: number) { this.used -= bytes; }
   get remaining() { return this.limit - this.used; }
 }
-interface FetchMonitor { budget?: ByteBudget; progress?: (loaded: number, total?: number) => void; protocol?: (value: Transport) => void; }
+interface FetchMonitor { budget?: ByteBudget; progress?: (loaded: number, total?: number) => void; protocol?: (value: Transport) => void; finalURL?: (value: string) => void; }
 class Retryable extends Error { readonly delay: number | undefined; constructor(message: string, delay?: number) { super(message); this.delay = delay; } }
 const RETRY_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 export function retryDelay(header: string | null, now = Date.now()): number | undefined {
@@ -60,7 +60,7 @@ export async function fetchBytes(url: string, maximum: number, signal: AbortSign
         throw new Error(message);
       }
       if (!response.body) throw new Error('미디어 응답에 파일 데이터가 없습니다.');
-      if (response.url) mediaURL(response.url);
+      const finalURL = response.url ? mediaURL(response.url).href : address;
       if (!range && response.status === 206) throw new Error('전체 파일 요청에 일부 미디어만 반환되었습니다.');
       const length = response.headers.get('Content-Length');
       const declared = length !== null && /^\d+$/.test(length) ? Number(length) : undefined;
@@ -98,6 +98,7 @@ export async function fetchBytes(url: string, maximum: number, signal: AbortSign
       const protocol = await observation.finish();
       signal.throwIfAborted();
       if (protocol) monitor.protocol?.(protocol);
+      monitor.finalURL?.(finalURL);
       success = true; return result;
     } catch (error) { failure = error; }
     finally {
@@ -112,5 +113,12 @@ export async function fetchBytes(url: string, maximum: number, signal: AbortSign
   }
 }
 export async function fetchManifest(url: string, signal: AbortSignal): Promise<string> {
-  return new TextDecoder('utf-8', { fatal: true }).decode(await fetchBytes(url, 2 * 1024 * 1024, signal));
+  return (await fetchManifestResource(url, signal)).text;
+}
+export interface ManifestResource { text: string; url: string; }
+/** Relative manifest references use the URL of the successful response, after redirects. */
+export async function fetchManifestResource(url: string, signal: AbortSignal): Promise<ManifestResource> {
+  let address = mediaURL(url).href;
+  const bytes = await fetchBytes(address, 2 * 1024 * 1024, signal, undefined, { finalURL: value => { address = value; } });
+  return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), url: address };
 }

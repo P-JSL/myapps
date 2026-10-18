@@ -1,10 +1,10 @@
 import { boundedData, record } from '../security/validation.ts';
-import { offerUpscale, revokeDownloadOffers } from '../upscale/completion.ts';
+import { offerUpscale, revokeDownloadOffers, authorizeDownloadOffers } from '../upscale/completion.ts';
 import { OFFER_KEY, MAX_INPUT_BYTES } from '../upscale/policy.ts';
 import { SCOPE, OFFSCREEN_SCOPE, HISTORY_KEY, MAX_HISTORY, MAX_MEDIA_PER_TAB, filenameFor, isHistory, mediaKind, mediaURL, trustedCapture, trustedUI, type MediaItem, type HistoryItem } from './model.ts';
 import { downloadOptions, type DownloadOptions } from './preferences.ts';
 import { transport, type Transport } from './transport.ts';
-import { chromeWarning, scanFile, type ScanResult } from './antivirus.ts';
+import { chromeWarning, scanFile, probeAntivirus, type ScanResult } from './antivirus.ts';
 
 const media = new Map<number, Map<string, MediaItem>>();
 const privateHistory = new Map<string, HistoryItem>();
@@ -132,6 +132,13 @@ async function finish(download: chrome.downloads.DownloadItem): Promise<void> {
     if (!next) return;
     if (next.state === 'review') { await reviewNotice(next); return; }
     await chrome.notifications.clear(`my-video-app-security:${item.id}`).catch(() => {});
+    const beforeOffer = (await chrome.downloads.search({ id: current.id }))[0];
+    if (!beforeOffer || beforeOffer.state !== 'complete' || chromeWarning(beforeOffer.danger)) {
+      await revokeDownloadOffers(current.id).catch(() => {});
+      if (beforeOffer) finalizeAgain.add(current.id);
+      return;
+    }
+    authorizeDownloadOffers(current.id);
     await offerUpscale({ internalFilename: `local-${item.id}.media`, filename: item.filename, downloadId: current.id, success: true, incognito: item.incognito, expectedSha256: result.sha256!, expectedSize: result.size! });
     const afterOffer = (await chrome.downloads.search({ id: current.id }))[0];
     if (afterOffer && chromeWarning(afterOffer.danger)) { await revokeDownloadOffers(current.id).catch(() => {}); finalizeAgain.add(current.id); }
@@ -255,6 +262,7 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
     return { ok: true };
   }
   if (!trustedUI(sender, chrome.runtime.id, chrome.runtime.getURL(''))) throw new Error('확장 화면에서만 사용할 수 있습니다.');
+  if (value.type === 'antivirus-status') return { ok: true, antivirus: await probeAntivirus() };
   if (['security-keep', 'security-delete', 'security-rescan'].includes(value.type) && typeof value.id === 'string' && typeof value.token === 'string') {
     if (value.type === 'security-keep' && value.confirmed !== true) throw new Error('파일의 위험을 이해했다는 확인이 필요합니다.');
     await securityDecision(value.id, value.token, value.type === 'security-keep' ? 'keep' : value.type === 'security-delete' ? 'delete' : 'rescan');
@@ -262,10 +270,11 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
   }
   if (value.type === 'security-connect') {
     if (!await chrome.permissions.contains({ permissions: ['nativeMessaging'] })) throw new Error('로컬 백신 연결 권한을 먼저 허용하세요.');
-    for (const item of await history()) if (item.state === 'review' && item.security && ['unavailable', 'error'].includes(item.security.status)) {
+    const antivirus = await probeAntivirus();
+    for (const item of await history()) if (antivirus.status === 'ready' && item.state === 'review' && item.security && ['unavailable', 'error'].includes(item.security.status)) {
       await securityDecision(item.id, item.security.token, 'rescan').catch(() => {});
     }
-    return { ok: true };
+    return { ok: true, antivirus };
   }
   if (value.type === 'review-chrome' && typeof value.id === 'string' && typeof value.token === 'string') {
     const item = (await history()).find(row => row.id === value.id && row.state === 'review' && row.security?.token === value.token);
@@ -338,6 +347,9 @@ chrome.webRequest.onHeadersReceived.addListener((details): undefined => {
   return undefined;
 }, { urls: ['http://*/*', 'https://*/*'] }, ['responseHeaders']);
 chrome.downloads.onChanged.addListener(delta => {
+  if (chromeWarning(delta.danger?.current)) void history().then(rows => {
+    if (rows.some(row => row.downloadId === delta.id)) return revokeDownloadOffers(delta.id);
+  }).catch(() => {});
   if (delta.state || delta.danger) void chrome.downloads.search({ id: delta.id }).then(items => { if (items[0]) return finish(items[0]); }).catch(() => {});
 });
 chrome.notifications.onClicked.addListener(id => {

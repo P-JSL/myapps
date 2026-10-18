@@ -5,8 +5,10 @@ import { transport, transportLabel } from './transport.ts';
 
 function node<T extends HTMLElement>(id: string): T { const element = document.getElementById(id); if (!element) throw new Error(`Missing ${id}`); return element as T; }
 const status = node('status');
+const DOWNLOAD_OPTIONS_KEY = 'my_video_app_download_options_v1';
 let refreshing = false;
 let hasError = false;
+let preferencesTouched = false;
 const deferredReviews = new Set<string>();
 const securityDialog = node<HTMLDialogElement>('security-dialog');
 let activeReview: HistoryItem | undefined;
@@ -18,19 +20,60 @@ async function request(type: string, data: Record<string, unknown> = {}): Promis
 }
 function error(value: unknown) { hasError = true; status.textContent = value instanceof Error ? value.message : '요청 중 오류가 발생했습니다.'; }
 function options() { return downloadOptions({ quality: node<HTMLSelectElement>('quality').value, output: node<HTMLSelectElement>('download-output').value }); }
-function button(text: string, action: () => Promise<unknown>, secondary = false): HTMLButtonElement {
+const preferencesReady = (async () => {
+  const hint = node('download-preferences-status');
+  if (chrome.extension.inIncognitoContext) {
+    hint.textContent = '시크릿 창의 화질·저장 형식은 이 화면에서만 사용하며 설정을 저장하거나 불러오지 않습니다.';
+    return;
+  }
+  try {
+    const saved: unknown = (await chrome.storage.local.get(DOWNLOAD_OPTIONS_KEY))[DOWNLOAD_OPTIONS_KEY];
+    const restored = downloadOptions(saved);
+    if (preferencesTouched) return;
+    node<HTMLSelectElement>('quality').value = restored.quality;
+    node<HTMLSelectElement>('download-output').value = restored.output;
+  } catch {
+    hint.textContent = '저장된 설정을 불러오지 못했습니다. 현재 화질·저장 형식으로 다운로드할 수 있습니다.';
+  }
+})();
+for (const id of ['quality', 'download-output']) node(id).addEventListener('change', () => {
+  preferencesTouched = true;
+  if (chrome.extension.inIncognitoContext) return;
+  const selected = options();
+  void preferencesReady.then(() => chrome.storage.local.set({ [DOWNLOAD_OPTIONS_KEY]: selected })).then(() => {
+    node('download-preferences-status').textContent = '화질·저장 형식 선택을 이 브라우저에 저장했습니다.';
+  }).catch(() => {
+    node('download-preferences-status').textContent = '설정을 저장하지 못했습니다. 현재 선택으로 다운로드할 수 있습니다.';
+  });
+});
+function button(text: string, action: () => Promise<unknown>, secondary = false, actionKey = text): HTMLButtonElement {
   const element = document.createElement('button'); element.textContent = text; if (secondary) element.className = 'secondary';
+  element.dataset.action = actionKey;
   element.addEventListener('click', () => { hasError = false; element.disabled = true; void action().then(() => refresh()).catch(error).finally(() => { element.disabled = false; }); });
   return element;
 }
+function replaceRows(id: string, rows: HTMLLIElement[]) {
+  const list = node(id);
+  const focused = document.activeElement;
+  const focusedButton = focused instanceof HTMLButtonElement && list.contains(focused) ? focused : undefined;
+  const rowId = focusedButton?.closest<HTMLLIElement>('li[data-row-id]')?.dataset.rowId;
+  const action = focusedButton?.dataset.action;
+  list.replaceChildren(...rows);
+  // Refreshing progress must not interrupt keyboard navigation or move focus from outside this list.
+  if (focusedButton && !focusedButton.isConnected && rowId && action) {
+    const row = rows.find(item => item.dataset.rowId === rowId);
+    const replacement = Array.from(row?.querySelectorAll<HTMLButtonElement>('button') ?? []).find(item => item.dataset.action === action && !item.disabled);
+    replacement?.focus({ preventScroll: true });
+  }
+}
 function mediaRow(item: MediaItem) {
-  const row = document.createElement('li');
+  const row = document.createElement('li'); row.dataset.rowId = item.id;
   const kind = document.createElement('span'); kind.className = 'kind'; kind.textContent = item.kind === 'file' ? 'MEDIA FILE' : `${item.kind.toUpperCase()} · VOD`;
   const title = document.createElement('h3'); title.textContent = item.title || new URL(item.url).pathname.split('/').at(-1) || '미디어';
   const source = document.createElement('p'); source.textContent = new URL(item.url).hostname + (item.size ? ` · ${(item.size / 1024 / 1024).toFixed(1)} MiB` : '');
   const observed = transport(item.observedTransport); if (observed) source.textContent += ` · 페이지 연결 ${transportLabel(observed)}`;
   const controls = document.createElement('div'); controls.className = 'actions';
-  controls.append(button('다운로드', async () => { await request('download', { id: item.id, options: options() }); status.textContent = '파일을 준비하고 있습니다. 기록 탭에서 진행 상태를 확인하세요.'; }));
+  controls.append(button('다운로드', async () => { await request('download', { id: item.id, options: options() }); status.textContent = '파일을 준비하고 있습니다. 기록 탭에서 진행 상태를 확인하세요.'; }, false, 'download'));
   row.append(kind, title, source, controls); return row;
 }
 const stateLabels = { preparing: '파일 준비 중', downloading: '다운로드 중', scanning: '로컬 백신 검사 중', review: '보안 검사 확인 필요', discarded: '파일 삭제됨', complete: '완료', cancelled: '취소됨', error: '실패' };
@@ -97,7 +140,7 @@ async function securityAction(type: string, extra: Record<string, unknown> = {})
   await refresh().catch(error);
 }
 function historyRow(item: HistoryItem) {
-  const row = document.createElement('li'); const title = document.createElement('h3'); title.textContent = item.filename;
+  const row = document.createElement('li'); row.dataset.rowId = item.id; const title = document.createElement('h3'); title.textContent = item.filename;
   const info = document.createElement('p'); info.textContent = `${stateLabels[item.state]} · ${new Date(item.createdAt).toLocaleString('ko-KR')}`;
   if (item.state === 'preparing' && item.preparation) {
     const label = { queued: '준비 대기 중', fetching: '파일 받는 중', processing: '미디어 합치는 중', saving: '저장 준비 중' }[item.preparation.stage];
@@ -119,10 +162,10 @@ function historyRow(item: HistoryItem) {
   if (protocols.length) { const connection = document.createElement('p'); connection.textContent = `준비 연결 ${protocols.map(transportLabel).join(', ')}`; row.append(connection); }
   if (item.error) { const message = document.createElement('p'); message.textContent = item.error; row.append(message); }
   const controls = document.createElement('div'); controls.className = 'actions';
-  if (item.state === 'review' && item.security) controls.append(button('검사 결과 확인', async () => { openReview(item); }, true));
-  if (item.state === 'complete') controls.append(button('저장 폴더', () => request('show-file', { id: item.id }), true));
-  if (item.state === 'error' || item.state === 'cancelled') controls.append(button('다시 시도', () => request('retry', { id: item.id }), true));
-  if (item.state === 'downloading' || item.state === 'preparing') controls.append(button('취소', () => request('cancel', { id: item.id }), true));
+  if (item.state === 'review' && item.security) controls.append(button('검사 결과 확인', async () => { openReview(item); }, true, 'security-review'));
+  if (item.state === 'complete') controls.append(button('저장 폴더', () => request('show-file', { id: item.id }), true, 'show-file'));
+  if (item.state === 'error' || item.state === 'cancelled') controls.append(button('다시 시도', () => request('retry', { id: item.id }), true, 'retry'));
+  if (item.state === 'downloading' || item.state === 'preparing') controls.append(button('취소', () => request('cancel', { id: item.id }), true, 'cancel'));
   row.append(controls); return row;
 }
 async function refresh() {
@@ -131,8 +174,8 @@ async function refresh() {
     const result = await request('list');
     const media = Array.isArray(result.items) ? result.items.filter((item): item is MediaItem => record(item) && typeof item.id === 'string' && typeof item.url === 'string' && typeof item.title === 'string' && ['file', 'hls', 'dash'].includes(String(item.kind))) : [];
     const history = Array.isArray(result.history) ? result.history.filter(isHistory) : [];
-    node('media').replaceChildren(...media.map(mediaRow)); node('empty').hidden = media.length > 0;
-    node('history').replaceChildren(...history.map(historyRow)); node('history-empty').hidden = history.length > 0;
+    replaceRows('media', media.map(mediaRow)); node('empty').hidden = media.length > 0;
+    replaceRows('history', history.map(historyRow)); node('history-empty').hidden = history.length > 0;
     if (activeReview && !reviewBusy && !history.some(row => row.id === activeReview?.id && row.state === 'review' && row.security?.token === activeReview?.security?.token)) closeReview();
     if (!activeReview && !reviewBusy) {
       const pending = history.find(row => row.state === 'review' && row.security && !deferredReviews.has(row.security.token));
@@ -164,6 +207,18 @@ node('security-keep').addEventListener('click', () => {
 node('security-later').addEventListener('click', () => { if (!reviewBusy) closeReview(true); });
 securityDialog.addEventListener('cancel', event => { event.preventDefault(); if (!reviewBusy) closeReview(true); });
 node('extension-id').textContent = chrome.runtime.id || '설치한 확장 프로그램의 ID를 chrome://extensions에서 확인하세요.';
+function showAntivirusStatus(value: unknown) {
+  if (!record(value) || !['ready', 'unavailable', 'error'].includes(String(value.status))) throw new Error('백신 도우미의 준비 상태를 확인할 수 없습니다. 최신 도우미 설치 상태를 확인하세요.');
+  const parts = [value.status === 'ready' ? '도우미 연결됨 · 검사기 선택 확인' : value.status === 'unavailable' ? '백신 연결을 사용할 수 없습니다' : '백신 연결 확인에 실패했습니다'];
+  if (typeof value.engine === 'string' && value.engine) parts.push(`검사 엔진: ${value.engine.slice(0, 120)}`);
+  if (Array.isArray(value.products)) {
+    const products = value.products.filter((item): item is string => typeof item === 'string').slice(0, 16).map(item => item.slice(0, 160));
+    if (products.length) parts.push(`활성 보호 제품: ${products.join(', ')}`);
+  }
+  if (typeof value.message === 'string' && value.message) parts.push(value.message.slice(0, 1000));
+  parts.push(value.status === 'ready' ? '파일 검사는 다운로드가 끝난 뒤 별도로 수행하며 결과는 기록 탭에서 확인하세요.' : '도우미·백신 설치와 활성 상태를 확인하세요. 미검사 파일은 기록에서 확인 대기 상태로 유지합니다.');
+  node('security-connection-status').textContent = parts.join(' · ');
+}
 node('security-connect').addEventListener('click', () => {
   const connect = node<HTMLButtonElement>('security-connect');
   const connection = node('security-connection-status');
@@ -174,8 +229,9 @@ node('security-connect').addEventListener('click', () => {
   catch { permission = Promise.reject(new Error('이 브라우저에서는 로컬 백신 연결 권한을 요청할 수 없습니다.')); }
   void permission.then(async granted => {
     if (!granted) { connection.textContent = '연결 권한을 허용하지 않았습니다. 검사되지 않은 파일은 기록에서 확인하세요.'; return; }
-    await request('security-connect');
-    connection.textContent = '연결을 다시 확인했습니다. Windows는 기본 Defender 또는 표준 연동을 지원하는 활성 백신을 사용합니다. 검사 결과는 기록 탭에서 확인하세요.';
+    connection.textContent = '설치된 백신 도우미와 검사기의 준비 상태를 확인하고 있습니다…';
+    const result = await request('security-connect');
+    showAntivirusStatus(result.antivirus);
     await refresh();
   }).catch(value => { connection.textContent = value instanceof Error ? value.message : '로컬 백신 연결에 실패했습니다.'; }).finally(() => { connect.disabled = false; });
 });

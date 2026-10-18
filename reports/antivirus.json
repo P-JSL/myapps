@@ -5,8 +5,14 @@
   "nativeHost": "com.myvideoapp.antivirus",
   "fileUpload": false,
   "officialDatabaseVerified": false,
-  "sourceSha256": "85f276a729864915fd9976378a72df2d9fff95e6a75e02c96a8c1520dfda113a",
+  "sourceSha256": "59905a199c79ec987a6b448a1fe8c5c7994a208ad301656bc7507b9acc8aabfc",
   "outcomes": [
+    {
+      "name": "Native readiness request contacts real ClamAV without scanning a user file",
+      "status": "passed",
+      "verdict": "ready",
+      "engine": "ClamAV"
+    },
     {
       "name": "Complete native messaging scan of clean MP4 with real ClamAV",
       "status": "passed",

@@ -53,14 +53,18 @@ export function planDash(text: string, address: string, options: DownloadOptions
     }
     const inherited = (name: string) => [...chain].reverse().map(node => child(node, name)).find(node => node !== undefined);
     const list = inherited('SegmentList');
-    const template = inherited('SegmentTemplate');
+    const templates = [...chain].reverse().map(node => child(node, 'SegmentTemplate')).filter(node => node !== undefined);
+    const template = templates[0];
+    // A descendant SegmentTemplate overrides individual attributes and complete
+    // SegmentTimeline children, while omitted values inherit from its ancestors.
+    const templateAttribute = (name: string) => templates.find(node => node.hasAttribute(name))?.getAttribute(name) ?? null;
     if (list) {
       const init = child(list, 'Initialization');
       if (init) add(init.getAttribute('sourceURL') ?? base, range(init.getAttribute('range')));
       for (const segment of children(list, 'SegmentURL')) add(segment.getAttribute('media') ?? base, range(segment.getAttribute('mediaRange')));
     } else if (template) {
-      const timescale = Number(template.getAttribute('timescale') ?? '1');
-      let number = Number(template.getAttribute('startNumber') ?? '1');
+      const timescale = Number(templateAttribute('timescale') ?? '1');
+      let number = Number(templateAttribute('startNumber') ?? '1');
       if (!Number.isSafeInteger(timescale) || timescale <= 0 || !Number.isSafeInteger(number) || number < 0) throw new Error('DASH 타임라인이 올바르지 않습니다.');
       const expand = (format: string, time: number) => format.replace(/\$\$|\$(RepresentationID|Bandwidth|Number|Time)(?:%0(\d+)d)?\$/g, (match, key: string, width: string | undefined) => {
         if (match === '$$') return '$';
@@ -68,11 +72,11 @@ export function planDash(text: string, address: string, options: DownloadOptions
         const pad = Number(width ?? 0); if (pad > 20) throw new Error('DASH 번호 형식이 너무 깁니다.');
         return value.padStart(pad, '0');
       });
-      const init = template.getAttribute('initialization');
+      const init = templateAttribute('initialization');
       if (init) add(expand(init, 0));
-      const format = template.getAttribute('media');
+      const format = templateAttribute('media');
       if (!format) throw new Error('DASH 미디어 템플릿이 없습니다.');
-      const timeline = child(template, 'SegmentTimeline');
+      const timeline = templates.map(node => child(node, 'SegmentTimeline')).find(node => node !== undefined);
       if (timeline) {
         const entries = children(timeline, 'S');
         let time = 0;
@@ -91,7 +95,7 @@ export function planDash(text: string, address: string, options: DownloadOptions
           for (let i = 0; i <= repeat; i++) { add(expand(format, time)); time += d; number++; }
         }
       } else {
-        const step = Number(template.getAttribute('duration'));
+        const step = Number(templateAttribute('duration'));
         const count = Math.ceil(seconds * timescale / step);
         if (!Number.isFinite(count) || count < 1 || count > MAX_SEGMENTS) throw new Error('DASH 길이 또는 조각 개수가 허용 범위를 초과했습니다.');
         for (let i = 0; i < count; i++) { add(expand(format, i * step)); number++; }

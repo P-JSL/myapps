@@ -42,8 +42,10 @@ function node(id) {
   return element;
 }
 var status = node("status");
+var DOWNLOAD_OPTIONS_KEY = "my_video_app_download_options_v1";
 var refreshing = false;
 var hasError = false;
+var preferencesTouched = false;
 var deferredReviews = /* @__PURE__ */ new Set();
 var securityDialog = node("security-dialog");
 var activeReview;
@@ -60,10 +62,37 @@ function error(value) {
 function options() {
   return downloadOptions({ quality: node("quality").value, output: node("download-output").value });
 }
-function button(text, action, secondary = false) {
+var preferencesReady = (async () => {
+  const hint = node("download-preferences-status");
+  if (chrome.extension.inIncognitoContext) {
+    hint.textContent = "\uC2DC\uD06C\uB9BF \uCC3D\uC758 \uD654\uC9C8\xB7\uC800\uC7A5 \uD615\uC2DD\uC740 \uC774 \uD654\uBA74\uC5D0\uC11C\uB9CC \uC0AC\uC6A9\uD558\uBA70 \uC124\uC815\uC744 \uC800\uC7A5\uD558\uAC70\uB098 \uBD88\uB7EC\uC624\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.";
+    return;
+  }
+  try {
+    const saved = (await chrome.storage.local.get(DOWNLOAD_OPTIONS_KEY))[DOWNLOAD_OPTIONS_KEY];
+    const restored = downloadOptions(saved);
+    if (preferencesTouched) return;
+    node("quality").value = restored.quality;
+    node("download-output").value = restored.output;
+  } catch {
+    hint.textContent = "\uC800\uC7A5\uB41C \uC124\uC815\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uD604\uC7AC \uD654\uC9C8\xB7\uC800\uC7A5 \uD615\uC2DD\uC73C\uB85C \uB2E4\uC6B4\uB85C\uB4DC\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.";
+  }
+})();
+for (const id of ["quality", "download-output"]) node(id).addEventListener("change", () => {
+  preferencesTouched = true;
+  if (chrome.extension.inIncognitoContext) return;
+  const selected = options();
+  void preferencesReady.then(() => chrome.storage.local.set({ [DOWNLOAD_OPTIONS_KEY]: selected })).then(() => {
+    node("download-preferences-status").textContent = "\uD654\uC9C8\xB7\uC800\uC7A5 \uD615\uC2DD \uC120\uD0DD\uC744 \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.";
+  }).catch(() => {
+    node("download-preferences-status").textContent = "\uC124\uC815\uC744 \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uD604\uC7AC \uC120\uD0DD\uC73C\uB85C \uB2E4\uC6B4\uB85C\uB4DC\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.";
+  });
+});
+function button(text, action, secondary = false, actionKey = text) {
   const element = document.createElement("button");
   element.textContent = text;
   if (secondary) element.className = "secondary";
+  element.dataset.action = actionKey;
   element.addEventListener("click", () => {
     hasError = false;
     element.disabled = true;
@@ -73,8 +102,22 @@ function button(text, action, secondary = false) {
   });
   return element;
 }
+function replaceRows(id, rows) {
+  const list = node(id);
+  const focused = document.activeElement;
+  const focusedButton = focused instanceof HTMLButtonElement && list.contains(focused) ? focused : void 0;
+  const rowId = focusedButton?.closest("li[data-row-id]")?.dataset.rowId;
+  const action = focusedButton?.dataset.action;
+  list.replaceChildren(...rows);
+  if (focusedButton && !focusedButton.isConnected && rowId && action) {
+    const row = rows.find((item) => item.dataset.rowId === rowId);
+    const replacement = Array.from(row?.querySelectorAll("button") ?? []).find((item) => item.dataset.action === action && !item.disabled);
+    replacement?.focus({ preventScroll: true });
+  }
+}
 function mediaRow(item) {
   const row = document.createElement("li");
+  row.dataset.rowId = item.id;
   const kind = document.createElement("span");
   kind.className = "kind";
   kind.textContent = item.kind === "file" ? "MEDIA FILE" : `${item.kind.toUpperCase()} \xB7 VOD`;
@@ -89,7 +132,7 @@ function mediaRow(item) {
   controls.append(button("\uB2E4\uC6B4\uB85C\uB4DC", async () => {
     await request("download", { id: item.id, options: options() });
     status.textContent = "\uD30C\uC77C\uC744 \uC900\uBE44\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uAE30\uB85D \uD0ED\uC5D0\uC11C \uC9C4\uD589 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694.";
-  }));
+  }, false, "download"));
   row.append(kind, title, source, controls);
   return row;
 }
@@ -168,6 +211,7 @@ async function securityAction(type, extra = {}) {
 }
 function historyRow(item) {
   const row = document.createElement("li");
+  row.dataset.rowId = item.id;
   const title = document.createElement("h3");
   title.textContent = item.filename;
   const info = document.createElement("p");
@@ -204,10 +248,10 @@ function historyRow(item) {
   controls.className = "actions";
   if (item.state === "review" && item.security) controls.append(button("\uAC80\uC0AC \uACB0\uACFC \uD655\uC778", async () => {
     openReview(item);
-  }, true));
-  if (item.state === "complete") controls.append(button("\uC800\uC7A5 \uD3F4\uB354", () => request("show-file", { id: item.id }), true));
-  if (item.state === "error" || item.state === "cancelled") controls.append(button("\uB2E4\uC2DC \uC2DC\uB3C4", () => request("retry", { id: item.id }), true));
-  if (item.state === "downloading" || item.state === "preparing") controls.append(button("\uCDE8\uC18C", () => request("cancel", { id: item.id }), true));
+  }, true, "security-review"));
+  if (item.state === "complete") controls.append(button("\uC800\uC7A5 \uD3F4\uB354", () => request("show-file", { id: item.id }), true, "show-file"));
+  if (item.state === "error" || item.state === "cancelled") controls.append(button("\uB2E4\uC2DC \uC2DC\uB3C4", () => request("retry", { id: item.id }), true, "retry"));
+  if (item.state === "downloading" || item.state === "preparing") controls.append(button("\uCDE8\uC18C", () => request("cancel", { id: item.id }), true, "cancel"));
   row.append(controls);
   return row;
 }
@@ -218,9 +262,9 @@ async function refresh() {
     const result = await request("list");
     const media = Array.isArray(result.items) ? result.items.filter((item) => record(item) && typeof item.id === "string" && typeof item.url === "string" && typeof item.title === "string" && ["file", "hls", "dash"].includes(String(item.kind))) : [];
     const history = Array.isArray(result.history) ? result.history.filter(isHistory) : [];
-    node("media").replaceChildren(...media.map(mediaRow));
+    replaceRows("media", media.map(mediaRow));
     node("empty").hidden = media.length > 0;
-    node("history").replaceChildren(...history.map(historyRow));
+    replaceRows("history", history.map(historyRow));
     node("history-empty").hidden = history.length > 0;
     if (activeReview && !reviewBusy && !history.some((row) => row.id === activeReview?.id && row.state === "review" && row.security?.token === activeReview?.security?.token)) closeReview();
     if (!activeReview && !reviewBusy) {
@@ -275,6 +319,18 @@ securityDialog.addEventListener("cancel", (event) => {
   if (!reviewBusy) closeReview(true);
 });
 node("extension-id").textContent = chrome.runtime.id || "\uC124\uCE58\uD55C \uD655\uC7A5 \uD504\uB85C\uADF8\uB7A8\uC758 ID\uB97C chrome://extensions\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694.";
+function showAntivirusStatus(value) {
+  if (!record(value) || !["ready", "unavailable", "error"].includes(String(value.status))) throw new Error("\uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uC758 \uC900\uBE44 \uC0C1\uD0DC\uB97C \uD655\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uCD5C\uC2E0 \uB3C4\uC6B0\uBBF8 \uC124\uCE58 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694.");
+  const parts = [value.status === "ready" ? "\uB3C4\uC6B0\uBBF8 \uC5F0\uACB0\uB428 \xB7 \uAC80\uC0AC\uAE30 \uC120\uD0DD \uD655\uC778" : value.status === "unavailable" ? "\uBC31\uC2E0 \uC5F0\uACB0\uC744 \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4" : "\uBC31\uC2E0 \uC5F0\uACB0 \uD655\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4"];
+  if (typeof value.engine === "string" && value.engine) parts.push(`\uAC80\uC0AC \uC5D4\uC9C4: ${value.engine.slice(0, 120)}`);
+  if (Array.isArray(value.products)) {
+    const products = value.products.filter((item) => typeof item === "string").slice(0, 16).map((item) => item.slice(0, 160));
+    if (products.length) parts.push(`\uD65C\uC131 \uBCF4\uD638 \uC81C\uD488: ${products.join(", ")}`);
+  }
+  if (typeof value.message === "string" && value.message) parts.push(value.message.slice(0, 1e3));
+  parts.push(value.status === "ready" ? "\uD30C\uC77C \uAC80\uC0AC\uB294 \uB2E4\uC6B4\uB85C\uB4DC\uAC00 \uB05D\uB09C \uB4A4 \uBCC4\uB3C4\uB85C \uC218\uD589\uD558\uBA70 \uACB0\uACFC\uB294 \uAE30\uB85D \uD0ED\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694." : "\uB3C4\uC6B0\uBBF8\xB7\uBC31\uC2E0 \uC124\uCE58\uC640 \uD65C\uC131 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694. \uBBF8\uAC80\uC0AC \uD30C\uC77C\uC740 \uAE30\uB85D\uC5D0\uC11C \uD655\uC778 \uB300\uAE30 \uC0C1\uD0DC\uB85C \uC720\uC9C0\uD569\uB2C8\uB2E4.");
+  node("security-connection-status").textContent = parts.join(" \xB7 ");
+}
 node("security-connect").addEventListener("click", () => {
   const connect = node("security-connect");
   const connection = node("security-connection-status");
@@ -291,8 +347,9 @@ node("security-connect").addEventListener("click", () => {
       connection.textContent = "\uC5F0\uACB0 \uAD8C\uD55C\uC744 \uD5C8\uC6A9\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uAC80\uC0AC\uB418\uC9C0 \uC54A\uC740 \uD30C\uC77C\uC740 \uAE30\uB85D\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694.";
       return;
     }
-    await request("security-connect");
-    connection.textContent = "\uC5F0\uACB0\uC744 \uB2E4\uC2DC \uD655\uC778\uD588\uC2B5\uB2C8\uB2E4. Windows\uB294 \uAE30\uBCF8 Defender \uB610\uB294 \uD45C\uC900 \uC5F0\uB3D9\uC744 \uC9C0\uC6D0\uD558\uB294 \uD65C\uC131 \uBC31\uC2E0\uC744 \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uAC80\uC0AC \uACB0\uACFC\uB294 \uAE30\uB85D \uD0ED\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694.";
+    connection.textContent = "\uC124\uCE58\uB41C \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uC640 \uAC80\uC0AC\uAE30\uC758 \uC900\uBE44 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4\u2026";
+    const result = await request("security-connect");
+    showAntivirusStatus(result.antivirus);
     await refresh();
   }).catch((value) => {
     connection.textContent = value instanceof Error ? value.message : "\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.";

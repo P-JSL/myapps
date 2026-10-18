@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
-import { ANTIVIRUS_HOST, chromeWarning, scanFile, scanResponse } from '../src/local/antivirus.ts';
+import { ANTIVIRUS_HOST, chromeWarning, scanFile, scanResponse, probeAntivirus, readinessResponse } from '../src/local/antivirus.ts';
 import { HISTORY_KEY, SCOPE, type HistoryItem } from '../src/local/model.ts';
 import { DIRECTORY, JOBS_KEY, OFFER_KEY } from '../src/upscale/policy.ts';
 
@@ -32,12 +32,22 @@ test('malformed, mismatched, oversized and unverifiable native verdicts never co
   for (const value of [null, [], {}, { ...valid, version: 2 }, { ...valid, requestId: 'other' }, { ...valid, status: 'safe' }, { ...valid, status: null }, { ...valid, sha256: undefined }, { ...valid, sha256: 'not-a-hash' }, { ...valid, size: undefined }, { ...valid, size: -1 }, { ...valid, size: 1.5 }, { ...valid, engine: '' }, { ...valid, engine: 'x'.repeat(121) }, { ...valid, message: 'x'.repeat(70_000) }]) assert.throws(() => scanResponse(value, 'request'));
 });
 
+test('readiness responses identify the selected engine without accepting a file-scan verdict', () => {
+  const valid = { version: 1, requestId: 'request', status: 'ready', engine: 'Microsoft Defender', products: ['Microsoft Defender'], message: 'Actual file scanning occurs after download.' };
+  const result = readinessResponse(valid, 'request');
+  assert.equal(result.status, 'ready'); assert.equal(result.engine, 'Microsoft Defender');
+  assert.deepEqual(result.products, ['Microsoft Defender']); assert.ok(result.checkedAt <= Date.now());
+  for (const value of [null, {}, { ...valid, version: 2 }, { ...valid, requestId: 'other' }, { ...valid, status: 'clean' },
+    { ...valid, engine: undefined }, { ...valid, engine: '' }, { ...valid, products: [''] }, { ...valid, products: ['x'.repeat(501)] },
+    { ...valid, products: Array(33).fill('Defender') }, { ...valid, message: 'x'.repeat(1001) }]) assert.throws(() => readinessResponse(value, 'request'));
+});
+
 class FakeEvent<Args extends unknown[] = unknown[]> {
   listeners: Array<(...args: Args) => unknown> = [];
   addListener(listener: (...args: Args) => unknown) { this.listeners.push(listener); }
   emit(...args: Args) { for (const listener of this.listeners) listener(...args); }
 }
-interface NativeRequest { version: number; action: string; requestId: string; path: string; }
+interface NativeRequest { version: number; action: string; requestId: string; path?: string; }
 interface FakePort {
   onMessage: FakeEvent<[unknown]>; onDisconnect: FakeEvent<[]>;
   disconnected: boolean; disconnect(): void; postMessage(value: NativeRequest): void;
@@ -184,6 +194,55 @@ test('local antivirus and background safety decisions', async t => {
       assert.equal((await scanFile(join(temp, 'video.mp4'))).status, 'unavailable');
       assert.equal(state.connections.length, 0);
     });
+    await t.test('antivirus readiness requires an actual native status reply with no user filename', async () => {
+      state.native = (request, port) => port.onMessage.emit({ version: 1, requestId: request.requestId, status: 'ready', engine: 'Microsoft Defender' });
+      const result = await probeAntivirus();
+      assert.equal(result.status, 'ready'); assert.equal(result.engine, 'Microsoft Defender');
+      assert.equal(state.connections.length, 1); assert.deepEqual(Object.keys(state.requests[0]!).sort(), ['action', 'requestId', 'version']);
+      assert.equal(state.requests[0]!.action, 'status');
+    });
+    await t.test('readiness distinguishes missing permission, missing host and an older host returning file verdicts', async () => {
+      state.permission = false;
+      assert.equal((await probeAntivirus()).status, 'unavailable'); assert.equal(state.connections.length, 0);
+      state.permission = true; state.native = (_, port) => port.onDisconnect.emit();
+      assert.equal((await probeAntivirus()).status, 'unavailable');
+      state.native = (request, port) => port.onMessage.emit(nativeResponse(request.requestId));
+      assert.equal((await probeAntivirus()).status, 'error');
+    });
+    await t.test('concurrent readiness checks share one host connection without waiting for the file scan lock', async () => {
+      let reply: (() => void) | undefined;
+      state.native = (request, port) => { reply = () => port.onMessage.emit({ version: 1, requestId: request.requestId, status: 'ready', engine: 'Test engine' }); };
+      let release: (() => void) | undefined;
+      const locked = navigator.locks.request('my-video-app-antivirus', () => new Promise<void>(resolve => { release = resolve; }));
+      await until(() => !!release);
+      try {
+        const first = probeAntivirus(); const second = probeAntivirus();
+        assert.equal(first, second); await until(() => !!reply); assert.equal(state.connections.length, 1);
+        reply!(); assert.equal((await first).status, 'ready');
+      } finally { release!(); await locked; }
+    });
+    await t.test('trusted status command reports actual engine readiness without scanning or changing file history', async () => {
+      const item = await seed();
+      state.native = (request, port) => port.onMessage.emit({ version: 1, requestId: request.requestId, status: 'ready', engine: 'Microsoft Defender' });
+      const result = await command('antivirus-status', { path: '/unrelated/private/file' }) as { ok: boolean; antivirus: { status: string; engine: string } };
+      assert.equal(result.ok, true); assert.equal(result.antivirus.status, 'ready'); assert.equal(result.antivirus.engine, 'Microsoft Defender');
+      assert.deepEqual(rows(), [item]); assert.equal(state.requests.length, 1); assert.equal(state.requests[0]!.action, 'status');
+      assert.equal(state.requests[0]!.path, undefined); assert.equal(state.permissionRequests, 0);
+    });
+    await t.test('connect reports missing host instead of success and resumes pending checks only after a ready probe', async () => {
+      const item = await seed('review'); item.security!.status = 'unavailable'; state.data[HISTORY_KEY] = [item];
+      state.native = (_, port) => port.onDisconnect.emit();
+      const unavailable = await command('security-connect') as { ok: boolean; antivirus: { status: string } };
+      assert.equal(unavailable.antivirus.status, 'unavailable'); assert.equal(rows()[0]!.state, 'review');
+      assert.equal(state.requests.length, 1); assert.equal(state.requests[0]!.action, 'status');
+      state.native = (request, port) => port.onMessage.emit(request.action === 'status'
+        ? { version: 1, requestId: request.requestId, status: 'ready', engine: 'Test scanner' }
+        : nativeResponse(request.requestId));
+      const connected = await command('security-connect') as { ok: boolean; antivirus: { status: string } };
+      assert.equal(connected.antivirus.status, 'ready');
+      await until(() => rows()[0]?.state === 'complete');
+      assert.deepEqual(state.requests.map(request => request.action), ['status', 'status', 'scan']);
+    });
     await t.test('scanner uses connectNative and one versioned request containing the selected local filename', async () => {
       const path = join(temp, 'video with spaces.mp4');
       const result = await scanFile(path);
@@ -329,7 +388,7 @@ test('local antivirus and background safety decisions', async t => {
     });
     await t.test('website senders cannot connect, scan arbitrary paths or decide security outcomes', async () => {
       const item = await seed('review');
-      for (const type of ['security-connect', 'security-rescan', 'security-delete', 'security-keep', 'review-chrome']) {
+      for (const type of ['security-connect', 'antivirus-status', 'security-rescan', 'security-delete', 'security-keep', 'review-chrome']) {
         await assert.rejects(command(type, { id: item.id, token: item.security!.token, confirmed: true, path: '/private/file' }, content), /확장 화면/);
       }
       assert.equal(state.permissionRequests, 0); assert.equal(state.connections.length, 0);

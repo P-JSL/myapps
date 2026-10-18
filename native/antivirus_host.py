@@ -165,7 +165,7 @@ def windows_defender_paths() -> tuple[Path, Path] | None:
     return None
 
 
-def scan_defender(powershell: Path, executable: Path, snapshot: Path) -> dict:
+def defender_readiness(powershell: Path) -> dict:
     # Honor the installed Windows protection policy, including its cloud settings.
     # Passive/disabled Defender must not impersonate the user's active antivirus.
     script = ("$ErrorActionPreference='Stop'; $s=Get-MpComputerStatus; "
@@ -179,6 +179,13 @@ def scan_defender(powershell: Path, executable: Path, snapshot: Path) -> dict:
     if (not isinstance(state, dict) or state.get("enabled") is not True
             or state.get("service") is not True or state.get("mode") != "Normal"):
         return {"status": "unavailable", "engine": "Microsoft Defender", "message": "Microsoft Defender가 활성 보호 모드가 아니거나 상태를 확인할 수 없습니다. Windows 보안에서 사용 중인 백신을 확인하세요."}
+    return {"status": "ready", "engine": "Microsoft Defender", "message": "Microsoft Defender의 활성 보호 모드와 도우미 연결을 확인했습니다. 파일의 위협 탐지 여부는 다운로드 후 실제 검사에서 확인합니다."}
+
+
+def scan_defender(powershell: Path, executable: Path, snapshot: Path) -> dict:
+    readiness = defender_readiness(powershell)
+    if readiness["status"] != "ready":
+        return readiness
     before = identity(snapshot.stat())
     code, output = run_tool([str(executable), "-Scan", "-ScanType", "3", "-File", str(snapshot), "-DisableRemediation"])
     threats = [clean_text(value, 240) for value in re.findall(r"(?:Threat\s*[:=]|Threat\s+detected\s*[:=])\s*([^\r\n]+)", output, re.IGNORECASE)][:16]
@@ -215,38 +222,117 @@ def scan_windows_amsi(snapshot: Path, products: str) -> dict:
     return result
 
 
+def amsi_readiness() -> dict:
+    adapter = Path(__file__).with_name("windows_antivirus.py")
+    code, output = run_tool([sys.executable, "-I", str(adapter), "--amsi-status"], 15)
+    try:
+        result = json.loads(output) if code == 0 else None
+    except ValueError:
+        result = None
+    if (not isinstance(result, dict) or result.get("engine") != "Windows AMSI"
+            or result.get("status") not in {"ready", "unavailable", "error"}):
+        return {"status": "error", "engine": "Windows AMSI", "message": "Windows 백신 인터페이스의 연결 상태를 확인하지 못했습니다."}
+    return result
+
+
+def clamav_readiness(executable: Path) -> dict:
+    code, output = run_tool([str(executable), "--version"], 15)
+    if code != 0 or not re.search(r"^ClamAV\s+\d", output, re.MULTILINE):
+        return {"status": "error", "engine": "ClamAV", "message": "ClamAV 실행 상태를 확인하지 못했습니다. 설치와 로컬 서명 데이터베이스를 확인하세요."}
+    return {"status": "ready", "engine": "ClamAV", "message": "ClamAV 실행과 도우미 연결을 확인했습니다. 서명 데이터베이스와 파일의 위협 탐지 여부는 다운로드 후 실제 검사에서 확인합니다."}
+
+
+class Scanner:
+    """Keep file scanning and read-only readiness on exactly the same selection policy."""
+
+    def __init__(self, scan, probe, products=()):
+        self.scan = scan
+        self.probe = probe
+        self.products = list(products)
+
+    def __call__(self, snapshot: Path) -> dict:
+        return self.scan(snapshot)
+
+    def readiness(self) -> dict:
+        result = self.probe()
+        return {**result, **({"products": self.products} if self.products else {})}
+
+
+def unavailable_scanner(engine: str, message: str) -> Scanner:
+    result = {"status": "unavailable", "engine": engine, "message": message}
+    return Scanner(lambda snapshot: dict(result), lambda: dict(result))
+
+
+def defender_scanner(paths) -> Scanner | None:
+    return Scanner(lambda snapshot: scan_defender(*paths, snapshot), lambda: defender_readiness(paths[0])) if paths else None
+
+
+def clamav_scanner(executable) -> Scanner | None:
+    return Scanner(lambda snapshot: scan_clamav(executable, snapshot), lambda: clamav_readiness(executable)) if executable else None
+
+
+def missing_scanner(config: dict) -> dict:
+    explicit_clamav = config.get("scanner") == "clamav" or (config.get("scanner", "auto") == "auto" and "clamav" in config)
+    engine = "ClamAV" if explicit_clamav or sys.platform != "win32" else "Microsoft Defender"
+    return {"status": "unavailable", "engine": engine,
+            "message": f"선택한 로컬 백신({engine})의 검사 도구를 찾을 수 없습니다. 설치와 설정을 확인하세요. Chrome 다운로드 보호는 계속 적용됩니다."}
+
+
 def select_scanner(config: dict):
     mode = config.get("scanner", "auto")
     # An explicitly configured ClamAV path remains an intentional user override.
     if mode == "clamav" or (mode == "auto" and "clamav" in config):
         executable = clamav_path(config)
-        return (lambda snapshot: scan_clamav(executable, snapshot)) if executable else None
+        return clamav_scanner(executable)
     if sys.platform != "win32":
         if mode == "defender":
-            return lambda snapshot: {"status": "unavailable", "engine": "Microsoft Defender", "message": "Microsoft Defender 연동은 Windows에서만 지원합니다."}
+            return unavailable_scanner("Microsoft Defender", "Microsoft Defender 연동은 Windows에서만 지원합니다.")
         executable = clamav_path(config)
-        return (lambda snapshot: scan_clamav(executable, snapshot)) if executable else None
+        return clamav_scanner(executable)
     paths = windows_defender_paths()
     if mode == "defender":
-        return (lambda snapshot: scan_defender(*paths, snapshot)) if paths else None
+        return defender_scanner(paths)
     powershell = paths[0] if paths else Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
     adapter = windows_adapter()
     discovered = adapter.discover_windows_antivirus(run_tool, powershell)
     if discovered.get("status") != "ok":
         # Defender still verifies its own active Normal mode before scanning.
         if paths:
-            return lambda snapshot: scan_defender(*paths, snapshot)
-        return lambda snapshot: {"status": "unavailable", "engine": "Windows Security Center", "message": "Windows에서 사용 중인 백신을 확인하지 못했습니다."}
+            return defender_scanner(paths)
+        return unavailable_scanner("Windows Security Center", "Windows에서 사용 중인 백신을 확인하지 못했습니다.")
     active = [product for product in discovered["products"] if product["state"] == "on"]
     others = [product for product in active if not adapter.is_defender(product["name"])]
     if others:
         names = ", ".join(product["name"] for product in others)[:300]
         if not all(adapter.provider_for_product(product["name"], discovered["providers"]) for product in others):
-            return lambda snapshot: {"status": "unavailable", "engine": "Windows AMSI", "message": f"사용 중인 백신({names})의 Windows 표준 검사 연동을 확인하지 못했습니다. 해당 제품의 수동 검사를 사용하거나 지원되는 검사기를 직접 선택하세요."}
-        return lambda snapshot: scan_windows_amsi(snapshot, names)
+            scanner = unavailable_scanner("Windows AMSI", f"사용 중인 백신({names})의 Windows 표준 검사 연동을 확인하지 못했습니다. 해당 제품의 수동 검사를 사용하거나 지원되는 검사기를 직접 선택하세요.")
+            scanner.products = [product["name"] for product in others]
+            return scanner
+        return Scanner(lambda snapshot: scan_windows_amsi(snapshot, names), amsi_readiness,
+                       [product["name"] for product in others])
     if paths:
-        return lambda snapshot: scan_defender(*paths, snapshot)
-    return lambda snapshot: {"status": "unavailable", "engine": "Microsoft Defender", "message": "Windows 기본 백신의 검사 도구를 찾을 수 없습니다."}
+        return defender_scanner(paths)
+    return unavailable_scanner("Microsoft Defender", "Windows 기본 백신의 검사 도구를 찾을 수 없습니다.")
+
+
+def status_request(request: object) -> dict:
+    request_id = request.get("requestId", "") if isinstance(request, dict) else ""
+    if not isinstance(request_id, str) or not REQUEST_ID.fullmatch(request_id):
+        request_id = ""
+    if (not isinstance(request, dict) or set(request) != {"version", "action", "requestId"}
+            or type(request.get("version")) is not int or request["version"] != 1
+            or request.get("action") != "status" or not request_id):
+        return reply(request_id, "error", message="Unsupported or invalid antivirus status request.")
+    try:
+        config = load_config()
+        scanner = select_scanner(config)
+        if scanner is None:
+            return reply(request_id, **missing_scanner(config))
+        return reply(request_id, **scanner.readiness())
+    except subprocess.TimeoutExpired:
+        return reply(request_id, "error", message="로컬 백신의 연결 상태 확인이 제한 시간을 초과했습니다.")
+    except (OSError, ValueError, RuntimeError, KeyError) as error:
+        return reply(request_id, "error", message=clean_text(str(error)) or "로컬 백신의 연결 상태를 확인하지 못했습니다.")
 
 
 def scan_request(request: object) -> dict:
@@ -259,9 +345,10 @@ def scan_request(request: object) -> dict:
         return reply(request_id, "error", message="Unsupported or invalid scan request.")
     try:
         source = validate_file(request["path"])
-        scanner = select_scanner(load_config())
+        config = load_config()
+        scanner = select_scanner(config)
         if scanner is None:
-            return reply(request_id, "unavailable", message="No supported local antivirus scanner is installed. Install ClamAV with a current local signature database. Chrome download protection still applies.")
+            return reply(request_id, **missing_scanner(config))
         flags = (os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
                  | getattr(os, "O_NONBLOCK", 0))
         descriptor = os.open(source, flags)
@@ -340,7 +427,7 @@ def serve(source: BinaryIO, destination: BinaryIO) -> None:
                 write_message(destination, reply("", "error", message="Native request limit exceeded."))
                 return
             request = json.loads(read_exact(source, length).decode("utf-8"))
-            write_message(destination, scan_request(request))
+            write_message(destination, status_request(request) if isinstance(request, dict) and request.get("action") == "status" else scan_request(request))
         except (EOFError, UnicodeError, ValueError):
             write_message(destination, reply("", "error", message="Malformed native message."))
             return

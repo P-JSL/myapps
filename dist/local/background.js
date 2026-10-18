@@ -115,10 +115,18 @@ async function cleanupUnlocked(now = Date.now()) {
 // src/upscale/completion.ts
 var serial = Promise.resolve();
 var revokedDownloads = /* @__PURE__ */ new Set();
+var offerGenerations = /* @__PURE__ */ new Map();
+function authorizeDownloadOffers(downloadId) {
+  if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
+  offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
+  revokedDownloads.delete(downloadId);
+}
 async function offerUpscale(event) {
+  const generation = event.downloadId === void 0 ? void 0 : offerGenerations.get(event.downloadId) ?? 0;
+  const permitted = () => event.downloadId !== void 0 && !revokedDownloads.has(event.downloadId) && (offerGenerations.get(event.downloadId) ?? 0) === generation;
   const pending = serial.then(() => withQueueLock(async () => {
     const downloadId = event.downloadId;
-    if (!event.success || event.incognito || typeof downloadId !== "number" || !Number.isSafeInteger(downloadId) || downloadId < 0 || revokedDownloads.has(downloadId)) return;
+    if (!event.success || event.incognito || typeof downloadId !== "number" || !Number.isSafeInteger(downloadId) || downloadId < 0 || !permitted()) return;
     if ((await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] === false) return;
     const root = await navigator.storage.getDirectory();
     const source = await (await root.getFileHandle(event.internalFilename)).getFile();
@@ -129,7 +137,7 @@ async function offerUpscale(event) {
       const sha256 = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
       if (sha256 !== event.expectedSha256) return;
     }
-    if (revokedDownloads.has(downloadId)) return;
+    if (!permitted()) return;
     const retained = await cleanupUnlocked();
     if (retained.length >= MAX_JOBS || retained.reduce((total, job2) => total + job2.size, 0) + source.size > MAX_QUEUE_BYTES) return;
     const job = { id: crypto.randomUUID(), filename: safeBasename(event.filename), size: source.size, createdAt: Date.now(), downloadId };
@@ -142,7 +150,18 @@ async function offerUpscale(event) {
       });
       throw error;
     }
+    if (!permitted()) {
+      await dir.removeEntry(job.id).catch(() => {
+      });
+      return;
+    }
     await chrome.storage.local.set({ [JOBS_KEY]: [job, ...retained] });
+    if (!permitted()) {
+      await chrome.storage.local.set({ [JOBS_KEY]: retained });
+      await dir.removeEntry(job.id).catch(() => {
+      });
+      return;
+    }
     await chrome.notifications.create(`vdh-upscale:${job.id}`, {
       type: "basic",
       iconUrl: chrome.runtime.getURL("bitmaps/logo-128-color.png"),
@@ -152,6 +171,8 @@ async function offerUpscale(event) {
       buttons: [{ title: "\uC5C5\uC2A4\uCF00\uC77C\uB9C1 \uC120\uD0DD" }, { title: "\uC784\uC2DC \uBCF5\uC0AC\uBCF8 \uC0AD\uC81C" }]
     }).catch(() => {
     });
+    if (!permitted()) await chrome.notifications.clear(`vdh-upscale:${job.id}`).catch(() => {
+    });
   }));
   serial = pending.catch(() => {
   });
@@ -160,6 +181,7 @@ async function offerUpscale(event) {
 async function revokeDownloadOffers(downloadId) {
   if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
   revokedDownloads.add(downloadId);
+  offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
   const pending = serial.then(() => withQueueLock(async () => {
     const retained = await jobs();
     const revoked = retained.filter((job) => job.downloadId === downloadId);
@@ -302,6 +324,68 @@ function scanResponse(value, requestId) {
   if (typeof value.size === "number" && Number.isSafeInteger(value.size) && value.size >= 0) result.size = value.size;
   if (["clean", "infected"].includes(result.status) && (!result.engine || !result.sha256 || result.size === void 0)) throw new Error("\uBC31\uC2E0\uC774 \uAC80\uC0AC\uD55C \uD30C\uC77C \uC815\uBCF4\uB97C \uD655\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
   return result;
+}
+function readinessResponse(value, requestId) {
+  if (!record(value) || !boundedData(value, 64 * 1024) || value.version !== 1 || value.requestId !== requestId || !["ready", "unavailable", "error"].includes(String(value.status))) throw new Error("\uBC31\uC2E0 \uC5F0\uACB0 \uC0C1\uD0DC \uC751\uB2F5\uC744 \uD655\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+  const result = { status: value.status, checkedAt: Date.now() };
+  if (value.engine !== void 0) {
+    if (typeof value.engine !== "string" || !value.engine.trim() || value.engine.length > 120) throw new Error("\uBC31\uC2E0 \uC5D4\uC9C4 \uC751\uB2F5\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+    result.engine = value.engine;
+  }
+  if (value.message !== void 0) {
+    if (typeof value.message !== "string" || value.message.length > 1e3) throw new Error("\uBC31\uC2E0 \uC0C1\uD0DC \uC124\uBA85\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+    result.message = value.message;
+  }
+  if (value.products !== void 0) {
+    if (!Array.isArray(value.products) || value.products.length > 32 || !value.products.every((name) => typeof name === "string" && name.trim() && name.length <= 500)) throw new Error("\uBC31\uC2E0 \uC81C\uD488 \uC751\uB2F5\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+    result.products = value.products;
+  }
+  if (result.status === "ready" && !result.engine) throw new Error("\uC5F0\uACB0\uD560 \uBC31\uC2E0 \uC5D4\uC9C4\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
+  return result;
+}
+var readinessPending;
+function probeAntivirus() {
+  if (readinessPending) return readinessPending;
+  readinessPending = (async () => {
+    if (!await chrome.permissions.contains({ permissions: ["nativeMessaging"] })) return { status: "unavailable", checkedAt: Date.now(), message: "\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8 \uC124\uCE58 \uD6C4 \u2018\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0\u2019\uC744 \uB20C\uB7EC \uC8FC\uC138\uC694." };
+    return new Promise((resolve) => {
+      let port;
+      let timer;
+      let settled = false;
+      const finish2 = (result) => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        try {
+          port?.disconnect();
+        } catch {
+        }
+        resolve(result);
+      };
+      try {
+        port = chrome.runtime.connectNative(ANTIVIRUS_HOST);
+        const requestId = crypto.randomUUID();
+        port.onMessage.addListener((value) => {
+          try {
+            finish2(readinessResponse(value, requestId));
+          } catch {
+            finish2({ status: "error", checkedAt: Date.now(), message: "\uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uC758 \uC0C1\uD0DC \uC751\uB2F5\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uCD5C\uC2E0 \uB3C4\uC6B0\uBBF8\uB85C \uB2E4\uC2DC \uC124\uCE58\uD558\uC138\uC694." });
+          }
+        });
+        port.onDisconnect.addListener(() => {
+          const message = chrome.runtime.lastError?.message;
+          finish2({ status: "unavailable", checkedAt: Date.now(), message: message ? `\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0 \uC2E4\uD328: ${message.slice(0, 300)}` : "\uB85C\uCEEC \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8 \uC5F0\uACB0\uC774 \uC885\uB8CC\uB410\uC2B5\uB2C8\uB2E4. \uC124\uCE58 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694." });
+        });
+        timer = setTimeout(() => finish2({ status: "error", checkedAt: Date.now(), message: "\uBC31\uC2E0 \uC5F0\uACB0 \uC0C1\uD0DC \uD655\uC778\uC774 \uC81C\uD55C \uC2DC\uAC04\uC744 \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4." }), 6e4);
+        port.postMessage({ version: 1, action: "status", requestId });
+      } catch {
+        finish2({ status: "unavailable", checkedAt: Date.now(), message: "\uB85C\uCEEC \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uC5D0 \uC5F0\uACB0\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uC124\uCE58\uC640 \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694." });
+      }
+    });
+  })().finally(() => {
+    readinessPending = void 0;
+  });
+  return readinessPending;
 }
 async function scanFile(path) {
   return navigator.locks.request("my-video-app-antivirus", async () => {
@@ -504,6 +588,14 @@ async function finish(download2) {
     }
     await chrome.notifications.clear(`my-video-app-security:${item.id}`).catch(() => {
     });
+    const beforeOffer = (await chrome.downloads.search({ id: current.id }))[0];
+    if (!beforeOffer || beforeOffer.state !== "complete" || chromeWarning(beforeOffer.danger)) {
+      await revokeDownloadOffers(current.id).catch(() => {
+      });
+      if (beforeOffer) finalizeAgain.add(current.id);
+      return;
+    }
+    authorizeDownloadOffers(current.id);
     await offerUpscale({ internalFilename: `local-${item.id}.media`, filename: item.filename, downloadId: current.id, success: true, incognito: item.incognito, expectedSha256: result.sha256, expectedSize: result.size });
     const afterOffer = (await chrome.downloads.search({ id: current.id }))[0];
     if (afterOffer && chromeWarning(afterOffer.danger)) {
@@ -639,6 +731,7 @@ async function handleLocalMessage(value, sender) {
     return { ok: true };
   }
   if (!trustedUI(sender, chrome.runtime.id, chrome.runtime.getURL(""))) throw new Error("\uD655\uC7A5 \uD654\uBA74\uC5D0\uC11C\uB9CC \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.");
+  if (value.type === "antivirus-status") return { ok: true, antivirus: await probeAntivirus() };
   if (["security-keep", "security-delete", "security-rescan"].includes(value.type) && typeof value.id === "string" && typeof value.token === "string") {
     if (value.type === "security-keep" && value.confirmed !== true) throw new Error("\uD30C\uC77C\uC758 \uC704\uD5D8\uC744 \uC774\uD574\uD588\uB2E4\uB294 \uD655\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
     await securityDecision(value.id, value.token, value.type === "security-keep" ? "keep" : value.type === "security-delete" ? "delete" : "rescan");
@@ -646,11 +739,12 @@ async function handleLocalMessage(value, sender) {
   }
   if (value.type === "security-connect") {
     if (!await chrome.permissions.contains({ permissions: ["nativeMessaging"] })) throw new Error("\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0 \uAD8C\uD55C\uC744 \uBA3C\uC800 \uD5C8\uC6A9\uD558\uC138\uC694.");
-    for (const item of await history()) if (item.state === "review" && item.security && ["unavailable", "error"].includes(item.security.status)) {
+    const antivirus = await probeAntivirus();
+    for (const item of await history()) if (antivirus.status === "ready" && item.state === "review" && item.security && ["unavailable", "error"].includes(item.security.status)) {
       await securityDecision(item.id, item.security.token, "rescan").catch(() => {
       });
     }
-    return { ok: true };
+    return { ok: true, antivirus };
   }
   if (value.type === "review-chrome" && typeof value.id === "string" && typeof value.token === "string") {
     const item = (await history()).find((row) => row.id === value.id && row.state === "review" && row.security?.token === value.token);
@@ -729,6 +823,10 @@ chrome.webRequest.onHeadersReceived.addListener((details) => {
   return void 0;
 }, { urls: ["http://*/*", "https://*/*"] }, ["responseHeaders"]);
 chrome.downloads.onChanged.addListener((delta) => {
+  if (chromeWarning(delta.danger?.current)) void history().then((rows) => {
+    if (rows.some((row) => row.downloadId === delta.id)) return revokeDownloadOffers(delta.id);
+  }).catch(() => {
+  });
   if (delta.state || delta.danger) void chrome.downloads.search({ id: delta.id }).then((items) => {
     if (items[0]) return finish(items[0]);
   }).catch(() => {

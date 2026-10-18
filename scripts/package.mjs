@@ -6,14 +6,14 @@ import assert from 'node:assert/strict';
 process.chdir(fileURLToPath(new URL('../', import.meta.url)));
 await access('dist/manifest.json');
 const report = JSON.parse(await readFile('reports/browser.json', 'utf8'));
-assert(report.outcomes.length >= 55 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
+assert(report.outcomes.length >= 64 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
 const http3 = JSON.parse(await readFile('reports/http3.json', 'utf8'));
 assert(http3.transport === 'h3' && http3.outcomes.length >= 4 && http3.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real HTTP/3 results required');
 const antivirus = JSON.parse(await readFile('reports/antivirus.json', 'utf8'));
 assert(antivirus.outcomes.length >= 3 && antivirus.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real antivirus integration results required');
 assert.equal(createHash('sha256').update(await readFile('native/antivirus_host.py')).digest('hex'), antivirus.sourceSha256, 'Native host changed since real antivirus validation');
 const native = JSON.parse(await readFile('reports/native-tests.json', 'utf8'));
-assert(native.status === 'passed' && native.count >= 35, 'Successful native unit results required');
+assert(native.status === 'passed' && native.count >= 44, 'Successful native unit results required');
 for (const name of ['native/antivirus_host.py', 'native/windows_antivirus.py', 'native/install.py']) assert.equal(createHash('sha256').update(await readFile(name)).digest('hex'), native.sourceSha256[name], `Native source changed since verification: ${name}`);
 assert.equal(JSON.parse(await readFile('reports/build.json', 'utf8')).engine, 'independent-local');
 async function files(dir, prefix = '') {

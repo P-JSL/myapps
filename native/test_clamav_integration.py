@@ -72,6 +72,16 @@ def main() -> None:
             print("PASS " + name)
             return response
 
+        payload = json.dumps({"version": 1, "action": "status", "requestId": "integration-readiness"}).encode()
+        probe = subprocess.run([sys.executable, "-I", str(installed_host)], input=struct.pack("<I", len(payload)) + payload,
+                               capture_output=True, timeout=30, check=True)
+        if len(probe.stdout) < 4 or struct.unpack("<I", probe.stdout[:4])[0] != len(probe.stdout) - 4:
+            raise AssertionError("Invalid native readiness response framing.")
+        readiness = json.loads(probe.stdout[4:])
+        if readiness.get("status") != "ready" or readiness.get("engine") != "ClamAV" or readiness.get("requestId") != "integration-readiness":
+            raise AssertionError("Actual ClamAV readiness was not confirmed by the native host.")
+        outcomes.append({"name": "Native readiness request contacts real ClamAV without scanning a user file", "status": "passed", "verdict": "ready", "engine": "ClamAV"})
+        print("PASS " + outcomes[-1]["name"])
         scan(video, "clean", "Complete native messaging scan of clean MP4 with real ClamAV")
         scan(harmless, "infected", "Real ClamAV detects harmless custom local test signature; original retained")
         if not harmless.exists():

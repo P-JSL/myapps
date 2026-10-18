@@ -1,7 +1,7 @@
 import { record } from '../security/validation.ts';
 import { MAX_INPUT_BYTES } from '../upscale/policy.ts';
 import { OFFSCREEN_SCOPE, PREPARE_TIMEOUT_MS, SCOPE, mediaURL } from './model.ts';
-import { fetchBytes, fetchManifest } from './network.ts';
+import { fetchBytes, fetchManifestResource } from './network.ts';
 import { planHls, type StreamPlan } from './hls.ts';
 import { planDash } from './dash.ts';
 import { downloadOptions } from './preferences.ts';
@@ -51,9 +51,13 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
       protocol: value => protocols.add(value),
     });
     else {
-      const plan: StreamPlan = kind === 'file'
-        ? { assets: [{ url, filename: 'asset-00000.data' }], inputs: [{ filename: 'input-0.mp4', parts: ['asset-00000.data'] }] }
-        : kind === 'hls' ? await planHls(url, address => fetchManifest(address, task.controller.signal), options) : planDash(await fetchManifest(url, task.controller.signal), url, options);
+      let plan: StreamPlan;
+      if (kind === 'file') plan = { assets: [{ url, filename: 'asset-00000.data' }], inputs: [{ filename: 'input-0.mp4', parts: ['asset-00000.data'] }] };
+      else if (kind === 'hls') plan = await planHls(url, address => fetchManifestResource(address, task.controller.signal), options);
+      else {
+        const resource = await fetchManifestResource(url, task.controller.signal);
+        plan = planDash(resource.text, resource.url, options);
+      }
       task.controller.signal.throwIfAborted();
       data = await new Promise<Uint8Array<ArrayBuffer>>((resolve, reject) => {
         task.reject = reject;

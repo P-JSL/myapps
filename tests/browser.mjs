@@ -22,19 +22,33 @@ function command(binary, args) {
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=160x90:rate=12:duration=1', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100:duration=1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', '-y', `${fixtures}/clip.mp4`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=64x48', '-frames:v', '1', '-threads', '1', '-y', `${fixtures}/image.png`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=size=8192x2', '-frames:v', '1', '-threads', '1', '-y', `${fixtures}/wide.png`]);
-for (const directory of ['hls', 'dash', 'range', 'video', 'audio', 'low', 'high', 'quality-dash', 'parallel', 'retry']) await mkdir(`${fixtures}/${directory}`, { recursive: true });
+for (const directory of ['hls', 'dash', 'range', 'video', 'audio', 'low', 'high', 'quality-dash', 'parallel', 'retry', 'redirect']) await mkdir(`${fixtures}/${directory}`, { recursive: true });
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-c:v', 'libx264', '-g', '6', '-keyint_min', '6', '-c:a', 'aac', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-hls_segment_filename', `${fixtures}/hls/seg-%03d.ts`, '-y', `${fixtures}/hls/list.m3u8`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-map', '0', '-c', 'copy', '-seg_duration', '0.5', '-use_template', '1', '-use_timeline', '1', '-f', 'dash', '-y', `${fixtures}/dash/list.mpd`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-c', 'copy', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-hls_flags', 'single_file', '-y', `${fixtures}/range/list.m3u8`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-map', '0:v:0', '-c', 'copy', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-y', `${fixtures}/video/list.m3u8`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-map', '0:a:0', '-c', 'copy', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-y', `${fixtures}/audio/list.m3u8`]);
+command('python3', ['-c', `import pathlib,xml.etree.ElementTree as E
+p=pathlib.Path(${JSON.stringify(fixtures)})/'dash';ns='{urn:mpeg:dash:schema:mpd:2011}'
+for replace in [False,True]:
+ root=E.parse(p/'list.mpd').getroot()
+ for adaptation in root.iter(ns+'AdaptationSet'):
+  rep=adaptation.find(ns+'Representation');template=rep.find(ns+'SegmentTemplate')
+  init=template.attrib.pop('initialization');rep.remove(template);adaptation.insert(0,template)
+  child=E.SubElement(rep,ns+'SegmentTemplate',initialization=init)
+  if replace:
+   timeline=template.find(ns+'SegmentTimeline');template.remove(timeline);child.append(timeline)
+   bad=E.SubElement(template,ns+'SegmentTimeline');E.SubElement(bad,ns+'S',d='1',r='9000')
+ E.ElementTree(root).write(p/('inherited-replaced.mpd' if replace else 'inherited.mpd'),encoding='unicode')
+`]);
+await writeFile(`${fixtures}/redirect/master.m3u8`, '#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",DEFAULT=YES,URI="audio-start.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=200000,AUDIO="audio"\nvideo-start.m3u8\n');
 await writeFile(`${fixtures}/master.m3u8`, '#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",DEFAULT=YES,URI="audio/list.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=200000,AUDIO="audio"\nvideo/list.m3u8\n');
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-map', '0:v:0', '-c', 'copy', '-y', `${fixtures}/video-only.mp4`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=frequency=880:sample_rate=44100:duration=1', '-c:a', 'aac', '-y', `${fixtures}/audio-only.m4a`]);
 for (const [name, size] of [['low', '640:360'], ['high', '960:540']]) command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-vf', `scale=${size}`, '-c:v', 'libx264', '-c:a', 'copy', '-hls_time', '0.5', '-hls_playlist_type', 'vod', '-y', `${fixtures}/${name}/list.m3u8`]);
 await writeFile(`${fixtures}/quality.m3u8`, '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=900000,RESOLUTION=640x360\nlow/list.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=960x540\nhigh/list.m3u8\n');
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-map', '0:v:0', '-map', '0:v:0', '-map', '0:a:0', '-filter:v:0', 'scale=640:360', '-filter:v:1', 'scale=960:540', '-c:v', 'libx264', '-c:a', 'copy', '-f', 'dash', '-y', `${fixtures}/quality-dash/list.mpd`]);
-for (const name of ['parallel', 'retry']) command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-c:v', 'libx264', '-g', '4', '-keyint_min', '4', '-c:a', 'aac', '-hls_time', '0.333333', '-hls_playlist_type', 'vod', '-hls_segment_filename', `${fixtures}/${name}/seg-%03d.ts`, '-y', `${fixtures}/${name}/list.m3u8`]);
+for (const name of ['parallel', 'retry', 'redirect']) command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-c:v', 'libx264', '-g', '4', '-keyint_min', '4', '-c:a', 'aac', '-hls_time', '0.333333', '-hls_playlist_type', 'vod', '-hls_segment_filename', `${fixtures}/${name}/seg-%03d.ts`, '-y', `${fixtures}/${name}/list.m3u8`]);
 await writeFile(`${fixtures}/encrypted.m3u8`, '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="https://invalid.example/key"\n#EXTINF:1,\nclip.mp4\n#EXT-X-ENDLIST\n');
 await writeFile(`${fixtures}/protected.mpd`, '<MPD type="static" mediaPresentationDuration="PT1S"><Period><AdaptationSet mimeType="video/mp4"><ContentProtection schemeIdUri="urn:uuid:protected"/><Representation id="v" bandwidth="1"><BaseURL>https://invalid.example/private.mp4</BaseURL></Representation></AdaptationSet></Period></MPD>');
 await writeFile(`${fixtures}/malicious.mp4`, '<html><script>fetch("https://invalid.example/upload")</script></html>');
@@ -47,6 +61,9 @@ const server = createServer(async (request, response) => {
   try {
     const address = new URL(request.url, 'http://localhost');
     const name = decodeURIComponent(address.pathname);
+    const redirect = { '/fixtures/redirect-start.m3u8': '/fixtures/redirect/master.m3u8', '/fixtures/redirect/video-start.m3u8': '/fixtures/video/list.m3u8', '/fixtures/redirect/audio-start.m3u8': '/fixtures/audio/list.m3u8', '/fixtures/dash-redirect.mpd': '/fixtures/dash/list.mpd' }[name];
+    if (redirect) { response.writeHead(302, { Location: redirect }).end(); return; }
+
     if (name.includes('..') || name.includes('\\')) { response.writeHead(403).end(); return; }
     if (name === '/fixtures/retry/seg-000.ts' && ++retrySegmentHits === 1) { response.writeHead(503, { 'Retry-After': '0' }).end('busy'); return; }
     if (name.startsWith('/fixtures/parallel/') && name.endsWith('.ts')) { parallelActive++; parallelPeak = Math.max(parallelPeak, parallelActive); await new Promise(resolve => setTimeout(resolve, 60)); parallelActive--; }
@@ -92,6 +109,7 @@ await context.addInitScript(() => {
     runtime: { connectNative: () => {
       const port = { onMessage: listeners(), onDisconnect: listeners(), disconnect() {}, postMessage: request => {
         window.__avRequests = [...(window.__avRequests || []), request];
+        if (request.action === 'status') { queueMicrotask(() => port.onMessage.fire({ version: 1, requestId: request.requestId, status: window.__avHostMissing ? 'unavailable' : 'ready', engine: 'Test double; no actual AV', message: window.__avHostMissing ? '백신 도우미가 설치되어 있지 않습니다.' : '도우미와 검사기 선택 확인. 파일 검사는 다운로드 후 수행합니다.' })); return; }
         const file = Array.from(downloads.values()).find(item => item.filename === request.path);
         const respond = () => port.onMessage.fire({ version: 1, requestId: request.requestId, status: window.__avStatus || 'clean', engine: 'Test double; no actual AV', sha256: file?.testSha256 || 'a'.repeat(64), size: file?.fileSize ?? 12, ...(window.__avStatus === 'infected' ? { threats: ['Harmless test detection <img src=x onerror=alert(1)>'] } : {}) });
         if (window.__avHold) window.__avRelease = respond; else queueMicrotask(respond);
@@ -108,9 +126,9 @@ await context.addInitScript(() => {
       if (message.type === 'capture') { sender.url = `${location.origin}/example-page`; sender.tab = { id: 7 }; }
       return background.handleLocalMessage(message, sender);
     } },
-    extension: { inIncognitoContext: false },
+    extension: { inIncognitoContext: new URL(location.href).searchParams.has('test-incognito') },
     storage: { local: {
-      get: async key => { const data = read(); if (!key) return data; if (typeof key === 'string') return { [key]: data[key] }; return Object.fromEntries(key.map(k => [k, data[k]])); },
+      get: async key => { const data = read(); if (key === 'my_video_app_download_options_v1') { window.__prefsReads = (window.__prefsReads || 0) + 1; if (new URL(location.href).searchParams.has('test-delay-preferences')) await new Promise(resolve => { window.__releasePreferences = resolve; }); } if (!key) return data; if (typeof key === 'string') return { [key]: data[key] }; return Object.fromEntries(key.map(k => [k, data[k]])); },
       set: async values => { localStorage.setItem(storageKey, JSON.stringify({ ...read(), ...values })); },
     } },
     notifications: {
@@ -213,7 +231,7 @@ try {
   });
   await checks('Local install uses independent entry points without an account/activation engine', async () => {
     const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
-    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.5.0');
+    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.6.0');
     assert.equal(manifest.key, undefined); assert.equal(manifest.update_url, undefined);
     const result = await context.request.get(`${origin}/service/main.js`); assert.equal(result.status(), 404);
   });
@@ -379,6 +397,11 @@ try {
   await checks('HLS master handles its separate default audio track', () => remux('master.m3u8', 'hls', 'local-master.mp4'));
   await checks('HLS byte ranges produce a complete decodable MP4', () => remux('range/list.m3u8', 'hls', 'local-range.mp4'));
   await checks('Independent static DASH remux preserves separate video and audio tracks', () => remux('dash/list.mpd', 'dash', 'local-dash.mp4'));
+  await checks('Redirected HLS master and child playlists resolve relative media against each actual response URL', () => remux('redirect-start.m3u8', 'hls', 'redirect-hls.mp4'));
+  await checks('Redirected DASH manifest resolves relative initialization and media against its actual response URL', () => remux('dash-redirect.mpd', 'dash', 'redirect-dash.mp4'));
+  await checks('DASH representation templates inherit parent attributes and timeline while overriding initialization', () => remux('dash/inherited.mpd', 'dash', 'inherited-dash.mp4'));
+  await checks('DASH child timeline replaces its parent timeline without losing inherited attributes', () => remux('dash/inherited-replaced.mpd', 'dash', 'replaced-dash.mp4'));
+
   await checks('HLS highest quality selects the larger rendition even at lower declared bitrate', () => remux('quality.m3u8', 'hls', 'quality-highest-hls.mp4', { quality: 'highest', output: 'original' }, 540));
   await checks('HLS height ceiling selects the actual available lower rendition', () => remux('quality.m3u8', 'hls', 'quality-lower-hls.mp4', { quality: '480', output: 'original' }, 360));
   await checks('DASH highest quality selects the actual larger rendition', () => remux('quality-dash/list.mpd', 'dash', 'quality-highest-dash.mp4', { quality: 'highest', output: 'original' }, 540));
@@ -463,6 +486,18 @@ try {
     assert.match(await page.locator('#history').innerText(), /로컬 테스트 영상\.mp4/);
     await waitForAsync(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1?.length === 1);
     assert.equal(await page.evaluate(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1.length), 1);
+  });
+  await checks('Polling keeps the focused media action while leaving controls outside the lists focused', async () => {
+    await page.locator('#media-tab').click();
+    await page.locator('#media li button').first().focus();
+    const expected = await page.evaluate(() => { window.__focusedMediaAction = document.activeElement; return document.activeElement.closest('li').dataset.rowId; });
+    await page.waitForFunction(() => !window.__focusedMediaAction.isConnected);
+    assert.equal(await page.evaluate(() => document.activeElement.dataset.action), 'download');
+    assert.equal(await page.evaluate(() => document.activeElement.closest('li').dataset.rowId), expected);
+    await page.locator('#quality').focus();
+    await page.evaluate(() => { window.__oldMediaRow = document.querySelector('#media li'); });
+    await page.waitForFunction(() => !window.__oldMediaRow.isConnected);
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'quality');
   });
   await checks('Local download UI passes the chosen audio format through background and offscreen using API doubles', async () => {
     await page.locator('#media-tab').click();
@@ -583,8 +618,17 @@ try {
     await page.locator('#security-connect').click();
     await page.waitForFunction(() => !document.querySelector('#security-connect').disabled);
     assert.equal(await page.evaluate(() => window.__avPermission), true);
-    assert.match(await page.locator('#security-connection-status').innerText(), /연결을 다시 확인/);
+    assert.match(await page.locator('#security-connection-status').innerText(), /도우미 연결됨/);
+    assert.equal(await page.evaluate(() => window.__avRequests.at(-1).action), 'status');
     await page.evaluate(() => { window.__avStatus = 'clean'; });
+  });
+  await checks('Missing antivirus helper is shown as unavailable rather than a successful connection', async () => {
+    await page.evaluate(() => { window.__avHostMissing = true; });
+    await page.locator('#security-connect').click();
+    await page.waitForFunction(() => !document.querySelector('#security-connect').disabled);
+    const text = await page.locator('#security-connection-status').innerText();
+    assert.match(text, /설치되어 있지 않습니다/); assert.doesNotMatch(text, /도우미 연결됨/);
+    await page.evaluate(() => { window.__avHostMissing = false; });
   });
   await checks('Clearing local history leaves downloaded files intact', async () => {
     await page.locator('#clear-history').click(); await page.waitForFunction(() => document.querySelectorAll('#history li').length === 0);
@@ -600,6 +644,39 @@ try {
     }, { id, origin });
     await waitForAsync(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1[0]?.state === 'error');
     await waitForAsync(async id => { try { await (await navigator.storage.getDirectory()).getFileHandle(`local-${id}.media`); return false; } catch { return true; } }, id);
+  });
+  await checks('Validated download quality and output choices survive reopening the local app', async () => {
+    await page.locator('#media-tab').click();
+    await page.locator('#quality').selectOption('720'); await page.locator('#download-output').selectOption('mp3');
+    await waitForAsync(async () => { const v = (await chrome.storage.local.get('my_video_app_download_options_v1')).my_video_app_download_options_v1; return v?.quality === '720' && v.output === 'mp3'; });
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#quality').value === '720' && document.querySelector('#download-output').value === 'mp3');
+  });
+  await checks('A late preferences restore never overwrites choices the user has already changed', async () => {
+    const target = await context.newPage();
+    try {
+      await target.goto(`${origin}/local/index.html?test-delay-preferences=1`);
+      await target.waitForFunction(() => !!window.__releasePreferences);
+      await target.locator('#quality').selectOption('480'); await target.locator('#download-output').selectOption('m4a');
+      await target.evaluate(() => window.__releasePreferences());
+      await target.waitForFunction(() => document.querySelector('#download-preferences-status').textContent.includes('저장했습니다'));
+      assert.equal(await target.locator('#quality').inputValue(), '480'); assert.equal(await target.locator('#download-output').inputValue(), 'm4a');
+      const stored = await target.evaluate(() => JSON.parse(localStorage.getItem('VDH_TEST_CHROME_STORAGE')).my_video_app_download_options_v1);
+      assert.deepEqual(stored, { quality: '480', output: 'm4a' });
+    } finally { await target.close(); }
+  });
+  await checks('Incognito choices neither read nor overwrite the stored normal-window preferences using API doubles', async () => {
+    const target = await context.newPage();
+    try {
+      await target.goto(`${origin}/local/index.html?test-incognito=1`);
+      await target.waitForFunction(() => document.querySelector('#download-preferences-status').textContent.includes('시크릿'));
+      assert.equal(await target.locator('#quality').inputValue(), 'highest'); assert.equal(await target.locator('#download-output').inputValue(), 'original');
+      assert.equal(await target.evaluate(() => window.__prefsReads || 0), 0);
+      await target.locator('#quality').selectOption('1080'); await target.locator('#download-output').selectOption('mp3');
+      const stored = await target.evaluate(() => JSON.parse(localStorage.getItem('VDH_TEST_CHROME_STORAGE')).my_video_app_download_options_v1);
+      assert.deepEqual(stored, { quality: '480', output: 'm4a' });
+    } finally { await target.close(); }
+    await page.locator('#quality').selectOption('highest'); await page.locator('#download-output').selectOption('original');
   });
   await checks('No outbound requests or page exceptions in new processing workflow', async () => { assert.deepEqual(outbound, []); assert.deepEqual(pageErrors, []); });
   await page.locator('#media-tab').click();

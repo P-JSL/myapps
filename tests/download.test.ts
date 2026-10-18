@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type RequestListener } from 'node:http';
-import { ByteBudget, fetchBytes, retryDelay } from '../src/local/network.ts';
+import { ByteBudget, fetchBytes, fetchManifest, fetchManifestResource, retryDelay } from '../src/local/network.ts';
+import { planHls } from '../src/local/hls.ts';
 import { PreparationQueue } from '../src/local/queue.ts';
 import { downloadAssets } from '../src/local/assets.ts';
 import { transport, transportLabel } from '../src/local/transport.ts';
@@ -28,6 +29,34 @@ test('GET retries transient HTTP failures and returns exactly one intact respons
   await serve((_, response) => { requests++; if (requests < 3) response.writeHead(503, { 'Retry-After': '0' }).end('busy'); else response.end('complete'); }, async base => {
     const bytes = await fetchBytes(base, 32, new AbortController().signal);
     assert.equal(new TextDecoder().decode(bytes), 'complete'); assert.equal(requests, 3);
+  });
+});
+test('redirected HLS masters and child playlists resolve references against each successful response URL', async () => {
+  const hits: string[] = [];
+  const redirects: Record<string, string> = {
+    '/entry.m3u8': '/cdn/master.m3u8',
+    '/cdn/video.m3u8': '/media/video/list.m3u8',
+    '/cdn/audio.m3u8': '/media/audio/list.m3u8',
+  };
+  const playlists: Record<string, string> = {
+    '/cdn/master.m3u8': '#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a",DEFAULT=YES,URI="audio.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=10,AUDIO="a"\nvideo.m3u8',
+    '/media/video/list.m3u8': '#EXTM3U\n#EXTINF:1,\nvideo.ts\n#EXT-X-ENDLIST',
+    '/media/audio/list.m3u8': '#EXTM3U\n#EXTINF:1,\naudio.ts\n#EXT-X-ENDLIST',
+  };
+  await serve((request, response) => {
+    const path = request.url!; hits.push(path);
+    if (redirects[path]) response.writeHead(302, { Location: redirects[path] }).end();
+    else if (playlists[path]) response.end(playlists[path]);
+    else response.writeHead(404).end();
+  }, async base => {
+    const signal = new AbortController().signal;
+    const plan = await planHls(base + '/entry.m3u8', url => fetchManifestResource(url, signal));
+    assert.deepEqual(plan.assets.map(asset => asset.url), [base + '/media/video/video.ts', base + '/media/audio/audio.ts']);
+    assert.deepEqual(hits, ['/entry.m3u8', '/cdn/master.m3u8', '/cdn/video.m3u8', '/media/video/list.m3u8', '/cdn/audio.m3u8', '/media/audio/list.m3u8']);
+    const resource = await fetchManifestResource(base + '/entry.m3u8', signal);
+    assert.equal(resource.url, base + '/cdn/master.m3u8');
+    assert.equal(resource.text, playlists['/cdn/master.m3u8']);
+    assert.equal(await fetchManifest(base + '/entry.m3u8', signal), resource.text);
   });
 });
 test('authorization failures and long rate-limit waits are not repeatedly requested', async () => {

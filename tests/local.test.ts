@@ -76,6 +76,19 @@ test('HLS rejects open live windows, cycles, executable URLs and empty streams',
   await assert.rejects(planHls('https://media.test/list.m3u8', async () => '#EXTM3U\n#EXTINF:1,\nfile:///etc/passwd\n#EXT-X-ENDLIST'), /HTTP/);
   await assert.rejects(planHls('https://media.test/list.m3u8', async () => '#EXTM3U\n#EXT-X-ENDLIST'), /조각/);
 });
+test('HLS redirect aliases cannot bypass cycle detection or URL validation', async () => {
+  const root = 'https://media.test/master.m3u8';
+  const effective = 'https://cdn.test/path/master.m3u8';
+  let reads = 0;
+  await assert.rejects(planHls(root, async () => {
+    reads++;
+    return { url: effective, text: '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nalias.m3u8' };
+  }), /순환/);
+  assert.equal(reads, 2);
+  for (const url of ['file:///video/list.m3u8', 'https://user:secret@cdn.test/list.m3u8']) {
+    await assert.rejects(planHls(root, async () => ({ url, text: '#EXTM3U\n#EXTINF:1,\na.ts\n#EXT-X-ENDLIST' })), /HTTP/);
+  }
+});
 test('network reader enforces byte limits, validates ranges, handles ignored ranges and aborts', async () => {
   const data = Buffer.from('0123456789');
   const server = createServer((request, response) => {

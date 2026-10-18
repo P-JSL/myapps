@@ -1,5 +1,5 @@
 {
-  "buildSha256": "5d13a9778bed6b98a96fa20ab8eb3c8d4a79b4f59906ad4bbb56f1f8e1bb5fe4",
+  "buildSha256": "cf2c60ff0ca87bc783b082dfa53752a80a8d05a23d9bb48b506565cc26d21f52",
   "browser": "154.0.8037.57",
   "transport": "h3",
   "tlsVerification": "enabled; untrusted CA rejected before isolated test-profile trust was configured",

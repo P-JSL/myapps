@@ -1,5 +1,5 @@
 import { MAX_SEGMENTS, mediaURL } from './model.ts';
-import { validRange, type ByteRange } from './network.ts';
+import { validRange, type ByteRange, type ManifestResource } from './network.ts';
 import { chooseQuality, downloadOptions, type DownloadOptions } from './preferences.ts';
 
 export interface RemoteAsset { url: string; filename: string; range?: ByteRange; }
@@ -25,13 +25,17 @@ export function parseByteRange(value: string, offset = 0): ByteRange {
   const range = { length: Number(match[1]), offset: match[2] === undefined ? offset : Number(match[2]) };
   validRange(range); return range;
 }
-export async function planHls(url: string, load: (url: string) => Promise<string>, options: DownloadOptions = downloadOptions()): Promise<StreamPlan> {
+export async function planHls(url: string, load: (url: string) => Promise<string | ManifestResource>, options: DownloadOptions = downloadOptions()): Promise<StreamPlan> {
   const assets: RemoteAsset[] = [];
   const inputs: StreamInput[] = [];
   async function playlist(address: string, depth: number, ancestors: Set<string>, includeAudio: boolean): Promise<void> {
     if (depth > 3 || ancestors.has(address)) throw new Error('HLS 목록이 순환하거나 너무 깊습니다.');
-    const next = new Set(ancestors).add(address);
-    const lines = check(await load(address));
+    const requested = address;
+    const resource = await load(address);
+    address = mediaURL(typeof resource === 'string' ? address : resource.url).href;
+    if (ancestors.has(address)) throw new Error('HLS 목록이 순환하거나 너무 깊습니다.');
+    const next = new Set(ancestors).add(requested).add(address);
+    const lines = check(typeof resource === 'string' ? resource : resource.text);
     const variants: Array<{ url: string; bandwidth: number; height: number; audio?: string }> = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!;

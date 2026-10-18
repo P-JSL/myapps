@@ -157,7 +157,7 @@ async function fetchBytes(url, maximum, signal, range, monitor = {}) {
         throw new Error(message);
       }
       if (!response.body) throw new Error("\uBBF8\uB514\uC5B4 \uC751\uB2F5\uC5D0 \uD30C\uC77C \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
-      if (response.url) mediaURL(response.url);
+      const finalURL = response.url ? mediaURL(response.url).href : address;
       if (!range && response.status === 206) throw new Error("\uC804\uCCB4 \uD30C\uC77C \uC694\uCCAD\uC5D0 \uC77C\uBD80 \uBBF8\uB514\uC5B4\uB9CC \uBC18\uD658\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
       const length = response.headers.get("Content-Length");
       const declared = length !== null && /^\d+$/.test(length) ? Number(length) : void 0;
@@ -202,6 +202,7 @@ async function fetchBytes(url, maximum, signal, range, monitor = {}) {
       const protocol = await observation.finish();
       signal.throwIfAborted();
       if (protocol) monitor.protocol?.(protocol);
+      monitor.finalURL?.(finalURL);
       success = true;
       return result;
     } catch (error) {

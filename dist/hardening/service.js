@@ -81,10 +81,18 @@ async function cleanupUnlocked(now = Date.now()) {
 // src/upscale/completion.ts
 var serial = Promise.resolve();
 var revokedDownloads = /* @__PURE__ */ new Set();
+var offerGenerations = /* @__PURE__ */ new Map();
+function authorizeDownloadOffers(downloadId) {
+  if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
+  offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
+  revokedDownloads.delete(downloadId);
+}
 async function offerUpscale(event) {
+  const generation = event.downloadId === void 0 ? void 0 : offerGenerations.get(event.downloadId) ?? 0;
+  const permitted = () => event.downloadId !== void 0 && !revokedDownloads.has(event.downloadId) && (offerGenerations.get(event.downloadId) ?? 0) === generation;
   const pending = serial.then(() => withQueueLock(async () => {
     const downloadId = event.downloadId;
-    if (!event.success || event.incognito || typeof downloadId !== "number" || !Number.isSafeInteger(downloadId) || downloadId < 0 || revokedDownloads.has(downloadId)) return;
+    if (!event.success || event.incognito || typeof downloadId !== "number" || !Number.isSafeInteger(downloadId) || downloadId < 0 || !permitted()) return;
     if ((await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] === false) return;
     const root = await navigator.storage.getDirectory();
     const source = await (await root.getFileHandle(event.internalFilename)).getFile();
@@ -95,7 +103,7 @@ async function offerUpscale(event) {
       const sha256 = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
       if (sha256 !== event.expectedSha256) return;
     }
-    if (revokedDownloads.has(downloadId)) return;
+    if (!permitted()) return;
     const retained = await cleanupUnlocked();
     if (retained.length >= MAX_JOBS || retained.reduce((total, job2) => total + job2.size, 0) + source.size > MAX_QUEUE_BYTES) return;
     const job = { id: crypto.randomUUID(), filename: safeBasename(event.filename), size: source.size, createdAt: Date.now(), downloadId };
@@ -108,7 +116,18 @@ async function offerUpscale(event) {
       });
       throw error;
     }
+    if (!permitted()) {
+      await dir.removeEntry(job.id).catch(() => {
+      });
+      return;
+    }
     await chrome.storage.local.set({ [JOBS_KEY]: [job, ...retained] });
+    if (!permitted()) {
+      await chrome.storage.local.set({ [JOBS_KEY]: retained });
+      await dir.removeEntry(job.id).catch(() => {
+      });
+      return;
+    }
     await chrome.notifications.create(`vdh-upscale:${job.id}`, {
       type: "basic",
       iconUrl: chrome.runtime.getURL("bitmaps/logo-128-color.png"),
@@ -118,6 +137,8 @@ async function offerUpscale(event) {
       buttons: [{ title: "\uC5C5\uC2A4\uCF00\uC77C\uB9C1 \uC120\uD0DD" }, { title: "\uC784\uC2DC \uBCF5\uC0AC\uBCF8 \uC0AD\uC81C" }]
     }).catch(() => {
     });
+    if (!permitted()) await chrome.notifications.clear(`vdh-upscale:${job.id}`).catch(() => {
+    });
   }));
   serial = pending.catch(() => {
   });
@@ -126,6 +147,7 @@ async function offerUpscale(event) {
 async function revokeDownloadOffers(downloadId) {
   if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
   revokedDownloads.add(downloadId);
+  offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
   const pending = serial.then(() => withQueueLock(async () => {
     const retained = await jobs();
     const revoked = retained.filter((job) => job.downloadId === downloadId);
@@ -180,6 +202,7 @@ chrome.contextMenus.onClicked.addListener((info) => {
   if (info.menuItemId === "vdh-upscale-tools") void openTools();
 });
 export {
+  authorizeDownloadOffers,
   offerUpscale,
   revokeDownloadOffers
 };

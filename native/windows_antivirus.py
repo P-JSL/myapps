@@ -235,6 +235,33 @@ def _check_hresult(result) -> None:
         raise RuntimeError('Windows AMSI did not complete the requested operation.')
 
 
+def probe_amsi(api=None) -> dict:
+    """Open and close the real API without reading or scanning a user file."""
+    engine = 'Windows AMSI'
+    try:
+        api = api if api is not None else _load_amsi()
+        context, session = ctypes.c_void_p(), ctypes.c_void_p()
+        try:
+            _check_hresult(api.AmsiInitialize('My Video App', ctypes.byref(context)))
+            if not context.value:
+                raise RuntimeError('Windows AMSI returned no scan context.')
+            try:
+                _check_hresult(api.AmsiOpenSession(context, ctypes.byref(session)))
+                if not session.value:
+                    raise RuntimeError('Windows AMSI returned no scan session.')
+            finally:
+                if session.value:
+                    api.AmsiCloseSession(context, session)
+        finally:
+            if context.value:
+                api.AmsiUninitialize(context)
+        return {'status': 'ready', 'engine': engine,
+                'message': 'Windows AMSI 초기화와 도우미 연결을 확인했습니다. 파일의 위협 탐지 여부는 다운로드 후 실제 검사에서 확인합니다.'}
+    except (OSError, ValueError, RuntimeError, AttributeError, TypeError, OverflowError, ctypes.ArgumentError):
+        return {'status': 'unavailable', 'engine': engine,
+                'message': 'Windows AMSI를 초기화하지 못했습니다. Windows 보안에서 사용 중인 백신과 표준 검사 지원을 확인하세요.'}
+
+
 def scan_with_amsi(snapshot: Path, provider_name: str = '', api=None) -> dict:
     """Scan one full file buffer; caller runs this worker with a 120-second limit.
 
@@ -297,7 +324,9 @@ def scan_with_amsi(snapshot: Path, provider_name: str = '', api=None) -> dict:
 
 
 def main(arguments: list[str]) -> int:
-    if len(arguments) != 3 or arguments[0] != '--amsi-scan' or len(arguments[2]) > 500:
+    if arguments == ['--amsi-status']:
+        result = probe_amsi()
+    elif len(arguments) != 3 or arguments[0] != '--amsi-scan' or len(arguments[2]) > 500:
         result = {'status': 'error', 'engine': 'Windows AMSI', 'message': 'Invalid Windows AMSI worker request.'}
     else:
         result = scan_with_amsi(Path(arguments[1]), arguments[2])

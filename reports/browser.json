@@ -1,5 +1,5 @@
 {
-  "buildSha256": "5d13a9778bed6b98a96fa20ab8eb3c8d4a79b4f59906ad4bbb56f1f8e1bb5fe4",
+  "buildSha256": "cf2c60ff0ca87bc783b082dfa53752a80a8d05a23d9bb48b506565cc26d21f52",
   "browser": "154.0.8037.57",
   "engine": "independent-local",
   "mode": "localhost harness: real browser/Wasm/OPFS; Chrome extension APIs mocked",
@@ -125,6 +125,22 @@
       "status": "passed"
     },
     {
+      "name": "Redirected HLS master and child playlists resolve relative media against each actual response URL",
+      "status": "passed"
+    },
+    {
+      "name": "Redirected DASH manifest resolves relative initialization and media against its actual response URL",
+      "status": "passed"
+    },
+    {
+      "name": "DASH representation templates inherit parent attributes and timeline while overriding initialization",
+      "status": "passed"
+    },
+    {
+      "name": "DASH child timeline replaces its parent timeline without losing inherited attributes",
+      "status": "passed"
+    },
+    {
       "name": "HLS highest quality selects the larger rendition even at lower declared bitrate",
       "status": "passed"
     },
@@ -181,6 +197,10 @@
       "status": "passed"
     },
     {
+      "name": "Polling keeps the focused media action while leaving controls outside the lists focused",
+      "status": "passed"
+    },
+    {
       "name": "Local download UI passes the chosen audio format through background and offscreen using API doubles",
       "status": "passed"
     },
@@ -217,11 +237,27 @@
       "status": "passed"
     },
     {
+      "name": "Missing antivirus helper is shown as unavailable rather than a successful connection",
+      "status": "passed"
+    },
+    {
       "name": "Clearing local history leaves downloaded files intact",
       "status": "passed"
     },
     {
       "name": "Restart reconciliation releases interrupted preparation slots and cleans owned temp files using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "Validated download quality and output choices survive reopening the local app",
+      "status": "passed"
+    },
+    {
+      "name": "A late preferences restore never overwrites choices the user has already changed",
+      "status": "passed"
+    },
+    {
+      "name": "Incognito choices neither read nor overwrite the stored normal-window preferences using API doubles",
       "status": "passed"
     },
     {

@@ -7,11 +7,20 @@ interface CompletedDownload {
 }
 let serial: Promise<unknown> = Promise.resolve();
 const revokedDownloads = new Set<number>();
+const offerGenerations = new Map<number, number>();
+export function authorizeDownloadOffers(downloadId: number): void {
+  if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error('잘못된 다운로드 번호입니다.');
+  offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
+  revokedDownloads.delete(downloadId);
+}
 export async function offerUpscale(event: CompletedDownload): Promise<void> {
+  const generation = event.downloadId === undefined ? undefined : offerGenerations.get(event.downloadId) ?? 0;
+  const permitted = () => event.downloadId !== undefined && !revokedDownloads.has(event.downloadId)
+    && (offerGenerations.get(event.downloadId) ?? 0) === generation;
   // The downloader must never fail because the optional feature failed.
   const pending = serial.then(() => withQueueLock(async () => {
     const downloadId = event.downloadId;
-    if (!event.success || event.incognito || typeof downloadId !== 'number' || !Number.isSafeInteger(downloadId) || downloadId < 0 || revokedDownloads.has(downloadId)) return;
+    if (!event.success || event.incognito || typeof downloadId !== 'number' || !Number.isSafeInteger(downloadId) || downloadId < 0 || !permitted()) return;
     if ((await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] === false) return;
     const root = await navigator.storage.getDirectory();
     const source = await (await root.getFileHandle(event.internalFilename)).getFile();
@@ -23,7 +32,7 @@ export async function offerUpscale(event: CompletedDownload): Promise<void> {
       const sha256 = Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
       if (sha256 !== event.expectedSha256) return;
     }
-    if (revokedDownloads.has(downloadId)) return;
+      if (!permitted()) return;
     const retained = await cleanupUnlocked();
     if (retained.length >= MAX_JOBS || retained.reduce((total, job) => total + job.size, 0) + source.size > MAX_QUEUE_BYTES) return;
     const job: Job = { id: crypto.randomUUID(), filename: safeBasename(event.filename), size: source.size, createdAt: Date.now(), downloadId };
@@ -31,12 +40,18 @@ export async function offerUpscale(event: CompletedDownload): Promise<void> {
     const writable = await (await dir.getFileHandle(job.id, { create: true })).createWritable();
     try { await source.stream().pipeTo(writable); }
     catch (error) { await dir.removeEntry(job.id).catch(() => {}); throw error; }
+    if (!permitted()) { await dir.removeEntry(job.id).catch(() => {}); return; }
     await chrome.storage.local.set({ [JOBS_KEY]: [job, ...retained] });
+    if (!permitted()) {
+      await chrome.storage.local.set({ [JOBS_KEY]: retained });
+      await dir.removeEntry(job.id).catch(() => {}); return;
+    }
     await chrome.notifications.create(`vdh-upscale:${job.id}`, {
       type: 'basic', iconUrl: chrome.runtime.getURL('bitmaps/logo-128-color.png'), title: '다운로드 완료 · 업스케일링',
       message: `${job.filename}\n확대본을 별도 파일로 만들 수 있습니다.`,
       buttons: [{ title: '업스케일링 선택' }, { title: '임시 복사본 삭제' }],
     }).catch(() => {});
+    if (!permitted()) await chrome.notifications.clear(`vdh-upscale:${job.id}`).catch(() => {});
   }));
   serial = pending.catch(() => {});
   await serial;
@@ -46,6 +61,7 @@ export async function offerUpscale(event: CompletedDownload): Promise<void> {
 export async function revokeDownloadOffers(downloadId: number): Promise<void> {
   if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error('잘못된 다운로드 번호입니다.');
   revokedDownloads.add(downloadId);
+  offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
   const pending = serial.then(() => withQueueLock(async () => {
     const retained = await jobs();
     const revoked = retained.filter(job => job.downloadId === downloadId);

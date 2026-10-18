@@ -139,7 +139,7 @@ async function fetchBytes(url, maximum, signal, range2, monitor = {}) {
         throw new Error(message);
       }
       if (!response.body) throw new Error("\uBBF8\uB514\uC5B4 \uC751\uB2F5\uC5D0 \uD30C\uC77C \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
-      if (response.url) mediaURL(response.url);
+      const finalURL = response.url ? mediaURL(response.url).href : address;
       if (!range2 && response.status === 206) throw new Error("\uC804\uCCB4 \uD30C\uC77C \uC694\uCCAD\uC5D0 \uC77C\uBD80 \uBBF8\uB514\uC5B4\uB9CC \uBC18\uD658\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
       const length = response.headers.get("Content-Length");
       const declared = length !== null && /^\d+$/.test(length) ? Number(length) : void 0;
@@ -184,6 +184,7 @@ async function fetchBytes(url, maximum, signal, range2, monitor = {}) {
       const protocol = await observation.finish();
       signal.throwIfAborted();
       if (protocol) monitor.protocol?.(protocol);
+      monitor.finalURL?.(finalURL);
       success = true;
       return result;
     } catch (error) {
@@ -203,8 +204,12 @@ async function fetchBytes(url, maximum, signal, range2, monitor = {}) {
     await wait(failure instanceof Retryable && failure.delay !== void 0 ? failure.delay : 300 * 2 ** attempt, signal);
   }
 }
-async function fetchManifest(url, signal) {
-  return new TextDecoder("utf-8", { fatal: true }).decode(await fetchBytes(url, 2 * 1024 * 1024, signal));
+async function fetchManifestResource(url, signal) {
+  let address = mediaURL(url).href;
+  const bytes = await fetchBytes(address, 2 * 1024 * 1024, signal, void 0, { finalURL: (value) => {
+    address = value;
+  } });
+  return { text: new TextDecoder("utf-8", { fatal: true }).decode(bytes), url: address };
 }
 
 // src/local/preferences.ts
@@ -252,8 +257,12 @@ async function planHls(url, load, options = downloadOptions()) {
   const inputs = [];
   async function playlist(address, depth, ancestors, includeAudio) {
     if (depth > 3 || ancestors.has(address)) throw new Error("HLS \uBAA9\uB85D\uC774 \uC21C\uD658\uD558\uAC70\uB098 \uB108\uBB34 \uAE4A\uC2B5\uB2C8\uB2E4.");
-    const next = new Set(ancestors).add(address);
-    const lines = check(await load(address));
+    const requested = address;
+    const resource = await load(address);
+    address = mediaURL(typeof resource === "string" ? address : resource.url).href;
+    if (ancestors.has(address)) throw new Error("HLS \uBAA9\uB85D\uC774 \uC21C\uD658\uD558\uAC70\uB098 \uB108\uBB34 \uAE4A\uC2B5\uB2C8\uB2E4.");
+    const next = new Set(ancestors).add(requested).add(address);
+    const lines = check(typeof resource === "string" ? resource : resource.text);
     const variants = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -396,14 +405,16 @@ function planDash(text, address, options = downloadOptions()) {
     const parts = [];
     const inherited = (name) => [...chain].reverse().map((node) => child(node, name)).find((node) => node !== void 0);
     const list = inherited("SegmentList");
-    const template = inherited("SegmentTemplate");
+    const templates = [...chain].reverse().map((node) => child(node, "SegmentTemplate")).filter((node) => node !== void 0);
+    const template = templates[0];
+    const templateAttribute = (name) => templates.find((node) => node.hasAttribute(name))?.getAttribute(name) ?? null;
     if (list) {
       const init = child(list, "Initialization");
       if (init) add2(init.getAttribute("sourceURL") ?? base, range(init.getAttribute("range")));
       for (const segment of children(list, "SegmentURL")) add2(segment.getAttribute("media") ?? base, range(segment.getAttribute("mediaRange")));
     } else if (template) {
-      const timescale = Number(template.getAttribute("timescale") ?? "1");
-      let number = Number(template.getAttribute("startNumber") ?? "1");
+      const timescale = Number(templateAttribute("timescale") ?? "1");
+      let number = Number(templateAttribute("startNumber") ?? "1");
       if (!Number.isSafeInteger(timescale) || timescale <= 0 || !Number.isSafeInteger(number) || number < 0) throw new Error("DASH \uD0C0\uC784\uB77C\uC778\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
       const expand = (format2, time) => format2.replace(/\$\$|\$(RepresentationID|Bandwidth|Number|Time)(?:%0(\d+)d)?\$/g, (match, key, width) => {
         if (match === "$$") return "$";
@@ -412,11 +423,11 @@ function planDash(text, address, options = downloadOptions()) {
         if (pad > 20) throw new Error("DASH \uBC88\uD638 \uD615\uC2DD\uC774 \uB108\uBB34 \uAE41\uB2C8\uB2E4.");
         return value.padStart(pad, "0");
       });
-      const init = template.getAttribute("initialization");
+      const init = templateAttribute("initialization");
       if (init) add2(expand(init, 0));
-      const format = template.getAttribute("media");
+      const format = templateAttribute("media");
       if (!format) throw new Error("DASH \uBBF8\uB514\uC5B4 \uD15C\uD50C\uB9BF\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
-      const timeline = child(template, "SegmentTimeline");
+      const timeline = templates.map((node) => child(node, "SegmentTimeline")).find((node) => node !== void 0);
       if (timeline) {
         const entries = children(timeline, "S");
         let time = 0;
@@ -439,7 +450,7 @@ function planDash(text, address, options = downloadOptions()) {
           }
         }
       } else {
-        const step = Number(template.getAttribute("duration"));
+        const step = Number(templateAttribute("duration"));
         const count = Math.ceil(seconds * timescale / step);
         if (!Number.isFinite(count) || count < 1 || count > MAX_SEGMENTS) throw new Error("DASH \uAE38\uC774 \uB610\uB294 \uC870\uAC01 \uAC1C\uC218\uAC00 \uD5C8\uC6A9 \uBC94\uC704\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
         for (let i = 0; i < count; i++) {
@@ -559,7 +570,13 @@ async function prepareOne(id, url, kind, options, signal, report) {
       protocol: (value) => protocols.add(value)
     });
     else {
-      const plan = kind === "file" ? { assets: [{ url, filename: "asset-00000.data" }], inputs: [{ filename: "input-0.mp4", parts: ["asset-00000.data"] }] } : kind === "hls" ? await planHls(url, (address) => fetchManifest(address, task.controller.signal), options) : planDash(await fetchManifest(url, task.controller.signal), url, options);
+      let plan;
+      if (kind === "file") plan = { assets: [{ url, filename: "asset-00000.data" }], inputs: [{ filename: "input-0.mp4", parts: ["asset-00000.data"] }] };
+      else if (kind === "hls") plan = await planHls(url, (address) => fetchManifestResource(address, task.controller.signal), options);
+      else {
+        const resource = await fetchManifestResource(url, task.controller.signal);
+        plan = planDash(resource.text, resource.url, options);
+      }
       task.controller.signal.throwIfAborted();
       data = await new Promise((resolve, reject) => {
         task.reject = reject;
