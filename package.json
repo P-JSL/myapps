@@ -1,6 +1,6 @@
 {
   "name": "my-video-app",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -14,7 +14,7 @@
     "verify": "npm run typecheck && npm test && npm run test:native && npm run build && npm run test:browser",
     "package": "node scripts/package.mjs",
     "test:http3": "node tests/http3.mjs",
-    "test:native": "python3 -B -m unittest discover -s native -p 'test_*.py' -v"
+    "test:native": "node scripts/test-native.mjs"
   },
   "devDependencies": {
     "@ffmpeg/core": "0.12.10",

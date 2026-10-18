@@ -185,6 +185,7 @@ function historyRow(item) {
   const security = document.createElement("p");
   security.className = "security-summary";
   security.textContent = item.security ? securityLabels[item.security.status] : "\uAC80\uC0AC \uAE30\uB85D \uC5C6\uC74C";
+  if (item.security?.engine) security.textContent += ` \xB7 ${item.security.engine}`;
   if (item.security?.decision === "keep") security.textContent += " \xB7 \uC704\uD5D8 \uC548\uB0B4 \uD655\uC778 \uD6C4 \uC0AC\uC6A9\uC790\uAC00 \uC720\uC9C0\uD568";
   if (item.security?.decision === "delete") security.textContent += " \xB7 \uC0AC\uC6A9\uC790\uAC00 \uD30C\uC77C \uC0AD\uC81C\uB97C \uC120\uD0DD\uD568";
   row.append(security);
@@ -291,7 +292,7 @@ node("security-connect").addEventListener("click", () => {
       return;
     }
     await request("security-connect");
-    connection.textContent = "\uC5F0\uACB0\uC744 \uB2E4\uC2DC \uD655\uC778\uD588\uC2B5\uB2C8\uB2E4. \uAC80\uC0AC \uACB0\uACFC\uB294 \uAE30\uB85D \uD0ED\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694. \uBC31\uC2E0\uC774 \uC124\uCE58\uB418\uC9C0 \uC54A\uC558\uB2E4\uBA74 \uC124\uCE58 \uC548\uB0B4\uB97C \uB530\uB77C \uC8FC\uC138\uC694.";
+    connection.textContent = "\uC5F0\uACB0\uC744 \uB2E4\uC2DC \uD655\uC778\uD588\uC2B5\uB2C8\uB2E4. Windows\uB294 \uAE30\uBCF8 Defender \uB610\uB294 \uD45C\uC900 \uC5F0\uB3D9\uC744 \uC9C0\uC6D0\uD558\uB294 \uD65C\uC131 \uBC31\uC2E0\uC744 \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uAC80\uC0AC \uACB0\uACFC\uB294 \uAE30\uB85D \uD0ED\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694.";
     await refresh();
   }).catch((value) => {
     connection.textContent = value instanceof Error ? value.message : "\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.";

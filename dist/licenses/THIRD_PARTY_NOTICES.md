@@ -30,3 +30,5 @@ The optional local HTTP/3 test server uses aioquic 1.3.0 (BSD-3-Clause), install
 ## Optional local antivirus integration
 
 The native messaging bridge uses separately installed ClamAV (GPL-2.0) or Microsoft Defender under its operating-system license. Antivirus engines and signature databases are not bundled in the extension, source or helper ZIPs. An isolated ClamAV 1.4.6 test used a private test-only signature database; that does not verify the freshness or coverage of official signatures.
+
+Windows antivirus auto-selection uses the operating system's Windows Security Center and AMSI APIs, Microsoft Defender, or the registered AMSI providers under their respective installed licenses. No third-party antivirus engine is bundled. Their existing cloud protection and sample-submission policies remain in effect.

@@ -111,6 +111,7 @@ function historyRow(item: HistoryItem) {
   row.append(title, info);
   const security = document.createElement('p'); security.className = 'security-summary';
   security.textContent = item.security ? securityLabels[item.security.status] : '검사 기록 없음';
+  if (item.security?.engine) security.textContent += ` · ${item.security.engine}`;
   if (item.security?.decision === 'keep') security.textContent += ' · 위험 안내 확인 후 사용자가 유지함';
   if (item.security?.decision === 'delete') security.textContent += ' · 사용자가 파일 삭제를 선택함';
   row.append(security);
@@ -174,7 +175,7 @@ node('security-connect').addEventListener('click', () => {
   void permission.then(async granted => {
     if (!granted) { connection.textContent = '연결 권한을 허용하지 않았습니다. 검사되지 않은 파일은 기록에서 확인하세요.'; return; }
     await request('security-connect');
-    connection.textContent = '연결을 다시 확인했습니다. 검사 결과는 기록 탭에서 확인하세요. 백신이 설치되지 않았다면 설치 안내를 따라 주세요.';
+    connection.textContent = '연결을 다시 확인했습니다. Windows는 기본 Defender 또는 표준 연동을 지원하는 활성 백신을 사용합니다. 검사 결과는 기록 탭에서 확인하세요.';
     await refresh();
   }).catch(value => { connection.textContent = value instanceof Error ? value.message : '로컬 백신 연결에 실패했습니다.'; }).finally(() => { connect.disabled = false; });
 });

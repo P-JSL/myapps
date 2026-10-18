@@ -1,8 +1,8 @@
 {
   "engine": "independent-local",
   "productName": "My Video App",
-  "version": "1.4.0",
-  "buildSha256": "4c3394288b85be9b785756e1c5756a0e27bf8e9e39d70317422dd8cdb4a1f910",
+  "version": "1.5.0",
+  "buildSha256": "5d13a9778bed6b98a96fa20ab8eb3c8d4a79b4f59906ad4bbb56f1f8e1bb5fe4",
   "originalRuntimeIncluded": false,
   "accountActivationIncluded": false,
   "capabilities": [
@@ -24,7 +24,10 @@
     "parallel-segments",
     "local-antivirus-integration",
     "browser-danger-review",
-    "explicit-security-decisions"
+    "explicit-security-decisions",
+    "windows-default-antivirus",
+    "active-antivirus-discovery",
+    "windows-amsi-integration"
   ],
   "ffmpeg": {
     "package": "@ffmpeg/core",
@@ -33,5 +36,5 @@
     "bytes": 32232419
   },
   "distFiles": 24,
-  "distBytes": 32574508
+  "distBytes": 32577841
 }

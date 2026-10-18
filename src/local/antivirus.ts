@@ -50,7 +50,7 @@ export async function scanFile(path: string): Promise<ScanResult> {
           const message = chrome.runtime.lastError?.message;
           finish({ status: 'unavailable', message: message ? `로컬 백신 연결 실패: ${message.slice(0, 300)}` : '로컬 백신 도우미가 연결을 종료했습니다. 설치 상태를 확인하세요.' });
         });
-        timer = setTimeout(() => finish({ status: 'error', message: '백신 검사가 제한 시간을 초과했습니다. 검사되지 않은 파일입니다.' }), 130_000);
+        timer = setTimeout(() => finish({ status: 'error', message: '백신 검사가 제한 시간을 초과했습니다. 검사되지 않은 파일입니다.' }), 240_000);
         port.postMessage({ version: 1, action: 'scan', requestId, path });
       } catch {
         finish({ status: 'unavailable', message: '로컬 백신 도우미에 연결할 수 없습니다. 설치와 권한을 확인하세요.' });

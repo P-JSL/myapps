@@ -153,15 +153,35 @@ class AntivirusHostTests(unittest.TestCase):
             HOST.serve(io.BytesIO(raw), output)
             self.assertEqual(json.loads(output.getvalue()[4:])["status"], "error")
 
-    def test_defender_cloud_policy_is_not_changed_and_blocks_scan(self):
-        with patch.object(HOST, "run_tool", return_value=(0, '{"maps":2,"samples":1,"enabled":true}')) as tool:
+    def test_defender_uses_current_protection_policy_without_changing_it(self):
+        with patch.object(HOST, "run_tool", side_effect=[
+                (0, '{"enabled":true,"service":true,"mode":"Normal"}'),
+                (0, "검사가 정상적으로 완료되었습니다.")]) as tool:
             result = HOST.scan_defender(Path("powershell.exe"), Path("MpCmdRun.exe"), self.video)
-        self.assertEqual(result["status"], "unavailable")
-        self.assertEqual(tool.call_count, 1)
-        self.assertNotIn("Set-MpPreference", str(tool.call_args))
+        self.assertEqual(result["status"], "clean")
+        self.assertEqual(tool.call_count, 2)
+        invocation = str(tool.call_args_list)
+        self.assertIn("Get-MpComputerStatus", invocation)
+        for forbidden in ("Get-MpPreference", "Set-MpPreference", "MAPSReporting", "SubmitSamplesConsent"):
+            self.assertNotIn(forbidden, invocation)
+        self.assertIn("-DisableRemediation", tool.call_args.args[0])
+
+    def test_disabled_or_passive_defender_never_runs_file_scan(self):
+        states = [
+            {"enabled": True, "service": True, "mode": "Passive"},
+            {"enabled": True, "service": True, "mode": "EDR Block Mode"},
+            {"enabled": False, "service": True, "mode": "Normal"},
+            {"enabled": True, "service": False, "mode": "Normal"},
+            {"enabled": True, "service": True},
+        ]
+        for state in states:
+            with self.subTest(state=state), patch.object(HOST, "run_tool", return_value=(0, json.dumps(state))) as tool:
+                result = HOST.scan_defender(Path("powershell.exe"), Path("MpCmdRun.exe"), self.video)
+                self.assertEqual(result["status"], "unavailable")
+                self.assertEqual(tool.call_count, 1)
 
     def test_defender_ambiguous_exit_never_maps_to_clean(self):
-        with patch.object(HOST, "run_tool", side_effect=[(0, '{"maps":0,"samples":2,"enabled":true}'), (2, "Scan failed")]) as tool:
+        with patch.object(HOST, "run_tool", side_effect=[(0, '{"enabled":true,"service":true,"mode":"Normal"}'), (2, "Scan failed")]) as tool:
             result = HOST.scan_defender(Path("powershell.exe"), Path("MpCmdRun.exe"), self.video)
         self.assertEqual(result["status"], "error")
         self.assertIn("-DisableRemediation", tool.call_args.args[0])

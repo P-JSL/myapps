@@ -64,6 +64,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Install My Video App local antivirus native host for this OS account.")
     parser.add_argument("--extension-id", action="append", default=[], help="32-character ID shown at chrome://extensions; repeat to allow multiple IDs")
     parser.add_argument("--browser", choices=("chrome", "chromium", "both"), default="chrome")
+    parser.add_argument("--scanner", choices=("auto", "defender", "clamav"), default="auto", help="auto: use Windows active antivirus, otherwise installed ClamAV")
     parser.add_argument("--clamav", help="Optional absolute path to an installed clamscan executable; no commands or arguments")
     parser.add_argument("--uninstall", action="store_true", help="Remove this host registration and its own installed files")
     arguments = parser.parse_args()
@@ -85,7 +86,7 @@ def main() -> int:
             print("Selected registration removed; companion files retained for another registered browser.")
             return 0
         # Only remove fixed filenames we install; never recursively remove user data.
-        for name in ("antivirus_host.py", "config.json", "launch.sh", "launch.cmd"):
+        for name in ("antivirus_host.py", "windows_antivirus.py", "config.json", "launch.sh", "launch.cmd"):
             target = base / name
             if target.is_symlink():
                 raise ValueError(f"Refusing to remove symbolic link: {target}")
@@ -96,7 +97,9 @@ def main() -> int:
             pass
         print("My Video App antivirus host registration removed for the selected browser(s).")
         return 0
-    config = {}
+    if arguments.scanner == "defender" and arguments.clamav:
+        parser.error("--clamav cannot be combined with --scanner defender.")
+    config = {"scanner": arguments.scanner}
     if arguments.clamav:
         executable = Path(arguments.clamav)
         if not executable.is_absolute() or not executable.is_file():
@@ -111,6 +114,7 @@ def main() -> int:
     os.chmod(base, 0o700)
     source = Path(__file__).with_name("antivirus_host.py")
     write_private(base / "antivirus_host.py", source.read_text(encoding="utf-8"))
+    write_private(base / "windows_antivirus.py", source.with_name("windows_antivirus.py").read_text(encoding="utf-8"))
     write_private(base / "config.json", json.dumps(config, ensure_ascii=True, indent=2) + "\n")
     python = str(Path(sys.executable).absolute())
     host = str(base / "antivirus_host.py")
@@ -124,7 +128,7 @@ def main() -> int:
         launcher = base / "launch.sh"
         content = f"#!/bin/sh\nexec {shlex.quote(python)} -I {shlex.quote(host)}\n"
     write_private(launcher, content, 0o700)
-    manifest_data = {"name": NAME, "description": "My Video App local-only antivirus bridge", "path": str(launcher),
+    manifest_data = {"name": NAME, "description": "My Video App system antivirus bridge", "path": str(launcher),
                      "type": "stdio", "allowed_origins": [f"chrome-extension://{item}/" for item in sorted(set(arguments.extension_id))]}
     for browser, manifest in zip(browsers, manifests):
         manifest.parent.mkdir(parents=True, exist_ok=True)

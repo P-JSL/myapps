@@ -213,7 +213,7 @@ try {
   });
   await checks('Local install uses independent entry points without an account/activation engine', async () => {
     const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
-    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.4.0');
+    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.5.0');
     assert.equal(manifest.key, undefined); assert.equal(manifest.update_url, undefined);
     const result = await context.request.get(`${origin}/service/main.js`); assert.equal(result.status(), 404);
   });

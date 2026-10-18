@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "count": 35,
+  "platform": "linux",
+  "windowsRuntimeVerified": false,
+  "scope": "native unit and subprocess tests; Windows COM/AMSI interfaces use test doubles on non-Windows",
+  "sourceSha256": {
+    "native/antivirus_host.py": "85f276a729864915fd9976378a72df2d9fff95e6a75e02c96a8c1520dfda113a",
+    "native/windows_antivirus.py": "85d55880019aad0f8aa52ce7cd6f096f3138b306cc3ef275b5dc46e9e63ba6dc",
+    "native/install.py": "8a6cf94fac00ddd83f3181eb4af813cb69b5172afa02684109650e0e68948530"
+  }
+}

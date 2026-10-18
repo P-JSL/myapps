@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -106,8 +107,10 @@ def load_config() -> dict:
     if CONFIG_PATH.stat().st_size > MAX_MESSAGE:
         raise ValueError("Invalid native host configuration.")
     value = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-    if not isinstance(value, dict) or set(value) - {"clamav"}:
+    if not isinstance(value, dict) or set(value) - {"clamav", "scanner"}:
         raise ValueError("Invalid native host configuration.")
+    if value.get("scanner", "auto") not in {"auto", "defender", "clamav"}:
+        raise ValueError("Unsupported antivirus selection mode.")
     return value
 
 
@@ -154,7 +157,7 @@ def windows_defender_paths() -> tuple[Path, Path] | None:
     windows = Path(os.environ.get("SystemRoot", r"C:\Windows"))
     powershell = windows / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
     base = Path(os.environ.get("ProgramData", r"C:\ProgramData")) / "Microsoft" / "Windows Defender" / "Platform"
-    platforms = sorted(base.glob("*/MpCmdRun.exe"), reverse=True) if base.is_dir() else []
+    platforms = sorted(base.glob("*/MpCmdRun.exe"), key=lambda path: tuple(int(part) for part in re.findall(r"\d+", path.parent.name)), reverse=True) if base.is_dir() else []
     platforms.append(Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Windows Defender" / "MpCmdRun.exe")
     for executable in platforms:
         if powershell.is_file() and executable.is_file():
@@ -163,41 +166,87 @@ def windows_defender_paths() -> tuple[Path, Path] | None:
 
 
 def scan_defender(powershell: Path, executable: Path, snapshot: Path) -> dict:
-    # Do not disable cloud protection or change OS preferences. A strict local-only
-    # scan is available only if the user's existing policy already disables submissions.
-    script = ("$ErrorActionPreference='Stop'; $p=Get-MpPreference; $s=Get-MpComputerStatus; "
-              "@{maps=[int]$p.MAPSReporting; samples=[int]$p.SubmitSamplesConsent; "
-              "enabled=[bool]$s.AntivirusEnabled}|ConvertTo-Json -Compress")
+    # Honor the installed Windows protection policy, including its cloud settings.
+    # Passive/disabled Defender must not impersonate the user's active antivirus.
+    script = ("$ErrorActionPreference='Stop'; $s=Get-MpComputerStatus; "
+              "@{enabled=[bool]$s.AntivirusEnabled; service=[bool]$s.AMServiceEnabled; "
+              "mode=[string]$s.AMRunningMode}|ConvertTo-Json -Compress")
     code, output = run_tool([str(powershell), "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script], 15)
     try:
-        preferences = json.loads(output.lstrip("\ufeff")) if code == 0 else None
+        state = json.loads(output.lstrip("\ufeff")) if code == 0 else None
     except (ValueError, TypeError):
-        preferences = None
-    if not isinstance(preferences, dict) or preferences.get("enabled") is not True:
-        return {"status": "unavailable", "engine": "Microsoft Defender", "message": "Microsoft Defender availability and local-only policy could not be verified. Install local ClamAV or consult your administrator."}
-    if preferences.get("maps") != 0 or preferences.get("samples") != 2:
-        return {"status": "unavailable", "engine": "Microsoft Defender", "message": "The existing Defender policy may use cloud protection or sample submission. This bridge requires a local-only scan and does not change protection settings. Use installed local ClamAV for offline scanning."}
+        state = None
+    if (not isinstance(state, dict) or state.get("enabled") is not True
+            or state.get("service") is not True or state.get("mode") != "Normal"):
+        return {"status": "unavailable", "engine": "Microsoft Defender", "message": "Microsoft Defender가 활성 보호 모드가 아니거나 상태를 확인할 수 없습니다. Windows 보안에서 사용 중인 백신을 확인하세요."}
+    before = identity(snapshot.stat())
     code, output = run_tool([str(executable), "-Scan", "-ScanType", "3", "-File", str(snapshot), "-DisableRemediation"])
     threats = [clean_text(value, 240) for value in re.findall(r"(?:Threat\s*[:=]|Threat\s+detected\s*[:=])\s*([^\r\n]+)", output, re.IGNORECASE)][:16]
     if threats:
         return {"status": "infected", "engine": "Microsoft Defender", "threats": threats}
     # Exit 2 can mean detection OR an incomplete/error scan. Without an explicit
     # detection marker, report error rather than guessing either infected or clean.
-    if (code != 0 or "Scan finished." not in output
+    if (code != 0 or not snapshot.is_file() or identity(snapshot.stat()) != before
             or re.search(r"\b(?:error|failed|failure|0x[89a-fA-F][0-9a-fA-F]{7})\b", output, re.IGNORECASE)):
         return {"status": "error", "engine": "Microsoft Defender", "message": "Microsoft Defender did not provide an unambiguous completed scan. Check Windows Security; this file has not been marked clean."}
     return {"status": "clean", "engine": "Microsoft Defender"}
 
 
+def windows_adapter():
+    path = Path(__file__).with_name("windows_antivirus.py")
+    spec = importlib.util.spec_from_file_location("my_video_app_windows_antivirus", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Windows antivirus integration module is unavailable.")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def scan_windows_amsi(snapshot: Path, products: str) -> dict:
+    adapter = Path(__file__).with_name("windows_antivirus.py")
+    code, output = run_tool([sys.executable, "-I", str(adapter), "--amsi-scan", str(snapshot), products])
+    try:
+        result = json.loads(output) if code == 0 else None
+    except ValueError:
+        result = None
+    if (not isinstance(result, dict) or result.get("engine") != "Windows AMSI"
+            or result.get("status") not in {"clean", "infected", "unavailable", "error"}):
+        return {"status": "error", "engine": "Windows AMSI", "message": "Windows 백신 인터페이스의 검사 결과를 확인하지 못했습니다."}
+    return result
+
+
 def select_scanner(config: dict):
-    executable = clamav_path(config)
-    if executable:
-        return lambda snapshot: scan_clamav(executable, snapshot)
-    if sys.platform == "win32":
-        paths = windows_defender_paths()
+    mode = config.get("scanner", "auto")
+    # An explicitly configured ClamAV path remains an intentional user override.
+    if mode == "clamav" or (mode == "auto" and "clamav" in config):
+        executable = clamav_path(config)
+        return (lambda snapshot: scan_clamav(executable, snapshot)) if executable else None
+    if sys.platform != "win32":
+        if mode == "defender":
+            return lambda snapshot: {"status": "unavailable", "engine": "Microsoft Defender", "message": "Microsoft Defender 연동은 Windows에서만 지원합니다."}
+        executable = clamav_path(config)
+        return (lambda snapshot: scan_clamav(executable, snapshot)) if executable else None
+    paths = windows_defender_paths()
+    if mode == "defender":
+        return (lambda snapshot: scan_defender(*paths, snapshot)) if paths else None
+    powershell = paths[0] if paths else Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
+    adapter = windows_adapter()
+    discovered = adapter.discover_windows_antivirus(run_tool, powershell)
+    if discovered.get("status") != "ok":
+        # Defender still verifies its own active Normal mode before scanning.
         if paths:
             return lambda snapshot: scan_defender(*paths, snapshot)
-    return None
+        return lambda snapshot: {"status": "unavailable", "engine": "Windows Security Center", "message": "Windows에서 사용 중인 백신을 확인하지 못했습니다."}
+    active = [product for product in discovered["products"] if product["state"] == "on"]
+    others = [product for product in active if not adapter.is_defender(product["name"])]
+    if others:
+        names = ", ".join(product["name"] for product in others)[:300]
+        if not all(adapter.provider_for_product(product["name"], discovered["providers"]) for product in others):
+            return lambda snapshot: {"status": "unavailable", "engine": "Windows AMSI", "message": f"사용 중인 백신({names})의 Windows 표준 검사 연동을 확인하지 못했습니다. 해당 제품의 수동 검사를 사용하거나 지원되는 검사기를 직접 선택하세요."}
+        return lambda snapshot: scan_windows_amsi(snapshot, names)
+    if paths:
+        return lambda snapshot: scan_defender(*paths, snapshot)
+    return lambda snapshot: {"status": "unavailable", "engine": "Microsoft Defender", "message": "Windows 기본 백신의 검사 도구를 찾을 수 없습니다."}
 
 
 def scan_request(request: object) -> dict:

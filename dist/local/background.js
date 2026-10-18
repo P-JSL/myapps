@@ -334,7 +334,7 @@ async function scanFile(path) {
           const message = chrome.runtime.lastError?.message;
           finish2({ status: "unavailable", message: message ? `\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0 \uC2E4\uD328: ${message.slice(0, 300)}` : "\uB85C\uCEEC \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uAC00 \uC5F0\uACB0\uC744 \uC885\uB8CC\uD588\uC2B5\uB2C8\uB2E4. \uC124\uCE58 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694." });
         });
-        timer = setTimeout(() => finish2({ status: "error", message: "\uBC31\uC2E0 \uAC80\uC0AC\uAC00 \uC81C\uD55C \uC2DC\uAC04\uC744 \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4. \uAC80\uC0AC\uB418\uC9C0 \uC54A\uC740 \uD30C\uC77C\uC785\uB2C8\uB2E4." }), 13e4);
+        timer = setTimeout(() => finish2({ status: "error", message: "\uBC31\uC2E0 \uAC80\uC0AC\uAC00 \uC81C\uD55C \uC2DC\uAC04\uC744 \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4. \uAC80\uC0AC\uB418\uC9C0 \uC54A\uC740 \uD30C\uC77C\uC785\uB2C8\uB2E4." }), 24e4);
         port.postMessage({ version: 1, action: "scan", requestId, path });
       } catch {
         finish2({ status: "unavailable", message: "\uB85C\uCEEC \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uC5D0 \uC5F0\uACB0\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uC124\uCE58\uC640 \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694." });
