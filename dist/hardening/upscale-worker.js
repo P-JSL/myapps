@@ -6,6 +6,12 @@ function record(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+// src/security/transfer.ts
+function ownedTransferBuffer(bytes) {
+  if (bytes.buffer instanceof ArrayBuffer && bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) return bytes.buffer;
+  return new Uint8Array(bytes).buffer;
+}
+
 // src/upscale/policy.ts
 var MAX_INPUT_BYTES = 256 * 1024 * 1024;
 var MAX_QUEUE_BYTES = 512 * 1024 * 1024;
@@ -153,12 +159,12 @@ scope.onmessage = async (event) => {
     core.setLogger(({ message }) => {
       lastLog = message.slice(0, 500);
     });
-    core.FS.writeFile("input.media", new Uint8Array(await file.arrayBuffer()));
+    core.FS.writeFile("input.media", new Uint8Array(await file.arrayBuffer()), { canOwn: true });
     const info = probe(core, "input.media", kind);
     if (options.mode === "upscale" && !info.video) throw new Error("\uC5C5\uC2A4\uCF00\uC77C\uB9C1\uD560 \uC601\uC0C1 \uB610\uB294 \uC774\uBBF8\uC9C0 \uD2B8\uB799\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
     validateTrack(info, options);
     if (secondary) {
-      core.FS.writeFile("audio.media", new Uint8Array(await secondary.arrayBuffer()));
+      core.FS.writeFile("audio.media", new Uint8Array(await secondary.arrayBuffer()), { canOwn: true });
       const audio = probe(core, "audio.media", "audio");
       validateTrack(audio, { mode: "audio", format: "m4a" });
     }
@@ -179,7 +185,7 @@ scope.onmessage = async (event) => {
     const format = resultFormat(options, kind);
     const output = core.FS.readFile(`output.${format}`);
     if (!(output instanceof Uint8Array) || !output.length || output.length >= MAX_INPUT_BYTES - 1024 * 1024) throw new Error("\uACB0\uACFC\uAC00 \uBE44\uC5B4 \uC788\uAC70\uB098 \uC548\uC804\uD55C \uCD9C\uB825 \uC6A9\uB7C9 \uD55C\uB3C4\uC5D0 \uB3C4\uB2EC\uD588\uC2B5\uB2C8\uB2E4.");
-    const bytes = new Uint8Array(output).buffer;
+    const bytes = ownedTransferBuffer(output);
     scope.postMessage({ type: "done", info, output: dimensions, format, bytes }, [bytes]);
   } catch (error) {
     scope.postMessage({ type: "error", message: error instanceof Error ? error.message : "\uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4." });

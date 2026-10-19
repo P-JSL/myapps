@@ -74,6 +74,38 @@ function observeTransport(url, since) {
   };
 }
 
+// src/local/byte-assembly.ts
+function assembleBytes(chunks, total, offset = 0, length = total) {
+  const only = chunks.length === 1 ? chunks[0] : void 0;
+  if (offset === 0 && length === total && only?.byteLength === total && only.byteOffset === 0) {
+    const buffer = only.buffer;
+    if (buffer instanceof ArrayBuffer && buffer.byteLength === total) return new Uint8Array(buffer);
+  }
+  const output = new Uint8Array(length);
+  if (offset === 0 && length === total) {
+    let written2 = 0;
+    for (const chunk of chunks) {
+      output.set(chunk, written2);
+      written2 += chunk.length;
+    }
+    if (written2 !== length) throw new Error("\uBBF8\uB514\uC5B4 \uC870\uAC01\uC774 \uBD88\uC644\uC804\uD569\uB2C8\uB2E4.");
+    return output;
+  }
+  let position = 0, written = 0;
+  for (const chunk of chunks) {
+    const begin = Math.max(0, offset - position);
+    const end = Math.min(chunk.length, offset + length - position);
+    if (begin < end) {
+      output.set(chunk.subarray(begin, end), written);
+      written += end - begin;
+    }
+    position += chunk.length;
+    if (written === length) break;
+  }
+  if (written !== length) throw new Error("\uBBF8\uB514\uC5B4 \uC870\uAC01\uC774 \uBD88\uC644\uC804\uD569\uB2C8\uB2E4.");
+  return output;
+}
+
 // src/local/network.ts
 function validRange(range) {
   if (!Number.isSafeInteger(range.offset) || !Number.isSafeInteger(range.length) || !Number.isSafeInteger(range.offset + range.length) || range.offset < 0 || range.length < 1 || range.length > 128 * 1024 * 1024) throw new Error("\uBBF8\uB514\uC5B4 \uBC14\uC774\uD2B8 \uBC94\uC704\uAC00 \uD5C8\uC6A9 \uBC94\uC704\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
@@ -183,21 +215,18 @@ async function fetchBytes(url, maximum, signal, range, monitor = {}) {
       }
       if (!total) throw new Error("\uBBF8\uB514\uC5B4 \uD30C\uC77C\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.");
       if ((!encoding || encoding === "identity") && declared !== void 0 && total !== declared) throw new Retryable("\uBBF8\uB514\uC5B4 \uD30C\uC77C\uC774 \uBD88\uC644\uC804\uD569\uB2C8\uB2E4.");
-      let result = new Uint8Array(total);
-      let offset = 0;
-      for (const chunk of chunks) {
-        result.set(chunk, offset);
-        offset += chunk.length;
-      }
       if (range) {
         if (response.status === 206) {
-          if (result.length !== range.length) throw new Retryable("\uBBF8\uB514\uC5B4 \uC870\uAC01\uC774 \uBD88\uC644\uC804\uD569\uB2C8\uB2E4.");
+          if (total !== range.length) throw new Retryable("\uBBF8\uB514\uC5B4 \uC870\uAC01\uC774 \uBD88\uC644\uC804\uD569\uB2C8\uB2E4.");
         } else {
-          if (response.status !== 200 || result.length < range.offset + range.length) throw new Error("\uC11C\uBC84\uAC00 \uBC14\uC774\uD2B8 \uBC94\uC704\uB97C \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
-          result = result.slice(range.offset, range.offset + range.length);
-          monitor.budget?.release(reserved - result.length);
-          reserved = result.length;
+          if (response.status !== 200 || total < range.offset + range.length) throw new Error("\uC11C\uBC84\uAC00 \uBC14\uC774\uD2B8 \uBC94\uC704\uB97C \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
         }
+      }
+      const result = assembleBytes(chunks, total, range && response.status === 200 ? range.offset : 0, range ? range.length : total);
+      chunks.length = 0;
+      if (range && response.status === 200) {
+        monitor.budget?.release(reserved - result.length);
+        reserved = result.length;
       }
       const protocol = await observation.finish();
       signal.throwIfAborted();
@@ -257,6 +286,12 @@ function downloadOptions(value) {
   if (value === void 0) return { quality: "highest", output: "original" };
   if (!record(value) || !QUALITIES.includes(value.quality) || !["original", "mp3", "m4a"].includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
   return { quality: value.quality, output: value.output };
+}
+
+// src/security/transfer.ts
+function ownedTransferBuffer(bytes) {
+  if (bytes.buffer instanceof ArrayBuffer && bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) return bytes.buffer;
+  return new Uint8Array(bytes).buffer;
 }
 
 // src/local/stream-worker.ts
@@ -325,7 +360,7 @@ scope.onmessage = async (event) => {
     if (result !== 0) throw new Error(`\uBBF8\uB514\uC5B4\uB97C \uC800\uC7A5 \uD615\uC2DD\uC73C\uB85C \uCC98\uB9AC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. ${log}`);
     const output = core.FS.readFile(outputName);
     if (!(output instanceof Uint8Array) || !output.length || output.length >= MAX_STREAM_BYTES - 1024 * 1024) throw new Error("\uACB0\uACFC\uAC00 \uBE44\uC5B4 \uC788\uAC70\uB098 \uC548\uC804\uD55C \uCD9C\uB825 \uC6A9\uB7C9\uC744 \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
-    const buffer = new Uint8Array(output).buffer;
+    const buffer = ownedTransferBuffer(output);
     scope.postMessage({ type: "done", bytes: buffer, protocols: [...protocols] }, [buffer]);
   } catch (error) {
     scope.postMessage({ type: "error", message: error instanceof Error ? error.message : "\uC2A4\uD2B8\uB9BC \uCC98\uB9AC \uC624\uB958" });

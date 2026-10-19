@@ -32,6 +32,30 @@ function downloadOptions(value) {
   return { quality: value.quality, output: value.output };
 }
 function chooseQuality(items, quality, height, bandwidth) {
+  let highest = -Infinity, lowest = Infinity, eligible = -Infinity;
+  const ceiling = Number(quality);
+  for (const item of items) {
+    const value = height(item);
+    if (!Number.isFinite(value) || value <= 0) continue;
+    if (value > highest) highest = value;
+    if (value < lowest) lowest = value;
+    if (value <= ceiling && value > eligible) eligible = value;
+  }
+  const target = highest === -Infinity ? void 0 : quality === "highest" ? highest : eligible !== -Infinity ? eligible : lowest;
+  let best, bestBandwidth = -Infinity, found = false;
+  for (const item of items) {
+    if (target !== void 0 && height(item) !== target) continue;
+    const value = bandwidth(item);
+    if (!Number.isFinite(value)) return legacyQuality(items, quality, height, bandwidth);
+    if (!found || value > bestBandwidth) {
+      best = item;
+      bestBandwidth = value;
+      found = true;
+    }
+  }
+  return best;
+}
+function legacyQuality(items, quality, height, bandwidth) {
   const known = items.filter((item) => Number.isFinite(height(item)) && height(item) > 0);
   const ranked = (values) => [...values].sort((a, b) => height(b) - height(a) || bandwidth(b) - bandwidth(a))[0];
   if (!known.length) return [...items].sort((a, b) => bandwidth(b) - bandwidth(a))[0];
@@ -79,7 +103,12 @@ function planDash(text, address, options = downloadOptions()) {
       if (/^(video|audio)/.test(type)) selections.push({ adaptation, representation, type: type.startsWith("video") ? "video" : "audio" });
     }
   }
-  const audio = selections.filter((s) => s.type === "audio").sort((a, b) => Number(b.representation.getAttribute("bandwidth")) - Number(a.representation.getAttribute("bandwidth")))[0];
+  const audio = chooseQuality(
+    selections.filter((s) => s.type === "audio"),
+    "highest",
+    () => 0,
+    (item) => Number(item.representation.getAttribute("bandwidth"))
+  );
   const video = chooseQuality(
     selections.filter((s) => s.type === "video"),
     options.quality,

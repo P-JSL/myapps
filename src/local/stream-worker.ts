@@ -4,6 +4,7 @@ import { MAX_SEGMENTS, MAX_STREAM_BYTES, mediaURL } from './model.ts';
 import { downloadAssets } from './assets.ts';
 import type { StreamPlan } from './hls.ts';
 import { downloadOptions } from './preferences.ts';
+import { ownedTransferBuffer } from '../security/transfer.ts';
 
 const scope = globalThis as unknown as { onmessage: ((event: MessageEvent<unknown>) => void) | null; postMessage(value: unknown, transfer?: Transferable[]): void };
 let busy = false;
@@ -59,7 +60,7 @@ scope.onmessage = async event => {
     if (result !== 0) throw new Error(`미디어를 저장 형식으로 처리할 수 없습니다. ${log}`);
     const output = core.FS.readFile(outputName);
     if (!(output instanceof Uint8Array) || !output.length || output.length >= MAX_STREAM_BYTES - 1024 * 1024) throw new Error('결과가 비어 있거나 안전한 출력 용량을 초과했습니다.');
-    const buffer = new Uint8Array(output).buffer;
+    const buffer = ownedTransferBuffer(output);
     scope.postMessage({ type: 'done', bytes: buffer, protocols: [...protocols] }, [buffer]);
   } catch (error) { scope.postMessage({ type: 'error', message: error instanceof Error ? error.message : '스트림 처리 오류' }); }
 };

@@ -16,6 +16,15 @@ const native = JSON.parse(await readFile('reports/native-tests.json', 'utf8'));
 assert(native.status === 'passed' && native.count >= 48, 'Successful native unit results required');
 for (const name of ['native/antivirus_host.py', 'native/windows_antivirus.py', 'native/install.py']) assert.equal(createHash('sha256').update(await readFile(name)).digest('hex'), native.sourceSha256[name], `Native source changed since verification: ${name}`);
 assert.equal(JSON.parse(await readFile('reports/build.json', 'utf8')).engine, 'independent-local');
+const performance = JSON.parse(await readFile('reports/performance.json', 'utf8'));
+assert(performance.status === 'passed' && performance.outcomes.length === 5 && performance.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current algorithm benchmarks required');
+assert.deepEqual(performance.outcomes.map(outcome => outcome.name), ['state', 'media', 'transfer', 'ui', 'security'], 'All required algorithm scopes must be validated');
+assert.equal(performance.release, JSON.parse(await readFile('package.json', 'utf8')).version, 'Algorithm report belongs to another release');
+const algorithmSources = ['package.json', 'package-lock.json'];
+for (const dir of ['src', 'native', 'scripts', 'tests']) algorithmSources.push(...(await files(dir)).filter(name => (/\.(?:ts|mjs|py)$/.test(name) || (dir === 'tests' && name.startsWith('baselines/') && name.endsWith('.txt'))) && !name.split('/').includes('__pycache__')).map(name => `${dir}/${name}`));
+assert.deepEqual(Object.keys(performance.sourceSha256).sort(), algorithmSources.sort(), 'Algorithm source inventory changed since validation');
+for (const [name, digest] of Object.entries(performance.sourceSha256)) assert.equal(createHash('sha256').update(await readFile(name)).digest('hex'), digest, `Source changed since algorithm validation: ${name}`);
+for (const outcome of performance.outcomes) assert.equal(createHash('sha256').update(await readFile(outcome.report)).digest('hex'), outcome.reportSha256, `Algorithm measurement report changed: ${outcome.report}`);
 async function files(dir, prefix = '') {
   const names = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {

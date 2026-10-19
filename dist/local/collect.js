@@ -41,8 +41,15 @@
   // src/local/collect.ts
   var sent = /* @__PURE__ */ new Map();
   var timings = /* @__PURE__ */ new Map();
+  var candidates = "video,audio,video source,audio source,a[href]";
+  var affected = `${candidates},base`;
   var timer;
+  var scannedTitle = document.title;
+  var scannedBase = document.baseURI;
+  var saturated = false;
   function scan() {
+    scannedTitle = document.title;
+    scannedBase = document.baseURI;
     const found = [];
     const add = (value, mime, fromElement) => {
       try {
@@ -56,7 +63,7 @@
       } catch {
       }
     };
-    for (const element of document.querySelectorAll("video,audio,video source,audio source,a[href]")) {
+    for (const element of document.querySelectorAll(candidates)) {
       if (found.length >= 100) break;
       if (element instanceof HTMLMediaElement) add(element.currentSrc || element.src, "", true);
       else if (element instanceof HTMLSourceElement) add(element.src, element.type, true);
@@ -66,6 +73,7 @@
       if (found.length >= 100) break;
       add(url, "", false);
     }
+    saturated = found.length >= 100;
     if (sent.size > 1e3) sent.clear();
     for (let index = 0; index < found.length; index += 10) void chrome.runtime.sendMessage({ scope: SCOPE, type: "capture", items: found.slice(index, index + 10) }).catch(() => {
     });
@@ -76,20 +84,44 @@
   }
   try {
     new PerformanceObserver((list) => {
+      let changed = false;
       for (const entry of list.getEntries()) {
         const protocol = transport(entry.nextHopProtocol);
         if (!protocol) continue;
         try {
-          timings.set(mediaURL(entry.name).href, protocol);
+          const url = mediaURL(entry.name).href;
+          if (timings.get(url) !== protocol && (sent.has(url) || mediaKind(url))) changed = true;
+          timings.set(url, protocol);
         } catch {
         }
       }
       while (timings.size > 1e3) timings.delete(timings.keys().next().value);
-      schedule();
+      if (saturated || changed || document.title !== scannedTitle || document.baseURI !== scannedBase) schedule();
     }).observe({ type: "resource", buffered: true });
   } catch {
   }
-  new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["src", "href"] });
+  new MutationObserver((records) => {
+    if (saturated || document.title !== scannedTitle || document.baseURI !== scannedBase) {
+      schedule();
+      return;
+    }
+    for (const record2 of records) {
+      if (record2.type === "attributes") {
+        if (record2.target instanceof Element && (record2.target.matches(affected) || record2.target instanceof HTMLAnchorElement)) {
+          schedule();
+          return;
+        }
+      } else if (record2.target instanceof HTMLMediaElement) {
+        schedule();
+        return;
+      } else for (const changed of [...record2.addedNodes, ...record2.removedNodes]) {
+        if (changed instanceof Element && (changed.matches(affected) || changed.querySelector(affected))) {
+          schedule();
+          return;
+        }
+      }
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["src", "href", "type"] });
   document.addEventListener("loadedmetadata", schedule, true);
   scan();
 })();

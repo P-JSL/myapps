@@ -20,9 +20,14 @@ export function boundedData(value: unknown, maxChars = 16 * 1024 * 1024): boolea
       visited.add(item);
       stack.push([item, depth, true]);
       if (!Array.isArray(item) && Object.getPrototypeOf(item) !== Object.prototype && Object.getPrototypeOf(item) !== null) return false;
-      for (const key of Object.keys(item)) {
+      const keys = Object.keys(item);
+      // Every active object has one exit marker. The remaining stack entries
+      // are pending nodes that must also fit the same total traversal budget.
+      if (nodes + keys.length + stack.length - visited.size > 100_000) return false;
+      for (const key of keys) {
         if (key === '__proto__' || key === 'constructor' || key === 'prototype') return false;
         chars += key.length;
+        if (chars > maxChars) return false;
         stack.push([(item as RecordValue)[key], depth + 1]);
       }
     } else if (typeof item === 'function' || typeof item === 'symbol' || typeof item === 'bigint') return false;

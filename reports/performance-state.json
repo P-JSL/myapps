@@ -1,0 +1,100 @@
+{
+  "benchmark": "media-catalog-index",
+  "baselineCommit": "6983b53",
+  "node": "v24.19.0",
+  "platform": "linux/x64",
+  "modelSha256": "23866302bb09bf2980f2e2c6dbcad6eae9d71c814f0a35793e54f98f94a01969",
+  "unit": "microseconds per operation",
+  "cases": [
+    {
+      "tabCount": 1,
+      "retainedItems": 200,
+      "lookup": {
+        "beforeMedianUs": 3.6705833333333375,
+        "afterMedianUs": 0.013729166666666496,
+        "speedup": 267.35660091047407,
+        "iterationsPerRound": 1200,
+        "rounds": 7
+      },
+      "construction": {
+        "beforeMedianUs": 13.704959999999744,
+        "afterMedianUs": 21.05639999999994,
+        "speedup": 0.6508690944320864,
+        "iterationsPerRound": 50,
+        "rounds": 5
+      },
+      "constructionAndRemovalOfOneFullTab": {
+        "beforeMedianUs": 10.007664999999974,
+        "afterMedianUs": 23.364865000000062,
+        "speedup": 0.4283211137748901,
+        "iterationsPerRound": 200,
+        "rounds": 5
+      },
+      "extraIndexEntries": 200
+    },
+    {
+      "tabCount": 10,
+      "retainedItems": 2000,
+      "lookup": {
+        "beforeMedianUs": 36.95221916666665,
+        "afterMedianUs": 0.016891666666675558,
+        "speedup": 2187.6005426727497,
+        "iterationsPerRound": 1200,
+        "rounds": 7
+      },
+      "construction": {
+        "beforeMedianUs": 129.39020000000028,
+        "afterMedianUs": 283.8859999999954,
+        "speedup": 0.4557822506217368,
+        "iterationsPerRound": 5,
+        "rounds": 5
+      },
+      "constructionAndRemovalOfOneFullTab": {
+        "beforeMedianUs": 9.65488999999991,
+        "afterMedianUs": 22.945785,
+        "speedup": 0.42076965333719935,
+        "iterationsPerRound": 200,
+        "rounds": 5
+      },
+      "extraIndexEntries": 2000
+    },
+    {
+      "tabCount": 50,
+      "retainedItems": 10000,
+      "lookup": {
+        "beforeMedianUs": 159.6646366666667,
+        "afterMedianUs": 0.016834166666702306,
+        "speedup": 9484.558388178526,
+        "iterationsPerRound": 1200,
+        "rounds": 7
+      },
+      "construction": {
+        "beforeMedianUs": 730.9669999999642,
+        "afterMedianUs": 1828.5939999999528,
+        "speedup": 0.3997426438017313,
+        "iterationsPerRound": 2,
+        "rounds": 5
+      },
+      "constructionAndRemovalOfOneFullTab": {
+        "beforeMedianUs": 9.966660000001184,
+        "afterMedianUs": 24.011335000000145,
+        "speedup": 0.41508146048527184,
+        "iterationsPerRound": 200,
+        "rounds": 5
+      },
+      "extraIndexEntries": 10000
+    }
+  ],
+  "historyRetentionAt200MeanUs": 21.246818399999984,
+  "complexity": {
+    "selectBefore": "O(N) time and O(N) intermediate references across all retained tabs",
+    "selectAfter": "Map lookup expected O(1), no full-catalog intermediate array",
+    "additionalMemory": "One ID Map entry per retained media item, at most 200 per live tab",
+    "insertion": "Expected O(1) below cap; first-file eviction remains O(200) bounded per tab",
+    "tabRemovalBefore": "O(1) Map deletion excluding garbage collection",
+    "tabRemovalAfter": "O(k) deletion of at most 200 secondary ID entries",
+    "persistedHistoryAndQueue": "Unchanged: H<=200, J<=4. Safety storage reads, origin locks, Chrome revalidation and O(bytes) hashing/copying remain."
+  },
+  "limitations": "CPU microbenchmark excludes browser IPC, network, GC pause accounting and video encoding; lookup speedup is not end-to-end download acceleration.",
+  "sink": 3336000
+}

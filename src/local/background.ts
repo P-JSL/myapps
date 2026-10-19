@@ -2,12 +2,12 @@ import { boundedData, record } from '../security/validation.ts';
 import { offerUpscale, revokeDownloadOffers, authorizeDownloadOffers } from '../upscale/completion.ts';
 import { jobs } from '../upscale/storage.ts';
 import { OFFER_KEY, MAX_INPUT_BYTES } from '../upscale/policy.ts';
-import { SCOPE, OFFSCREEN_SCOPE, HISTORY_KEY, ACTIVE_HISTORY_STATES, MAX_MEDIA_PER_TAB, retainHistory, filenameFor, isHistory, mediaKind, mediaURL, trustedCapture, trustedUI, type MediaItem, type HistoryItem } from './model.ts';
+import { SCOPE, OFFSCREEN_SCOPE, HISTORY_KEY, ACTIVE_HISTORY_STATES, MediaCatalog, retainHistory, filenameFor, isHistory, mediaKind, mediaURL, trustedCapture, trustedUI, type MediaItem, type HistoryItem } from './model.ts';
 import { downloadOptions, type DownloadOptions } from './preferences.ts';
 import { transport, type Transport } from './transport.ts';
 import { chromeWarning, scanFile, probeAntivirus, type ScanResult } from './antivirus.ts';
 
-const media = new Map<number, Map<string, MediaItem>>();
+const media = new MediaCatalog();
 const discoveryEpochs = new Map<number, object>();
 const privateHistory = new Map<string, HistoryItem>();
 const cancelled = new Set<string>();
@@ -65,17 +65,14 @@ async function missingDownload(item: HistoryItem) {
 function add(tabId: number, address: unknown, mime: string, title: string, fromElement: boolean, size?: number, observed?: unknown) {
   try {
     const url = mediaURL(address).href;
-    const items = media.get(tabId) ?? new Map<string, MediaItem>();
-    const existing = items.get(url);
+    const existing = media.get(tabId, url);
     const mergedMime = mime || existing?.mime || '';
     const kind = existing && existing.kind !== 'file' ? existing.kind : mediaKind(url, mergedMime, fromElement);
     if (!kind) return;
     const item: MediaItem = { ...existing, id: existing?.id ?? crypto.randomUUID(), tabId, url, title: (title || existing?.title || '').slice(0, 200), mime: mergedMime.slice(0, 100), kind, createdAt: Date.now() };
     if (Number.isSafeInteger(size) && size! > 0) item.size = size!;
     const protocol = transport(observed); if (protocol) item.observedTransport = protocol;
-    items.set(url, item);
-    while (items.size > MAX_MEDIA_PER_TAB) items.delete(Array.from(items).find(([, entry]) => entry.kind === 'file')?.[0] ?? items.keys().next().value!);
-    media.set(tabId, items);
+    media.set(item);
   } catch { /* Unsupported URLs and protocols are not media candidates. */ }
 }
 async function ensureOffscreen() {
@@ -246,7 +243,7 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
 async function currentTab() {
   const tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true })).find(tab => !!tab.incognito === chrome.extension.inIncognitoContext);
   if (tab?.id !== undefined && tab.url && /^https?:/.test(tab.url)) return tab.id;
-  return lastTab ?? Array.from(media.keys()).at(-1);
+  return lastTab ?? Array.from(media.tabIds()).at(-1);
 }
 export async function handleLocalMessage(value: unknown, sender: chrome.runtime.MessageSender): Promise<unknown> {
   if (!record(value) || value.scope !== SCOPE || typeof value.type !== 'string' || !boundedData(value, 128 * 1024)) throw new Error('잘못된 요청입니다.');
@@ -291,7 +288,7 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
   }
   if (value.type === 'list') {
     const tabId = await currentTab();
-    const items = tabId === undefined ? [] : Array.from(media.get(tabId)?.values() ?? []).sort((a, b) => b.createdAt - a.createdAt);
+    const items = tabId === undefined ? [] : Array.from(media.items(tabId)).sort((a, b) => b.createdAt - a.createdAt);
     const rows = await history();
     const progress = await Promise.all(rows.map(async row => {
       if (row.state !== 'downloading' || row.downloadId === undefined) return row;
@@ -301,7 +298,7 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
     return { ok: true, items, history: progress, tabId };
   }
   if (value.type === 'download' && typeof value.id === 'string') {
-    const item = Array.from(media.values()).flatMap(map => Array.from(map.values())).find(row => row.id === value.id);
+    const item = media.find(value.id);
     if (!item) throw new Error('미디어가 만료되었습니다. 원래 페이지를 새로고침하세요.');
     return { ok: true, item: await download(item, downloadOptions(value.options)) };
   }
@@ -371,10 +368,10 @@ chrome.notifications.onClicked.addListener(id => {
   if (!/^my-video-app-security:[a-f0-9-]{36}$/.test(id)) return;
   void chrome.tabs.create({ url: chrome.runtime.getURL('local/index.html?view=history') });
 });
-chrome.tabs.onRemoved.addListener(id => { media.delete(id); discoveryEpochs.delete(id); if (lastTab === id) lastTab = undefined; });
+chrome.tabs.onRemoved.addListener(id => { media.deleteTab(id); discoveryEpochs.delete(id); if (lastTab === id) lastTab = undefined; });
 chrome.tabs.onUpdated.addListener((id, changes, tab) => {
   if (!!tab.incognito !== chrome.extension.inIncognitoContext) return;
-  if (changes.status === 'loading') { media.delete(id); discoveryEpochs.set(id, {}); }
+  if (changes.status === 'loading') { media.deleteTab(id); discoveryEpochs.set(id, {}); }
   if (tab.active && tab.url && /^https?:/.test(tab.url)) lastTab = id;
 });
 chrome.tabs.onActivated.addListener(info => { void chrome.tabs.get(info.tabId).then(tab => { if (!!tab.incognito === chrome.extension.inIncognitoContext && tab.url && /^https?:/.test(tab.url)) lastTab = info.tabId; }).catch(() => {}); });
@@ -408,5 +405,5 @@ chrome.runtime.onStartup.addListener(() => { void setup(true).catch(() => {}); }
 void setup().catch(() => {});
 chrome.commands.onCommand.addListener(command => {
   if (command !== 'default-action') return;
-  void currentTab().then(id => { const item = id === undefined ? undefined : Array.from(media.get(id)?.values() ?? [])[0]; if (item) return download(item); }).catch(() => {});
+  void currentTab().then(id => { const item = id === undefined ? undefined : media.items(id).next().value; if (item) return download(item); }).catch(() => {});
 });

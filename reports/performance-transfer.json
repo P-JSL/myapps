@@ -1,0 +1,312 @@
+{
+  "name": "owned-worker-output-transfer",
+  "runtime": "v24.19.0",
+  "platform": "linux",
+  "warmups": 3,
+  "samples": 11,
+  "measurement": "Worker-side output selection plus real parentPort.postMessage transfer; excludes source allocation and FS.readFile",
+  "memoryNote": "Additional payload allocation is calculated from the actual byte-array operations, not sampled peak RSS. Subviews/shared buffers retain O(B) copy fallback. JIT, GC, scheduling and transport overhead affect timings; these are local measurements, not end-to-end speedups.",
+  "cases": [
+    {
+      "bytes": 1048576,
+      "sizeMiB": 1,
+      "baseline": {
+        "medianMs": 0.2715470000000124,
+        "minMs": 0.25347999999999615,
+        "maxMs": 0.40000999999999465,
+        "samplesMs": [
+          0.28794200000000103,
+          0.2639960000000059,
+          0.40000999999999465,
+          0.25347999999999615,
+          0.26985500000000684,
+          0.2715470000000124,
+          0.3235750000000053,
+          0.27587400000000173,
+          0.2691030000000012,
+          0.2696550000000002,
+          0.2807109999999966
+        ]
+      },
+      "optimized": {
+        "medianMs": 0.017437000000001035,
+        "minMs": 0.01270900000000097,
+        "maxMs": 0.022835000000000605,
+        "samplesMs": [
+          0.016925999999997998,
+          0.017437000000001035,
+          0.017847000000003277,
+          0.02020000000000266,
+          0.018046999999995705,
+          0.016034000000004767,
+          0.017065999999999804,
+          0.018557999999998742,
+          0.022835000000000605,
+          0.01270900000000097,
+          0.01630500000000268
+        ]
+      },
+      "medianSpeedup": 15.57303435223928,
+      "additionalPayloadAllocationBytes": {
+        "baseline": 1048576,
+        "optimized": 0
+      },
+      "extraCopyComplexity": {
+        "baseline": "O(B)",
+        "optimized": "O(1) for independently owned exact ArrayBuffer"
+      }
+    },
+    {
+      "bytes": 8388608,
+      "sizeMiB": 8,
+      "baseline": {
+        "medianMs": 0.6552730000000224,
+        "minMs": 0.46793199999999047,
+        "maxMs": 5.333543999999989,
+        "samplesMs": [
+          2.422415000000001,
+          5.333543999999989,
+          0.5229750000000024,
+          0.4715180000000032,
+          0.6552730000000224,
+          0.5087140000000261,
+          0.46793199999999047,
+          2.0579580000000135,
+          2.223986999999994,
+          0.4763450000000091,
+          0.8405309999999986
+        ]
+      },
+      "optimized": {
+        "medianMs": 0.024395999999995865,
+        "minMs": 0.014872999999994363,
+        "maxMs": 0.06879299999999944,
+        "samplesMs": [
+          0.03146699999999214,
+          0.06879299999999944,
+          0.02080099999997742,
+          0.014933000000013408,
+          0.024395999999995865,
+          0.01542299999999841,
+          0.021401999999994814,
+          0.02511799999999198,
+          0.03407100000001151,
+          0.014872999999994363,
+          0.03150700000000484
+        ]
+      },
+      "medianSpeedup": 26.859854074443902,
+      "additionalPayloadAllocationBytes": {
+        "baseline": 8388608,
+        "optimized": 0
+      },
+      "extraCopyComplexity": {
+        "baseline": "O(B)",
+        "optimized": "O(1) for independently owned exact ArrayBuffer"
+      }
+    },
+    {
+      "bytes": 67108864,
+      "sizeMiB": 64,
+      "baseline": {
+        "medianMs": 22.57827199999997,
+        "minMs": 19.74859600000002,
+        "maxMs": 30.90777300000002,
+        "samplesMs": [
+          23.148008000000004,
+          23.088458000000003,
+          30.90777300000002,
+          22.751531999999997,
+          29.082733000000076,
+          20.187193999999977,
+          22.57827199999997,
+          20.043709000000035,
+          20.025179999999978,
+          21.99511700000005,
+          19.74859600000002
+        ]
+      },
+      "optimized": {
+        "medianMs": 0.07524300000000039,
+        "minMs": 0.06590799999992214,
+        "maxMs": 0.08694100000002436,
+        "samplesMs": [
+          0.08017999999998437,
+          0.07410099999998465,
+          0.07312999999999192,
+          0.0856979999999794,
+          0.08694100000002436,
+          0.0661089999999831,
+          0.08596899999997731,
+          0.07524300000000039,
+          0.07940900000005513,
+          0.06590799999992214,
+          0.06865299999992658
+        ]
+      },
+      "medianSpeedup": 300.07139534574446,
+      "additionalPayloadAllocationBytes": {
+        "baseline": 67108864,
+        "optimized": 0
+      },
+      "extraCopyComplexity": {
+        "baseline": "O(B)",
+        "optimized": "O(1) for independently owned exact ArrayBuffer"
+      }
+    }
+  ],
+  "inputPreparation": {
+    "measurement": "Actual pinned FFmpeg 0.12.10 MEMFS writeFile, including File.arrayBuffer; excludes File construction, FFmpeg initialization and processing",
+    "runtimeContext": "Node with actual Wasm core and File/Blob; browser processing equivalence is checked separately",
+    "memoryNote": "Payload allocations are calculated File.arrayBuffer plus MEMFS default copy, not peak RSS; source File/Blob storage, decoder, Wasm and output storage are excluded. Whole File preparation remains O(B).",
+    "cases": [
+      {
+        "bytes": 1048576,
+        "sizeMiB": 1,
+        "baseline": {
+          "medianMs": 0.9252490000001217,
+          "minMs": 0.8336599999997816,
+          "maxMs": 1.0267209999999523,
+          "samplesMs": [
+            0.9048780000000534,
+            0.9669309999999314,
+            0.9252490000001217,
+            0.8733210000000327,
+            0.8336599999997816,
+            0.8762650000001031,
+            0.9476620000000366,
+            0.9304959999999483,
+            0.8633350000000064,
+            1.0267209999999523,
+            0.959278999999924
+          ]
+        },
+        "optimized": {
+          "medianMs": 0.6382979999998497,
+          "minMs": 0.5898250000000189,
+          "maxMs": 0.7308060000000296,
+          "samplesMs": [
+            0.6539809999999306,
+            0.6401809999999841,
+            0.6382979999998497,
+            0.70016099999998,
+            0.6635550000000876,
+            0.6117480000000342,
+            0.5951330000000326,
+            0.5999500000000353,
+            0.5898250000000189,
+            0.6266800000000785,
+            0.7308060000000296
+          ]
+        },
+        "medianSpeedup": 1.4495564767559033,
+        "applicationPayloadAllocationBytes": {
+          "baseline": 2097152,
+          "optimized": 1048576
+        },
+        "fsInsertionExtraCopyComplexity": {
+          "baseline": "O(B)",
+          "optimized": "O(1) for fresh File.arrayBuffer owned bytes"
+        }
+      },
+      {
+        "bytes": 8388608,
+        "sizeMiB": 8,
+        "baseline": {
+          "medianMs": 1.7935009999998783,
+          "minMs": 1.6196999999999662,
+          "maxMs": 6.1873749999999745,
+          "samplesMs": [
+            1.695374000000129,
+            1.7935009999998783,
+            1.8370370000000094,
+            1.7887539999999262,
+            1.6196999999999662,
+            6.1873749999999745,
+            1.7394009999998161,
+            2.0862200000001394,
+            2.861223000000109,
+            1.6334509999999227,
+            2.2239270000000033
+          ]
+        },
+        "optimized": {
+          "medianMs": 1.1502060000000256,
+          "minMs": 0.9784480000000713,
+          "maxMs": 6.816968999999972,
+          "samplesMs": [
+            6.816968999999972,
+            1.1047479999999723,
+            1.5989090000000488,
+            5.385831999999937,
+            1.0549730000000181,
+            1.4325699999999415,
+            1.0522989999999481,
+            0.9824540000001889,
+            1.1502060000000256,
+            0.9784480000000713,
+            1.224187000000029
+          ]
+        },
+        "medianSpeedup": 1.5592867712390983,
+        "applicationPayloadAllocationBytes": {
+          "baseline": 16777216,
+          "optimized": 8388608
+        },
+        "fsInsertionExtraCopyComplexity": {
+          "baseline": "O(B)",
+          "optimized": "O(1) for fresh File.arrayBuffer owned bytes"
+        }
+      },
+      {
+        "bytes": 67108864,
+        "sizeMiB": 64,
+        "baseline": {
+          "medianMs": 70.46775400000024,
+          "minMs": 68.1853000000001,
+          "maxMs": 75.01334100000008,
+          "samplesMs": [
+            70.93608299999983,
+            70.3716159999999,
+            75.01334100000008,
+            69.99276899999995,
+            68.27698800000007,
+            72.77355500000021,
+            70.78072500000007,
+            69.98768500000006,
+            70.46775400000024,
+            68.1853000000001,
+            72.55943899999966
+          ]
+        },
+        "optimized": {
+          "medianMs": 45.832096999999976,
+          "minMs": 43.444102999999814,
+          "maxMs": 50.148985000000266,
+          "samplesMs": [
+            44.50221899999997,
+            48.94097899999997,
+            47.07987600000001,
+            48.89892499999996,
+            44.50038799999993,
+            45.777324000000135,
+            50.148985000000266,
+            47.028601999999864,
+            45.493958999999904,
+            43.444102999999814,
+            45.832096999999976
+          ]
+        },
+        "medianSpeedup": 1.5375197429871097,
+        "applicationPayloadAllocationBytes": {
+          "baseline": 134217728,
+          "optimized": 67108864
+        },
+        "fsInsertionExtraCopyComplexity": {
+          "baseline": "O(B)",
+          "optimized": "O(1) for fresh File.arrayBuffer owned bytes"
+        }
+      }
+    ]
+  }
+}

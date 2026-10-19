@@ -52,15 +52,39 @@ function button(text: string, action: () => Promise<unknown>, secondary = false,
   element.addEventListener('click', () => { hasError = false; element.disabled = true; void action().then(() => refresh()).catch(error).finally(() => { element.disabled = false; }); });
   return element;
 }
-function replaceRows(id: string, rows: HTMLLIElement[]) {
+const rowCaches = new Map<string, Map<string, { signature: string; row: HTMLLIElement }>>();
+function replaceRows<T extends { id: string }>(id: string, items: T[], render: (item: T) => HTMLLIElement) {
   const list = node(id);
   const focused = document.activeElement;
   const focusedButton = focused instanceof HTMLButtonElement && list.contains(focused) ? focused : undefined;
   const rowId = focusedButton?.closest<HTMLLIElement>('li[data-row-id]')?.dataset.rowId;
   const action = focusedButton?.dataset.action;
-  list.replaceChildren(...rows);
+  // Malformed duplicate IDs still render as separate rows; one DOM node must
+  // never stand in for multiple entries in a list.
+  const previous = new Set(items.map(item => item.id)).size === items.length ? rowCaches.get(id) : undefined;
+  const current = new Map<string, { signature: string; row: HTMLLIElement }>();
+  const rows = items.map(item => {
+    const signature = JSON.stringify(item);
+    const cached = previous?.get(item.id);
+    const entry = cached?.signature === signature ? cached : { signature, row: render(item) };
+    current.set(item.id, entry);
+    return entry.row;
+  });
+  rowCaches.set(id, current);
+  const retained = new Set<Element>(rows);
+  for (let child = list.firstElementChild; child;) {
+    const next = child.nextElementSibling;
+    if (!retained.has(child)) child.remove();
+    child = next;
+  }
+  let cursor = list.firstElementChild;
+  for (const row of rows) {
+    if (row === cursor) cursor = cursor.nextElementSibling;
+    else list.insertBefore(row, cursor);
+  }
+  while (cursor) { const next = cursor.nextElementSibling; cursor.remove(); cursor = next; }
   // Refreshing progress must not interrupt keyboard navigation or move focus from outside this list.
-  if (focusedButton && !focusedButton.isConnected && rowId && action) {
+  if (focusedButton && document.activeElement !== focusedButton && rowId && action) {
     const row = rows.find(item => item.dataset.rowId === rowId);
     const replacement = Array.from(row?.querySelectorAll<HTMLButtonElement>('button') ?? []).find(item => item.dataset.action === action && !item.disabled);
     replacement?.focus({ preventScroll: true });
@@ -174,8 +198,8 @@ async function refresh() {
     const result = await request('list');
     const media = Array.isArray(result.items) ? result.items.filter((item): item is MediaItem => record(item) && typeof item.id === 'string' && typeof item.url === 'string' && typeof item.title === 'string' && ['file', 'hls', 'dash'].includes(String(item.kind))) : [];
     const history = Array.isArray(result.history) ? result.history.filter(isHistory) : [];
-    replaceRows('media', media.map(mediaRow)); node('empty').hidden = media.length > 0;
-    replaceRows('history', history.map(historyRow)); node('history-empty').hidden = history.length > 0;
+    replaceRows('media', media, mediaRow); node('empty').hidden = media.length > 0;
+    replaceRows('history', history, historyRow); node('history-empty').hidden = history.length > 0;
     if (activeReview && !reviewBusy && !history.some(row => row.id === activeReview?.id && row.state === 'review' && row.security?.token === activeReview?.security?.token)) closeReview();
     if (!activeReview && !reviewBusy) {
       const pending = history.find(row => row.state === 'review' && row.security && !deferredReviews.has(row.security.token));

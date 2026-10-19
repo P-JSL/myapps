@@ -1,6 +1,6 @@
 # My Video App · 개인용 로컬 버전
 
-My Video App 1.7.0은 **앱 계정·구독·활성화 서버가 없는 독립 TypeScript 확장**입니다.
+My Video App 1.8.0은 **앱 계정·구독·활성화 서버가 없는 독립 TypeScript 확장**입니다.
 미디어 감지, 일반 파일 다운로드, 비암호화 HLS/DASH VOD 저장, 로컬 기록과
 다운로드 후 선택적 2x/4x 업스케일링을 제공합니다. 파일과 기록은 브라우저에 저장합니다.
 1.2.0에서는 **최고화질·해상도 선택, MP3/M4A 오디오 다운로드, 영상/음성 변환,
@@ -10,6 +10,7 @@ My Video App 1.7.0은 **앱 계정·구독·활성화 서버가 없는 독립 Ty
 1.5.0은 **Windows 기본 Defender 우선·사용 중인 다른 백신의 표준 인터페이스 자동 연동**을 지원합니다.
 1.6.0은 **리디렉션·DASH 상속 호환성, 실제 백신 연결 상태 확인, 화질·저장 형식 기억, 키보드 초점 유지**를 개선했습니다. [에이전트 교차 검토·적용 내역](reports/REVIEW_IMPROVEMENTS.ko.md)을 참고하세요.
 1.7.0은 **시크릿 창의 기록·복사 큐 격리, 늦은 위험 경고의 복사본 철회, 업데이트 후 작업 복구, DASH 오프셋·초기화 상속, 미검사 판정**을 보완했습니다. [전체 점검과 독립 승인 내역](reports/FULL_AUDIT.ko.md)을 참고하세요.
+1.8.0은 **선형 화질 선택·미디어 ID 색인·불필요한 바이트 복사 제거·변경 없는 화면 재사용·입력 검증 예산**을 개선합니다. 기존 출력·보안 검사·호환 조건을 유지하며 [알고리즘 조사와 실측 결과](reports/ALGORITHMS.ko.md)에 복잡도·상충 비용·적용하지 않은 대안을 기록합니다.
 Windows에서는 별도 ClamAV 설치 없이 백신 도우미를 설치하고 앱에서 연결 권한을 허용하면 됩니다. 다른 백신의 자동 연결은 Windows AMSI 지원 여부에 따라 달라집니다.
 
 - [설치용 ZIP](artifacts/my-video-app-extension.zip)
@@ -90,6 +91,7 @@ Node.js 24 이상, npm, Python 3.11 이상과 브라우저 검증용 Chromium·F
 ```sh
 npm ci --ignore-scripts --cache /tmp/my-video-app-npm-cache
 npm run verify
+npm run bench:algorithms
 python3 -m venv /workspace/.cache/my-video-app-http3
 /workspace/.cache/my-video-app-http3/bin/python -m pip install -r tests/requirements-http3.txt
 HTTP3_PYTHON=/workspace/.cache/my-video-app-http3/bin/python npm run test:http3
@@ -97,6 +99,7 @@ npm run package
 ```
 
 `CHROMIUM_PATH`로 Chromium 경로를 지정할 수 있습니다.
+알고리즘 벤치마크는 CPU 간섭을 줄이기 위해 순서대로 실행하며 결과를 `reports/performance*.json`에 기록합니다. 개별 연산의 비교이며 전체 다운로드·인코딩 가속 배수가 아닙니다. 패키징은 현재 소스·검증·측정 보고서의 해시 일치를 요구합니다.
 HTTP/3 검사는 Linux Chromium 154·OpenSSL·Python venv/aioquic를 사용하며 별도 임시
 프로필과 로컬 서버를 만들고 정리합니다. 제품의 자동 협상과 구분되는 시험 조건은 위 문서를 참고하세요.
 `src/local`은 감지·다운로드·기록·목록 파서, `src/upscale`은 확대와 큐,

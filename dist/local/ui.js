@@ -102,14 +102,40 @@ function button(text, action, secondary = false, actionKey = text) {
   });
   return element;
 }
-function replaceRows(id, rows) {
+var rowCaches = /* @__PURE__ */ new Map();
+function replaceRows(id, items, render) {
   const list = node(id);
   const focused = document.activeElement;
   const focusedButton = focused instanceof HTMLButtonElement && list.contains(focused) ? focused : void 0;
   const rowId = focusedButton?.closest("li[data-row-id]")?.dataset.rowId;
   const action = focusedButton?.dataset.action;
-  list.replaceChildren(...rows);
-  if (focusedButton && !focusedButton.isConnected && rowId && action) {
+  const previous = new Set(items.map((item) => item.id)).size === items.length ? rowCaches.get(id) : void 0;
+  const current = /* @__PURE__ */ new Map();
+  const rows = items.map((item) => {
+    const signature = JSON.stringify(item);
+    const cached = previous?.get(item.id);
+    const entry = cached?.signature === signature ? cached : { signature, row: render(item) };
+    current.set(item.id, entry);
+    return entry.row;
+  });
+  rowCaches.set(id, current);
+  const retained = new Set(rows);
+  for (let child = list.firstElementChild; child; ) {
+    const next = child.nextElementSibling;
+    if (!retained.has(child)) child.remove();
+    child = next;
+  }
+  let cursor = list.firstElementChild;
+  for (const row of rows) {
+    if (row === cursor) cursor = cursor.nextElementSibling;
+    else list.insertBefore(row, cursor);
+  }
+  while (cursor) {
+    const next = cursor.nextElementSibling;
+    cursor.remove();
+    cursor = next;
+  }
+  if (focusedButton && document.activeElement !== focusedButton && rowId && action) {
     const row = rows.find((item) => item.dataset.rowId === rowId);
     const replacement = Array.from(row?.querySelectorAll("button") ?? []).find((item) => item.dataset.action === action && !item.disabled);
     replacement?.focus({ preventScroll: true });
@@ -263,9 +289,9 @@ async function refresh() {
     const result = await request("list");
     const media = Array.isArray(result.items) ? result.items.filter((item) => record(item) && typeof item.id === "string" && typeof item.url === "string" && typeof item.title === "string" && ["file", "hls", "dash"].includes(String(item.kind))) : [];
     const history = Array.isArray(result.history) ? result.history.filter(isHistory) : [];
-    replaceRows("media", media.map(mediaRow));
+    replaceRows("media", media, mediaRow);
     node("empty").hidden = media.length > 0;
-    replaceRows("history", history.map(historyRow));
+    replaceRows("history", history, historyRow);
     node("history-empty").hidden = history.length > 0;
     if (activeReview && !reviewBusy && !history.some((row) => row.id === activeReview?.id && row.state === "review" && row.security?.token === activeReview?.security?.token)) closeReview();
     if (!activeReview && !reviewBusy) {

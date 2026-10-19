@@ -74,6 +74,38 @@ function observeTransport(url, since) {
   };
 }
 
+// src/local/byte-assembly.ts
+function assembleBytes(chunks, total, offset = 0, length = total) {
+  const only = chunks.length === 1 ? chunks[0] : void 0;
+  if (offset === 0 && length === total && only?.byteLength === total && only.byteOffset === 0) {
+    const buffer = only.buffer;
+    if (buffer instanceof ArrayBuffer && buffer.byteLength === total) return new Uint8Array(buffer);
+  }
+  const output = new Uint8Array(length);
+  if (offset === 0 && length === total) {
+    let written2 = 0;
+    for (const chunk of chunks) {
+      output.set(chunk, written2);
+      written2 += chunk.length;
+    }
+    if (written2 !== length) throw new Error("\uBBF8\uB514\uC5B4 \uC870\uAC01\uC774 \uBD88\uC644\uC804\uD569\uB2C8\uB2E4.");
+    return output;
+  }
+  let position = 0, written = 0;
+  for (const chunk of chunks) {
+    const begin = Math.max(0, offset - position);
+    const end = Math.min(chunk.length, offset + length - position);
+    if (begin < end) {
+      output.set(chunk.subarray(begin, end), written);
+      written += end - begin;
+    }
+    position += chunk.length;
+    if (written === length) break;
+  }
+  if (written !== length) throw new Error("\uBBF8\uB514\uC5B4 \uC870\uAC01\uC774 \uBD88\uC644\uC804\uD569\uB2C8\uB2E4.");
+  return output;
+}
+
 // src/local/network.ts
 function validRange(range2) {
   if (!Number.isSafeInteger(range2.offset) || !Number.isSafeInteger(range2.length) || !Number.isSafeInteger(range2.offset + range2.length) || range2.offset < 0 || range2.length < 1 || range2.length > 128 * 1024 * 1024) throw new Error("\uBBF8\uB514\uC5B4 \uBC14\uC774\uD2B8 \uBC94\uC704\uAC00 \uD5C8\uC6A9 \uBC94\uC704\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
@@ -165,21 +197,18 @@ async function fetchBytes(url, maximum, signal, range2, monitor = {}) {
       }
       if (!total) throw new Error("\uBBF8\uB514\uC5B4 \uD30C\uC77C\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.");
       if ((!encoding || encoding === "identity") && declared !== void 0 && total !== declared) throw new Retryable("\uBBF8\uB514\uC5B4 \uD30C\uC77C\uC774 \uBD88\uC644\uC804\uD569\uB2C8\uB2E4.");
-      let result = new Uint8Array(total);
-      let offset = 0;
-      for (const chunk of chunks) {
-        result.set(chunk, offset);
-        offset += chunk.length;
-      }
       if (range2) {
         if (response.status === 206) {
-          if (result.length !== range2.length) throw new Retryable("\uBBF8\uB514\uC5B4 \uC870\uAC01\uC774 \uBD88\uC644\uC804\uD569\uB2C8\uB2E4.");
+          if (total !== range2.length) throw new Retryable("\uBBF8\uB514\uC5B4 \uC870\uAC01\uC774 \uBD88\uC644\uC804\uD569\uB2C8\uB2E4.");
         } else {
-          if (response.status !== 200 || result.length < range2.offset + range2.length) throw new Error("\uC11C\uBC84\uAC00 \uBC14\uC774\uD2B8 \uBC94\uC704\uB97C \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
-          result = result.slice(range2.offset, range2.offset + range2.length);
-          monitor.budget?.release(reserved - result.length);
-          reserved = result.length;
+          if (response.status !== 200 || total < range2.offset + range2.length) throw new Error("\uC11C\uBC84\uAC00 \uBC14\uC774\uD2B8 \uBC94\uC704\uB97C \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
         }
+      }
+      const result = assembleBytes(chunks, total, range2 && response.status === 200 ? range2.offset : 0, range2 ? range2.length : total);
+      chunks.length = 0;
+      if (range2 && response.status === 200) {
+        monitor.budget?.release(reserved - result.length);
+        reserved = result.length;
       }
       const protocol = await observation.finish();
       signal.throwIfAborted();
@@ -220,6 +249,30 @@ function downloadOptions(value) {
   return { quality: value.quality, output: value.output };
 }
 function chooseQuality(items, quality, height, bandwidth) {
+  let highest = -Infinity, lowest = Infinity, eligible = -Infinity;
+  const ceiling = Number(quality);
+  for (const item of items) {
+    const value = height(item);
+    if (!Number.isFinite(value) || value <= 0) continue;
+    if (value > highest) highest = value;
+    if (value < lowest) lowest = value;
+    if (value <= ceiling && value > eligible) eligible = value;
+  }
+  const target = highest === -Infinity ? void 0 : quality === "highest" ? highest : eligible !== -Infinity ? eligible : lowest;
+  let best, bestBandwidth = -Infinity, found = false;
+  for (const item of items) {
+    if (target !== void 0 && height(item) !== target) continue;
+    const value = bandwidth(item);
+    if (!Number.isFinite(value)) return legacyQuality(items, quality, height, bandwidth);
+    if (!found || value > bestBandwidth) {
+      best = item;
+      bestBandwidth = value;
+      found = true;
+    }
+  }
+  return best;
+}
+function legacyQuality(items, quality, height, bandwidth) {
   const known = items.filter((item) => Number.isFinite(height(item)) && height(item) > 0);
   const ranked = (values) => [...values].sort((a, b) => height(b) - height(a) || bandwidth(b) - bandwidth(a))[0];
   if (!known.length) return [...items].sort((a, b) => bandwidth(b) - bandwidth(a))[0];
@@ -278,7 +331,16 @@ async function planHls(url, load, options = downloadOptions()) {
       const chosen = chooseQuality(variants, options.quality, (item) => item.height, (item) => item.bandwidth);
       let audio;
       if (includeAudio && chosen.audio) {
-        audio = lines.filter((line) => line.startsWith("#EXT-X-MEDIA:")).map((line) => attributes(line.slice(line.indexOf(":") + 1))).filter((a) => a.TYPE === "AUDIO" && a["GROUP-ID"] === chosen.audio && a.URI).sort((a, b) => Number(b.DEFAULT === "YES") - Number(a.DEFAULT === "YES"))[0];
+        for (const line of lines) {
+          if (!line.startsWith("#EXT-X-MEDIA:")) continue;
+          const entry = attributes(line.slice(line.indexOf(":") + 1));
+          if (entry.TYPE !== "AUDIO" || entry["GROUP-ID"] !== chosen.audio || !entry.URI) continue;
+          audio ??= entry;
+          if (entry.DEFAULT === "YES") {
+            audio = entry;
+            break;
+          }
+        }
       }
       if (options.output !== "original" && audio?.URI) {
         await playlist(mediaURL(audio.URI, address).href, depth + 1, next, false);
@@ -377,7 +439,12 @@ function planDash(text, address, options = downloadOptions()) {
       if (/^(video|audio)/.test(type)) selections.push({ adaptation, representation, type: type.startsWith("video") ? "video" : "audio" });
     }
   }
-  const audio = selections.filter((s) => s.type === "audio").sort((a, b) => Number(b.representation.getAttribute("bandwidth")) - Number(a.representation.getAttribute("bandwidth")))[0];
+  const audio = chooseQuality(
+    selections.filter((s) => s.type === "audio"),
+    "highest",
+    () => 0,
+    (item) => Number(item.representation.getAttribute("bandwidth"))
+  );
   const video = chooseQuality(
     selections.filter((s) => s.type === "video"),
     options.quality,

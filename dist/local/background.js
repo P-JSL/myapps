@@ -21,9 +21,12 @@ function boundedData(value, maxChars = 16 * 1024 * 1024) {
       visited.add(item);
       stack.push([item, depth, true]);
       if (!Array.isArray(item) && Object.getPrototypeOf(item) !== Object.prototype && Object.getPrototypeOf(item) !== null) return false;
-      for (const key of Object.keys(item)) {
+      const keys = Object.keys(item);
+      if (nodes + keys.length + stack.length - visited.size > 1e5) return false;
+      for (const key of keys) {
         if (key === "__proto__" || key === "constructor" || key === "prototype") return false;
         chars += key.length;
+        if (chars > maxChars) return false;
         stack.push([item[key], depth + 1]);
       }
     } else if (typeof item === "function" || typeof item === "symbol" || typeof item === "bigint") return false;
@@ -257,6 +260,55 @@ var MAX_HISTORY = 200;
 var MAX_MEDIA_PER_TAB = 200;
 var MAX_STREAM_BYTES = 128 * 1024 * 1024;
 var ACTIVE_HISTORY_STATES = ["preparing", "downloading", "scanning", "review"];
+var MediaCatalog = class {
+  byTab = /* @__PURE__ */ new Map();
+  byId = /* @__PURE__ */ new Map();
+  get size() {
+    return this.byId.size;
+  }
+  get(tabId, url) {
+    return this.byTab.get(tabId)?.get(url);
+  }
+  find(id) {
+    return this.byId.get(id);
+  }
+  *tabIds() {
+    yield* this.byTab.keys();
+  }
+  *items(tabId) {
+    yield* this.byTab.get(tabId)?.values() ?? [];
+  }
+  set(item) {
+    const previous = this.byId.get(item.id);
+    if (previous && (previous.tabId !== item.tabId || previous.url !== item.url)) {
+      const oldTab = this.byTab.get(previous.tabId);
+      oldTab.delete(previous.url);
+      if (!oldTab.size) this.byTab.delete(previous.tabId);
+    }
+    const tab = this.byTab.get(item.tabId) ?? /* @__PURE__ */ new Map();
+    const replaced = tab.get(item.url);
+    if (replaced && replaced.id !== item.id) this.byId.delete(replaced.id);
+    tab.set(item.url, item);
+    this.byId.set(item.id, item);
+    if (tab.size > MAX_MEDIA_PER_TAB) {
+      let evicted;
+      for (const candidate of tab.values()) if (candidate.kind === "file") {
+        evicted = candidate;
+        break;
+      }
+      evicted ??= tab.values().next().value;
+      tab.delete(evicted.url);
+      this.byId.delete(evicted.id);
+    }
+    this.byTab.set(item.tabId, tab);
+  }
+  deleteTab(tabId) {
+    const tab = this.byTab.get(tabId);
+    if (!tab) return;
+    for (const item of tab.values()) this.byId.delete(item.id);
+    this.byTab.delete(tabId);
+  }
+};
 function retainHistory(rows) {
   const sorted = [...rows].sort((a, b) => b.createdAt - a.createdAt);
   const active = (row) => ACTIVE_HISTORY_STATES.includes(row.state);
@@ -447,7 +499,7 @@ async function scanFile(path) {
 }
 
 // src/local/background.ts
-var media = /* @__PURE__ */ new Map();
+var media = new MediaCatalog();
 var discoveryEpochs = /* @__PURE__ */ new Map();
 var privateHistory = /* @__PURE__ */ new Map();
 var cancelled = /* @__PURE__ */ new Set();
@@ -512,8 +564,7 @@ async function missingDownload(item) {
 function add(tabId, address, mime, title, fromElement, size, observed) {
   try {
     const url = mediaURL(address).href;
-    const items = media.get(tabId) ?? /* @__PURE__ */ new Map();
-    const existing = items.get(url);
+    const existing = media.get(tabId, url);
     const mergedMime = mime || existing?.mime || "";
     const kind = existing && existing.kind !== "file" ? existing.kind : mediaKind(url, mergedMime, fromElement);
     if (!kind) return;
@@ -521,9 +572,7 @@ function add(tabId, address, mime, title, fromElement, size, observed) {
     if (Number.isSafeInteger(size) && size > 0) item.size = size;
     const protocol = transport(observed);
     if (protocol) item.observedTransport = protocol;
-    items.set(url, item);
-    while (items.size > MAX_MEDIA_PER_TAB) items.delete(Array.from(items).find(([, entry]) => entry.kind === "file")?.[0] ?? items.keys().next().value);
-    media.set(tabId, items);
+    media.set(item);
   } catch {
   }
 }
@@ -732,7 +781,7 @@ async function download(item, options = downloadOptions()) {
 async function currentTab() {
   const tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true })).find((tab2) => !!tab2.incognito === chrome.extension.inIncognitoContext);
   if (tab?.id !== void 0 && tab.url && /^https?:/.test(tab.url)) return tab.id;
-  return lastTab ?? Array.from(media.keys()).at(-1);
+  return lastTab ?? Array.from(media.tabIds()).at(-1);
 }
 async function handleLocalMessage(value, sender) {
   if (!record(value) || value.scope !== SCOPE || typeof value.type !== "string" || !boundedData(value, 128 * 1024)) throw new Error("\uC798\uBABB\uB41C \uC694\uCCAD\uC785\uB2C8\uB2E4.");
@@ -779,7 +828,7 @@ async function handleLocalMessage(value, sender) {
   }
   if (value.type === "list") {
     const tabId = await currentTab();
-    const items = tabId === void 0 ? [] : Array.from(media.get(tabId)?.values() ?? []).sort((a, b) => b.createdAt - a.createdAt);
+    const items = tabId === void 0 ? [] : Array.from(media.items(tabId)).sort((a, b) => b.createdAt - a.createdAt);
     const rows = await history();
     const progress = await Promise.all(rows.map(async (row) => {
       if (row.state !== "downloading" || row.downloadId === void 0) return row;
@@ -789,7 +838,7 @@ async function handleLocalMessage(value, sender) {
     return { ok: true, items, history: progress, tabId };
   }
   if (value.type === "download" && typeof value.id === "string") {
-    const item = Array.from(media.values()).flatMap((map) => Array.from(map.values())).find((row) => row.id === value.id);
+    const item = media.find(value.id);
     if (!item) throw new Error("\uBBF8\uB514\uC5B4\uAC00 \uB9CC\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC6D0\uB798 \uD398\uC774\uC9C0\uB97C \uC0C8\uB85C\uACE0\uCE68\uD558\uC138\uC694.");
     return { ok: true, item: await download(item, downloadOptions(value.options)) };
   }
@@ -872,14 +921,14 @@ chrome.notifications.onClicked.addListener((id) => {
   void chrome.tabs.create({ url: chrome.runtime.getURL("local/index.html?view=history") });
 });
 chrome.tabs.onRemoved.addListener((id) => {
-  media.delete(id);
+  media.deleteTab(id);
   discoveryEpochs.delete(id);
   if (lastTab === id) lastTab = void 0;
 });
 chrome.tabs.onUpdated.addListener((id, changes, tab) => {
   if (!!tab.incognito !== chrome.extension.inIncognitoContext) return;
   if (changes.status === "loading") {
-    media.delete(id);
+    media.deleteTab(id);
     discoveryEpochs.set(id, {});
   }
   if (tab.active && tab.url && /^https?:/.test(tab.url)) lastTab = id;
@@ -929,7 +978,7 @@ void setup().catch(() => {
 chrome.commands.onCommand.addListener((command) => {
   if (command !== "default-action") return;
   void currentTab().then((id) => {
-    const item = id === void 0 ? void 0 : Array.from(media.get(id)?.values() ?? [])[0];
+    const item = id === void 0 ? void 0 : media.items(id).next().value;
     if (item) return download(item);
   }).catch(() => {
   });

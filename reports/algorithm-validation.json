@@ -1,0 +1,54 @@
+{
+  "release": "1.8.0",
+  "asOfDate": "2026-10-19",
+  "timezone": "Asia/Seoul",
+  "recordedAtUtc": "2026-10-19T08:23:42.477195+00:00",
+  "baselineCommit": "6983b535ba089e7737e10583481ecd6ef35e7cc3",
+  "typecheck": "passed",
+  "tests": {
+    "typescript": 104,
+    "native": 48,
+    "browserHarness": 72,
+    "realClamAV": 6,
+    "realHTTP3": 4
+  },
+  "totalChecks": 234,
+  "failed": 0,
+  "skipped": 0,
+  "algorithmBenchmarkSuites": 5,
+  "officialSourcesRetrieved": 13,
+  "algorithmSourceFiles": 64,
+  "buildSha256": "f2cb04ce401fe6efa08bcba58472a7a03819af9db83a045f001777c82224b2ad",
+  "performanceReportSha256": "aee9818c096cb2daa86f1d572677ef8eac5f8ed7e84ce3375883f2c22f4725b6",
+  "staleSourceInventoryRejectedBeforePackaging": true,
+  "reviewer": "audit_approval",
+  "individualSourceReviews": "APPROVE",
+  "limits": {
+    "operationBenchmarks": "Not end-to-end download or encoding speedups; UI timings are single-batch elapsed, not medians",
+    "extensionInstallation": "blocked by administrator policy; extension APIs doubled",
+    "windowsAntivirus": "APIs doubled on Linux; real Windows integration untested",
+    "clamavDatabase": "Private test-only hash signatures; official coverage/freshness untested"
+  },
+  "sourceZipWithoutGit": {
+    "status": "passed",
+    "benchmarkSuites": 5,
+    "dependencies": "Existing installed dependency directory reused through a temporary symlink; no Git repository/history present"
+  },
+  "releaseArchives": {
+    "count": 5,
+    "installedFiles": 24,
+    "sourceFiles": 107,
+    "helperFiles": 4,
+    "integrity": "passed",
+    "sha256sums": "passed",
+    "aliasesByteIdentical": true,
+    "contentsMatchCurrentFiles": true
+  },
+  "finalEngineeringVerdict": {
+    "reviewer": "audit_approval",
+    "verdict": "APPROVE",
+    "release": "1.8.0",
+    "blockers": 0,
+    "scope": "algorithm source diffs, lower-bound claims, measurements and units, regression evidence, current report hashes and five release archives"
+  }
+}

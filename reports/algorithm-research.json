@@ -1,0 +1,125 @@
+{
+  "asOfDate": "2026-10-19",
+  "timezone": "Asia/Seoul",
+  "retrievedAtUtc": "2026-10-19T08:05:57.033575+00:00",
+  "method": "Direct HTTPS retrieval of official documentation/source repositories using configured proxy and verified TLS. This is a focused implementation survey, not an exhaustive survey of all papers published through the date.",
+  "sources": [
+    {
+      "id": "mdn-sort",
+      "title": "MDN Array.sort: stable ordering, implementation-dependent complexity",
+      "retrievedUrl": "https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/javascript/reference/global_objects/array/sort/index.md",
+      "referenceUrl": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort",
+      "httpStatus": 200,
+      "bytes": 14915,
+      "sha256": "2ea85da9110cbdee85ba38e62a065060de67e75ee4de48d077dcd51e0ef73591"
+    },
+    {
+      "id": "mdn-map",
+      "title": "MDN Map: average sublinear access; hash table vs tree",
+      "retrievedUrl": "https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/javascript/reference/global_objects/map/index.md",
+      "referenceUrl": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map",
+      "httpStatus": 200,
+      "bytes": 20377,
+      "sha256": "c21c9469985f173a3353ac43b635c298a4e39a1346b5bac5ab26d13473b8f91b"
+    },
+    {
+      "id": "mdn-transfer",
+      "title": "MDN Transferable objects: ArrayBuffer ownership transfer",
+      "retrievedUrl": "https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/api/web_workers_api/transferable_objects/index.md",
+      "referenceUrl": "https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Transferable_objects",
+      "httpStatus": 200,
+      "bytes": 5682,
+      "sha256": "24a95367020af657b0d2d1c6d5f68b274151bde71e499dd9f58101cb1127a5f2"
+    },
+    {
+      "id": "mdn-digest",
+      "title": "MDN SubtleCrypto.digest: complete input, no streaming API",
+      "retrievedUrl": "https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/api/subtlecrypto/digest/index.md",
+      "referenceUrl": "https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest",
+      "httpStatus": 200,
+      "bytes": 6440,
+      "sha256": "11746967ff69afc05d2e5ad5183e8cd049b1011d74769665466e021d53eb70d2"
+    },
+    {
+      "id": "emscripten-fs",
+      "title": "Emscripten filesystem: readFile and WORKERFS",
+      "retrievedUrl": "https://raw.githubusercontent.com/emscripten-core/emscripten/main/site/source/docs/api_reference/Filesystem-API.rst",
+      "referenceUrl": "https://emscripten.org/docs/api_reference/Filesystem-API.html",
+      "httpStatus": 200,
+      "bytes": 40375,
+      "sha256": "4fc23acba4e6644475094f02e189a1489ecc7d38bc8b1d49f62670b16454799b"
+    },
+    {
+      "id": "emscripten-readfile",
+      "title": "Emscripten FS implementation: independent readFile Uint8Array",
+      "retrievedUrl": "https://raw.githubusercontent.com/emscripten-core/emscripten/main/src/lib/libfs.js",
+      "referenceUrl": "https://github.com/emscripten-core/emscripten/blob/main/src/lib/libfs.js",
+      "httpStatus": 200,
+      "bytes": 65577,
+      "sha256": "0b27249a44cab2a75f1049b49cba8feae4504d36d20605461c6443e404b933f6"
+    },
+    {
+      "id": "dom-standard",
+      "title": "WHATWG DOM Standard: mutation records and subtree observation",
+      "retrievedUrl": "https://raw.githubusercontent.com/whatwg/dom/main/dom.bs",
+      "referenceUrl": "https://dom.spec.whatwg.org/",
+      "httpStatus": 200,
+      "bytes": 482379,
+      "sha256": "26f356aa503d2f92df5292376983d0a9cb7a90ef341d7a085c91f537c6af6cb9"
+    },
+    {
+      "id": "ffmpegwasm-performance",
+      "title": "ffmpeg.wasm official performance measurements (older core0.12.3; not current-app benchmark)",
+      "retrievedUrl": "https://raw.githubusercontent.com/ffmpegwasm/ffmpeg.wasm/main/apps/website/docs/performance.md",
+      "referenceUrl": "https://ffmpegwasm.netlify.app/docs/performance/",
+      "httpStatus": 200,
+      "bytes": 1252,
+      "sha256": "1fd6dd31f2c9f4feb57fc21184d1ffc4de0c7a3efc479ee3365122c01f925a99"
+    },
+    {
+      "id": "ffmpegwasm-faq",
+      "title": "ffmpeg.wasm FAQ: multithreading resource/compatibility tradeoffs",
+      "retrievedUrl": "https://raw.githubusercontent.com/ffmpegwasm/ffmpeg.wasm/main/apps/website/docs/faq.md",
+      "referenceUrl": "https://ffmpegwasm.netlify.app/docs/faq/",
+      "httpStatus": 200,
+      "bytes": 2644,
+      "sha256": "7f3b230d6c60138739818517d0f9e7211a5a0db9b351a80cd5f1976a6838e0e7"
+    },
+    {
+      "id": "ffmpeg-scaler",
+      "title": "FFmpeg scaler documentation: Lanczos, kernel choices and backends",
+      "retrievedUrl": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/master/doc/scaler.texi",
+      "referenceUrl": "https://ffmpeg.org/ffmpeg-scaler.html",
+      "httpStatus": 200,
+      "bytes": 5471,
+      "sha256": "05ef7135691a63b1bc02b7bc1a292111de04cda37435e657b2cc05528c390fe3"
+    },
+    {
+      "id": "webcodecs-spec",
+      "title": "W3C WebCodecs: platform codec and hardware acceleration behavior",
+      "retrievedUrl": "https://raw.githubusercontent.com/w3c/webcodecs/main/index.src.html",
+      "referenceUrl": "https://www.w3.org/TR/webcodecs/",
+      "httpStatus": 200,
+      "bytes": 294256,
+      "sha256": "2af4287da3204a26f1754b933f38210ac16202ce87204a73167952255a8aeecd"
+    },
+    {
+      "id": "webgpu-spec",
+      "title": "GPUWeb WebGPU specification: GPU execution and supported limits",
+      "retrievedUrl": "https://raw.githubusercontent.com/gpuweb/gpuweb/main/spec/index.bs",
+      "referenceUrl": "https://www.w3.org/TR/webgpu/",
+      "httpStatus": 200,
+      "bytes": 849223,
+      "sha256": "86287b26fc4c8dcdf3372e1e42fef01d518afb721548e85afd6c5cfb9e699fbb"
+    },
+    {
+      "id": "realesrgan-readme",
+      "title": "Real-ESRGAN: trained restoration, NCNN Vulkan and tiled-output differences",
+      "retrievedUrl": "https://raw.githubusercontent.com/xinntao/Real-ESRGAN/master/README.md",
+      "referenceUrl": "https://github.com/xinntao/Real-ESRGAN",
+      "httpStatus": 200,
+      "bytes": 16548,
+      "sha256": "d0a13607913ea94e65a91ac864b969683a41a45b0aec16e0ae64271649d0364d"
+    }
+  ]
+}

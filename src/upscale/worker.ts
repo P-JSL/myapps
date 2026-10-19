@@ -1,5 +1,6 @@
 import createFFmpegCore, { type FFmpegCore } from '../vendor/ffmpeg/ffmpeg-core.js';
 import { record } from '../security/validation.ts';
+import { ownedTransferBuffer } from '../security/transfer.ts';
 import { MAX_INPUT_BYTES, MAX_RUNTIME_MS, outputDimensions, type MediaInfo } from './policy.ts';
 import { convertedDimensions, processingArguments, processingOptions, resultFormat, sniffInput, validateTrack, type TrackInfo } from './processing.ts';
 
@@ -42,12 +43,13 @@ scope.onmessage = async event => {
     scope.postMessage({ type: 'status', message: '브라우저 내부 처리 엔진을 준비하고 있습니다…' });
     const core = await createFFmpegCore();
     let lastLog = ''; core.setLogger(({ message }) => { lastLog = message.slice(0, 500); });
-    core.FS.writeFile('input.media', new Uint8Array(await file.arrayBuffer()));
+    // These fresh File buffers have no other consumer; MEMFS can retain them.
+    core.FS.writeFile('input.media', new Uint8Array(await file.arrayBuffer()), { canOwn: true });
     const info = probe(core, 'input.media', kind);
     if (options.mode === 'upscale' && !info.video) throw new Error('업스케일링할 영상 또는 이미지 트랙이 없습니다.');
     validateTrack(info, options);
     if (secondary) {
-      core.FS.writeFile('audio.media', new Uint8Array(await secondary.arrayBuffer()));
+      core.FS.writeFile('audio.media', new Uint8Array(await secondary.arrayBuffer()), { canOwn: true });
       const audio = probe(core, 'audio.media', 'audio'); validateTrack(audio, { mode: 'audio', format: 'm4a' });
     }
     const dimensions = options.mode === 'upscale' ? outputDimensions(info as MediaInfo, options.factor)
@@ -64,7 +66,7 @@ scope.onmessage = async event => {
     const format = resultFormat(options, kind);
     const output = core.FS.readFile(`output.${format}`);
     if (!(output instanceof Uint8Array) || !output.length || output.length >= MAX_INPUT_BYTES - 1024 * 1024) throw new Error('결과가 비어 있거나 안전한 출력 용량 한도에 도달했습니다.');
-    const bytes = new Uint8Array(output).buffer;
+    const bytes = ownedTransferBuffer(output);
     scope.postMessage({ type: 'done', info, output: dimensions, format, bytes }, [bytes]);
   } catch (error) { scope.postMessage({ type: 'error', message: error instanceof Error ? error.message : '처리 중 오류가 발생했습니다.' }); }
 };

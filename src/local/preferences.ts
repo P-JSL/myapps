@@ -11,6 +11,28 @@ export function downloadOptions(value?: unknown): DownloadOptions {
 }
 /** Prefer actual resolution, then bandwidth; a ceiling never invents a missing rendition. */
 export function chooseQuality<T>(items: T[], quality: Quality, height: (item: T) => number, bandwidth: (item: T) => number): T | undefined {
+  let highest = -Infinity, lowest = Infinity, eligible = -Infinity;
+  const ceiling = Number(quality);
+  for (const item of items) {
+    const value = height(item);
+    if (!Number.isFinite(value) || value <= 0) continue;
+    if (value > highest) highest = value;
+    if (value < lowest) lowest = value;
+    if (value <= ceiling && value > eligible) eligible = value;
+  }
+  const target = highest === -Infinity ? undefined : quality === 'highest' ? highest : eligible !== -Infinity ? eligible : lowest;
+  let best: T | undefined, bestBandwidth = -Infinity, found = false;
+  for (const item of items) {
+    if (target !== undefined && height(item) !== target) continue;
+    const value = bandwidth(item);
+    // NaN/Infinity comparisons are not a total order. Preserve the previous
+    // stable-sort result for malformed metadata instead of inventing a ranking.
+    if (!Number.isFinite(value)) return legacyQuality(items, quality, height, bandwidth);
+    if (!found || value > bestBandwidth) { best = item; bestBandwidth = value; found = true; }
+  }
+  return best;
+}
+function legacyQuality<T>(items: T[], quality: Quality, height: (item: T) => number, bandwidth: (item: T) => number): T | undefined {
   const known = items.filter(item => Number.isFinite(height(item)) && height(item) > 0);
   const ranked = (values: T[]) => [...values].sort((a, b) => height(b) - height(a) || bandwidth(b) - bandwidth(a))[0];
   if (!known.length) return [...items].sort((a, b) => bandwidth(b) - bandwidth(a))[0];

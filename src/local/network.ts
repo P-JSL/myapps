@@ -1,5 +1,6 @@
 import { mediaURL } from './model.ts';
 import { observeTransport, type Transport } from './transport.ts';
+import { assembleBytes } from './byte-assembly.ts';
 
 export interface ByteRange { offset: number; length: number; }
 export function validRange(range: ByteRange): void {
@@ -84,17 +85,15 @@ export async function fetchBytes(url: string, maximum: number, signal: AbortSign
       }
       if (!total) throw new Error('미디어 파일이 비어 있습니다.');
       if ((!encoding || encoding === 'identity') && declared !== undefined && total !== declared) throw new Retryable('미디어 파일이 불완전합니다.');
-      let result = new Uint8Array(total);
-      let offset = 0;
-      for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
       if (range) {
-        if (response.status === 206) { if (result.length !== range.length) throw new Retryable('미디어 조각이 불완전합니다.'); }
+        if (response.status === 206) { if (total !== range.length) throw new Retryable('미디어 조각이 불완전합니다.'); }
         else {
-          if (response.status !== 200 || result.length < range.offset + range.length) throw new Error('서버가 바이트 범위를 지원하지 않습니다.');
-          result = result.slice(range.offset, range.offset + range.length);
-          monitor.budget?.release(reserved - result.length); reserved = result.length;
+          if (response.status !== 200 || total < range.offset + range.length) throw new Error('서버가 바이트 범위를 지원하지 않습니다.');
         }
       }
+      const result = assembleBytes(chunks, total, range && response.status === 200 ? range.offset : 0, range ? range.length : total);
+      chunks.length = 0;
+      if (range && response.status === 200) { monitor.budget?.release(reserved - result.length); reserved = result.length; }
       const protocol = await observation.finish();
       signal.throwIfAborted();
       if (protocol) monitor.protocol?.(protocol);

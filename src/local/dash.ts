@@ -33,7 +33,8 @@ export function planDash(text: string, address: string, options: DownloadOptions
       if (/^(video|audio)/.test(type)) selections.push({ adaptation, representation, type: type.startsWith('video') ? 'video' : 'audio' });
     }
   }
-  const audio = selections.filter(s => s.type === 'audio').sort((a, b) => Number(b.representation.getAttribute('bandwidth')) - Number(a.representation.getAttribute('bandwidth')))[0];
+  const audio = chooseQuality(selections.filter(s => s.type === 'audio'), 'highest', () => 0,
+    item => Number(item.representation.getAttribute('bandwidth')));
   const video = chooseQuality(selections.filter(s => s.type === 'video'), options.quality,
     item => Number(item.representation.getAttribute('height') ?? item.adaptation.getAttribute('height')),
     item => Number(item.representation.getAttribute('bandwidth')));

@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { prepareDashAuditFixtures, verifyDashPlanner } from './dash-audit.mjs';
+import { prepareOwnedInputAudit, verifyOwnedInputProcessing } from './worker-input-audit.mjs';
 
 const root = path.resolve('.');
 const results = path.join(root, 'test-results');
@@ -54,6 +55,7 @@ await writeFile(`${fixtures}/encrypted.m3u8`, '#EXTM3U\n#EXT-X-KEY:METHOD=AES-12
 await writeFile(`${fixtures}/protected.mpd`, '<MPD type="static" mediaPresentationDuration="PT1S"><Period><AdaptationSet mimeType="video/mp4"><ContentProtection schemeIdUri="urn:uuid:protected"/><Representation id="v" bandwidth="1"><BaseURL>https://invalid.example/private.mp4</BaseURL></Representation></AdaptationSet></Period></MPD>');
 await writeFile(`${fixtures}/malicious.mp4`, '<html><script>fetch("https://invalid.example/upload")</script></html>');
 await prepareDashAuditFixtures(fixtures);
+await prepareOwnedInputAudit(fixtures);
 const originalHash = createHash('sha256').update(await readFile(`${fixtures}/clip.mp4`)).digest('hex');
 
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png', '.mp4': 'video/mp4', '.json': 'application/json', '.m3u8': 'application/vnd.apple.mpegurl', '.mpd': 'application/dash+xml', '.ts': 'video/mp2t' };
@@ -126,7 +128,9 @@ await context.addInitScript(() => {
       const background = await import('/local/background.js');
       const sender = { id: 'test-double-only', url: `${location.origin}/${message.type === 'preparing-progress' ? 'local/offscreen.html' : 'local/index.html'}` };
       if (message.type === 'capture') { sender.url = `${location.origin}/example-page`; sender.tab = { id: 7 }; }
-      return background.handleLocalMessage(message, sender);
+      const result = await background.handleLocalMessage(message, sender);
+      if (message.type === 'list') window.__listReads = (window.__listReads || 0) + 1;
+      return result;
     } },
     extension: { inIncognitoContext: new URL(location.href).searchParams.has('test-incognito') },
     storage: { local: {
@@ -233,7 +237,7 @@ try {
   });
   await checks('Local install uses independent entry points without an account/activation engine', async () => {
     const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
-    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.7.0');
+    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.8.0');
     assert.equal(manifest.key, undefined); assert.equal(manifest.update_url, undefined);
     const result = await context.request.get(`${origin}/service/main.js`); assert.equal(result.status(), 404);
   });
@@ -256,6 +260,7 @@ try {
     assert.equal(createHash('sha256').update(await readFile(`${fixtures}/clip.mp4`)).digest('hex'), originalHash);
     command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${results}/clip-2x.mp4`, '-f', 'null', '-']);
   });
+  await checks('Owned input buffers preserve exact media outputs, metadata, random reads and source files in eight real Workers', () => verifyOwnedInputProcessing(page, origin));
   for (const format of ['mp4', 'mkv', 'webm']) await checks(`Local video conversion writes decodable ${format.toUpperCase()} with its expected codecs`, async () => {
     const result = await processFile('convert', format, `${results}/converted.${format}`);
     const video = result.streams.find(s => s.codec_type === 'video'); const audio = result.streams.find(s => s.codec_type === 'audio');
@@ -520,16 +525,20 @@ try {
     await waitForAsync(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1?.length === 1);
     assert.equal(await page.evaluate(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1.length), 1);
   });
-  await checks('Polling keeps the focused media action while leaving controls outside the lists focused', async () => {
+  await checks('Polling reuses unchanged rows, restores focus on changed rows and leaves outside controls focused', async () => {
     await page.locator('#media-tab').click();
     await page.locator('#media li button').first().focus();
-    const expected = await page.evaluate(() => { window.__focusedMediaAction = document.activeElement; return document.activeElement.closest('li').dataset.rowId; });
+    const expected = await page.evaluate(() => { window.__focusedMediaAction = document.activeElement; window.__previousListReads = window.__listReads; return document.activeElement.closest('li').dataset.rowId; });
+    await page.waitForFunction(() => window.__listReads > window.__previousListReads);
+    assert.equal(await page.evaluate(() => document.activeElement === window.__focusedMediaAction && window.__focusedMediaAction.isConnected), true);
+    await page.evaluate(async origin => chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'capture', items: [{ url: `${origin}/fixtures/clip.mp4`, title: '갱신된 로컬 테스트 영상', mime: 'video/mp4', fromElement: true }] }), origin);
     await page.waitForFunction(() => !window.__focusedMediaAction.isConnected);
     assert.equal(await page.evaluate(() => document.activeElement.dataset.action), 'download');
     assert.equal(await page.evaluate(() => document.activeElement.closest('li').dataset.rowId), expected);
     await page.locator('#quality').focus();
-    await page.evaluate(() => { window.__oldMediaRow = document.querySelector('#media li'); });
-    await page.waitForFunction(() => !window.__oldMediaRow.isConnected);
+    await page.evaluate(() => { window.__oldMediaRow = document.querySelector('#media li'); window.__previousListReads = window.__listReads; });
+    await page.waitForFunction(() => window.__listReads > window.__previousListReads);
+    assert.equal(await page.evaluate(() => window.__oldMediaRow === document.querySelector('#media li') && window.__oldMediaRow.isConnected), true);
     assert.equal(await page.evaluate(() => document.activeElement.id), 'quality');
   });
   await checks('Local download UI passes the chosen audio format through background and offscreen using API doubles', async () => {

@@ -51,8 +51,13 @@ export async function planHls(url: string, load: (url: string) => Promise<string
       const chosen = chooseQuality(variants, options.quality, item => item.height, item => item.bandwidth)!;
       let audio: Record<string, string> | undefined;
       if (includeAudio && chosen.audio) {
-        audio = lines.filter(line => line.startsWith('#EXT-X-MEDIA:')).map(line => attributes(line.slice(line.indexOf(':') + 1)))
-          .filter(a => a.TYPE === 'AUDIO' && a['GROUP-ID'] === chosen.audio && a.URI).sort((a, b) => Number(b.DEFAULT === 'YES') - Number(a.DEFAULT === 'YES'))[0];
+        for (const line of lines) {
+          if (!line.startsWith('#EXT-X-MEDIA:')) continue;
+          const entry = attributes(line.slice(line.indexOf(':') + 1));
+          if (entry.TYPE !== 'AUDIO' || entry['GROUP-ID'] !== chosen.audio || !entry.URI) continue;
+          audio ??= entry;
+          if (entry.DEFAULT === 'YES') { audio = entry; break; }
+        }
       }
       if (options.output !== 'original' && audio?.URI) { await playlist(mediaURL(audio.URI, address).href, depth + 1, next, false); return; }
       await playlist(chosen.url, depth + 1, next, false);

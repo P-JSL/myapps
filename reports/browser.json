@@ -1,5 +1,5 @@
 {
-  "buildSha256": "a48adbb5c2dc0c7549924f95d973ef2a6cfae079aeaa024415de060865b51c2b",
+  "buildSha256": "f2cb04ce401fe6efa08bcba58472a7a03819af9db83a045f001777c82224b2ad",
   "browser": "154.0.8037.57",
   "engine": "independent-local",
   "mode": "localhost harness: real browser/Wasm/OPFS; Chrome extension APIs mocked",
@@ -26,6 +26,10 @@
     },
     {
       "name": "MP4 2x preserves duration and audio in separate H.264/AAC output",
+      "status": "passed"
+    },
+    {
+      "name": "Owned input buffers preserve exact media outputs, metadata, random reads and source files in eight real Workers",
       "status": "passed"
     },
     {
@@ -213,7 +217,7 @@
       "status": "passed"
     },
     {
-      "name": "Polling keeps the focused media action while leaving controls outside the lists focused",
+      "name": "Polling reuses unchanged rows, restores focus on changed rows and leaves outside controls focused",
       "status": "passed"
     },
     {

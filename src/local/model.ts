@@ -18,6 +18,41 @@ export interface MediaItem {
   id: string; tabId: number; url: string; title: string; mime: string;
   kind: MediaKind; createdAt: number; size?: number; observedTransport?: Transport;
 }
+/** Own both indexes so selecting an ID never scans or copies unrelated tabs. */
+export class MediaCatalog {
+  private readonly byTab = new Map<number, Map<string, MediaItem>>();
+  private readonly byId = new Map<string, MediaItem>();
+  get size(): number { return this.byId.size; }
+  get(tabId: number, url: string): MediaItem | undefined { return this.byTab.get(tabId)?.get(url); }
+  find(id: string): MediaItem | undefined { return this.byId.get(id); }
+  *tabIds(): IterableIterator<number> { yield* this.byTab.keys(); }
+  *items(tabId: number): IterableIterator<MediaItem> { yield* this.byTab.get(tabId)?.values() ?? []; }
+  set(item: MediaItem): void {
+    const previous = this.byId.get(item.id);
+    if (previous && (previous.tabId !== item.tabId || previous.url !== item.url)) {
+      const oldTab = this.byTab.get(previous.tabId)!;
+      oldTab.delete(previous.url);
+      if (!oldTab.size) this.byTab.delete(previous.tabId);
+    }
+    const tab = this.byTab.get(item.tabId) ?? new Map<string, MediaItem>();
+    const replaced = tab.get(item.url);
+    if (replaced && replaced.id !== item.id) this.byId.delete(replaced.id);
+    tab.set(item.url, item); this.byId.set(item.id, item);
+    if (tab.size > MAX_MEDIA_PER_TAB) {
+      let evicted: MediaItem | undefined;
+      for (const candidate of tab.values()) if (candidate.kind === 'file') { evicted = candidate; break; }
+      evicted ??= tab.values().next().value!;
+      tab.delete(evicted.url); this.byId.delete(evicted.id);
+    }
+    this.byTab.set(item.tabId, tab);
+  }
+  deleteTab(tabId: number): void {
+    const tab = this.byTab.get(tabId);
+    if (!tab) return;
+    for (const item of tab.values()) this.byId.delete(item.id);
+    this.byTab.delete(tabId);
+  }
+}
 export type DownloadState = 'preparing' | 'downloading' | 'scanning' | 'review' | 'discarded' | 'complete' | 'cancelled' | 'error';
 export interface HistoryItem {
   id: string; url: string; filename: string; kind: MediaKind; state: DownloadState;

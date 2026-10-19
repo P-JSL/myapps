@@ -1,7 +1,7 @@
 declare module '*ffmpeg-core.js' {
   export interface FFmpegCore {
     FS: {
-      writeFile(name: string, data: Uint8Array): void;
+      writeFile(name: string, data: Uint8Array, options?: { canOwn?: boolean }): void;
       readFile(name: string, options?: { encoding: 'utf8' }): Uint8Array | string;
       unlink(name: string): void;
     };

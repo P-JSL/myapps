@@ -1,0 +1,90 @@
+{
+  "suite": "ui-collector",
+  "baselineRef": "6983b535ba089e7737e10583481ecd6ef35e7cc3",
+  "baselineSha256": {
+    "src/local/collect.ts": "70474f55531579eed1075779b21c1ebfb35f1554f721b615c560eafefc57d619",
+    "src/local/ui.ts": "d420b0ab96e2d15aba7a962fd719fd583eb7b0539dc2bf9d51d2e0144c539f90"
+  },
+  "sourceSha256": {
+    "src/local/collect.ts": "e640517615508db922874ac8c4453e1c03c8ce0de7e205f92287ea9c0c6051f4",
+    "src/local/ui.ts": "9df2fea747085204852ebd29bd9e17a29e1ca22a483cd4ce4b0c973a95cd9643"
+  },
+  "browser": "154.0.8037.57",
+  "platform": "linux",
+  "mode": "real Chromium DOM; Chrome APIs/resource timing/debounce clock are test doubles; no network latency benchmark",
+  "scenarios": [
+    {
+      "name": "collector-unrelated-churn-200-anchors",
+      "input": {
+        "anchors": 200,
+        "mutationRounds": 20,
+        "nonMediaTimings": 200
+      },
+      "baseline": {
+        "elapsedMs": 55.70000000298023,
+        "fullDocumentScans": 40
+      },
+      "optimized": {
+        "elapsedMs": 3.199999988079071,
+        "fullDocumentScans": 0
+      }
+    },
+    {
+      "name": "collector-unrelated-churn-10000-anchors",
+      "input": {
+        "anchors": 10000,
+        "mutationRounds": 100,
+        "nonMediaTimings": 1000
+      },
+      "baseline": {
+        "elapsedMs": 10993.70000000298,
+        "fullDocumentScans": 200
+      },
+      "optimized": {
+        "elapsedMs": 5.0999999940395355,
+        "fullDocumentScans": 0
+      }
+    },
+    {
+      "name": "ui-unchanged-poll",
+      "input": {
+        "mediaRows": 200,
+        "historyRows": 200,
+        "polls": 100
+      },
+      "baseline": {
+        "elapsedMs": 786.4000000059605,
+        "createdElements": 240000,
+        "listNodeMutations": 80000
+      },
+      "optimized": {
+        "elapsedMs": 82.29999999701977,
+        "createdElements": 0,
+        "listNodeMutations": 0
+      }
+    },
+    {
+      "name": "ui-one-progress-row",
+      "input": {
+        "mediaRows": 200,
+        "historyRows": 200,
+        "polls": 100
+      },
+      "baseline": {
+        "elapsedMs": 772.0999999940395,
+        "createdElements": 240000,
+        "listNodeMutations": 80000
+      },
+      "optimized": {
+        "elapsedMs": 83.09999999403954,
+        "createdElements": 600,
+        "listNodeMutations": 200
+      }
+    }
+  ],
+  "regressions": [
+    "collector: 301-link capped backlog, unrelated DOM/timing continuation, base rebase/removal, SPA URL rebasing, title character data, source MIME/removal and opaque-URL HTTP/3 update match baseline",
+    "UI: unchanged/changed focus, ordering/removal, duplicate IDs, new security tokens/actions, and retained pending disabled button"
+  ],
+  "status": "passed"
+}
