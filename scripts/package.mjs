@@ -6,14 +6,14 @@ import assert from 'node:assert/strict';
 process.chdir(fileURLToPath(new URL('../', import.meta.url)));
 await access('dist/manifest.json');
 const report = JSON.parse(await readFile('reports/browser.json', 'utf8'));
-assert(report.outcomes.length >= 64 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
+assert(report.outcomes.length >= 71 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
 const http3 = JSON.parse(await readFile('reports/http3.json', 'utf8'));
 assert(http3.transport === 'h3' && http3.outcomes.length >= 4 && http3.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real HTTP/3 results required');
 const antivirus = JSON.parse(await readFile('reports/antivirus.json', 'utf8'));
-assert(antivirus.outcomes.length >= 3 && antivirus.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real antivirus integration results required');
+assert(antivirus.outcomes.length >= 6 && antivirus.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real antivirus integration results required');
 assert.equal(createHash('sha256').update(await readFile('native/antivirus_host.py')).digest('hex'), antivirus.sourceSha256, 'Native host changed since real antivirus validation');
 const native = JSON.parse(await readFile('reports/native-tests.json', 'utf8'));
-assert(native.status === 'passed' && native.count >= 44, 'Successful native unit results required');
+assert(native.status === 'passed' && native.count >= 48, 'Successful native unit results required');
 for (const name of ['native/antivirus_host.py', 'native/windows_antivirus.py', 'native/install.py']) assert.equal(createHash('sha256').update(await readFile(name)).digest('hex'), native.sourceSha256[name], `Native source changed since verification: ${name}`);
 assert.equal(JSON.parse(await readFile('reports/build.json', 'utf8')).engine, 'independent-local');
 async function files(dir, prefix = '') {
@@ -41,10 +41,11 @@ packages=[('my-video-app-extension.zip',root/'dist','my-video-app'),('my-video-a
 for name,source,prefix in packages:
     with ZipFile(out/name,'w',compression=ZIP_DEFLATED,compresslevel=9) as z:
         for p in sorted(source.rglob('*')):
-            if not p.is_file(): continue
             rel=p.relative_to(source)
             if source==root and rel.parts[0] in {'.git','node_modules','dist','dist-compat','artifacts','test-results','.cache'}: continue
             if '__pycache__' in rel.parts or p.suffix in {'.log','.pyc','.eml','.pem','.key','.p12'}: continue
+            if p.is_symlink(): raise ValueError('Symbolic links are not allowed in packages: '+str(rel))
+            if not p.is_file(): continue
             if source==root/'native' and rel.name.startswith('test_'): continue
             info=ZipInfo(prefix+'/'+rel.as_posix(),date_time=(2026,10,18,0,0,0))
             info.compress_type=ZIP_DEFLATED

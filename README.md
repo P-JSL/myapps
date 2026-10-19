@@ -1,6 +1,6 @@
 # My Video App · 개인용 로컬 버전
 
-My Video App 1.6.0은 **앱 계정·구독·활성화 서버가 없는 독립 TypeScript 확장**입니다.
+My Video App 1.7.0은 **앱 계정·구독·활성화 서버가 없는 독립 TypeScript 확장**입니다.
 미디어 감지, 일반 파일 다운로드, 비암호화 HLS/DASH VOD 저장, 로컬 기록과
 다운로드 후 선택적 2x/4x 업스케일링을 제공합니다. 파일과 기록은 브라우저에 저장합니다.
 1.2.0에서는 **최고화질·해상도 선택, MP3/M4A 오디오 다운로드, 영상/음성 변환,
@@ -9,6 +9,7 @@ My Video App 1.6.0은 **앱 계정·구독·활성화 서버가 없는 독립 Ty
 1.4.0은 **로컬 백신 자동 검사와 위험·미검사 파일 확인창**, Chrome 다운로드 경고 연동을 추가했습니다.
 1.5.0은 **Windows 기본 Defender 우선·사용 중인 다른 백신의 표준 인터페이스 자동 연동**을 지원합니다.
 1.6.0은 **리디렉션·DASH 상속 호환성, 실제 백신 연결 상태 확인, 화질·저장 형식 기억, 키보드 초점 유지**를 개선했습니다. [에이전트 교차 검토·적용 내역](reports/REVIEW_IMPROVEMENTS.ko.md)을 참고하세요.
+1.7.0은 **시크릿 창의 기록·복사 큐 격리, 늦은 위험 경고의 복사본 철회, 업데이트 후 작업 복구, DASH 오프셋·초기화 상속, 미검사 판정**을 보완했습니다. [전체 점검과 독립 승인 내역](reports/FULL_AUDIT.ko.md)을 참고하세요.
 Windows에서는 별도 ClamAV 설치 없이 백신 도우미를 설치하고 앱에서 연결 권한을 허용하면 됩니다. 다른 백신의 자동 연결은 Windows AMSI 지원 여부에 따라 달라집니다.
 
 - [설치용 ZIP](artifacts/my-video-app-extension.zip)
@@ -83,7 +84,8 @@ SegmentTemplate/SegmentTimeline/SegmentList/BaseURL을 처리합니다.
 
 ## 개발
 
-Node.js 24 이상, npm, 브라우저 검증용 Chromium·FFmpeg/ffprobe가 필요합니다.
+Node.js 24 이상, npm, Python 3.11 이상과 브라우저 검증용 Chromium·FFmpeg/ffprobe가 필요합니다.
+실제 ClamAV 연동 검사의 암호화 파일 회귀 검증에는 시험 도구 `zip`도 필요합니다.
 
 ```sh
 npm ci --ignore-scripts --cache /tmp/my-video-app-npm-cache

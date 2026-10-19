@@ -1,5 +1,5 @@
 {
-  "buildSha256": "cf2c60ff0ca87bc783b082dfa53752a80a8d05a23d9bb48b506565cc26d21f52",
+  "buildSha256": "a48adbb5c2dc0c7549924f95d973ef2a6cfae079aeaa024415de060865b51c2b",
   "browser": "154.0.8037.57",
   "engine": "independent-local",
   "mode": "localhost harness: real browser/Wasm/OPFS; Chrome extension APIs mocked",
@@ -89,6 +89,10 @@
       "status": "passed"
     },
     {
+      "name": "Private tools hide the shared normal queue and preserve its files while manual processing remains usable",
+      "status": "passed"
+    },
+    {
       "name": "Opt-out skips staging; TTL and delete clean real OPFS data",
       "status": "passed"
     },
@@ -138,6 +142,18 @@
     },
     {
       "name": "DASH child timeline replaces its parent timeline without losing inherited attributes",
+      "status": "passed"
+    },
+    {
+      "name": "DASH terminal repeats respect inherited presentation offsets in real 100-second fragments",
+      "status": "passed"
+    },
+    {
+      "name": "DASH SegmentList inherits initialization and replaces ancestor media URLs in a complete remux",
+      "status": "passed"
+    },
+    {
+      "name": "DASH planner checks ten offset, inheritance, fractional-boundary and overflow invariants in Chromium",
       "status": "passed"
     },
     {
@@ -250,6 +266,18 @@
     },
     {
       "name": "Validated download quality and output choices survive reopening the local app",
+      "status": "passed"
+    },
+    {
+      "name": "An immediate media-row download waits for saved quality and audio format using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "An immediate direct-URL download waits for saved quality and audio format using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "Choices changed while an immediate download waits take precedence over late saved options using API doubles",
       "status": "passed"
     },
     {

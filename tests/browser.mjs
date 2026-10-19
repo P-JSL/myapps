@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import { prepareDashAuditFixtures, verifyDashPlanner } from './dash-audit.mjs';
 
 const root = path.resolve('.');
 const results = path.join(root, 'test-results');
@@ -52,6 +53,7 @@ for (const name of ['parallel', 'retry', 'redirect']) command('ffmpeg', ['-hide_
 await writeFile(`${fixtures}/encrypted.m3u8`, '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="https://invalid.example/key"\n#EXTINF:1,\nclip.mp4\n#EXT-X-ENDLIST\n');
 await writeFile(`${fixtures}/protected.mpd`, '<MPD type="static" mediaPresentationDuration="PT1S"><Period><AdaptationSet mimeType="video/mp4"><ContentProtection schemeIdUri="urn:uuid:protected"/><Representation id="v" bandwidth="1"><BaseURL>https://invalid.example/private.mp4</BaseURL></Representation></AdaptationSet></Period></MPD>');
 await writeFile(`${fixtures}/malicious.mp4`, '<html><script>fetch("https://invalid.example/upload")</script></html>');
+await prepareDashAuditFixtures(fixtures);
 const originalHash = createHash('sha256').update(await readFile(`${fixtures}/clip.mp4`)).digest('hex');
 
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png', '.mp4': 'video/mp4', '.json': 'application/json', '.m3u8': 'application/vnd.apple.mpegurl', '.mpd': 'application/dash+xml', '.ts': 'video/mp2t' };
@@ -128,8 +130,8 @@ await context.addInitScript(() => {
     } },
     extension: { inIncognitoContext: new URL(location.href).searchParams.has('test-incognito') },
     storage: { local: {
-      get: async key => { const data = read(); if (key === 'my_video_app_download_options_v1') { window.__prefsReads = (window.__prefsReads || 0) + 1; if (new URL(location.href).searchParams.has('test-delay-preferences')) await new Promise(resolve => { window.__releasePreferences = resolve; }); } if (!key) return data; if (typeof key === 'string') return { [key]: data[key] }; return Object.fromEntries(key.map(k => [k, data[k]])); },
-      set: async values => { localStorage.setItem(storageKey, JSON.stringify({ ...read(), ...values })); },
+      get: async key => { const data = read(); if (key === 'vdh_upscale_offer_v1') window.__offerReads = (window.__offerReads || 0) + 1; if (key === 'my_video_app_download_options_v1') { window.__prefsReads = (window.__prefsReads || 0) + 1; if (new URL(location.href).searchParams.has('test-delay-preferences')) await new Promise(resolve => { window.__releasePreferences = resolve; }); } if (!key) return data; if (typeof key === 'string') return { [key]: data[key] }; return Object.fromEntries(key.map(k => [k, data[k]])); },
+      set: async values => { if (Object.hasOwn(values, 'vdh_upscale_offer_v1')) window.__offerWrites = (window.__offerWrites || 0) + 1; localStorage.setItem(storageKey, JSON.stringify({ ...read(), ...values })); },
     } },
     notifications: {
       onClicked: listeners(), onButtonClicked: listeners(), clear: async () => true,
@@ -231,7 +233,7 @@ try {
   });
   await checks('Local install uses independent entry points without an account/activation engine', async () => {
     const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
-    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.6.0');
+    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.7.0');
     assert.equal(manifest.key, undefined); assert.equal(manifest.update_url, undefined);
     const result = await context.request.get(`${origin}/service/main.js`); assert.equal(result.status(), 404);
   });
@@ -344,6 +346,34 @@ try {
     await second.waitForFunction(() => document.querySelectorAll('#jobs li').length === 2);
     await second.close();
   });
+  await checks('Private tools hide the shared normal queue and preserve its files while manual processing remains usable', async () => {
+    const before = await page.evaluate(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1);
+    assert.equal(before.length, 2);
+    const target = await context.newPage();
+    try {
+      await target.goto(`${origin}/upscale/index.html?test-incognito=1`);
+      await target.waitForFunction(() => document.querySelector('#offer').disabled);
+      assert.equal(await target.locator('#offer').isChecked(), false);
+      assert.match(await target.locator('#offer-private-status').innerText(), /시크릿/);
+      assert.equal(await target.locator('#jobs li').count(), 0);
+      await target.locator('#refresh').click(); await target.locator('#clear').click();
+      await target.locator('#file').setInputFiles(`${fixtures}/image.png`);
+      await target.locator('#factor').selectOption('2'); await target.locator('#start').click();
+      await target.waitForFunction(() => !document.querySelector('#save').hidden);
+      const pending = target.waitForEvent('download'); await target.locator('#save').click();
+      const file = await pending; await file.saveAs(`${results}/private-manual-image.png`);
+      const probe = JSON.parse(command('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', `${results}/private-manual-image.png`]));
+      assert.equal(probe.streams[0].width, 128); assert.equal(probe.streams[0].height, 96);
+      const after = await target.evaluate(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1);
+      assert.deepEqual(after, before);
+      assert.deepEqual(await target.evaluate(() => [window.__offerReads || 0, window.__offerWrites || 0]), [0, 0]);
+      const retained = await page.evaluate(async ids => {
+        const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle('vdh-upscale-v1');
+        return Promise.all(ids.map(async id => (await (await dir.getFileHandle(id)).getFile()).size));
+      }, before.map(job => job.id));
+      assert.deepEqual(retained, before.map(job => job.size));
+    } finally { await target.close(); }
+  });
   await checks('Opt-out skips staging; TTL and delete clean real OPFS data', async () => {
     await page.locator('#offer').uncheck();
     await page.evaluate(async () => {
@@ -401,6 +431,9 @@ try {
   await checks('Redirected DASH manifest resolves relative initialization and media against its actual response URL', () => remux('dash-redirect.mpd', 'dash', 'redirect-dash.mp4'));
   await checks('DASH representation templates inherit parent attributes and timeline while overriding initialization', () => remux('dash/inherited.mpd', 'dash', 'inherited-dash.mp4'));
   await checks('DASH child timeline replaces its parent timeline without losing inherited attributes', () => remux('dash/inherited-replaced.mpd', 'dash', 'replaced-dash.mp4'));
+  await checks('DASH terminal repeats respect inherited presentation offsets in real 100-second fragments', () => remux('audit-offset/list.mpd', 'dash', 'offset-dash.mp4'));
+  await checks('DASH SegmentList inherits initialization and replaces ancestor media URLs in a complete remux', () => remux('audit-list/list.mpd', 'dash', 'list-dash.mp4'));
+  await checks('DASH planner checks ten offset, inheritance, fractional-boundary and overflow invariants in Chromium', () => verifyDashPlanner(page, origin));
 
   await checks('HLS highest quality selects the larger rendition even at lower declared bitrate', () => remux('quality.m3u8', 'hls', 'quality-highest-hls.mp4', { quality: 'highest', output: 'original' }, 540));
   await checks('HLS height ceiling selects the actual available lower rendition', () => remux('quality.m3u8', 'hls', 'quality-lower-hls.mp4', { quality: '480', output: 'original' }, 360));
@@ -652,6 +685,46 @@ try {
     await page.reload();
     await page.waitForFunction(() => document.querySelector('#quality').value === '720' && document.querySelector('#download-output').value === 'mp3');
   });
+  async function immediatePreferenceDownload(kind, changeBeforeRestore = false) {
+    await page.evaluate(async () => chrome.storage.local.set({ my_video_app_download_options_v1: { quality: '720', output: 'mp3' } }));
+    const target = await context.newPage();
+    try {
+      await target.goto(`${origin}/local/index.html?test-delay-preferences=1`);
+      await target.waitForFunction(() => !!window.__releasePreferences);
+      await target.evaluate(async origin => {
+        const original = chrome.runtime.sendMessage.bind(chrome.runtime);
+        window.__immediateDownloads = [];
+        chrome.runtime.sendMessage = async message => {
+          if (message.type === 'download' || message.type === 'download-url') {
+            window.__immediateDownloads.push(structuredClone(message));
+            return { ok: true };
+          }
+          return original(message);
+        };
+        await original({ scope: 'my-video-app/local', type: 'capture', items: [{ url: `${origin}/fixtures/clip.mp4`, title: 'Preference timing', mime: 'video/mp4', fromElement: true }] });
+      }, origin);
+      if (kind === 'download') {
+        await target.locator('#refresh').click(); await target.waitForFunction(() => document.querySelectorAll('#media li').length === 1);
+        await target.locator('#media li button').click();
+      } else {
+        await target.locator('summary').filter({ hasText: '미디어 주소 직접 입력' }).click();
+        await target.locator('#url').fill(`${origin}/fixtures/clip.mp4`);
+        await target.locator('#url-form button').click();
+      }
+      assert.equal(await target.evaluate(() => window.__immediateDownloads.length), 0, 'Download must wait for saved options to finish loading');
+      if (changeBeforeRestore) {
+        await target.locator('#quality').selectOption('480'); await target.locator('#download-output').selectOption('m4a');
+      }
+      await target.evaluate(() => window.__releasePreferences());
+      await target.waitForFunction(() => window.__immediateDownloads.length === 1);
+      const message = await target.evaluate(() => window.__immediateDownloads[0]);
+      assert.equal(message.type, kind);
+      assert.deepEqual(message.options, changeBeforeRestore ? { quality: '480', output: 'm4a' } : { quality: '720', output: 'mp3' });
+    } finally { await target.close(); }
+  }
+  await checks('An immediate media-row download waits for saved quality and audio format using API doubles', () => immediatePreferenceDownload('download'));
+  await checks('An immediate direct-URL download waits for saved quality and audio format using API doubles', () => immediatePreferenceDownload('download-url'));
+  await checks('Choices changed while an immediate download waits take precedence over late saved options using API doubles', () => immediatePreferenceDownload('download', true));
   await checks('A late preferences restore never overwrites choices the user has already changed', async () => {
     const target = await context.newPage();
     try {

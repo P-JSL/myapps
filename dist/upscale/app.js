@@ -24,7 +24,11 @@ function outputName(filename, factor2, kind) {
 }
 
 // src/upscale/storage.ts
+function privateContext() {
+  return chrome.extension?.inIncognitoContext === true;
+}
 async function jobs() {
+  if (privateContext()) return [];
   const stored = (await chrome.storage.local.get(JOBS_KEY))[JOBS_KEY];
   return Array.isArray(stored) ? stored.filter(isJob).slice(0, MAX_JOBS) : [];
 }
@@ -39,6 +43,7 @@ async function removeIfExists(dir, name) {
   }
 }
 async function deleteJob(job) {
+  if (privateContext()) return;
   await withQueueLock(async () => {
     const dir = await directory();
     await removeIfExists(dir, job.id);
@@ -49,9 +54,11 @@ async function withQueueLock(operation) {
   return await navigator.locks.request("vdh-upscale-queue-v1", { mode: "exclusive" }, operation);
 }
 function cleanup(now = Date.now()) {
+  if (privateContext()) return Promise.resolve([]);
   return withQueueLock(() => cleanupUnlocked(now));
 }
 async function cleanupUnlocked(now = Date.now()) {
+  if (privateContext()) return [];
   const dir = await directory();
   const stored = await jobs();
   const retained = [];
@@ -115,12 +122,23 @@ var save = element("save");
 var factor = element("factor");
 var progress = element("progress");
 var offer = element("offer");
+var isPrivate = privateContext();
 var mode = element("mode");
 var audioInput = element("audio-file");
 var input;
 var worker;
 var watchdog;
 var output;
+if (isPrivate) {
+  offer.checked = false;
+  offer.disabled = true;
+  const hint = document.createElement("p");
+  hint.id = "offer-private-status";
+  hint.className = "hint";
+  hint.textContent = "\uC2DC\uD06C\uB9BF \uCC3D\uC5D0\uC11C\uB294 \uC644\uB8CC \uD30C\uC77C\uC758 \uC784\uC2DC \uBCF5\uC0AC\uBCF8\uC744 \uBCF4\uAD00\uD558\uAC70\uB098 \uC77C\uBC18 \uCC3D\uC758 \uC5C5\uC2A4\uCF00\uC77C\uB9C1 \uC54C\uB9BC \uC124\uC815\uC744 \uC77D\uACE0 \uBCC0\uACBD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC544\uB798\uC5D0\uC11C \uC9C1\uC811 \uD30C\uC77C\uC744 \uC120\uD0DD\uD574 \uBBF8\uB514\uC5B4 \uB3C4\uAD6C\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.";
+  offer.setAttribute("aria-describedby", hint.id);
+  offer.closest("label")?.after(hint);
+}
 function showError(error) {
   status.textContent = error instanceof Error ? error.message : "\uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.";
 }
@@ -221,7 +239,7 @@ element("clear").addEventListener("click", () => {
   })().catch(showError);
 });
 offer.addEventListener("change", () => {
-  void chrome.storage.local.set({ [OFFER_KEY]: offer.checked }).catch(showError);
+  if (!isPrivate) void chrome.storage.local.set({ [OFFER_KEY]: offer.checked }).catch(showError);
 });
 cancel.addEventListener("click", () => {
   stop();
@@ -291,7 +309,7 @@ addEventListener("pagehide", () => {
   releaseOutput();
 });
 void (async () => {
-  offer.checked = (await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] !== false;
+  if (!isPrivate) offer.checked = (await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] !== false;
   await refresh();
   const id = new URL(location.href).searchParams.get("job");
   if (isJobId(id)) {

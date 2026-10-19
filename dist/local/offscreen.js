@@ -403,19 +403,21 @@ function planDash(text, address, options = downloadOptions()) {
       if (value) base = mediaURL(value, base).href;
     }
     const parts = [];
-    const inherited = (name) => [...chain].reverse().map((node) => child(node, name)).find((node) => node !== void 0);
-    const list = inherited("SegmentList");
+    const lists = [...chain].reverse().map((node) => child(node, "SegmentList")).filter((node) => node !== void 0);
+    const list = lists[0];
     const templates = [...chain].reverse().map((node) => child(node, "SegmentTemplate")).filter((node) => node !== void 0);
     const template = templates[0];
     const templateAttribute = (name) => templates.find((node) => node.hasAttribute(name))?.getAttribute(name) ?? null;
     if (list) {
-      const init = child(list, "Initialization");
+      const init = lists.map((node) => child(node, "Initialization")).find((node) => node !== void 0);
       if (init) add2(init.getAttribute("sourceURL") ?? base, range(init.getAttribute("range")));
-      for (const segment of children(list, "SegmentURL")) add2(segment.getAttribute("media") ?? base, range(segment.getAttribute("mediaRange")));
+      const segments = lists.map((node) => children(node, "SegmentURL")).find((nodes) => nodes.length) ?? [];
+      for (const segment of segments) add2(segment.getAttribute("media") ?? base, range(segment.getAttribute("mediaRange")));
     } else if (template) {
       const timescale = Number(templateAttribute("timescale") ?? "1");
+      const presentationTimeOffset = Number(templateAttribute("presentationTimeOffset") ?? "0");
       let number = Number(templateAttribute("startNumber") ?? "1");
-      if (!Number.isSafeInteger(timescale) || timescale <= 0 || !Number.isSafeInteger(number) || number < 0) throw new Error("DASH \uD0C0\uC784\uB77C\uC778\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+      if (!Number.isSafeInteger(timescale) || timescale <= 0 || !Number.isSafeInteger(presentationTimeOffset) || presentationTimeOffset < 0 || !Number.isSafeInteger(number) || number < 0) throw new Error("DASH \uD0C0\uC784\uB77C\uC778\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
       const expand = (format2, time) => format2.replace(/\$\$|\$(RepresentationID|Bandwidth|Number|Time)(?:%0(\d+)d)?\$/g, (match, key, width) => {
         if (match === "$$") return "$";
         const value = key === "RepresentationID" ? item.representation.getAttribute("id") ?? "" : key === "Bandwidth" ? item.representation.getAttribute("bandwidth") ?? "" : String(key === "Time" ? time : number);
@@ -438,11 +440,13 @@ function planDash(text, address, options = downloadOptions()) {
           let repeat = Number(s.getAttribute("r") ?? "0");
           if (!Number.isSafeInteger(time) || time < 0 || !Number.isSafeInteger(d) || d <= 0 || !Number.isSafeInteger(repeat) || repeat < -1) throw new Error("DASH \uD0C0\uC784\uB77C\uC778\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
           if (repeat === -1) {
-            const end = Number(entries[index + 1]?.getAttribute("t") ?? seconds * timescale);
-            if (!Number.isFinite(end) || end <= time) throw new Error("\uB05D\uC774 \uC5C6\uB294 DASH \uD0C0\uC784\uB77C\uC778\uC740 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+            const next = entries[index + 1];
+            const end = next ? Number(next.getAttribute("t")) : seconds * timescale + presentationTimeOffset;
+            if (next && (!next.hasAttribute("t") || !Number.isSafeInteger(end)) || !next && seconds <= 0 || !Number.isFinite(end) || end > Number.MAX_SAFE_INTEGER || end <= time) throw new Error("\uB05D\uC774 \uC5C6\uB294 DASH \uD0C0\uC784\uB77C\uC778\uC740 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
             repeat = Math.ceil((end - time) / d) - 1;
           }
           if (repeat >= MAX_SEGMENTS) throw new Error("DASH \uC870\uAC01 \uAC1C\uC218 \uD55C\uB3C4\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
+          if (!Number.isSafeInteger(time + (repeat + 1) * d) || !Number.isSafeInteger(number + repeat)) throw new Error("DASH \uD0C0\uC784\uB77C\uC778\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
           for (let i = 0; i <= repeat; i++) {
             add2(expand(format, time));
             time += d;

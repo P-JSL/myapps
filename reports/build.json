@@ -1,8 +1,8 @@
 {
   "engine": "independent-local",
   "productName": "My Video App",
-  "version": "1.6.0",
-  "buildSha256": "cf2c60ff0ca87bc783b082dfa53752a80a8d05a23d9bb48b506565cc26d21f52",
+  "version": "1.7.0",
+  "buildSha256": "a48adbb5c2dc0c7549924f95d973ef2a6cfae079aeaa024415de060865b51c2b",
   "originalRuntimeIncluded": false,
   "accountActivationIncluded": false,
   "capabilities": [
@@ -41,5 +41,5 @@
     "bytes": 32232419
   },
   "distFiles": 24,
-  "distBytes": 32591491
+  "distBytes": 32597377
 }

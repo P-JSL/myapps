@@ -73,7 +73,7 @@ function mediaRow(item: MediaItem) {
   const source = document.createElement('p'); source.textContent = new URL(item.url).hostname + (item.size ? ` · ${(item.size / 1024 / 1024).toFixed(1)} MiB` : '');
   const observed = transport(item.observedTransport); if (observed) source.textContent += ` · 페이지 연결 ${transportLabel(observed)}`;
   const controls = document.createElement('div'); controls.className = 'actions';
-  controls.append(button('다운로드', async () => { await request('download', { id: item.id, options: options() }); status.textContent = '파일을 준비하고 있습니다. 기록 탭에서 진행 상태를 확인하세요.'; }, false, 'download'));
+  controls.append(button('다운로드', async () => { await preferencesReady; await request('download', { id: item.id, options: options() }); status.textContent = '파일을 준비하고 있습니다. 기록 탭에서 진행 상태를 확인하세요.'; }, false, 'download'));
   row.append(kind, title, source, controls); return row;
 }
 const stateLabels = { preparing: '파일 준비 중', downloading: '다운로드 중', scanning: '로컬 백신 검사 중', review: '보안 검사 확인 필요', discarded: '파일 삭제됨', complete: '완료', cancelled: '취소됨', error: '실패' };
@@ -238,7 +238,7 @@ node('security-connect').addEventListener('click', () => {
 node('url-form').addEventListener('submit', event => {
   event.preventDefault();
   const url = node<HTMLInputElement>('url').value;
-  void request('download-url', { url, options: options() }).then(() => { hasError = false; status.textContent = '파일을 준비하고 있습니다.'; show(true); }).catch(error);
+  void preferencesReady.then(() => request('download-url', { url, options: options() })).then(() => { hasError = false; status.textContent = '파일을 준비하고 있습니다.'; show(true); }).catch(error);
 });
 const timer = setInterval(() => { if (!document.hidden) void refresh().catch(error); }, 2000);
 addEventListener('pagehide', () => clearInterval(timer), { once: true });

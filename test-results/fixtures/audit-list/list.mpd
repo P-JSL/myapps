@@ -1,0 +1,17 @@
+<ns0:MPD xmlns:ns0="urn:mpeg:dash:schema:mpd:2011" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:mpeg:DASH:schema:MPD:2011 http://standards.iso.org/ittf/PubliclyAvailableStandards/MPEG-DASH_schema_files/DASH-MPD.xsd" profiles="urn:mpeg:dash:profile:isoff-live:2011" type="static" mediaPresentationDuration="PT1.0S" maxSegmentDuration="PT0.5S" minBufferTime="PT2.0S">
+	<ns0:ProgramInformation>
+	</ns0:ProgramInformation>
+	<ns0:ServiceDescription id="0">
+	</ns0:ServiceDescription>
+	<ns0:Period id="0" start="PT0.0S">
+		<ns0:AdaptationSet id="0" contentType="video" startWithSAP="1" segmentAlignment="true" bitstreamSwitching="true" frameRate="12/1" maxWidth="160" maxHeight="90" par="16:9" lang="und">
+			<ns0:Representation id="0" mimeType="video/mp4" codecs="avc1.64000a" bandwidth="93496" width="160" height="90" sar="1:1">
+				<ns0:SegmentList><ns0:SegmentURL media="chunk-stream0-00001.m4s" /></ns0:SegmentList><ns0:BaseURL>../dash/</ns0:BaseURL></ns0:Representation>
+		<ns0:SegmentList><ns0:Initialization sourceURL="init-stream0.m4s" /><ns0:SegmentURL media="must-not-request-parent-fragment.m4s" /></ns0:SegmentList></ns0:AdaptationSet>
+		<ns0:AdaptationSet id="1" contentType="audio" startWithSAP="1" segmentAlignment="true" bitstreamSwitching="true" lang="und">
+			<ns0:Representation id="1" mimeType="audio/mp4" codecs="mp4a.40.2" bandwidth="70233" audioSamplingRate="44100">
+				<ns0:AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="1" />
+				<ns0:SegmentList><ns0:SegmentURL media="chunk-stream1-00001.m4s" /><ns0:SegmentURL media="chunk-stream1-00002.m4s" /><ns0:SegmentURL media="chunk-stream1-00003.m4s" /></ns0:SegmentList><ns0:BaseURL>../dash/</ns0:BaseURL></ns0:Representation>
+		<ns0:SegmentList><ns0:Initialization sourceURL="init-stream1.m4s" /><ns0:SegmentURL media="must-not-request-parent-fragment.m4s" /></ns0:SegmentList></ns0:AdaptationSet>
+	</ns0:Period>
+</ns0:MPD>

@@ -1,4 +1,4 @@
-import { cleanup, cleanupUnlocked, deleteJob, directory, jobs, withQueueLock } from './storage.ts';
+import { cleanup, cleanupUnlocked, deleteJob, directory, jobs, withQueueLock, privateContext } from './storage.ts';
 import { OFFER_KEY, JOBS_KEY, MAX_INPUT_BYTES, MAX_QUEUE_BYTES, MAX_JOBS, safeBasename, sniffMedia, isJobId, type Job } from './policy.ts';
 
 interface CompletedDownload {
@@ -9,11 +9,13 @@ let serial: Promise<unknown> = Promise.resolve();
 const revokedDownloads = new Set<number>();
 const offerGenerations = new Map<number, number>();
 export function authorizeDownloadOffers(downloadId: number): void {
+  if (privateContext()) return;
   if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error('잘못된 다운로드 번호입니다.');
   offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
   revokedDownloads.delete(downloadId);
 }
 export async function offerUpscale(event: CompletedDownload): Promise<void> {
+  if (privateContext()) return;
   const generation = event.downloadId === undefined ? undefined : offerGenerations.get(event.downloadId) ?? 0;
   const permitted = () => event.downloadId !== undefined && !revokedDownloads.has(event.downloadId)
     && (offerGenerations.get(event.downloadId) ?? 0) === generation;
@@ -59,6 +61,7 @@ export async function offerUpscale(event: CompletedDownload): Promise<void> {
 
 /** Revoke retained copies and notifications when a previously finished download becomes unsafe. */
 export async function revokeDownloadOffers(downloadId: number): Promise<void> {
+  if (privateContext()) return;
   if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error('잘못된 다운로드 번호입니다.');
   revokedDownloads.add(downloadId);
   offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
@@ -85,9 +88,11 @@ function openTools(job?: string) {
   return chrome.tabs.create({ url: chrome.runtime.getURL(`upscale/index.html${suffix}`) });
 }
 chrome.notifications.onClicked.addListener(id => {
+  if (privateContext()) return;
   if (id.startsWith('vdh-upscale:')) void openTools(id.slice('vdh-upscale:'.length));
 });
 chrome.notifications.onButtonClicked.addListener((id, button) => {
+  if (privateContext()) return;
   if (!id.startsWith('vdh-upscale:')) return;
   const jobId = id.slice('vdh-upscale:'.length);
   if (!isJobId(jobId)) return;
@@ -101,8 +106,9 @@ chrome.notifications.onButtonClicked.addListener((id, button) => {
   void chrome.notifications.clear(id);
 });
 chrome.runtime.onInstalled.addListener(() => {
+  if (privateContext()) return;
   chrome.contextMenus.create({ id: 'vdh-upscale-tools', title: '업스케일링 · 보안 설정', contexts: ['action'] }, () => { void chrome.runtime.lastError; });
   void cleanup().catch(() => {});
 });
-chrome.runtime.onStartup.addListener(() => { void cleanup().catch(() => {}); });
+chrome.runtime.onStartup.addListener(() => { if (!privateContext()) void cleanup().catch(() => {}); });
 chrome.contextMenus.onClicked.addListener(info => { if (info.menuItemId === 'vdh-upscale-tools') void openTools(); });

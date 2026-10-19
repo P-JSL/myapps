@@ -1,0 +1,32 @@
+{
+  "product": "My Video App",
+  "version": "1.7.0",
+  "dateUtc": "2026-10-19T04:11:21.109918+00:00",
+  "baselineCommit": "571f80a1c42a6066912eb54eb7791737d1939599",
+  "typecheck": "passed",
+  "buildSha256": "a48adbb5c2dc0c7549924f95d973ef2a6cfae079aeaa024415de060865b51c2b",
+  "tests": {
+    "typescript": 88,
+    "native": 48,
+    "browserHarness": 71,
+    "realClamAV": 6,
+    "realHTTP3": 4
+  },
+  "failed": 0,
+  "skipped": 0,
+  "knownNpmVulnerabilities": 0,
+  "limits": {
+    "extensionInstallation": "blocked by administrator policy; extension APIs doubled in harness",
+    "windowsAntivirus": "Windows APIs doubled on Linux; actual Windows integration untested",
+    "clamavDatabase": "private test-only hash database; official database coverage/freshness untested"
+  },
+  "independentReviewer": "audit_approval",
+  "changeReviews": "approved source diffs and regression scope; archive contents independently reviewed before GitHub publication",
+  "finalEngineeringVerdict": {
+    "reviewer": "audit_approval",
+    "verdict": "APPROVE",
+    "release": "1.7.0",
+    "blockers": 0,
+    "scope": "source diffs, regressions, current test reports, all five release archives and exact included-file identities"
+  }
+}

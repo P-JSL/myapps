@@ -137,17 +137,26 @@ def clamav_path(config: dict) -> Path | None:
 
 def scan_clamav(executable: Path, snapshot: Path) -> dict:
     code, output = run_tool([str(executable), "--no-summary", "--stdout",
-                             "--scan-archive=yes", "--alert-exceeds-max=yes",
+                             "--scan-archive=yes", "--alert-exceeds-max=yes", "--alert-encrypted=yes",
                              "--follow-dir-symlinks=0", "--follow-file-symlinks=0",
                              f"--max-filesize={MAX_FILE}", f"--max-scansize={MAX_FILE}",
                              "--", str(snapshot)])
     threats = [clean_text(match, 240) for match in re.findall(r":\s+([^\r\n]+?) FOUND(?:\r?$)", output, re.MULTILINE)][:16]
     if any("Limits.Exceeded" in threat for threat in threats):
         return {"status": "error", "engine": "ClamAV", "message": "ClamAV could not completely scan this file because an engine limit was reached."}
-    if code not in (0, 1) or re.search(r"\b(?:ERROR|WARNING)(?:[:\s]|$)", output):
+    # libclamav emits mixed-case "LibClamAV Warning:" and "LibClamAV Error:"
+    # diagnostics too. Ignore the exact requested-file success line so a parent
+    # directory named "warning" cannot itself turn a completed scan into an error.
+    diagnostics = "\n".join(line for line in output.splitlines() if line != str(snapshot) + ": OK")
+    if code not in (0, 1) or re.search(r"\b(?:ERROR|WARNING)(?:[:\s]|$)", diagnostics, re.IGNORECASE):
         return {"status": "error", "engine": "ClamAV", "message": "ClamAV did not complete a successful scan. Check its local signature database and logs."}
     if code == 1 or threats:
-        return {"status": "infected", "engine": "ClamAV", "threats": threats or ["ClamAV malware detection"]}
+        # Encryption is an inspection barrier, not proof of malware. Preserve a
+        # genuine detection if ClamAV also reports an encrypted nested entry.
+        detections = [threat for threat in threats if not re.match(r"^Heuristics\.Encrypted(?:\.|$)", threat)]
+        if threats and not detections:
+            return {"status": "error", "engine": "ClamAV", "message": "ClamAV could not inspect encrypted content; this file has not been marked clean. Decrypt it and scan it again, or use a supported local scanner."}
+        return {"status": "infected", "engine": "ClamAV", "threats": detections or ["ClamAV malware detection"]}
     if str(snapshot) + ": OK" not in output.splitlines():
         return {"status": "error", "engine": "ClamAV", "message": "ClamAV did not confirm that the requested file was scanned; no clean verdict was accepted."}
     return {"status": "clean", "engine": "ClamAV"}

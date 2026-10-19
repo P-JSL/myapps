@@ -58,6 +58,7 @@ interface State {
   native: (request: NativeRequest, port: FakePort) => void;
   notices: string[]; cleared: string[]; removed: number[]; removeFails: boolean;
   shown: number[]; root: string;
+  searches: number[];
 }
 let state: State;
 const changed = new FakeEvent<[chrome.downloads.DownloadDelta]>();
@@ -111,7 +112,7 @@ function installChrome() {
     } },
     downloads: {
       onChanged: changed,
-      async search({ id }: { id: number }) { const item = state.downloads.get(id); return item ? [structuredClone(item)] : []; },
+      async search({ id }: { id: number }) { state.searches.push(id); const item = state.downloads.get(id); return item ? [structuredClone(item)] : []; },
       async removeFile(id: number) {
         if (state.removeFails) throw new Error('Filesystem denied deletion');
         const item = state.downloads.get(id); assert.ok(item);
@@ -164,21 +165,24 @@ test('local antivirus and background safety decisions', async t => {
   state = {
     root: temp, data: { [HISTORY_KEY]: [], [OFFER_KEY]: false }, downloads: new Map(), permission: true, permissionRequests: 0,
     connections: [], requests: [], native: (request, port) => port.onMessage.emit(nativeResponse(request.requestId)),
-    notices: [], cleared: [], removed: [], removeFails: false, shown: [],
+    notices: [], cleared: [], removed: [], removeFails: false, shown: [], searches: [],
   };
   const originalChrome = Object.getOwnPropertyDescriptor(globalThis, 'chrome');
   const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage');
   installChrome();
   try {
+    const resumedPreparation = await seed('preparing'); delete resumedPreparation.downloadId;
+    state.data[HISTORY_KEY] = [resumedPreparation];
     const { handleLocalMessage } = await import('../src/local/background.ts');
-    // Let the MV3 startup recovery finish against the initial empty history.
+    // Routine worker activation must not interrupt a preparation owned by the live offscreen document.
     await new Promise<void>(resolve => setTimeout(resolve, 20));
+    const resumedHistory = structuredClone(rows());
     const command = (type: string, value: Record<string, unknown> = {}, sender = ui) => handleLocalMessage({ scope: SCOPE, type, ...value }, sender);
     t.beforeEach(async () => {
       state.data = { [HISTORY_KEY]: [], [OFFER_KEY]: false }; state.downloads.clear();
       state.permission = true; state.permissionRequests = 0; state.connections = []; state.requests = [];
       state.native = (request, port) => port.onMessage.emit(nativeResponse(request.requestId));
-      state.notices = []; state.cleared = []; state.removed = []; state.removeFails = false; state.shown = [];
+      state.notices = []; state.cleared = []; state.removed = []; state.removeFails = false; state.shown = []; state.searches = [];
     });
     t.afterEach(async () => {
       // Drain filesystem cleanup and lock callbacks before changing the shared Chrome test double.
@@ -187,6 +191,10 @@ test('local antivirus and background safety decisions', async t => {
         await navigator.locks.request('vdh-upscale-queue-v1', async () => {});
         await new Promise<void>(resolve => setTimeout(resolve, 5));
       }
+    });
+
+    await t.test('routine MV3 worker activation preserves preparation until an actual restart or update event', () => {
+      assert.deepEqual(resumedHistory, [resumedPreparation]);
     });
 
     await t.test('missing nativeMessaging permission leaves the file unverified without opening a native port', async () => {
@@ -386,6 +394,68 @@ test('local antivirus and background safety decisions', async t => {
       assert.equal(rows()[0]!.security?.status, 'chrome-warning'); assert.deepEqual(state.data[JOBS_KEY], []);
       await assert.rejects(command('security-keep', { id: item.id, token: rows()[0]!.security!.token, confirmed: true }));
     });
+    await t.test('late Chrome danger still revokes retained copies after download history is cleared', async () => {
+      const item = await seed('complete'); const jobId = crypto.randomUUID();
+      const directory = join(temp, DIRECTORY); await mkdir(directory, { recursive: true });
+      await writeFile(join(directory, jobId), mediaBytes);
+      state.data[JOBS_KEY] = [{ id: jobId, filename: 'clip.mp4', size: 16, createdAt: Date.now(), downloadId: item.downloadId }];
+      await command('clear-history'); assert.deepEqual(rows(), []);
+      assert.equal((state.data[JOBS_KEY] as unknown[]).length, 1, 'clearing history preserves a separate clean retained-copy queue');
+      state.downloads.get(item.downloadId!)!.danger = 'content';
+      changed.emit({ id: item.downloadId!, danger: { current: 'content' } });
+      await until(() => (state.data[JOBS_KEY] as unknown[]).length === 0);
+      await until(async () => { try { await stat(join(directory, jobId)); return false; } catch { return true; } });
+      assert.ok(state.cleared.includes(`vdh-upscale:${jobId}`)); assert.deepEqual(rows(), []);
+    });
+    await t.test('startup checks retained download IDs independently of pruned history without inspecting unrelated downloads', async () => {
+      const item = await seed('complete'); const jobId = crypto.randomUUID();
+      const directory = join(temp, DIRECTORY); await mkdir(directory, { recursive: true });
+      await writeFile(join(directory, jobId), mediaBytes);
+      state.data[JOBS_KEY] = [{ id: jobId, filename: 'clip.mp4', size: 16, createdAt: Date.now(), downloadId: item.downloadId }];
+      state.data[HISTORY_KEY] = []; state.downloads.get(item.downloadId!)!.danger = 'content';
+      state.downloads.set(999999, { id: 999999, danger: 'content', state: 'complete' } as chrome.downloads.DownloadItem);
+      (chrome.runtime.onStartup as unknown as FakeEvent<[]>).emit();
+      await until(() => (state.data[JOBS_KEY] as unknown[]).length === 0);
+      await until(async () => { try { await stat(join(directory, jobId)); return false; } catch { return true; } });
+      assert.ok(state.searches.includes(item.downloadId!)); assert.ok(!state.searches.includes(999999));
+      assert.ok(state.cleared.includes(`vdh-upscale:${jobId}`));
+    });
+    await t.test('extension updates make orphaned preparation retryable rather than reserving an active slot forever', async () => {
+      const item = await seed('preparing'); delete item.downloadId; state.data[HISTORY_KEY] = [item];
+      (chrome.runtime.onInstalled as unknown as FakeEvent<[unknown]>).emit({ reason: 'update', previousVersion: '1.5.0' });
+      await until(() => rows()[0]?.state === 'error');
+      assert.match(rows()[0]!.error!, /다시 다운로드/);
+      await until(async () => { try { await stat(join(temp, `local-${item.id}.media`)); return false; } catch { return true; } });
+    });
+    await t.test('the persisted history cap retains old unresolved security reviews beside newer completed rows', async () => {
+      const item = await seed('review'); item.createdAt = 1;
+      state.data[HISTORY_KEY] = [item, ...Array.from({ length: 220 }, (_, index) => ({ ...item, id: crypto.randomUUID(), state: 'complete', createdAt: 100 + index }))];
+      const result = await command('list') as { history: HistoryItem[] };
+      assert.equal(result.history.length, 200); assert.equal(result.history[0]!.id, item.id);
+      await command('clear-history'); assert.deepEqual(rows(), [item]);
+    });
+    await t.test('asynchronous media discovery rejects another context and cannot resurrect a navigated or closed tab', async () => {
+      const originalGet = Object.getOwnPropertyDescriptor(chrome.tabs, 'get');
+      const headers = chrome.webRequest.onHeadersReceived as unknown as FakeEvent<[unknown]>;
+      const updated = chrome.tabs.onUpdated as unknown as FakeEvent<[number, unknown, unknown]>;
+      const removed = chrome.tabs.onRemoved as unknown as FakeEvent<[number]>;
+      try {
+        for (const outcome of ['navigated', 'closed', 'private']) {
+          const tabId = 51; let resolveTab: ((tab: chrome.tabs.Tab) => void) | undefined;
+          updated.emit(tabId, { status: 'loading' }, { id: tabId, url: 'https://site.test/original', active: true, incognito: false });
+          Object.defineProperty(chrome.tabs, 'get', { configurable: true, value: () => new Promise<chrome.tabs.Tab>(resolve => { resolveTab = resolve; }) });
+          headers.emit({ tabId, statusCode: 200, url: `https://media.test/${outcome}.mp4`, responseHeaders: [{ name: 'content-type', value: 'video/mp4' }] });
+          assert.ok(resolveTab);
+          if (outcome === 'navigated') updated.emit(tabId, { status: 'loading' }, { id: tabId, url: 'https://site.test/new', active: true, incognito: false });
+          if (outcome === 'closed') removed.emit(tabId);
+          resolveTab({ id: tabId, incognito: outcome === 'private' } as chrome.tabs.Tab);
+          await new Promise<void>(resolve => setTimeout(resolve, 0));
+          const result = await command('list') as { items: Array<{ url: string }> };
+          assert.ok(!result.items.some(row => row.url === `https://media.test/${outcome}.mp4`), outcome);
+          removed.emit(tabId);
+        }
+      } finally { if (originalGet) Object.defineProperty(chrome.tabs, 'get', originalGet); }
+    });
     await t.test('website senders cannot connect, scan arbitrary paths or decide security outcomes', async () => {
       const item = await seed('review');
       for (const type of ['security-connect', 'antivirus-status', 'security-rescan', 'security-delete', 'security-keep', 'review-chrome']) {
@@ -393,6 +463,43 @@ test('local antivirus and background safety decisions', async t => {
       }
       assert.equal(state.permissionRequests, 0); assert.equal(state.connections.length, 0);
       assert.equal(state.requests.length, 0); assert.equal(state.removed.length, 0); assert.equal(rows()[0]!.state, 'review');
+    });
+    await t.test('split incognito history clears private completed rows while preserving reviews and ordinary history', async () => {
+      const ordinary = await seed('complete'); const ordinaryHistory = structuredClone(rows());
+      const originalDownload = Object.getOwnPropertyDescriptor(chrome.downloads, 'download');
+      const originalContext = Object.getOwnPropertyDescriptor(chrome.extension, 'inIncognitoContext');
+      const list = async () => (await command('list') as { history: HistoryItem[] }).history;
+      let nextId = ++sequence;
+      const createPrivateDownload = async () => {
+        const id = nextId++; const filename = join(temp, `private-${id}.mp4`); await writeFile(filename, mediaBytes);
+        state.downloads.set(id, { id, filename, state: 'complete', danger: 'safe', exists: true, fileSize: 16, incognito: true } as chrome.downloads.DownloadItem);
+        return id;
+      };
+      Object.defineProperty(chrome.downloads, 'download', { configurable: true, value: createPrivateDownload });
+      Object.defineProperty(chrome.extension, 'inIncognitoContext', { configurable: true, value: true });
+      try {
+        assert.deepEqual(await list(), [], 'ordinary history is hidden in a private extension context');
+        await assert.rejects(command('capture', { items: [] }, content), /브라우징 모드/);
+        await command('download-url', { url: 'https://media.test/private-clean.mp4' });
+        await until(async () => (await list()).some(row => row.state === 'complete'));
+        state.native = (request, port) => port.onMessage.emit(nativeResponse(request.requestId, 'infected'));
+        await command('download-url', { url: 'https://media.test/private-review.mp4' });
+        await until(async () => (await list()).some(row => row.state === 'review'));
+        await command('clear-history');
+        const retained = await list(); assert.equal(retained.length, 1); assert.equal(retained[0]!.state, 'review');
+        assert.equal(retained[0]!.url, 'https://media.test/private-review.mp4');
+        assert.deepEqual(rows(), ordinaryHistory, 'private history operations must not rewrite shared ordinary history');
+        Object.defineProperty(chrome.extension, 'inIncognitoContext', { configurable: true, value: false });
+        assert.deepEqual((await list()).map(row => row.id), [ordinary.id]);
+        await command('clear-history'); assert.deepEqual(rows(), []);
+        Object.defineProperty(chrome.extension, 'inIncognitoContext', { configurable: true, value: true });
+        assert.equal((await list()).length, 1, 'ordinary clear does not discard a private unresolved review');
+        await command('security-delete', { id: retained[0]!.id, token: retained[0]!.security!.token });
+        await command('clear-history'); assert.deepEqual(await list(), []);
+      } finally {
+        if (originalDownload) Object.defineProperty(chrome.downloads, 'download', originalDownload); else Reflect.deleteProperty(chrome.downloads, 'download');
+        if (originalContext) Object.defineProperty(chrome.extension, 'inIncognitoContext', originalContext);
+      }
     });
   } finally {
     await rm(temp, { recursive: true, force: true });

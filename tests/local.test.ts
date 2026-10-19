@@ -1,9 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mediaURL, mediaKind, filenameFor, trustedCapture, trustedUI } from '../src/local/model.ts';
+import { mediaURL, mediaKind, filenameFor, trustedCapture, trustedUI, retainHistory, MAX_HISTORY, type HistoryItem } from '../src/local/model.ts';
 import { attributes, parseByteRange, planHls } from '../src/local/hls.ts';
 import { fetchBytes } from '../src/local/network.ts';
+
+test('history retention bounds records without hiding older unresolved downloads or mutating its input', () => {
+  const active = ['preparing', 'downloading', 'scanning', 'review'].map((state, index) => ({
+    id: crypto.randomUUID(), url: 'https://media.test/active.mp4', filename: 'active.mp4', kind: 'file', state,
+    createdAt: index, incognito: false,
+  } as HistoryItem));
+  const completed = Array.from({ length: MAX_HISTORY + 20 }, (_, index) => ({
+    ...active[0]!, id: crypto.randomUUID(), state: 'complete' as const, createdAt: 100 + index,
+  }));
+  const input = [...completed, ...active]; const originalIds = input.map(row => row.id);
+  const retained = retainHistory(input);
+  assert.equal(retained.length, MAX_HISTORY);
+  assert.deepEqual(new Set(retained.slice(0, active.length).map(row => row.id)), new Set(active.map(row => row.id)));
+  assert.equal(retained[active.length]!.id, completed.at(-1)!.id);
+  assert.deepEqual(input.map(row => row.id), originalIds);
+});
 
 test('local media URLs reject executable schemes and embedded credentials', () => {
   assert.equal(mediaURL('../video.mp4?sig=abc#time', 'https://example.test/a/page').href, 'https://example.test/video.mp4?sig=abc');

@@ -79,6 +79,30 @@ class AntivirusHostTests(unittest.TestCase):
             executable = self.fake_clamav(output, code)
             self.assertEqual(HOST.scan_clamav(executable, self.video)["status"], "error")
 
+    def test_clamav_mixed_case_diagnostics_reject_apparent_success(self):
+        for diagnostic in ("LibClamAV Warning: an entry was skipped", "LibClamAV Error: incomplete scan"):
+            with self.subTest(diagnostic=diagnostic), patch.object(HOST, "run_tool", return_value=(0, diagnostic + "\n" + str(self.video) + ": OK\n")):
+                self.assertEqual(HOST.scan_clamav(Path("/installed/clamscan"), self.video)["status"], "error")
+
+    def test_clamav_encrypted_content_is_unscanned_not_malware_or_clean(self):
+        for threat in ("Heuristics.Encrypted.Zip", "Heuristics.Encrypted.PDF"):
+            with self.subTest(threat=threat), patch.object(HOST, "run_tool", return_value=(1, str(self.video) + ": " + threat + " FOUND\n")) as tool:
+                result = HOST.scan_clamav(Path("/installed/clamscan"), self.video)
+                self.assertEqual(result["status"], "error")
+                self.assertIn("encrypted", result["message"])
+                self.assertIn("--alert-encrypted=yes", tool.call_args.args[0])
+
+    def test_clamav_real_detection_survives_encrypted_nested_entry(self):
+        output = str(self.video) + ": Heuristics.Encrypted.Zip FOUND\n" + str(self.video) + ": Harmless.Test.Signature FOUND\n"
+        with patch.object(HOST, "run_tool", return_value=(1, output)):
+            result = HOST.scan_clamav(Path("/installed/clamscan"), self.video)
+        self.assertEqual(result, {"status": "infected", "engine": "ClamAV", "threats": ["Harmless.Test.Signature"]})
+
+    def test_clamav_encrypted_word_in_other_signature_keeps_detection(self):
+        output = str(self.video) + ": Harmless.Heuristics.Encrypted.Zip FOUND\n"
+        with patch.object(HOST, "run_tool", return_value=(1, output)):
+            self.assertEqual(HOST.scan_clamav(Path("/installed/clamscan"), self.video)["status"], "infected")
+
     def test_scanner_output_is_bounded(self):
         executable = self.fake_clamav("x" * (HOST.MAX_OUTPUT + 1), 0)
         with self.assertRaises(RuntimeError):

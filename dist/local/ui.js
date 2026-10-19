@@ -130,6 +130,7 @@ function mediaRow(item) {
   const controls = document.createElement("div");
   controls.className = "actions";
   controls.append(button("\uB2E4\uC6B4\uB85C\uB4DC", async () => {
+    await preferencesReady;
     await request("download", { id: item.id, options: options() });
     status.textContent = "\uD30C\uC77C\uC744 \uC900\uBE44\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uAE30\uB85D \uD0ED\uC5D0\uC11C \uC9C4\uD589 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694.";
   }, false, "download"));
@@ -360,7 +361,7 @@ node("security-connect").addEventListener("click", () => {
 node("url-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const url = node("url").value;
-  void request("download-url", { url, options: options() }).then(() => {
+  void preferencesReady.then(() => request("download-url", { url, options: options() })).then(() => {
     hasError = false;
     status.textContent = "\uD30C\uC77C\uC744 \uC900\uBE44\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4.";
     show(true);

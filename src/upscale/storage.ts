@@ -1,6 +1,8 @@
 import { DIRECTORY, JOBS_KEY, RETENTION_MS, MAX_QUEUE_BYTES, MAX_JOBS, isJob, type Job } from './policy.ts';
 
+export function privateContext(): boolean { return chrome.extension?.inIncognitoContext === true; }
 export async function jobs(): Promise<Job[]> {
+  if (privateContext()) return [];
   const stored: unknown = (await chrome.storage.local.get(JOBS_KEY))[JOBS_KEY];
   return Array.isArray(stored) ? stored.filter(isJob).slice(0, MAX_JOBS) : [];
 }
@@ -12,6 +14,7 @@ async function removeIfExists(dir: FileSystemDirectoryHandle, name: string): Pro
   catch (error) { if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error; }
 }
 export async function deleteJob(job: Job): Promise<void> {
+  if (privateContext()) return;
   await withQueueLock(async () => {
     const dir = await directory();
     await removeIfExists(dir, job.id);
@@ -22,10 +25,12 @@ export async function withQueueLock<T>(operation: () => Promise<T>): Promise<T> 
   return await navigator.locks.request('vdh-upscale-queue-v1', { mode: 'exclusive' }, operation);
 }
 export function cleanup(now = Date.now()): Promise<Job[]> {
+  if (privateContext()) return Promise.resolve([]);
   return withQueueLock(() => cleanupUnlocked(now));
 }
 /** Caller must hold the origin-wide queue lock for the entire transaction. */
 export async function cleanupUnlocked(now = Date.now()): Promise<Job[]> {
+  if (privateContext()) return [];
   const dir = await directory();
   const stored = await jobs();
   const retained: Job[] = [];

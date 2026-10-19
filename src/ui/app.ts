@@ -1,4 +1,4 @@
-import { cleanup, deleteJob, directory, jobs } from '../upscale/storage.ts';
+import { cleanup, deleteJob, directory, jobs, privateContext } from '../upscale/storage.ts';
 import { OFFER_KEY, MAX_INPUT_BYTES, MAX_RUNTIME_MS, isJobId, type Job } from '../upscale/policy.ts';
 import { MIME, processedName, processingOptions, type TrackInfo } from '../upscale/processing.ts';
 import { record } from '../security/validation.ts';
@@ -14,12 +14,20 @@ const save = element<HTMLButtonElement>('save');
 const factor = element<HTMLSelectElement>('factor');
 const progress = element<HTMLProgressElement>('progress');
 const offer = element<HTMLInputElement>('offer');
+const isPrivate = privateContext();
 const mode = element<HTMLSelectElement>('mode');
 const audioInput = element<HTMLInputElement>('audio-file');
 let input: File | undefined;
 let worker: Worker | undefined;
 let watchdog: ReturnType<typeof setTimeout> | undefined;
 let output: { url: string; filename: string } | undefined;
+
+if (isPrivate) {
+  offer.checked = false; offer.disabled = true;
+  const hint = document.createElement('p'); hint.id = 'offer-private-status'; hint.className = 'hint';
+  hint.textContent = '시크릿 창에서는 완료 파일의 임시 복사본을 보관하거나 일반 창의 업스케일링 알림 설정을 읽고 변경하지 않습니다. 아래에서 직접 파일을 선택해 미디어 도구를 사용할 수 있습니다.';
+  offer.setAttribute('aria-describedby', hint.id); offer.closest('label')?.after(hint);
+}
 
 function showError(error: unknown) { status.textContent = error instanceof Error ? error.message : '처리 중 오류가 발생했습니다.'; }
 function releaseOutput() { if (output) URL.revokeObjectURL(output.url); output = undefined; save.hidden = true; }
@@ -65,7 +73,7 @@ mode.addEventListener('change', changeMode);
 audioInput.addEventListener('change', changeMode);
 element('refresh').addEventListener('click', () => { void refresh().catch(showError); });
 element('clear').addEventListener('click', () => { void (async () => { for (const job of await jobs()) await deleteJob(job); await refresh(); })().catch(showError); });
-offer.addEventListener('change', () => { void chrome.storage.local.set({ [OFFER_KEY]: offer.checked }).catch(showError); });
+offer.addEventListener('change', () => { if (!isPrivate) void chrome.storage.local.set({ [OFFER_KEY]: offer.checked }).catch(showError); });
 cancel.addEventListener('click', () => { stop(); progress.value = 0; status.textContent = '취소했습니다. 원본 파일은 그대로 보관됩니다.'; void refresh().catch(showError); });
 
 start.addEventListener('click', () => {
@@ -106,7 +114,7 @@ save.addEventListener('click', () => {
 });
 addEventListener('pagehide', () => { stop(); releaseOutput(); });
 void (async () => {
-  offer.checked = (await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] !== false;
+  if (!isPrivate) offer.checked = (await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] !== false;
   await refresh();
   const id = new URL(location.href).searchParams.get('job');
   if (isJobId(id)) { const job = (await jobs()).find(j => j.id === id); if (job) await selectJob(job); else status.textContent = '임시 복사본을 찾을 수 없습니다. 원본 파일을 직접 선택하세요.'; }

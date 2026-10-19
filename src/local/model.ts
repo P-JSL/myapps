@@ -12,6 +12,7 @@ export const MAX_MEDIA_PER_TAB = 200;
 export const MAX_STREAM_BYTES = 128 * 1024 * 1024;
 export const MAX_SEGMENTS = 4096;
 export const PREPARE_TIMEOUT_MS = 300_000;
+export const ACTIVE_HISTORY_STATES = ['preparing', 'downloading', 'scanning', 'review'] as const;
 export type MediaKind = 'file' | 'hls' | 'dash';
 export interface MediaItem {
   id: string; tabId: number; url: string; title: string; mime: string;
@@ -24,6 +25,12 @@ export interface HistoryItem {
   preparation?: { stage: 'queued' | 'fetching' | 'processing' | 'saving'; progress?: number; loaded?: number; total?: number };
   transferProtocols?: Transport[]; receivedBytes?: number; totalBytes?: number;
   security?: FileSecurity;
+}
+/** Keep unresolved work visible even when newer completed records reach the cap. */
+export function retainHistory(rows: HistoryItem[]): HistoryItem[] {
+  const sorted = [...rows].sort((a, b) => b.createdAt - a.createdAt);
+  const active = (row: HistoryItem) => (ACTIVE_HISTORY_STATES as readonly string[]).includes(row.state);
+  return [...sorted.filter(active), ...sorted.filter(row => !active(row))].slice(0, MAX_HISTORY);
 }
 export function mediaURL(value: unknown, base?: string): URL {
   if (typeof value !== 'string' || !value || value.length > 8192) throw new Error('미디어 주소가 올바르지 않습니다.');

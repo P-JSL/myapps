@@ -62,7 +62,11 @@ function sniffMedia(bytes) {
 }
 
 // src/upscale/storage.ts
+function privateContext() {
+  return chrome.extension?.inIncognitoContext === true;
+}
 async function jobs() {
+  if (privateContext()) return [];
   const stored = (await chrome.storage.local.get(JOBS_KEY))[JOBS_KEY];
   return Array.isArray(stored) ? stored.filter(isJob).slice(0, MAX_JOBS) : [];
 }
@@ -77,6 +81,7 @@ async function removeIfExists(dir, name) {
   }
 }
 async function deleteJob(job) {
+  if (privateContext()) return;
   await withQueueLock(async () => {
     const dir = await directory();
     await removeIfExists(dir, job.id);
@@ -87,9 +92,11 @@ async function withQueueLock(operation) {
   return await navigator.locks.request("vdh-upscale-queue-v1", { mode: "exclusive" }, operation);
 }
 function cleanup(now = Date.now()) {
+  if (privateContext()) return Promise.resolve([]);
   return withQueueLock(() => cleanupUnlocked(now));
 }
 async function cleanupUnlocked(now = Date.now()) {
+  if (privateContext()) return [];
   const dir = await directory();
   const stored = await jobs();
   const retained = [];
@@ -117,11 +124,13 @@ var serial = Promise.resolve();
 var revokedDownloads = /* @__PURE__ */ new Set();
 var offerGenerations = /* @__PURE__ */ new Map();
 function authorizeDownloadOffers(downloadId) {
+  if (privateContext()) return;
   if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
   offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
   revokedDownloads.delete(downloadId);
 }
 async function offerUpscale(event) {
+  if (privateContext()) return;
   const generation = event.downloadId === void 0 ? void 0 : offerGenerations.get(event.downloadId) ?? 0;
   const permitted = () => event.downloadId !== void 0 && !revokedDownloads.has(event.downloadId) && (offerGenerations.get(event.downloadId) ?? 0) === generation;
   const pending = serial.then(() => withQueueLock(async () => {
@@ -179,6 +188,7 @@ async function offerUpscale(event) {
   await serial;
 }
 async function revokeDownloadOffers(downloadId) {
+  if (privateContext()) return;
   if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
   revokedDownloads.add(downloadId);
   offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
@@ -205,9 +215,11 @@ function openTools(job) {
   return chrome.tabs.create({ url: chrome.runtime.getURL(`upscale/index.html${suffix}`) });
 }
 chrome.notifications.onClicked.addListener((id) => {
+  if (privateContext()) return;
   if (id.startsWith("vdh-upscale:")) void openTools(id.slice("vdh-upscale:".length));
 });
 chrome.notifications.onButtonClicked.addListener((id, button) => {
+  if (privateContext()) return;
   if (!id.startsWith("vdh-upscale:")) return;
   const jobId = id.slice("vdh-upscale:".length);
   if (!isJobId(jobId)) return;
@@ -222,6 +234,7 @@ chrome.notifications.onButtonClicked.addListener((id, button) => {
   void chrome.notifications.clear(id);
 });
 chrome.runtime.onInstalled.addListener(() => {
+  if (privateContext()) return;
   chrome.contextMenus.create({ id: "vdh-upscale-tools", title: "\uC5C5\uC2A4\uCF00\uC77C\uB9C1 \xB7 \uBCF4\uC548 \uC124\uC815", contexts: ["action"] }, () => {
     void chrome.runtime.lastError;
   });
@@ -229,7 +242,7 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 chrome.runtime.onStartup.addListener(() => {
-  void cleanup().catch(() => {
+  if (!privateContext()) void cleanup().catch(() => {
   });
 });
 chrome.contextMenus.onClicked.addListener((info) => {
@@ -243,6 +256,12 @@ var HISTORY_KEY = "my_video_app_history_v1";
 var MAX_HISTORY = 200;
 var MAX_MEDIA_PER_TAB = 200;
 var MAX_STREAM_BYTES = 128 * 1024 * 1024;
+var ACTIVE_HISTORY_STATES = ["preparing", "downloading", "scanning", "review"];
+function retainHistory(rows) {
+  const sorted = [...rows].sort((a, b) => b.createdAt - a.createdAt);
+  const active = (row) => ACTIVE_HISTORY_STATES.includes(row.state);
+  return [...sorted.filter(active), ...sorted.filter((row) => !active(row))].slice(0, MAX_HISTORY);
+}
 function mediaURL(value, base) {
   if (typeof value !== "string" || !value || value.length > 8192) throw new Error("\uBBF8\uB514\uC5B4 \uC8FC\uC18C\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
   const url = new URL(value, base);
@@ -429,31 +448,35 @@ async function scanFile(path) {
 
 // src/local/background.ts
 var media = /* @__PURE__ */ new Map();
+var discoveryEpochs = /* @__PURE__ */ new Map();
 var privateHistory = /* @__PURE__ */ new Map();
 var cancelled = /* @__PURE__ */ new Set();
 var finalizing = /* @__PURE__ */ new Set();
 var finalizeAgain = /* @__PURE__ */ new Set();
 var deciding = /* @__PURE__ */ new Set();
-var activeStates = ["preparing", "downloading", "scanning", "review"];
+var activeStates = ACTIVE_HISTORY_STATES;
 var lastTab;
 var creatingOffscreen;
 async function history() {
+  if (chrome.extension.inIncognitoContext) return retainHistory([...privateHistory.values()]);
   const raw = (await chrome.storage.local.get(HISTORY_KEY))[HISTORY_KEY];
-  return [...Array.isArray(raw) ? raw.filter(isHistory) : [], ...privateHistory.values()].sort((a, b) => b.createdAt - a.createdAt).slice(0, MAX_HISTORY);
+  return retainHistory(Array.isArray(raw) ? raw.filter(isHistory).filter((row) => !row.incognito) : []);
+}
+function updatePrivate(item) {
+  const retained = retainHistory([item, ...privateHistory.values()].filter((row, index) => index === 0 || row.id !== item.id));
+  privateHistory.clear();
+  for (const row of retained) privateHistory.set(row.id, row);
 }
 async function update(item, onlyIfPreparing = false) {
   if (item.incognito) {
-    if (!onlyIfPreparing || privateHistory.get(item.id)?.state === "preparing") privateHistory.set(item.id, item);
+    if (!onlyIfPreparing || privateHistory.get(item.id)?.state === "preparing") updatePrivate(item);
     return;
   }
   await navigator.locks.request("my-video-app-history", async () => {
     const current = await history();
     if (onlyIfPreparing && current.find((row) => row.id === item.id)?.state !== "preparing") return;
     const existing = current.filter((row) => !row.incognito && row.id !== item.id);
-    const rows = [item, ...existing];
-    const active = rows.filter((row) => activeStates.includes(row.state));
-    const completed = rows.filter((row) => !activeStates.includes(row.state));
-    await chrome.storage.local.set({ [HISTORY_KEY]: [...active, ...completed.slice(0, Math.max(0, MAX_HISTORY - active.length))] });
+    await chrome.storage.local.set({ [HISTORY_KEY]: retainHistory([item, ...existing]) });
   });
 }
 async function change(id, edit) {
@@ -463,7 +486,7 @@ async function change(id, edit) {
     if (!current) return void 0;
     const next = edit(current);
     if (!next) return void 0;
-    if (next.incognito) privateHistory.set(next.id, next);
+    if (next.incognito) updatePrivate(next);
     else await chrome.storage.local.set({ [HISTORY_KEY]: rows.filter((row) => !row.incognito).map((row) => row.id === id ? next : row) });
     return next;
   });
@@ -659,6 +682,7 @@ async function securityDecision(id, token, action) {
 }
 async function download(item, options = downloadOptions()) {
   const tab = item.tabId < 0 ? { incognito: chrome.extension.inIncognitoContext } : await chrome.tabs.get(item.tabId);
+  if (!!tab.incognito !== chrome.extension.inIncognitoContext) throw new Error("\uB2E4\uB978 \uBE0C\uB77C\uC6B0\uC9D5 \uBAA8\uB4DC\uC758 \uBBF8\uB514\uC5B4\uC5D0\uB294 \uC811\uADFC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
   const filename = filenameFor(item);
   const entry = { id: crypto.randomUUID(), url: item.url, filename: options.output === "original" ? filename : filename.replace(/\.[^.]+$/, "") + "." + options.output, kind: item.kind, state: "preparing", createdAt: Date.now(), incognito: !!tab.incognito || chrome.extension.inIncognitoContext, options };
   await navigator.locks.request("my-video-app-start", async () => {
@@ -706,7 +730,7 @@ async function download(item, options = downloadOptions()) {
   return entry;
 }
 async function currentTab() {
-  const tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
+  const tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true })).find((tab2) => !!tab2.incognito === chrome.extension.inIncognitoContext);
   if (tab?.id !== void 0 && tab.url && /^https?:/.test(tab.url)) return tab.id;
   return lastTab ?? Array.from(media.keys()).at(-1);
 }
@@ -727,6 +751,7 @@ async function handleLocalMessage(value, sender) {
   }
   if (value.type === "capture") {
     if (!trustedCapture(sender, chrome.runtime.id) || !Array.isArray(value.items) || value.items.length > 100) throw new Error("\uD5C8\uC6A9\uB418\uC9C0 \uC54A\uC740 \uC218\uC9D1 \uC694\uCCAD\uC785\uB2C8\uB2E4.");
+    if (!!sender.tab?.incognito !== chrome.extension.inIncognitoContext) throw new Error("\uB2E4\uB978 \uBE0C\uB77C\uC6B0\uC9D5 \uBAA8\uB4DC\uC758 \uC218\uC9D1 \uC694\uCCAD\uC785\uB2C8\uB2E4.");
     for (const item of value.items) if (record(item) && typeof item.url === "string") add(sender.tab.id, item.url, typeof item.mime === "string" ? item.mime : "", typeof item.title === "string" ? item.title : "", item.fromElement === true, void 0, item.observedTransport);
     return { ok: true };
   }
@@ -799,7 +824,9 @@ async function handleLocalMessage(value, sender) {
   }
   if (value.type === "clear-history") {
     await navigator.locks.request("my-video-app-history", async () => {
-      await chrome.storage.local.set({ [HISTORY_KEY]: (await history()).filter((row) => !row.incognito && activeStates.includes(row.state)) });
+      if (chrome.extension.inIncognitoContext) {
+        for (const [id, row] of privateHistory) if (!activeStates.includes(row.state)) privateHistory.delete(id);
+      } else await chrome.storage.local.set({ [HISTORY_KEY]: (await history()).filter((row) => activeStates.includes(row.state)) });
     });
     return { ok: true };
   }
@@ -817,15 +844,23 @@ chrome.runtime.onMessage.addListener((value, sender, reply) => {
 chrome.webRequest.onHeadersReceived.addListener((details) => {
   if (details.tabId < 0 || details.statusCode < 200 || details.statusCode >= 300) return void 0;
   const type = details.responseHeaders?.find((h) => h.name.toLowerCase() === "content-type")?.value ?? "";
+  try {
+    if (!mediaKind(details.url, type)) return void 0;
+  } catch {
+    return void 0;
+  }
   const header = (name) => details.responseHeaders?.find((h) => h.name.toLowerCase() === name)?.value;
   const size = Number(details.statusCode === 206 ? header("content-range")?.match(/^bytes \d+-\d+\/(\d+)$/i)?.[1] : header("content-length"));
-  add(details.tabId, details.url, type, "", false, size);
+  const epoch = discoveryEpochs.get(details.tabId) ?? {};
+  discoveryEpochs.set(details.tabId, epoch);
+  void chrome.tabs.get(details.tabId).then((tab) => {
+    if (discoveryEpochs.get(details.tabId) === epoch && !!tab.incognito === chrome.extension.inIncognitoContext) add(details.tabId, details.url, type, "", false, size);
+  }).catch(() => {
+  });
   return void 0;
 }, { urls: ["http://*/*", "https://*/*"] }, ["responseHeaders"]);
 chrome.downloads.onChanged.addListener((delta) => {
-  if (chromeWarning(delta.danger?.current)) void history().then((rows) => {
-    if (rows.some((row) => row.downloadId === delta.id)) return revokeDownloadOffers(delta.id);
-  }).catch(() => {
+  if (chromeWarning(delta.danger?.current)) void revokeDownloadOffers(delta.id).catch(() => {
   });
   if (delta.state || delta.danger) void chrome.downloads.search({ id: delta.id }).then((items) => {
     if (items[0]) return finish(items[0]);
@@ -838,20 +873,33 @@ chrome.notifications.onClicked.addListener((id) => {
 });
 chrome.tabs.onRemoved.addListener((id) => {
   media.delete(id);
+  discoveryEpochs.delete(id);
   if (lastTab === id) lastTab = void 0;
 });
 chrome.tabs.onUpdated.addListener((id, changes, tab) => {
-  if (changes.status === "loading") media.delete(id);
+  if (!!tab.incognito !== chrome.extension.inIncognitoContext) return;
+  if (changes.status === "loading") {
+    media.delete(id);
+    discoveryEpochs.set(id, {});
+  }
   if (tab.active && tab.url && /^https?:/.test(tab.url)) lastTab = id;
 });
 chrome.tabs.onActivated.addListener((info) => {
   void chrome.tabs.get(info.tabId).then((tab) => {
-    if (tab.url && /^https?:/.test(tab.url)) lastTab = info.tabId;
+    if (!!tab.incognito === chrome.extension.inIncognitoContext && tab.url && /^https?:/.test(tab.url)) lastTab = info.tabId;
   }).catch(() => {
   });
 });
 async function setup(restarted = false) {
   await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => chrome.action.setPopup({ popup: "local/index.html" }));
+  if (!chrome.extension.inIncognitoContext) {
+    const ids = new Set((await jobs()).map((job) => job.downloadId).filter((id) => id !== void 0));
+    for (const id of ids) {
+      const current = (await chrome.downloads.search({ id }))[0];
+      if (!current || current.state !== "complete" || chromeWarning(current.danger)) await revokeDownloadOffers(id).catch(() => {
+      });
+    }
+  }
   for (const item of await history()) {
     if (restarted && item.state === "preparing") {
       await update({ ...item, state: "error", error: "\uBE0C\uB77C\uC6B0\uC800\uAC00 \uB2E4\uC2DC \uC2DC\uC791\uB418\uC5B4 \uC900\uBE44 \uC791\uC5C5\uC774 \uC911\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uB2E4\uC6B4\uB85C\uB4DC\uD558\uC138\uC694." });
@@ -869,7 +917,7 @@ async function setup(restarted = false) {
   });
 }
 chrome.runtime.onInstalled.addListener(() => {
-  void setup().catch(() => {
+  void setup(true).catch(() => {
   });
 });
 chrome.runtime.onStartup.addListener(() => {

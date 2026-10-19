@@ -28,7 +28,11 @@ function sniffMedia(bytes) {
 }
 
 // src/upscale/storage.ts
+function privateContext() {
+  return chrome.extension?.inIncognitoContext === true;
+}
 async function jobs() {
+  if (privateContext()) return [];
   const stored = (await chrome.storage.local.get(JOBS_KEY))[JOBS_KEY];
   return Array.isArray(stored) ? stored.filter(isJob).slice(0, MAX_JOBS) : [];
 }
@@ -43,6 +47,7 @@ async function removeIfExists(dir, name) {
   }
 }
 async function deleteJob(job) {
+  if (privateContext()) return;
   await withQueueLock(async () => {
     const dir = await directory();
     await removeIfExists(dir, job.id);
@@ -53,9 +58,11 @@ async function withQueueLock(operation) {
   return await navigator.locks.request("vdh-upscale-queue-v1", { mode: "exclusive" }, operation);
 }
 function cleanup(now = Date.now()) {
+  if (privateContext()) return Promise.resolve([]);
   return withQueueLock(() => cleanupUnlocked(now));
 }
 async function cleanupUnlocked(now = Date.now()) {
+  if (privateContext()) return [];
   const dir = await directory();
   const stored = await jobs();
   const retained = [];
@@ -83,11 +90,13 @@ var serial = Promise.resolve();
 var revokedDownloads = /* @__PURE__ */ new Set();
 var offerGenerations = /* @__PURE__ */ new Map();
 function authorizeDownloadOffers(downloadId) {
+  if (privateContext()) return;
   if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
   offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
   revokedDownloads.delete(downloadId);
 }
 async function offerUpscale(event) {
+  if (privateContext()) return;
   const generation = event.downloadId === void 0 ? void 0 : offerGenerations.get(event.downloadId) ?? 0;
   const permitted = () => event.downloadId !== void 0 && !revokedDownloads.has(event.downloadId) && (offerGenerations.get(event.downloadId) ?? 0) === generation;
   const pending = serial.then(() => withQueueLock(async () => {
@@ -145,6 +154,7 @@ async function offerUpscale(event) {
   await serial;
 }
 async function revokeDownloadOffers(downloadId) {
+  if (privateContext()) return;
   if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
   revokedDownloads.add(downloadId);
   offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
@@ -171,9 +181,11 @@ function openTools(job) {
   return chrome.tabs.create({ url: chrome.runtime.getURL(`upscale/index.html${suffix}`) });
 }
 chrome.notifications.onClicked.addListener((id) => {
+  if (privateContext()) return;
   if (id.startsWith("vdh-upscale:")) void openTools(id.slice("vdh-upscale:".length));
 });
 chrome.notifications.onButtonClicked.addListener((id, button) => {
+  if (privateContext()) return;
   if (!id.startsWith("vdh-upscale:")) return;
   const jobId = id.slice("vdh-upscale:".length);
   if (!isJobId(jobId)) return;
@@ -188,6 +200,7 @@ chrome.notifications.onButtonClicked.addListener((id, button) => {
   void chrome.notifications.clear(id);
 });
 chrome.runtime.onInstalled.addListener(() => {
+  if (privateContext()) return;
   chrome.contextMenus.create({ id: "vdh-upscale-tools", title: "\uC5C5\uC2A4\uCF00\uC77C\uB9C1 \xB7 \uBCF4\uC548 \uC124\uC815", contexts: ["action"] }, () => {
     void chrome.runtime.lastError;
   });
@@ -195,7 +208,7 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 chrome.runtime.onStartup.addListener(() => {
-  void cleanup().catch(() => {
+  if (!privateContext()) void cleanup().catch(() => {
   });
 });
 chrome.contextMenus.onClicked.addListener((info) => {

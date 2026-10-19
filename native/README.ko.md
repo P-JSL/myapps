@@ -56,7 +56,7 @@ python3 native/install.py --uninstall
 {"version":1,"action":"scan","requestId":"unique-request-id","path":"/absolute/download/video.mp4"}
 ```
 
-응답은 같은 `requestId`, `version:1`, `status`(`clean`, `infected`, `unavailable`, `error`), `engine`을 포함합니다. `clean`/`infected`는 변경되지 않은 검사 대상의 64자리 소문자 `sha256`과 정수 `size`를 반드시 포함하며 탐지 시 `threats` 문자열 배열을 추가합니다. 실패 시 `message`가 원인을 설명하고 안전 판정을 내리지 않습니다. 요청 ID는 영문·숫자·`.`·`_`·`:`·`-`로 최대 128자입니다. 실행 가능한 요청은 `scan` 하나뿐이며 프로그램 실행·URL 다운로드·계정 정보 접근 명령은 없습니다.
+응답은 같은 `requestId`, `version:1`, `status`(`clean`, `infected`, `unavailable`, `error`), `engine`을 포함합니다. `clean`/`infected`는 변경되지 않은 검사 대상의 64자리 소문자 `sha256`과 정수 `size`를 반드시 포함하며 탐지 시 `threats` 문자열 배열을 추가합니다. 실패 시 `message`가 원인을 설명하고 안전 판정을 내리지 않습니다. 요청 ID는 영문·숫자·`.`·`_`·`:`·`-`로 최대 128자입니다. 지원 요청은 파일 검사 `scan`과 경로 없는 연결 확인 `status`뿐이며 프로그램 실행·URL 다운로드·계정 정보 접근 명령은 없습니다.
 
 개발 검사는 `python3 -m unittest discover -s native -p 'test_*.py' -v`로 실행합니다. 테스트는 무해한 고정 문자열과 가짜 백신 실행 파일로 입출력·실패·탐지 분기를 검사하며 실제 악성코드를 포함하지 않습니다.
 
@@ -74,3 +74,5 @@ python3 -B native/test_clamav_integration.py \
 ## 도우미 연결 상태 확인 (1.6.0)
 
 최신 도우미는 경로 없는 `{"version":1,"action":"status","requestId":"unique-request-id"}`도 지원합니다. 응답 상태는 `ready`, `unavailable`, `error`이며 선택된 `engine`, 선택 판단에 사용된 `products`, 설명을 반환할 수 있습니다. 사용자 파일을 읽거나 검사하지 않습니다. `ready`는 도우미와 검사기 실행·초기화 준비 상태이며 파일의 위협 미탐지나 서명 DB 검증 결과가 아닙니다. 앱의 백신 연결 버튼이 이 요청을 실제로 수행합니다. 기존 `scan` 계약과 파일 판정은 유지합니다.
+
+1.7.0의 ClamAV 검사는 암호화된 내부 파일을 읽지 못하면 미검사(`error`)로 반환하며, 대소문자가 섞인 엔진 경고·오류도 검사 실패로 처리합니다. 암호화와 실제 위협이 함께 보고되면 위협 탐지를 유지합니다. 최신 도우미 ZIP으로 설치 명령을 다시 실행해 업데이트하세요.

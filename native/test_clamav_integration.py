@@ -4,6 +4,8 @@
 Run with --clamav /absolute/clamscan --video /absolute/clean.mp4. An optional
 --eicar path must refer to an ephemeral standard harmless antivirus test file
 outside the repository; its contents are never printed or copied into reports.
+The encrypted-content check requires the test-only `zip` command; its password
+and payload are harmless fixtures created and removed in a temporary directory.
 """
 from __future__ import annotations
 
@@ -29,6 +31,9 @@ def main() -> None:
     executable = Path(options.clamav).resolve(strict=True)
     video = Path(options.video).resolve(strict=True)
     version = subprocess.run([str(executable), "--version"], capture_output=True, text=True, check=True).stdout.strip()
+    zip_executable = shutil.which("zip")
+    if zip_executable is None:
+        raise RuntimeError("The test-only zip command is required for the encrypted archive regression check.")
     outcomes = []
     with tempfile.TemporaryDirectory(prefix="mva-real-clamav-") as temporary:
         root = Path(temporary).resolve()
@@ -86,6 +91,10 @@ def main() -> None:
         scan(harmless, "infected", "Real ClamAV detects harmless custom local test signature; original retained")
         if not harmless.exists():
             raise AssertionError("The host removed the detection fixture.")
+        encrypted = root / "encrypted-download.mp4"
+        subprocess.run([zip_executable, "-q", "-P", "my-video-app-harmless-test-fixture", str(encrypted), harmless.name],
+                       cwd=root, check=True, capture_output=True)
+        scan(encrypted, "error", "Real ClamAV encrypted archive renamed MP4 remains explicitly unscanned")
         if options.eicar:
             scan(eicar, "infected", "Real ClamAV detects standard harmless antivirus marker using test-only local signature")
         database.write_text("intentionally-invalid-test-database\n", encoding="ascii")

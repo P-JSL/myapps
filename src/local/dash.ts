@@ -51,21 +51,26 @@ export function planDash(text: string, address: string, options: DownloadOptions
       if (bytes) asset.range = bytes;
       plan.assets.push(asset); parts.push(asset.filename);
     }
-    const inherited = (name: string) => [...chain].reverse().map(node => child(node, name)).find(node => node !== undefined);
-    const list = inherited('SegmentList');
+    const lists = [...chain].reverse().map(node => child(node, 'SegmentList')).filter(node => node !== undefined);
+    const list = lists[0];
     const templates = [...chain].reverse().map(node => child(node, 'SegmentTemplate')).filter(node => node !== undefined);
     const template = templates[0];
     // A descendant SegmentTemplate overrides individual attributes and complete
     // SegmentTimeline children, while omitted values inherit from its ancestors.
     const templateAttribute = (name: string) => templates.find(node => node.hasAttribute(name))?.getAttribute(name) ?? null;
     if (list) {
-      const init = child(list, 'Initialization');
+      // Initialization and the complete URL list inherit independently. A child
+      // list can replace its segments without repeating the parent's init data.
+      const init = lists.map(node => child(node, 'Initialization')).find(node => node !== undefined);
       if (init) add(init.getAttribute('sourceURL') ?? base, range(init.getAttribute('range')));
-      for (const segment of children(list, 'SegmentURL')) add(segment.getAttribute('media') ?? base, range(segment.getAttribute('mediaRange')));
+      const segments = lists.map(node => children(node, 'SegmentURL')).find(nodes => nodes.length) ?? [];
+      for (const segment of segments) add(segment.getAttribute('media') ?? base, range(segment.getAttribute('mediaRange')));
     } else if (template) {
       const timescale = Number(templateAttribute('timescale') ?? '1');
+      const presentationTimeOffset = Number(templateAttribute('presentationTimeOffset') ?? '0');
       let number = Number(templateAttribute('startNumber') ?? '1');
-      if (!Number.isSafeInteger(timescale) || timescale <= 0 || !Number.isSafeInteger(number) || number < 0) throw new Error('DASH 타임라인이 올바르지 않습니다.');
+      if (!Number.isSafeInteger(timescale) || timescale <= 0 || !Number.isSafeInteger(presentationTimeOffset) || presentationTimeOffset < 0
+        || !Number.isSafeInteger(number) || number < 0) throw new Error('DASH 타임라인이 올바르지 않습니다.');
       const expand = (format: string, time: number) => format.replace(/\$\$|\$(RepresentationID|Bandwidth|Number|Time)(?:%0(\d+)d)?\$/g, (match, key: string, width: string | undefined) => {
         if (match === '$$') return '$';
         const value = key === 'RepresentationID' ? item.representation.getAttribute('id') ?? '' : key === 'Bandwidth' ? item.representation.getAttribute('bandwidth') ?? '' : String(key === 'Time' ? time : number);
@@ -87,11 +92,17 @@ export function planDash(text: string, address: string, options: DownloadOptions
           let repeat = Number(s.getAttribute('r') ?? '0');
           if (!Number.isSafeInteger(time) || time < 0 || !Number.isSafeInteger(d) || d <= 0 || !Number.isSafeInteger(repeat) || repeat < -1) throw new Error('DASH 타임라인이 올바르지 않습니다.');
           if (repeat === -1) {
-            const end = Number(entries[index + 1]?.getAttribute('t') ?? seconds * timescale);
-            if (!Number.isFinite(end) || end <= time) throw new Error('끝이 없는 DASH 타임라인은 지원하지 않습니다.');
+            const next = entries[index + 1];
+            const end = next ? Number(next.getAttribute('t')) : seconds * timescale + presentationTimeOffset;
+            // Segment timestamps use the media timeline; the Period duration is
+            // on the presentation timeline and must include its inherited offset.
+            // A fractional Period boundary is valid even with an integer timescale.
+            if ((next && (!next.hasAttribute('t') || !Number.isSafeInteger(end))) || (!next && seconds <= 0)
+              || !Number.isFinite(end) || end > Number.MAX_SAFE_INTEGER || end <= time) throw new Error('끝이 없는 DASH 타임라인은 지원하지 않습니다.');
             repeat = Math.ceil((end - time) / d) - 1;
           }
           if (repeat >= MAX_SEGMENTS) throw new Error('DASH 조각 개수 한도를 초과했습니다.');
+          if (!Number.isSafeInteger(time + (repeat + 1) * d) || !Number.isSafeInteger(number + repeat)) throw new Error('DASH 타임라인이 올바르지 않습니다.');
           for (let i = 0; i <= repeat; i++) { add(expand(format, time)); time += d; number++; }
         }
       } else {

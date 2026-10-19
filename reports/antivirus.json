@@ -5,7 +5,7 @@
   "nativeHost": "com.myvideoapp.antivirus",
   "fileUpload": false,
   "officialDatabaseVerified": false,
-  "sourceSha256": "59905a199c79ec987a6b448a1fe8c5c7994a208ad301656bc7507b9acc8aabfc",
+  "sourceSha256": "1d361bf15ab515f67a4267f938d6bfd6f2a61dd190b5a9bea59426176ecd1a75",
   "outcomes": [
     {
       "name": "Native readiness request contacts real ClamAV without scanning a user file",
@@ -23,6 +23,12 @@
       "name": "Real ClamAV detects harmless custom local test signature; original retained",
       "status": "passed",
       "verdict": "infected",
+      "engine": "ClamAV"
+    },
+    {
+      "name": "Real ClamAV encrypted archive renamed MP4 remains explicitly unscanned",
+      "status": "passed",
+      "verdict": "error",
       "engine": "ClamAV"
     },
     {
