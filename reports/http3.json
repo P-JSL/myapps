@@ -1,5 +1,5 @@
 {
-  "buildSha256": "a1da9d17ba1b8578784fd36f6114cd9af21073e916cce471647f4b5d03c85a8c",
+  "buildSha256": "2dff1be84a418a0517e57657fbb0268d1276e065aa234c49fdbbd018589df060",
   "browser": "154.0.8037.57",
   "transport": "h3",
   "tlsVerification": "enabled; untrusted CA rejected before isolated test-profile trust was configured",
@@ -9,8 +9,15 @@
   "server": {
     "aioquic": "1.3.0",
     "h1": 0,
-    "h3": 14
+    "h3": 15
   },
+  "productionAssets": [
+    "assets/d6c4bedb56ee2a11dd30a67897f431a5.js",
+    "assets/e5fc9b7a8454a655aeb079f7e8e511b7.js",
+    "assets/3698df86ae28f8265ebdc4c527234260.js",
+    "assets/8df7a632f3c5167b22615c0daafc7fd1.js",
+    "assets/fc68b6fd5d1cffa047c59f7ac5dd599f.bin"
+  ],
   "inputSha256": "a8536eaaa80e192769a341d98dc6c62e5fa489b81df82b06455feecb12fe3efe",
   "outcomes": [
     {

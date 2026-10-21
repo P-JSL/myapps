@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
-export async function verifyPopupAudit(browser, origin) {
+import { writeFile } from 'node:fs/promises';
+import { loadBuildPaths } from './build-paths.mjs';
+export async function verifyPopupAudit(browser, origin, buildPaths) {
+  buildPaths ??= await loadBuildPaths();
   const context = await browser.newContext({ viewport: { width: 640, height: 600 } });
   const outcomes = [], outboundRequests = [], pageErrors = [];
+  const productionAssets = new Set();
+  context.on('request', request => {
+    const name = new URL(request.url()).pathname.slice(1);
+    if (Object.values(buildPaths.assetMap).includes(name)) productionAssets.add(name);
+  });
   await context.route('**' + '/' + '*', route => {
     const url = route.request().url();
     if (url.startsWith(origin + '/') || url.startsWith('blob:') || url.startsWith('data:')) return route.continue();
@@ -36,7 +43,7 @@ export async function verifyPopupAudit(browser, origin) {
       extension: { inIncognitoContext: q.has('private') },
       storage: { local: { get: async () => ({}), remove: async () => {}, set: async () => {} } },
       runtime: {
-        id: 'popup-audit-extension', getURL: value => new URL(value, location.origin + '/').href,
+        id: 'popup-audit-extension', getURL: value => new URL(value.replace(/^\/+/, ''), location.origin + '/').href,
         sendMessage: async message => {
           window.__popupMessages.push(structuredClone(message));
           if (window.__popupFail === message.type) return { ok: false, error: '검사 오류: 다시 시도하세요.' };
@@ -51,7 +58,8 @@ export async function verifyPopupAudit(browser, origin) {
   });
   const pageFor = async suffix => {
     const p = await context.newPage(); p.on('pageerror', e => pageErrors.push(e.message));
-    await p.goto(`${origin}/local/popup.html${suffix}`);
+    await p.goto(buildPaths.url(origin, `local/popup.html${suffix}`));
+    assert.equal(p.url(), buildPaths.url(origin, `local/popup.html${suffix}`));
     await p.waitForFunction(() => window.__popupMessages.some(m => m.type === 'list')); return p;
   };
   const check = async (name, run) => { await run(); outcomes.push({ name, status: 'passed' }); };
@@ -70,7 +78,7 @@ export async function verifyPopupAudit(browser, origin) {
         await p.screenshot({ path: 'test-results/popup-empty.png' });
         await p.locator('#settings').click(); await p.locator('#history').click();
         assert.deepEqual(await p.evaluate(() => window.__popupTabs.map(x => x.url)),
-          [`${origin}/local/index.html`, `${origin}/local/index.html?view=history`]);
+          [buildPaths.url(origin, 'local/index.html'), buildPaths.url(origin, 'local/index.html?view=history')]);
         await p.locator('#folder').click(); assert.equal(await p.evaluate(() => window.__popupFolders), 1);
         await p.locator('#help').click(); await p.locator('#info-dialog').waitFor();
         assert.match(await p.locator('#info-description').innerText(), /강제 감지/); await p.keyboard.press('Escape');
@@ -90,7 +98,7 @@ export async function verifyPopupAudit(browser, origin) {
         assert.equal(await p.locator('.media-title img').count(), 0);
         await p.locator('#review-summary').waitFor(); assert(await p.locator('[data-action=download]').isDisabled());
         await p.screenshot({ path: 'test-results/popup-media.png' }); await p.locator('#review-summary').click();
-        assert.equal(await p.evaluate(() => window.__popupTabs.at(-1).url), `${origin}/local/index.html?view=history`);
+        assert.equal(await p.evaluate(() => window.__popupTabs.at(-1).url), buildPaths.url(origin, 'local/index.html?view=history'));
         await p.locator('#clear-history').click();
         await p.waitForFunction(() => document.querySelector('#status').textContent.includes('저장한 파일'));
       } finally { await p.close(); }
@@ -144,7 +152,7 @@ export async function verifyPopupAudit(browser, origin) {
             return { ok: true };
           };
         });
-        await p.addScriptTag({ url: `${origin}/local/collect.js` });
+        await p.addScriptTag({ url: buildPaths.url(origin, 'local/collect.js') });
         await p.waitForFunction(() => window.__collector.messages.length === 2);
         assert.equal(await p.evaluate(() => window.__collector.messages.flatMap(m => m.items).length), 12);
         assert.deepEqual(await p.evaluate(() => {
@@ -164,8 +172,11 @@ export async function verifyPopupAudit(browser, origin) {
     });
   } finally { await context.close(); }
   assert.deepEqual(outboundRequests, []); assert.deepEqual(pageErrors, []);
-  const build = JSON.parse(await readFile('reports/build.json', 'utf8'));
+  for (const logical of ['local/popup.html', 'local/popup.js', 'local/popup.css', 'local/collect.js']) {
+    assert(productionAssets.has(buildPaths.resolve(logical)), `Popup must execute the built ${logical}`);
+  }
+  const build = buildPaths.buildInfo;
   await writeFile('reports/popup.json', JSON.stringify({ buildSha256: build.buildSha256, browser: browser.version(),
-    mode: 'Real popup DOM, IndexedDB and built collector; Chrome APIs are doubles', outcomes, outboundRequests, pageErrors }, null, 2) + '\n');
+    mode: 'Protected production popup and collector; real DOM and IndexedDB; Chrome APIs are doubles', outcomes, productionAssets: [...productionAssets].sort(), outboundRequests, pageErrors }, null, 2) + '\n');
   console.log(`PASS ${outcomes.length} popup/collector checks`); return outcomes;
 }

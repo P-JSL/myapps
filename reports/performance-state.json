@@ -10,23 +10,23 @@
       "tabCount": 1,
       "retainedItems": 200,
       "lookup": {
-        "beforeMedianUs": 3.64472916666666,
-        "afterMedianUs": 0.013361666666670638,
-        "speedup": 272.77504053877334,
+        "beforeMedianUs": 3.6764700000000037,
+        "afterMedianUs": 0.014822499999998703,
+        "speedup": 248.03305785126162,
         "iterationsPerRound": 1200,
         "rounds": 7
       },
       "construction": {
-        "beforeMedianUs": 12.336099999999988,
-        "afterMedianUs": 21.2478999999999,
-        "speedup": 0.5805797278789926,
+        "beforeMedianUs": 11.447359999999946,
+        "afterMedianUs": 20.08876000000015,
+        "speedup": 0.5698390542771112,
         "iterationsPerRound": 50,
         "rounds": 5
       },
       "constructionAndRemovalOfOneFullTab": {
-        "beforeMedianUs": 9.617310000000003,
-        "afterMedianUs": 23.055535000000017,
-        "speedup": 0.4171367092544153,
+        "beforeMedianUs": 9.155755000000028,
+        "afterMedianUs": 22.580690000000057,
+        "speedup": 0.4054683448557154,
         "iterationsPerRound": 200,
         "rounds": 5
       },
@@ -36,23 +36,23 @@
       "tabCount": 10,
       "retainedItems": 2000,
       "lookup": {
-        "beforeMedianUs": 35.47752416666668,
-        "afterMedianUs": 0.01714999999999615,
-        "speedup": 2068.660301263828,
+        "beforeMedianUs": 35.545925000000004,
+        "afterMedianUs": 0.020396666666660696,
+        "speedup": 1742.7320640632656,
         "iterationsPerRound": 1200,
         "rounds": 7
       },
       "construction": {
-        "beforeMedianUs": 116.3406000000009,
-        "afterMedianUs": 260.04140000000007,
-        "speedup": 0.4473926074848116,
+        "beforeMedianUs": 114.91819999999962,
+        "afterMedianUs": 268.8641999999959,
+        "speedup": 0.4274209805545006,
         "iterationsPerRound": 5,
         "rounds": 5
       },
       "constructionAndRemovalOfOneFullTab": {
-        "beforeMedianUs": 9.283265000000256,
-        "afterMedianUs": 22.652739999999767,
-        "speedup": 0.409807599433903,
+        "beforeMedianUs": 8.798129999999844,
+        "afterMedianUs": 21.980305000000158,
+        "speedup": 0.4002733356065706,
         "iterationsPerRound": 200,
         "rounds": 5
       },
@@ -62,30 +62,30 @@
       "tabCount": 50,
       "retainedItems": 10000,
       "lookup": {
-        "beforeMedianUs": 160.83139250000008,
-        "afterMedianUs": 0.014897499999998823,
-        "speedup": 10795.86457459391,
+        "beforeMedianUs": 157.66268166666674,
+        "afterMedianUs": 0.01548999999992399,
+        "speedup": 10178.35259312075,
         "iterationsPerRound": 1200,
         "rounds": 7
       },
       "construction": {
-        "beforeMedianUs": 827.8674999999112,
-        "afterMedianUs": 1906.2659999999596,
-        "speedup": 0.43428750237371316,
+        "beforeMedianUs": 726.3159999999971,
+        "afterMedianUs": 2098.0369999999766,
+        "speedup": 0.3461883656007998,
         "iterationsPerRound": 2,
         "rounds": 5
       },
       "constructionAndRemovalOfOneFullTab": {
-        "beforeMedianUs": 9.769734999999855,
-        "afterMedianUs": 23.60729499999934,
-        "speedup": 0.4138438986762409,
+        "beforeMedianUs": 9.275385000000824,
+        "afterMedianUs": 22.812434999999596,
+        "speedup": 0.4065933776907633,
         "iterationsPerRound": 200,
         "rounds": 5
       },
       "extraIndexEntries": 10000
     }
   ],
-  "historyRetentionAt200MeanUs": 20.491057399999978,
+  "historyRetentionAt200MeanUs": 20.358824400000003,
   "complexity": {
     "selectBefore": "O(N) time and O(N) intermediate references across all retained tabs",
     "selectAfter": "Map lookup expected O(1), no full-catalog intermediate array",

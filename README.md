@@ -1,6 +1,6 @@
 # My Video App · 개인용 로컬 버전
 
-My Video App 1.9.1은 **앱 계정·구독·활성화 서버가 없는 독립 TypeScript 확장**입니다.
+My Video App 1.10.0은 **앱 계정·구독·활성화 서버가 없는 독립 TypeScript 확장**입니다.
 미디어 감지, 일반 파일 다운로드, 비암호화 HLS/DASH VOD 저장, 로컬 기록과
 다운로드 후 선택적 2x/4x 업스케일링을 제공합니다. 파일과 기록은 브라우저에 저장합니다.
 1.2.0에서는 **최고화질·해상도 선택, MP3/M4A 오디오 다운로드, 영상/음성 변환,
@@ -13,6 +13,7 @@ My Video App 1.9.1은 **앱 계정·구독·활성화 서버가 없는 독립 Ty
 1.8.0은 **선형 화질 선택·미디어 ID 색인·불필요한 바이트 복사 제거·변경 없는 화면 재사용·입력 검증 예산**을 개선합니다. 기존 출력·보안 검사·호환 조건을 유지하며 [알고리즘 조사와 실측 결과](reports/ALGORITHMS.ko.md)에 복잡도·상충 비용·적용하지 않은 대안을 기록합니다.
 1.9.0은 **어두운 미디어 팝업·영상 다운로드 아이콘·실제 파일 형식에 따른 저장**, **내장 IndexedDB 자동 생성·기존 데이터 이전·보관 한도 관리**를 제공합니다. 설정 버튼은 기존 전체 앱을 엽니다. 저장 오류나 복구 기록이 있으면 데이터를 보존하며 자동 파일 정리와 완료 후 자동 확대 제안을 보류합니다. [DB 관리와 복구 한계](reports/DATABASE.ko.md)를 참고하세요.
 1.9.1은 **형식·인코더·화면 문구 메타데이터 공통화, 백신 요청 수명주기 통합, 배포용 테스트 번들 제외, 소스 구조 자동 점검**을 적용합니다. [전체 리팩토링 분석](reports/REFACTORING.ko.md)을 참고하세요.
+1.10.0은 **배포 JS/CSS 압축·런타임 파일명 해시화·gzip 후 AES-256-GCM 엔진 포장**과 별도 비밀번호 소스 보관 도구를 추가합니다. 실행 키는 설치본에 있으므로 역공학 방지를 보장하지 않습니다. [배포 보호 방식과 한계](reports/PROTECTED_BUILD.ko.md)를 참고하세요.
 Windows에서는 별도 ClamAV 설치 없이 백신 도우미를 설치하고 앱에서 연결 권한을 허용하면 됩니다. 다른 백신의 자동 연결은 Windows AMSI 지원 여부에 따라 달라집니다.
 
 - [설치용 ZIP](artifacts/my-video-app-extension.zip)
@@ -23,6 +24,7 @@ Windows에서는 별도 ClamAV 설치 없이 백신 도우미를 설치하고 �
 - [다운로드 개선·HTTP/3 사용 및 검증](reports/DOWNLOADS_HTTP3.ko.md)
 - [내장 DB 자동 생성·이전·관리](reports/DATABASE.ko.md)
 - [리팩토링 분석·관리 기준](reports/REFACTORING.ko.md)
+- [압축·암호화 빌드와 소스 보관](reports/PROTECTED_BUILD.ko.md)
 - [검증 결과](reports/VALIDATION.ko.md) · [보안 검토](reports/SECURITY.ko.md)
 
 ## 설치

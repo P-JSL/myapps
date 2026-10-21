@@ -7,8 +7,10 @@ import { createHash } from 'node:crypto';
 import { once } from 'node:events';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import { loadBuildPaths } from './build-paths.mjs';
 
 const root = path.resolve('.');
+const buildPaths = await loadBuildPaths(root);
 const temporary = await mkdtemp('/tmp/my-video-app-h3-');
 const python = process.env.HTTP3_PYTHON ?? 'python3';
 const executablePath = process.env.CHROMIUM_PATH ?? '/usr/bin/chromium';
@@ -85,16 +87,28 @@ db.commit(); db.close()
   assert.deepEqual(transfers.rangeProtocols, ['h3']); assert.deepEqual(transfers.range, [...fixture.subarray(2, 8)]);
   passed('HTTP/3 byte-range request preserves exactly the requested media bytes');
   await page.evaluate(() => {
-    Object.defineProperty(window, 'chrome', { value: { runtime: { id: 'http3-test-double', getURL: name => location.origin + '/' + name, onMessage: { addListener() {} }, sendMessage: async () => ({ ok: true }) } }, configurable: true });
+    Object.defineProperty(window, 'chrome', { value: { runtime: { id: 'http3-test-double', getURL: name => new URL(name.replace(/^\/+/, ''), location.origin + '/').href,
+      onMessage: { addListener() {} }, sendMessage: async () => ({ ok: true }) } }, configurable: true });
   });
-  const stream = await page.evaluate(async () => {
-    const module = await import('/local/offscreen.js'); const id = crypto.randomUUID();
+  const productionRequests = [];
+  const productionPaths = new Set([...Object.values(buildPaths.assetMap), buildPaths.buildInfo.protection?.engine?.coreModulePath].filter(Boolean));
+  context.on('request', request => {
+    const name = new URL(request.url()).pathname.slice(1);
+    if (productionPaths.has(name)) productionRequests.push(name);
+  });
+  const stream = await page.evaluate(async offscreenPath => {
+    const module = await import(offscreenPath); const id = crypto.randomUUID();
     try {
       const result = await module.prepareLocal(id, location.origin + '/fixtures/parallel/list.m3u8', 'hls');
       const file = await (await (await navigator.storage.getDirectory()).getFileHandle(result.filename)).getFile();
       return { protocols: result.protocols, bytes: [...new Uint8Array(await file.arrayBuffer())] };
     } finally { await module.disposeLocal(id); }
-  });
+  }, '/' + buildPaths.resolve('local/offscreen.js'));
+  for (const logical of ['local/offscreen.js', 'local/stream-worker.js', 'vendor/ffmpeg/ffmpeg-core.js', 'vendor/ffmpeg/ffmpeg-core.wasm']) {
+    assert(productionRequests.includes(buildPaths.resolve(logical)), `HTTP/3 must execute the built ${logical}`);
+  }
+  const engineModule = buildPaths.buildInfo.protection?.engine?.coreModulePath;
+  if (engineModule) assert(productionRequests.includes(engineModule), 'HTTP/3 must execute the production engine module');
   assert.deepEqual(stream.protocols, ['h3']);
   await writeFile('test-results/http3-hls.mp4', new Uint8Array(stream.bytes));
   const probe = JSON.parse(command('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', 'test-results/http3-hls.mp4']));
@@ -103,8 +117,8 @@ db.commit(); db.close()
   command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', 'test-results/http3-hls.mp4', '-f', 'null', '-']);
   passed('Real HTTP/3 HLS segments and local Wasm remux preserve decodable video and audio');
   const stats = JSON.parse(await readFile(`${temporary}/stats.json`, 'utf8')); assert(stats.h3 >= 6);
-  const buildReport = JSON.parse(await readFile('reports/build.json', 'utf8'));
-  await writeFile('reports/http3.json', JSON.stringify({ buildSha256: buildReport.buildSha256, browser: context.browser()?.version() ?? 'Chromium', transport: 'h3', tlsVerification: 'enabled; untrusted CA rejected before isolated test-profile trust was configured', mode: 'real loopback HTTP/3; deterministic QUIC origin selected only in test; Chrome runtime API doubled for offscreen processing', profileTrust: 'generated short-lived test CA in disposable Chromium profile; no OS or user profile changes', productionTransport: 'normal Chrome negotiation; no forced transport flags', server: { aioquic: '1.3.0', ...stats }, inputSha256: identity, outcomes }, null, 2) + '\n');
+  const buildReport = buildPaths.buildInfo;
+  await writeFile('reports/http3.json', JSON.stringify({ buildSha256: buildReport.buildSha256, browser: context.browser()?.version() ?? 'Chromium', transport: 'h3', tlsVerification: 'enabled; untrusted CA rejected before isolated test-profile trust was configured', mode: 'real loopback HTTP/3; deterministic QUIC origin selected only in test; Chrome runtime API doubled for offscreen processing', profileTrust: 'generated short-lived test CA in disposable Chromium profile; no OS or user profile changes', productionTransport: 'normal Chrome negotiation; no forced transport flags', server: { aioquic: '1.3.0', ...stats }, productionAssets: [...new Set(productionRequests)], inputSha256: identity, outcomes }, null, 2) + '\n');
   console.log(`${outcomes.length} real HTTP/3 checks passed.`);
 } finally {
   await context?.close();

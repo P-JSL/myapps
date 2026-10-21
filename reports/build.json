@@ -1,8 +1,8 @@
 {
   "engine": "independent-local",
   "productName": "My Video App",
-  "version": "1.9.1",
-  "buildSha256": "a1da9d17ba1b8578784fd36f6114cd9af21073e916cce471647f4b5d03c85a8c",
+  "version": "1.10.0",
+  "buildSha256": "2dff1be84a418a0517e57657fbb0268d1276e065aa234c49fdbbd018589df060",
   "originalRuntimeIncluded": false,
   "accountActivationIncluded": false,
   "capabilities": [
@@ -39,10 +39,52 @@
     "media-signature-validation",
     "canonical-media-filenames"
   ],
+  "assetMap": {
+    "bitmaps/logo-128-color.png": "assets/bebb6b6d62ace2ae07bbe62b5ce9c4ef.png",
+    "bitmaps/logo-128-nooutline.png": "assets/7d528c2ecb75fc71bb14e4ff8664c5fb.png",
+    "hardening/upscale-worker.js": "assets/c3eca823194f4c3ee782311420873e5e.js",
+    "local/background.js": "assets/aee03ca26dba16883a4ab4b4abfcfd12.js",
+    "local/collect.js": "assets/dec14da0cf81c0c73dd0683e2b80d09d.js",
+    "local/index.html": "assets/4efeb4931944942ba73deb9c3188ea4a.html",
+    "local/offscreen.html": "assets/11e39b81ccc3da2604ef44446be0f2d5.html",
+    "local/offscreen.js": "assets/d6c4bedb56ee2a11dd30a67897f431a5.js",
+    "local/popup.css": "assets/dabb5daa84ae4faa70130410a1c5d1d1.css",
+    "local/popup.html": "assets/472968761dd4d1bbb41860a2ebd61b6d.html",
+    "local/popup.js": "assets/eb1ef405218fa80284ff9d4e6150210f.js",
+    "local/stream-worker.js": "assets/e5fc9b7a8454a655aeb079f7e8e511b7.js",
+    "local/style.css": "assets/6167db2a617e6bbb58f4b42ee7b3a786.css",
+    "local/ui.js": "assets/04add3bf1015ea5f1669cb0ea2608677.js",
+    "upscale/app.js": "assets/bcf67e1f274361d73a2ef8d73de48cf0.js",
+    "upscale/index.html": "assets/9959f99cfc72a78d6f28721918fa0b4b.html",
+    "upscale/style.css": "assets/c0a7a14660fbb4f958eb7fe7845ea270.css",
+    "vendor/ffmpeg/ffmpeg-core.js": "assets/3698df86ae28f8265ebdc4c527234260.js",
+    "vendor/ffmpeg/ffmpeg-core.wasm": "assets/fc68b6fd5d1cffa047c59f7ac5dd599f.bin"
+  },
+  "protection": {
+    "version": 1,
+    "minified": true,
+    "opaqueFilenames": true,
+    "sourceMaps": false,
+    "dynamicEvaluation": false,
+    "engine": {
+      "format": "my-video-engine-v1",
+      "algorithm": "AES-256-GCM",
+      "compression": "gzip",
+      "cipherPath": "assets/fc68b6fd5d1cffa047c59f7ac5dd599f.bin",
+      "coreModulePath": "assets/8df7a632f3c5167b22615c0daafc7fd1.js",
+      "iv": "kmE0E+cCjy8a4dZn",
+      "tagBits": 128,
+      "plaintextBytes": 32232419,
+      "compressedBytes": 10257774,
+      "ciphertextBytes": 10257790,
+      "clientKeyEmbedded": true
+    },
+    "limitation": "Client decryption keys are embedded and recoverable; packaging is not a secrecy boundary. The manifest and license notices remain readable."
+  },
   "entries": [
     {
       "input": "src/local/background.ts",
-      "output": "local/background.js",
+      "output": "assets/aee03ca26dba16883a4ab4b4abfcfd12.js",
       "format": "esm",
       "inputs": [
         "src/data/database.ts",
@@ -59,11 +101,12 @@
         "src/upscale/policy.ts",
         "src/upscale/storage.ts"
       ],
-      "bytes": 88853
+      "bytes": 55436,
+      "logicalOutput": "local/background.js"
     },
     {
       "input": "src/local/collect.ts",
-      "output": "local/collect.js",
+      "output": "assets/dec14da0cf81c0c73dd0683e2b80d09d.js",
       "format": "iife",
       "inputs": [
         "src/local/collect.ts",
@@ -72,11 +115,12 @@
         "src/security/validation.ts",
         "src/shared/filename.ts"
       ],
-      "bytes": 6126
+      "bytes": 3521,
+      "logicalOutput": "local/collect.js"
     },
     {
       "input": "src/local/offscreen.ts",
-      "output": "local/offscreen.js",
+      "output": "assets/d6c4bedb56ee2a11dd30a67897f431a5.js",
       "format": "esm",
       "inputs": [
         "src/local/byte-assembly.ts",
@@ -94,11 +138,12 @@
         "src/shared/media.ts",
         "src/upscale/policy.ts"
       ],
-      "bytes": 43863
+      "bytes": 26605,
+      "logicalOutput": "local/offscreen.js"
     },
     {
       "input": "src/local/ui.ts",
-      "output": "local/ui.js",
+      "output": "assets/04add3bf1015ea5f1669cb0ea2608677.js",
       "format": "esm",
       "inputs": [
         "src/data/database.ts",
@@ -112,11 +157,12 @@
         "src/shared/media.ts",
         "src/upscale/policy.ts"
       ],
-      "bytes": 47934
+      "bytes": 30120,
+      "logicalOutput": "local/ui.js"
     },
     {
       "input": "src/local/popup.ts",
-      "output": "local/popup.js",
+      "output": "assets/eb1ef405218fa80284ff9d4e6150210f.js",
       "format": "esm",
       "inputs": [
         "src/data/database.ts",
@@ -128,11 +174,12 @@
         "src/shared/media.ts",
         "src/upscale/policy.ts"
       ],
-      "bytes": 33434
+      "bytes": 19289,
+      "logicalOutput": "local/popup.js"
     },
     {
       "input": "src/local/stream-worker.ts",
-      "output": "local/stream-worker.js",
+      "output": "assets/e5fc9b7a8454a655aeb079f7e8e511b7.js",
       "format": "esm",
       "external": [
         "../vendor/ffmpeg/ffmpeg-core.js"
@@ -150,11 +197,12 @@
         "src/shared/filename.ts",
         "src/shared/media.ts"
       ],
-      "bytes": 18856
+      "bytes": 11783,
+      "logicalOutput": "local/stream-worker.js"
     },
     {
       "input": "src/upscale/worker.ts",
-      "output": "hardening/upscale-worker.js",
+      "output": "assets/c3eca823194f4c3ee782311420873e5e.js",
       "format": "esm",
       "external": [
         "../vendor/ffmpeg/ffmpeg-core.js"
@@ -168,11 +216,12 @@
         "src/upscale/processing.ts",
         "src/upscale/worker.ts"
       ],
-      "bytes": 14277
+      "bytes": 9659,
+      "logicalOutput": "hardening/upscale-worker.js"
     },
     {
       "input": "src/ui/app.ts",
-      "output": "upscale/app.js",
+      "output": "assets/bcf67e1f274361d73a2ef8d73de48cf0.js",
       "format": "esm",
       "inputs": [
         "src/data/database.ts",
@@ -186,16 +235,17 @@
         "src/upscale/processing.ts",
         "src/upscale/storage.ts"
       ],
-      "bytes": 38886
+      "bytes": 23003,
+      "logicalOutput": "upscale/app.js"
     }
   ],
-  "appJavaScriptBytes": 292229,
+  "appJavaScriptBytes": 179416,
   "ffmpeg": {
     "package": "@ffmpeg/core",
     "version": "0.12.10",
     "wasmSha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7",
     "bytes": 32232419
   },
-  "distFiles": 27,
-  "distBytes": 32746024
+  "distFiles": 28,
+  "distBytes": 10621697
 }

@@ -1,19 +1,61 @@
 {
-  "release": "1.9.1",
-  "buildSha256": "a1da9d17ba1b8578784fd36f6114cd9af21073e916cce471647f4b5d03c85a8c",
-  "recordedAtUtc": "2026-10-21T08:35:58.724Z",
-  "unitTests": 150,
+  "release": "1.10.0",
+  "buildSha256": "2dff1be84a418a0517e57657fbb0268d1276e065aa234c49fdbbd018589df060",
+  "recordedAtUtc": "2026-10-21T09:49:53.125Z",
+  "unitTests": 173,
   "nativeTests": 48,
   "browserScenarios": 77,
   "embeddedDatabaseSubchecks": 19,
   "popupCollectorSubchecks": 6,
   "http3Checks": 4,
   "algorithmSuites": 5,
-  "unitAndBrowserLogSha256": "cd2ea4746a2ac351ba19c95c896da8fd3e735f379ecfeddf1e51fd9067c49acc",
+  "unitAndBrowserLogSha256": "84ee46450d622beb158524c1713b1e767379a4dafad3f499d1d20372645e6511",
+  "http3LogSha256": "3fc7c48bbab4a8c7655e75bcff0c51fce7af6c021f97b55a92630d2ebd5b5be5",
+  "benchmarkLogSha256": "e17d75331aaa594afc5e3ae3c84d93efebde9d2e705c296c0490598a3884d12b",
   "independentReview": {
-    "agent": "/root/refactor_review",
+    "agent": "/root/release_protection_review",
     "status": "approved",
-    "scope": "Source, normalized archive writer, runtime compatibility, complete verification reports and independently recomputed final source/dist identities"
+    "scope": "Source cryptography, path rewriting, strict production harness and independently recomputed final dist identity and byte counts"
+  },
+  "sourceArchitecture": {
+    "status": "passed",
+    "moduleCount": 29,
+    "entryCount": 8,
+    "sourceFiles": 89,
+    "reportSha256": "228eb94effa70de57b4d4472f87567753afd55aaca80caa37c04426ae7ea369f"
+  },
+  "buildProtection": {
+    "version": 1,
+    "minified": true,
+    "opaqueFilenames": true,
+    "sourceMaps": false,
+    "dynamicEvaluation": false,
+    "engine": {
+      "format": "my-video-engine-v1",
+      "algorithm": "AES-256-GCM",
+      "compression": "gzip",
+      "cipherPath": "assets/fc68b6fd5d1cffa047c59f7ac5dd599f.bin",
+      "coreModulePath": "assets/8df7a632f3c5167b22615c0daafc7fd1.js",
+      "iv": "kmE0E+cCjy8a4dZn",
+      "tagBits": 128,
+      "plaintextBytes": 32232419,
+      "compressedBytes": 10257774,
+      "ciphertextBytes": 10257790,
+      "clientKeyEmbedded": true
+    },
+    "limitation": "Client decryption keys are embedded and recoverable; packaging is not a secrecy boundary. The manifest and license notices remain readable.",
+    "mappedAssets": 19,
+    "runtimeAssets": 20,
+    "legacyRuntimeRequests": [],
+    "comparison": {
+      "baselineCommit": "36a1dd290350b5b370b192701ccd39eaeb39ad7b",
+      "beforeAppJavaScriptBytes": 292229,
+      "afterAppJavaScriptBytes": 179416,
+      "reductionPercent": 38.60431374025165,
+      "beforeDistBytes": 32746024,
+      "afterDistBytes": 10621697,
+      "scope": "App JS excludes vendor loader/core; dist includes gzip/encrypted Wasm. These are installed bytes, not ZIP sizes or runtime speed claims."
+    }
   },
   "userTxtSample": {
     "sha256": "704a5e15ae1068e4df52a8bcff04270efdad595cf685e0eccff86ab335471a46",
@@ -23,29 +65,13 @@
     "audioCodec": "aac",
     "durationSeconds": 0.487619
   },
+  "antivirusEvidence": "Existing real ClamAV integration report retained: Python host source is unchanged; current native 48-test suite rerun on Python 3.12/Linux",
   "limitations": [
     "Actual extension installation blocked by administrator policy; Chrome APIs doubled",
     "Windows antivirus APIs not executed on Linux",
     "Native fallback signature request and actual download are separate; large ID3 may be rejected",
-    "User TXT sample is a short audio-only fragment; it cannot recreate a complete video"
-  ],
-  "sourceArchitecture": {
-    "status": "passed",
-    "moduleCount": 29,
-    "entryCount": 8,
-    "sourceFiles": 81,
-    "reportSha256": "61e5bd47406d69500892745f48da75f4bc6d9a8715a18dc9b9682efb5b2e40ef"
-  },
-  "refactorSizeComparison": {
-    "baselineCommit": "53108162647cfae199ef0b4dd413c5e000b740a6",
-    "beforeAppJavaScriptBytes": 316521,
-    "afterAppJavaScriptBytes": 292229,
-    "savedAppJavaScriptBytes": 24292,
-    "reductionPercent": 7.674688251332455,
-    "beforeDistBytes": 32770056,
-    "afterDistBytes": 32746024,
-    "scope": "Uncompressed application JavaScript; excludes FFmpeg vendor code and WASM"
-  },
-  "antivirusEvidence": "Existing real ClamAV integration report retained: Python host source is unchanged; current native 48-test suite rerun on Python 3.12/Linux",
-  "finalSourceUnitAndBenchmarkLogSha256": "2bfc6cd674d178e8141687dbbd1c6cad0f2a675f973c09f2ebe06a1df27d0b88"
+    "User TXT sample is a short audio-only fragment; it cannot recreate a complete video",
+    "Client decryption keys are embedded and recoverable; JS/HTML/CSS, manifest, license notices and public source history remain readable",
+    "Encrypted packaging is for local developer-mode installation; Chrome Web Store policy acceptance is not validated"
+  ]
 }

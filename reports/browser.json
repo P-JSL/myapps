@@ -1,8 +1,8 @@
 {
-  "buildSha256": "a1da9d17ba1b8578784fd36f6114cd9af21073e916cce471647f4b5d03c85a8c",
+  "buildSha256": "2dff1be84a418a0517e57657fbb0268d1276e065aa234c49fdbbd018589df060",
   "browser": "154.0.8037.57",
   "engine": "independent-local",
-  "mode": "localhost harness: real browser/Wasm/OPFS; Chrome extension APIs mocked",
+  "mode": "localhost harness: protected production assets; real browser/Wasm/OPFS; Chrome extension APIs mocked",
   "extensionInstallation": {
     "status": "blocked",
     "reason": "Chromium administrator policy: Loading of unpacked extensions is disabled by the administrator. Verified separately; policy was not changed."
@@ -317,6 +317,27 @@
       "status": "passed"
     }
   ],
+  "productionAssets": [
+    "assets/04add3bf1015ea5f1669cb0ea2608677.js",
+    "assets/3698df86ae28f8265ebdc4c527234260.js",
+    "assets/472968761dd4d1bbb41860a2ebd61b6d.html",
+    "assets/4efeb4931944942ba73deb9c3188ea4a.html",
+    "assets/6167db2a617e6bbb58f4b42ee7b3a786.css",
+    "assets/8df7a632f3c5167b22615c0daafc7fd1.js",
+    "assets/9959f99cfc72a78d6f28721918fa0b4b.html",
+    "assets/aee03ca26dba16883a4ab4b4abfcfd12.js",
+    "assets/bcf67e1f274361d73a2ef8d73de48cf0.js",
+    "assets/bebb6b6d62ace2ae07bbe62b5ce9c4ef.png",
+    "assets/c0a7a14660fbb4f958eb7fe7845ea270.css",
+    "assets/c3eca823194f4c3ee782311420873e5e.js",
+    "assets/d6c4bedb56ee2a11dd30a67897f431a5.js",
+    "assets/dabb5daa84ae4faa70130410a1c5d1d1.css",
+    "assets/dec14da0cf81c0c73dd0683e2b80d09d.js",
+    "assets/e5fc9b7a8454a655aeb079f7e8e511b7.js",
+    "assets/eb1ef405218fa80284ff9d4e6150210f.js",
+    "assets/fc68b6fd5d1cffa047c59f7ac5dd599f.bin"
+  ],
+  "legacyRuntimeRequests": [],
   "directFixtureSha256": "a8536eaaa80e192769a341d98dc6c62e5fa489b81df82b06455feecb12fe3efe",
   "outboundRequests": [],
   "pageErrors": []

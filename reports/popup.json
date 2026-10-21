@@ -1,7 +1,7 @@
 {
-  "buildSha256": "a1da9d17ba1b8578784fd36f6114cd9af21073e916cce471647f4b5d03c85a8c",
+  "buildSha256": "2dff1be84a418a0517e57657fbb0268d1276e065aa234c49fdbbd018589df060",
   "browser": "154.0.8037.57",
-  "mode": "Real popup DOM, IndexedDB and built collector; Chrome APIs are doubles",
+  "mode": "Protected production popup and collector; real DOM and IndexedDB; Chrome APIs are doubles",
   "outcomes": [
     {
       "name": "Dark popup and settings, history, folder, help, rescan and tools actions",
@@ -27,6 +27,13 @@
       "name": "Built collector authenticates rescan nonce and awaits every capture acknowledgement",
       "status": "passed"
     }
+  ],
+  "productionAssets": [
+    "assets/472968761dd4d1bbb41860a2ebd61b6d.html",
+    "assets/bebb6b6d62ace2ae07bbe62b5ce9c4ef.png",
+    "assets/dabb5daa84ae4faa70130410a1c5d1d1.css",
+    "assets/dec14da0cf81c0c73dd0683e2b80d09d.js",
+    "assets/eb1ef405218fa80284ff9d4e6150210f.js"
   ],
   "outboundRequests": [],
   "pageErrors": []

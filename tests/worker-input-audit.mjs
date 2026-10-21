@@ -4,8 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
-const workerSource = `
-import createFFmpegCore from '/vendor/ffmpeg/ffmpeg-core.js';
+const workerSource = corePath => `
+import createFFmpegCore from ${JSON.stringify(corePath)};
 import { processingArguments, resultFormat } from '../src/upscale/processing.ts';
 
 const digest = async bytes => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('');
@@ -56,9 +56,10 @@ self.onmessage = async ({ data }) => {
 };
 `;
 
-export async function prepareOwnedInputAudit(fixtures) {
-  await build({ stdin: { contents: workerSource, resolveDir: path.dirname(fileURLToPath(import.meta.url)), loader: 'js' },
-    bundle: true, format: 'esm', external: ['/vendor/ffmpeg/ffmpeg-core.js'],
+export async function prepareOwnedInputAudit(fixtures, buildPaths) {
+  const corePath = '/' + buildPaths.resolve('vendor/ffmpeg/ffmpeg-core.js');
+  await build({ stdin: { contents: workerSource(corePath), resolveDir: path.dirname(fileURLToPath(import.meta.url)), loader: 'js' },
+    bundle: true, format: 'esm', external: [corePath],
     outfile: path.join(fixtures, 'owned-input-audit-worker.js') });
 }
 
