@@ -1,19 +1,19 @@
 {
-  "release": "1.9.0",
-  "buildSha256": "48c2b307c9965a7b832912a0f4339fa638f8ba4dd7766beff4a72dc6f29d82e6",
-  "recordedAtUtc": "2026-10-21T06:58:17.408Z",
-  "unitTests": 121,
+  "release": "1.9.1",
+  "buildSha256": "a1da9d17ba1b8578784fd36f6114cd9af21073e916cce471647f4b5d03c85a8c",
+  "recordedAtUtc": "2026-10-21T08:35:58.724Z",
+  "unitTests": 150,
   "nativeTests": 48,
   "browserScenarios": 77,
   "embeddedDatabaseSubchecks": 19,
   "popupCollectorSubchecks": 6,
   "http3Checks": 4,
   "algorithmSuites": 5,
-  "unitAndBrowserLogSha256": "e7deaa2a77978588e4cfe536d7aa413d833d73585d06f2569bee137c143724e9",
+  "unitAndBrowserLogSha256": "cd2ea4746a2ac351ba19c95c896da8fd3e735f379ecfeddf1e51fd9067c49acc",
   "independentReview": {
-    "agent": "/root/review",
+    "agent": "/root/refactor_review",
     "status": "approved",
-    "scope": "Source, real DOM screenshots, recomputed dist/report hashes and final verification reports"
+    "scope": "Source, normalized archive writer, runtime compatibility, complete verification reports and independently recomputed final source/dist identities"
   },
   "userTxtSample": {
     "sha256": "704a5e15ae1068e4df52a8bcff04270efdad595cf685e0eccff86ab335471a46",
@@ -28,5 +28,24 @@
     "Windows antivirus APIs not executed on Linux",
     "Native fallback signature request and actual download are separate; large ID3 may be rejected",
     "User TXT sample is a short audio-only fragment; it cannot recreate a complete video"
-  ]
+  ],
+  "sourceArchitecture": {
+    "status": "passed",
+    "moduleCount": 29,
+    "entryCount": 8,
+    "sourceFiles": 81,
+    "reportSha256": "61e5bd47406d69500892745f48da75f4bc6d9a8715a18dc9b9682efb5b2e40ef"
+  },
+  "refactorSizeComparison": {
+    "baselineCommit": "53108162647cfae199ef0b4dd413c5e000b740a6",
+    "beforeAppJavaScriptBytes": 316521,
+    "afterAppJavaScriptBytes": 292229,
+    "savedAppJavaScriptBytes": 24292,
+    "reductionPercent": 7.674688251332455,
+    "beforeDistBytes": 32770056,
+    "afterDistBytes": 32746024,
+    "scope": "Uncompressed application JavaScript; excludes FFmpeg vendor code and WASM"
+  },
+  "antivirusEvidence": "Existing real ClamAV integration report retained: Python host source is unchanged; current native 48-test suite rerun on Python 3.12/Linux",
+  "finalSourceUnitAndBenchmarkLogSha256": "2bfc6cd674d178e8141687dbbd1c6cad0f2a675f973c09f2ebe06a1df27d0b88"
 }

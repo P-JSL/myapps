@@ -7,7 +7,7 @@
   },
   "sourceSha256": {
     "src/local/collect.ts": "eb36555aa3441a421eafab00d1f449d09fd3d72aac5144a665894c95c00cce2a",
-    "src/local/ui.ts": "029d03fdcdc0341db399820857a82acb1d6c79a18a054fd1e53b379af8239367"
+    "src/local/ui.ts": "eb285bda72a2e5b96c578c15bcc62760ba8e595b0c9acd4afc60b653e00e01e2"
   },
   "browser": "154.0.8037.57",
   "platform": "linux",
@@ -21,11 +21,11 @@
         "nonMediaTimings": 200
       },
       "baseline": {
-        "elapsedMs": 73.60000002384186,
+        "elapsedMs": 54,
         "fullDocumentScans": 40
       },
       "optimized": {
-        "elapsedMs": 3.400000035762787,
+        "elapsedMs": 1.9000000001396984,
         "fullDocumentScans": 0
       }
     },
@@ -37,11 +37,11 @@
         "nonMediaTimings": 1000
       },
       "baseline": {
-        "elapsedMs": 11031,
+        "elapsedMs": 10491.100000000093,
         "fullDocumentScans": 200
       },
       "optimized": {
-        "elapsedMs": 5.399999976158142,
+        "elapsedMs": 5.399999999906868,
         "fullDocumentScans": 0
       }
     },
@@ -53,12 +53,12 @@
         "polls": 100
       },
       "baseline": {
-        "elapsedMs": 781.3999999761581,
+        "elapsedMs": 756.8000000000466,
         "createdElements": 240000,
         "listNodeMutations": 80000
       },
       "optimized": {
-        "elapsedMs": 118.60000002384186,
+        "elapsedMs": 84,
         "createdElements": 0,
         "listNodeMutations": 0
       }
@@ -71,12 +71,12 @@
         "polls": 100
       },
       "baseline": {
-        "elapsedMs": 819.5,
+        "elapsedMs": 771,
         "createdElements": 240000,
         "listNodeMutations": 80000
       },
       "optimized": {
-        "elapsedMs": 87.20000004768372,
+        "elapsedMs": 106,
         "createdElements": 600,
         "listNodeMutations": 200
       }

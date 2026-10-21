@@ -1,5 +1,5 @@
 import { record } from '../security/validation.ts';
-import { safeBasename } from '../upscale/policy.ts';
+import { safeBasename } from '../shared/filename.ts';
 import type { DownloadOptions } from './preferences.ts';
 import type { Transport } from './transport.ts';
 import type { FileSecurity } from './antivirus.ts';
@@ -12,7 +12,12 @@ export const MAX_MEDIA_PER_TAB = 200;
 export const MAX_STREAM_BYTES = 128 * 1024 * 1024;
 export const MAX_SEGMENTS = 4096;
 export const PREPARE_TIMEOUT_MS = 300_000;
-export const ACTIVE_HISTORY_STATES = ['preparing', 'downloading', 'scanning', 'review'] as const;
+export const DOWNLOAD_STATES = ['preparing', 'downloading', 'scanning', 'review', 'discarded', 'complete', 'cancelled', 'error'] as const;
+export type DownloadState = typeof DOWNLOAD_STATES[number];
+export const ACTIVE_HISTORY_STATES = ['preparing', 'downloading', 'scanning', 'review'] as const satisfies readonly DownloadState[];
+export function isActiveHistoryState(state: DownloadState): boolean {
+  return (ACTIVE_HISTORY_STATES as readonly DownloadState[]).includes(state);
+}
 export type MediaKind = 'file' | 'hls' | 'dash';
 export interface MediaItem {
   id: string; tabId: number; url: string; title: string; mime: string;
@@ -53,7 +58,6 @@ export class MediaCatalog {
     this.byTab.delete(tabId);
   }
 }
-export type DownloadState = 'preparing' | 'downloading' | 'scanning' | 'review' | 'discarded' | 'complete' | 'cancelled' | 'error';
 export interface HistoryItem {
   id: string; url: string; filename: string; kind: MediaKind; state: DownloadState;
   createdAt: number; incognito: boolean; downloadId?: number; error?: string; options?: DownloadOptions;
@@ -64,7 +68,7 @@ export interface HistoryItem {
 /** Keep unresolved work visible even when newer completed records reach the cap. */
 export function retainHistory(rows: HistoryItem[]): HistoryItem[] {
   const sorted = [...rows].sort((a, b) => b.createdAt - a.createdAt);
-  const active = (row: HistoryItem) => (ACTIVE_HISTORY_STATES as readonly string[]).includes(row.state);
+  const active = (row: HistoryItem) => isActiveHistoryState(row.state);
   return [...sorted.filter(active), ...sorted.filter(row => !active(row))].slice(0, MAX_HISTORY);
 }
 export function mediaURL(value: unknown, base?: string): URL {
@@ -95,7 +99,7 @@ export function isHistory(value: unknown): value is HistoryItem {
   return record(value) && typeof value.id === 'string' && /^[a-f0-9-]{36}$/.test(value.id)
     && typeof value.url === 'string' && typeof value.filename === 'string'
     && ['file', 'hls', 'dash'].includes(String(value.kind))
-    && ['preparing', 'downloading', 'scanning', 'review', 'discarded', 'complete', 'cancelled', 'error'].includes(String(value.state))
+    && (DOWNLOAD_STATES as readonly string[]).includes(String(value.state))
     && typeof value.createdAt === 'number' && Number.isFinite(value.createdAt) && typeof value.incognito === 'boolean';
 }
 interface LocalSender { id?: string | undefined; url?: string | undefined; tab?: { id?: number | undefined } | undefined; }

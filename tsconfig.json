@@ -9,9 +9,21 @@
     "useUnknownInCatchVariables": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["chrome", "node"],
-    "skipLibCheck": true
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "chrome",
+      "node"
+    ],
+    "skipLibCheck": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
-  "include": ["src/**/*.ts", "tests/*.test.ts"]
+  "include": [
+    "src/**/*.ts",
+    "tests/*.test.ts"
+  ]
 }

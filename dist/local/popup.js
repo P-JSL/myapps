@@ -3,6 +3,69 @@ function record(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+// src/local/model.ts
+var SCOPE = "my-video-app/local";
+var HISTORY_KEY = "my_video_app_history_v1";
+var MAX_HISTORY = 200;
+var MAX_STREAM_BYTES = 128 * 1024 * 1024;
+var DOWNLOAD_STATES = ["preparing", "downloading", "scanning", "review", "discarded", "complete", "cancelled", "error"];
+var ACTIVE_HISTORY_STATES = ["preparing", "downloading", "scanning", "review"];
+function isActiveHistoryState(state) {
+  return ACTIVE_HISTORY_STATES.includes(state);
+}
+function retainHistory(rows2) {
+  const sorted = [...rows2].sort((a, b) => b.createdAt - a.createdAt);
+  const active = (row) => isActiveHistoryState(row.state);
+  return [...sorted.filter(active), ...sorted.filter((row) => !active(row))].slice(0, MAX_HISTORY);
+}
+function isHistory(value) {
+  return record(value) && typeof value.id === "string" && /^[a-f0-9-]{36}$/.test(value.id) && typeof value.url === "string" && typeof value.filename === "string" && ["file", "hls", "dash"].includes(String(value.kind)) && DOWNLOAD_STATES.includes(String(value.state)) && typeof value.createdAt === "number" && Number.isFinite(value.createdAt) && typeof value.incognito === "boolean";
+}
+
+// src/shared/media.ts
+var MEDIA_FILE_MIME = Object.freeze({
+  mp4: "video/mp4",
+  m4a: "audio/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  mkv: "video/x-matroska",
+  avi: "video/x-msvideo",
+  ogg: "audio/ogg",
+  wav: "audio/wav",
+  flac: "audio/flac",
+  mp3: "audio/mpeg",
+  aac: "audio/aac"
+});
+var PROCESSING_MIME = Object.freeze({
+  mp4: MEDIA_FILE_MIME.mp4,
+  webm: MEDIA_FILE_MIME.webm,
+  mkv: MEDIA_FILE_MIME.mkv,
+  mp3: MEDIA_FILE_MIME.mp3,
+  m4a: MEDIA_FILE_MIME.m4a,
+  wav: MEDIA_FILE_MIME.wav,
+  png: "image/png"
+});
+var VIDEO_FORMATS = Object.freeze(["mp4", "webm", "mkv"]);
+var AUDIO_FORMATS = Object.freeze(["mp3", "m4a", "wav"]);
+var MERGE_FORMATS = Object.freeze(["mp4", "mkv"]);
+var QUALITIES = Object.freeze(["highest", "2160", "1080", "720", "480"]);
+var DOWNLOAD_OUTPUTS = Object.freeze(["original", "mp3", "m4a"]);
+var ENCODER_ARGUMENTS = Object.freeze({
+  h264: Object.freeze(["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"]),
+  vp8: Object.freeze(["-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "4", "-crf", "10", "-b:v", "4M"]),
+  mp3: Object.freeze(["-c:a", "libmp3lame", "-b:a", "192k"]),
+  aac: Object.freeze(["-c:a", "aac", "-b:a", "192k"]),
+  pcm16: Object.freeze(["-c:a", "pcm_s16le"]),
+  opus: Object.freeze(["-c:a", "libopus", "-b:a", "192k"])
+});
+
+// src/local/preferences.ts
+function downloadOptions(value) {
+  if (value === void 0) return { quality: "highest", output: "original" };
+  if (!record(value) || !QUALITIES.includes(value.quality) || !DOWNLOAD_OUTPUTS.includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+  return { quality: value.quality, output: value.output };
+}
+
 // src/upscale/policy.ts
 var MAX_INPUT_BYTES = 256 * 1024 * 1024;
 var MAX_QUEUE_BYTES = 512 * 1024 * 1024;
@@ -17,29 +80,6 @@ function isJob(value) {
   if (!value || typeof value !== "object") return false;
   const v = value;
   return isJobId(v.id) && typeof v.filename === "string" && v.filename.length <= 240 && Number.isSafeInteger(v.size) && v.size > 0 && v.size <= MAX_INPUT_BYTES && typeof v.createdAt === "number" && Number.isFinite(v.createdAt) && (v.downloadId === void 0 || Number.isSafeInteger(v.downloadId) && v.downloadId >= 0);
-}
-
-// src/local/model.ts
-var SCOPE = "my-video-app/local";
-var HISTORY_KEY = "my_video_app_history_v1";
-var MAX_HISTORY = 200;
-var MAX_STREAM_BYTES = 128 * 1024 * 1024;
-var ACTIVE_HISTORY_STATES = ["preparing", "downloading", "scanning", "review"];
-function retainHistory(rows2) {
-  const sorted = [...rows2].sort((a, b) => b.createdAt - a.createdAt);
-  const active = (row) => ACTIVE_HISTORY_STATES.includes(row.state);
-  return [...sorted.filter(active), ...sorted.filter((row) => !active(row))].slice(0, MAX_HISTORY);
-}
-function isHistory(value) {
-  return record(value) && typeof value.id === "string" && /^[a-f0-9-]{36}$/.test(value.id) && typeof value.url === "string" && typeof value.filename === "string" && ["file", "hls", "dash"].includes(String(value.kind)) && ["preparing", "downloading", "scanning", "review", "discarded", "complete", "cancelled", "error"].includes(String(value.state)) && typeof value.createdAt === "number" && Number.isFinite(value.createdAt) && typeof value.incognito === "boolean";
-}
-
-// src/local/preferences.ts
-var QUALITIES = ["highest", "2160", "1080", "720", "480"];
-function downloadOptions(value) {
-  if (value === void 0) return { quality: "highest", output: "original" };
-  if (!record(value) || !QUALITIES.includes(value.quality) || !["original", "mp3", "m4a"].includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
-  return { quality: value.quality, output: value.output };
 }
 
 // src/data/database.ts
@@ -177,13 +217,9 @@ function createAppStorage(options = {}) {
       tx.onabort = () => reject(transactionErrors.get(tx) ?? tx.error ?? new Error("\uB85C\uCEEC DB \uD2B8\uB79C\uC7AD\uC158\uC744 \uC644\uB8CC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."));
       tx.onerror = () => {
       };
-      try {
-        start(tx, (value) => {
-          result = value;
-        });
-      } catch (error) {
-        abort(tx, error);
-      }
+      guarded(tx, () => start(tx, (value) => {
+        result = value;
+      }));
     });
   }
   function guarded(tx, run) {
@@ -605,7 +641,7 @@ var preferencesReady = (async () => {
   }
 })();
 function activeDownload(item) {
-  return currentHistory.some((entry) => entry.url === item.url && ACTIVE_HISTORY_STATES.includes(entry.state) && (entry.options?.quality ?? "highest") === selectedOptions.quality && (entry.options?.output ?? "original") === selectedOptions.output);
+  return currentHistory.some((entry) => entry.url === item.url && isActiveHistoryState(entry.state) && (entry.options?.quality ?? "highest") === selectedOptions.quality && (entry.options?.output ?? "original") === selectedOptions.output);
 }
 function mediaDetail(item) {
   let host = "";

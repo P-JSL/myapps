@@ -1,12 +1,12 @@
 import { record } from '../security/validation.ts';
+import { DOWNLOAD_OUTPUTS, QUALITIES, type DownloadOutput, type Quality } from '../shared/media.ts';
 
-export const QUALITIES = ['highest', '2160', '1080', '720', '480'] as const;
-export type Quality = typeof QUALITIES[number];
-export type DownloadOutput = 'original' | 'mp3' | 'm4a';
+export { QUALITIES } from '../shared/media.ts';
+export type { DownloadOutput, Quality } from '../shared/media.ts';
 export interface DownloadOptions { quality: Quality; output: DownloadOutput; }
 export function downloadOptions(value?: unknown): DownloadOptions {
   if (value === undefined) return { quality: 'highest', output: 'original' };
-  if (!record(value) || !QUALITIES.includes(value.quality as Quality) || !['original', 'mp3', 'm4a'].includes(String(value.output))) throw new Error('다운로드 화질 또는 저장 형식이 올바르지 않습니다.');
+  if (!record(value) || !QUALITIES.includes(value.quality as Quality) || !DOWNLOAD_OUTPUTS.includes(String(value.output) as DownloadOutput)) throw new Error('다운로드 화질 또는 저장 형식이 올바르지 않습니다.');
   return { quality: value.quality as Quality, output: value.output as DownloadOutput };
 }
 /** Prefer actual resolution, then bandwidth; a ceiling never invents a missing rendition. */

@@ -23,6 +23,13 @@ let worker: Worker | undefined;
 let watchdog: ReturnType<typeof setTimeout> | undefined;
 let output: { url: string; filename: string } | undefined;
 let offerTouched = false;
+const MODE_HINTS: Readonly<Record<string, string>> = Object.freeze({
+  upscale: 'Lanczos 2x/4x 보간입니다. AI 복원은 아닙니다. 영상은 MP4(H.264/AAC), 이미지는 PNG로 저장합니다.',
+  convert: 'MP4·MKV는 H.264/AAC, WebM은 VP8/Opus로 변환합니다. 선택 높이는 상한이며 작은 원본을 확대하지 않습니다.',
+  audio: '영상 또는 오디오의 첫 음성 트랙을 저장합니다. MP3/M4A는 192kbps로 인코딩하며 WAV는 원본에서 디코딩한 PCM입니다.',
+  merge: '영상 파일과 별도 음성 파일을 선택하세요. 영상의 기존 음성 대신 선택한 파일의 첫 음성 트랙을 사용합니다.',
+});
+const MODE_START_LABELS: Readonly<Record<string, string>> = Object.freeze({ upscale: '확대 시작', convert: '영상 변환', audio: '오디오 만들기', merge: '병합 시작' });
 
 if (isPrivate) {
   offer.checked = false; offer.disabled = true;
@@ -49,9 +56,8 @@ function changeMode() {
   if (worker) return;
   releaseOutput(); progress.value = 0;
   for (const name of ['upscale', 'convert', 'audio', 'merge']) element(`${name}-settings`).hidden = mode.value !== name;
-  const hints: Record<string, string> = { upscale: 'Lanczos 2x/4x 보간입니다. AI 복원은 아닙니다. 영상은 MP4(H.264/AAC), 이미지는 PNG로 저장합니다.', convert: 'MP4·MKV는 H.264/AAC, WebM은 VP8/Opus로 변환합니다. 선택 높이는 상한이며 작은 원본을 확대하지 않습니다.', audio: '영상 또는 오디오의 첫 음성 트랙을 저장합니다. MP3/M4A는 192kbps로 인코딩하며 WAV는 원본에서 디코딩한 PCM입니다.', merge: '영상 파일과 별도 음성 파일을 선택하세요. 영상의 기존 음성 대신 선택한 파일의 첫 음성 트랙을 사용합니다.' };
-  element('mode-hint').textContent = hints[mode.value] ?? '';
-  start.textContent = ({ upscale: '확대 시작', convert: '영상 변환', audio: '오디오 만들기', merge: '병합 시작' } as Record<string, string>)[mode.value] ?? '시작';
+  element('mode-hint').textContent = MODE_HINTS[mode.value] ?? '';
+  start.textContent = MODE_START_LABELS[mode.value] ?? '시작';
   start.disabled = !input || (mode.value === 'merge' && !audioInput.files?.[0]);
   status.textContent = '파일과 처리 설정을 선택한 뒤 시작하세요.';
 }

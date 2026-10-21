@@ -1,12 +1,12 @@
 import { record } from '../security/validation.ts';
-import { appStorage } from '../data/database.ts';
+import { appStorage, DOWNLOAD_OPTIONS_KEY } from '../data/database.ts';
 import { SCOPE, isHistory, type MediaItem, type HistoryItem } from './model.ts';
 import { downloadOptions } from './preferences.ts';
 import { transport, transportLabel } from './transport.ts';
+import { HISTORY_STATE_LABELS, PREPARATION_STAGE_LABELS, SECURITY_STATUS_LABELS } from './labels.ts';
 
 function node<T extends HTMLElement>(id: string): T { const element = document.getElementById(id); if (!element) throw new Error(`Missing ${id}`); return element as T; }
 const status = node('status');
-const DOWNLOAD_OPTIONS_KEY = 'my_video_app_download_options_v1';
 let refreshing = false;
 let hasError = false;
 let preferencesTouched = false;
@@ -118,9 +118,6 @@ function mediaRow(item: MediaItem) {
   controls.append(button('다운로드', async () => { await preferencesReady; await request('download', { id: item.id, options: options() }); status.textContent = '파일을 준비하고 있습니다. 기록 탭에서 진행 상태를 확인하세요.'; }, false, 'download'));
   row.append(kind, title, source, controls); return row;
 }
-const stateLabels = { preparing: '파일 준비 중', downloading: '다운로드 중', scanning: '로컬 백신 검사 중', review: '보안 검사 확인 필요', discarded: '파일 삭제됨', complete: '완료', cancelled: '취소됨', error: '실패' };
-const securityLabels = { scanning: '로컬 백신: 검사 중', clean: '로컬 백신: 위협 미탐지', infected: '로컬 백신: 위협 탐지', unavailable: '로컬 백신: 연결되지 않음', error: '로컬 백신: 검사 실패', 'chrome-warning': 'Chrome 다운로드 경고' };
-
 function closeReview(defer = false) {
   if (defer && activeReview?.security?.token) deferredReviews.add(activeReview.security.token);
   if (securityDialog.open) securityDialog.close();
@@ -142,7 +139,7 @@ function openReview(item: HistoryItem) {
   const security = item.security;
   const chromeWarning = security.status === 'chrome-warning';
   node('security-filename').textContent = item.filename;
-  node('security-result').textContent = securityLabels[security.status];
+  node('security-result').textContent = SECURITY_STATUS_LABELS[security.status];
   node('security-explanation').textContent = chromeWarning
     ? 'Chrome이 다운로드에 위험을 표시했습니다. Chrome 다운로드 화면에서 경고를 확인하세요. 이 앱은 Chrome의 경고를 자동으로 해제하지 않으며, 확인 전에는 완료 처리나 업스케일링을 진행하지 않습니다.'
     : '파일은 이미 디스크에 저장되어 있습니다. 확인 전에는 앱에서 완료 처리나 업스케일링을 진행하지 않습니다. 위협을 탐지했거나 검사를 완료하지 못한 파일은 삭제를 권장합니다. 미탐지 결과도 파일의 안전을 보장하지 않습니다.';
@@ -183,9 +180,9 @@ async function securityAction(type: string, extra: Record<string, unknown> = {})
 }
 function historyRow(item: HistoryItem) {
   const row = document.createElement('li'); row.dataset.rowId = item.id; const title = document.createElement('h3'); title.textContent = item.filename;
-  const info = document.createElement('p'); info.textContent = `${stateLabels[item.state]} · ${new Date(item.createdAt).toLocaleString('ko-KR')}`;
+  const info = document.createElement('p'); info.textContent = `${HISTORY_STATE_LABELS[item.state]} · ${new Date(item.createdAt).toLocaleString('ko-KR')}`;
   if (item.state === 'preparing' && item.preparation) {
-    const label = { queued: '준비 대기 중', fetching: '파일 받는 중', processing: '미디어 합치는 중', saving: '저장 준비 중' }[item.preparation.stage];
+    const label = PREPARATION_STAGE_LABELS[item.preparation.stage];
     if (label) info.textContent += ` · ${label}`;
     if (typeof item.preparation.progress === 'number' && Number.isFinite(item.preparation.progress)) info.textContent += ` ${Math.round(Math.max(0, Math.min(1, item.preparation.progress)) * 100)}%`;
   }
@@ -195,7 +192,7 @@ function historyRow(item: HistoryItem) {
   }
   row.append(title, info);
   const security = document.createElement('p'); security.className = 'security-summary';
-  security.textContent = item.security ? securityLabels[item.security.status] : '검사 기록 없음';
+  security.textContent = item.security ? SECURITY_STATUS_LABELS[item.security.status] : '검사 기록 없음';
   if (item.security?.engine) security.textContent += ` · ${item.security.engine}`;
   if (item.security?.decision === 'keep') security.textContent += ' · 위험 안내 확인 후 사용자가 유지함';
   if (item.security?.decision === 'delete') security.textContent += ' · 사용자가 파일 삭제를 선택함';

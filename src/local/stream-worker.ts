@@ -5,6 +5,7 @@ import { downloadAssets } from './assets.ts';
 import type { StreamPlan } from './hls.ts';
 import { downloadOptions } from './preferences.ts';
 import { ownedTransferBuffer } from '../security/transfer.ts';
+import { ENCODER_ARGUMENTS } from '../shared/media.ts';
 
 const scope = globalThis as unknown as { onmessage: ((event: MessageEvent<unknown>) => void) | null; postMessage(value: unknown, transfer?: Transferable[]): void };
 let busy = false;
@@ -51,7 +52,7 @@ scope.onmessage = async event => {
     const outputName = `output.${options.output === 'original' ? 'mp4' : options.output}`;
     if (options.output === 'original') args.push('-map', '0:v:0?', '-map', plan.inputs.length === 2 ? '1:a:0?' : '0:a:0?', '-c', 'copy', '-movflags', '+faststart');
     else {
-      args.push('-map', plan.inputs.length === 2 ? '1:a:0' : '0:a:0', '-vn', '-c:a', options.output === 'mp3' ? 'libmp3lame' : 'aac', '-b:a', '192k', '-threads', '1');
+      args.push('-map', plan.inputs.length === 2 ? '1:a:0' : '0:a:0', '-vn', ...(options.output === 'mp3' ? ENCODER_ARGUMENTS.mp3 : ENCODER_ARGUMENTS.aac), '-threads', '1');
       if (options.output === 'm4a') args.push('-movflags', '+faststart');
     }
     args.push('-fs', String(MAX_STREAM_BYTES), '-y', outputName);

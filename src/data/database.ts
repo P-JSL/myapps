@@ -220,11 +220,7 @@ export function createAppStorage(options: DatabaseOptions = {}): AppStorage {
       tx.onerror = () => {
         // The abort event retains the original IndexedDB request error.
       };
-      try {
-        start(tx, value => { result = value; });
-      } catch (error) {
-        abort(tx, error);
-      }
+      guarded(tx, () => start(tx, value => { result = value; }));
     });
   }
 

@@ -35,33 +35,9 @@ function boundedData(value, maxChars = 16 * 1024 * 1024) {
   return true;
 }
 
-// src/upscale/policy.ts
-var MAX_INPUT_BYTES = 256 * 1024 * 1024;
-var MAX_QUEUE_BYTES = 512 * 1024 * 1024;
-var MAX_JOBS = 4;
-var RETENTION_MS = 24 * 60 * 60 * 1e3;
-var DIRECTORY = "vdh-upscale-v1";
-var JOBS_KEY = "vdh_upscale_jobs_v1";
-var OFFER_KEY = "vdh_upscale_offer_v1";
-function isJobId(value) {
-  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-function isJob(value) {
-  if (!value || typeof value !== "object") return false;
-  const v = value;
-  return isJobId(v.id) && typeof v.filename === "string" && v.filename.length <= 240 && Number.isSafeInteger(v.size) && v.size > 0 && v.size <= MAX_INPUT_BYTES && typeof v.createdAt === "number" && Number.isFinite(v.createdAt) && (v.downloadId === void 0 || Number.isSafeInteger(v.downloadId) && v.downloadId >= 0);
-}
+// src/shared/filename.ts
 function safeBasename(input) {
   return (input.split(/[\\/]/).at(-1) ?? "media").replace(/[\x00-\x1f\x7f<>:"|?*\u202a-\u202e\u2066-\u2069]/g, "_").replace(/[. ]+$/g, "").slice(0, 180) || "media";
-}
-function sniffMedia(bytes) {
-  const ascii2 = (start, count) => String.fromCharCode(...bytes.subarray(start, start + count));
-  if (bytes[0] === 137 && ascii2(1, 3) === "PNG" && bytes[4] === 13 && bytes[5] === 10 && bytes[6] === 26 && bytes[7] === 10) return "image";
-  if (bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return "image";
-  if (ascii2(0, 4) === "RIFF" && ascii2(8, 4) === "WEBP") return "image";
-  if (ascii2(4, 4) === "ftyp" || ascii2(0, 4) === "RIFF" && ascii2(8, 4) === "AVI ") return "video";
-  if (bytes[0] === 26 && bytes[1] === 69 && bytes[2] === 223 && bytes[3] === 163) return "video";
-  return void 0;
 }
 
 // src/local/model.ts
@@ -71,7 +47,11 @@ var HISTORY_KEY = "my_video_app_history_v1";
 var MAX_HISTORY = 200;
 var MAX_MEDIA_PER_TAB = 200;
 var MAX_STREAM_BYTES = 128 * 1024 * 1024;
+var DOWNLOAD_STATES = ["preparing", "downloading", "scanning", "review", "discarded", "complete", "cancelled", "error"];
 var ACTIVE_HISTORY_STATES = ["preparing", "downloading", "scanning", "review"];
+function isActiveHistoryState(state) {
+  return ACTIVE_HISTORY_STATES.includes(state);
+}
 var MediaCatalog = class {
   byTab = /* @__PURE__ */ new Map();
   byId = /* @__PURE__ */ new Map();
@@ -123,7 +103,7 @@ var MediaCatalog = class {
 };
 function retainHistory(rows) {
   const sorted = [...rows].sort((a, b) => b.createdAt - a.createdAt);
-  const active = (row) => ACTIVE_HISTORY_STATES.includes(row.state);
+  const active = (row) => isActiveHistoryState(row.state);
   return [...sorted.filter(active), ...sorted.filter((row) => !active(row))].slice(0, MAX_HISTORY);
 }
 function mediaURL(value, base) {
@@ -153,7 +133,7 @@ function filenameFor(media2) {
   return `${base || "media"}.${ext}`;
 }
 function isHistory(value) {
-  return record(value) && typeof value.id === "string" && /^[a-f0-9-]{36}$/.test(value.id) && typeof value.url === "string" && typeof value.filename === "string" && ["file", "hls", "dash"].includes(String(value.kind)) && ["preparing", "downloading", "scanning", "review", "discarded", "complete", "cancelled", "error"].includes(String(value.state)) && typeof value.createdAt === "number" && Number.isFinite(value.createdAt) && typeof value.incognito === "boolean";
+  return record(value) && typeof value.id === "string" && /^[a-f0-9-]{36}$/.test(value.id) && typeof value.url === "string" && typeof value.filename === "string" && ["file", "hls", "dash"].includes(String(value.kind)) && DOWNLOAD_STATES.includes(String(value.state)) && typeof value.createdAt === "number" && Number.isFinite(value.createdAt) && typeof value.incognito === "boolean";
 }
 function trustedUI(sender, id, base) {
   if (sender.id !== id || typeof sender.url !== "string") return false;
@@ -174,12 +154,74 @@ function trustedCapture(sender, id) {
   }
 }
 
+// src/shared/media.ts
+var MEDIA_FILE_MIME = Object.freeze({
+  mp4: "video/mp4",
+  m4a: "audio/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  mkv: "video/x-matroska",
+  avi: "video/x-msvideo",
+  ogg: "audio/ogg",
+  wav: "audio/wav",
+  flac: "audio/flac",
+  mp3: "audio/mpeg",
+  aac: "audio/aac"
+});
+var PROCESSING_MIME = Object.freeze({
+  mp4: MEDIA_FILE_MIME.mp4,
+  webm: MEDIA_FILE_MIME.webm,
+  mkv: MEDIA_FILE_MIME.mkv,
+  mp3: MEDIA_FILE_MIME.mp3,
+  m4a: MEDIA_FILE_MIME.m4a,
+  wav: MEDIA_FILE_MIME.wav,
+  png: "image/png"
+});
+var VIDEO_FORMATS = Object.freeze(["mp4", "webm", "mkv"]);
+var AUDIO_FORMATS = Object.freeze(["mp3", "m4a", "wav"]);
+var MERGE_FORMATS = Object.freeze(["mp4", "mkv"]);
+var QUALITIES = Object.freeze(["highest", "2160", "1080", "720", "480"]);
+var DOWNLOAD_OUTPUTS = Object.freeze(["original", "mp3", "m4a"]);
+var ENCODER_ARGUMENTS = Object.freeze({
+  h264: Object.freeze(["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"]),
+  vp8: Object.freeze(["-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "4", "-crf", "10", "-b:v", "4M"]),
+  mp3: Object.freeze(["-c:a", "libmp3lame", "-b:a", "192k"]),
+  aac: Object.freeze(["-c:a", "aac", "-b:a", "192k"]),
+  pcm16: Object.freeze(["-c:a", "pcm_s16le"]),
+  opus: Object.freeze(["-c:a", "libopus", "-b:a", "192k"])
+});
+
 // src/local/preferences.ts
-var QUALITIES = ["highest", "2160", "1080", "720", "480"];
 function downloadOptions(value) {
   if (value === void 0) return { quality: "highest", output: "original" };
-  if (!record(value) || !QUALITIES.includes(value.quality) || !["original", "mp3", "m4a"].includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+  if (!record(value) || !QUALITIES.includes(value.quality) || !DOWNLOAD_OUTPUTS.includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
   return { quality: value.quality, output: value.output };
+}
+
+// src/upscale/policy.ts
+var MAX_INPUT_BYTES = 256 * 1024 * 1024;
+var MAX_QUEUE_BYTES = 512 * 1024 * 1024;
+var MAX_JOBS = 4;
+var RETENTION_MS = 24 * 60 * 60 * 1e3;
+var DIRECTORY = "vdh-upscale-v1";
+var JOBS_KEY = "vdh_upscale_jobs_v1";
+var OFFER_KEY = "vdh_upscale_offer_v1";
+function isJobId(value) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+function isJob(value) {
+  if (!value || typeof value !== "object") return false;
+  const v = value;
+  return isJobId(v.id) && typeof v.filename === "string" && v.filename.length <= 240 && Number.isSafeInteger(v.size) && v.size > 0 && v.size <= MAX_INPUT_BYTES && typeof v.createdAt === "number" && Number.isFinite(v.createdAt) && (v.downloadId === void 0 || Number.isSafeInteger(v.downloadId) && v.downloadId >= 0);
+}
+function sniffMedia(bytes) {
+  const ascii2 = (start, count) => String.fromCharCode(...bytes.subarray(start, start + count));
+  if (bytes[0] === 137 && ascii2(1, 3) === "PNG" && bytes[4] === 13 && bytes[5] === 10 && bytes[6] === 26 && bytes[7] === 10) return "image";
+  if (bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return "image";
+  if (ascii2(0, 4) === "RIFF" && ascii2(8, 4) === "WEBP") return "image";
+  if (ascii2(4, 4) === "ftyp" || ascii2(0, 4) === "RIFF" && ascii2(8, 4) === "AVI ") return "video";
+  if (bytes[0] === 26 && bytes[1] === 69 && bytes[2] === 223 && bytes[3] === 163) return "video";
+  return void 0;
 }
 
 // src/data/database.ts
@@ -317,13 +359,9 @@ function createAppStorage(options = {}) {
       tx.onabort = () => reject(transactionErrors.get(tx) ?? tx.error ?? new Error("\uB85C\uCEEC DB \uD2B8\uB79C\uC7AD\uC158\uC744 \uC644\uB8CC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."));
       tx.onerror = () => {
       };
-      try {
-        start(tx, (value) => {
-          result = value;
-        });
-      } catch (error) {
-        abort(tx, error);
-      }
+      guarded(tx, () => start(tx, (value) => {
+        result = value;
+      }));
     });
   }
   function guarded(tx, run) {
@@ -907,19 +945,6 @@ function transport(value) {
 }
 
 // src/local/media-file.ts
-var MIME_BY_EXTENSION = {
-  mp4: "video/mp4",
-  m4a: "audio/mp4",
-  mov: "video/quicktime",
-  webm: "video/webm",
-  mkv: "video/x-matroska",
-  avi: "video/x-msvideo",
-  ogg: "audio/ogg",
-  wav: "audio/wav",
-  flac: "audio/flac",
-  mp3: "audio/mpeg",
-  aac: "audio/aac"
-};
 var InvalidMediaFileError = class extends Error {
   constructor() {
     super("\uC2E4\uC81C \uC601\uC0C1\xB7\uC624\uB514\uC624 \uD30C\uC77C\uC774 \uC544\uB2D9\uB2C8\uB2E4. HTML\xB7\uD14D\uC2A4\uD2B8\xB7\uC774\uBBF8\uC9C0 \uB300\uC2E0 \uC6D0\uBCF8 \uBBF8\uB514\uC5B4 \uC8FC\uC18C\uB97C \uC0AC\uC6A9\uD558\uC138\uC694.");
@@ -929,10 +954,10 @@ var InvalidMediaFileError = class extends Error {
 function isMediaFileFormat(value) {
   if (!value || typeof value !== "object") return false;
   const actual = value;
-  return typeof actual.extension === "string" && Object.hasOwn(MIME_BY_EXTENSION, actual.extension) && (actual.mime === MIME_BY_EXTENSION[actual.extension] || actual.extension === "ogg" && actual.mime === "video/ogg");
+  return typeof actual.extension === "string" && Object.hasOwn(MEDIA_FILE_MIME, actual.extension) && (actual.mime === MEDIA_FILE_MIME[actual.extension] || actual.extension === "ogg" && actual.mime === "video/ogg");
 }
 function format(extension) {
-  return { mime: MIME_BY_EXTENSION[extension], extension };
+  return { mime: MEDIA_FILE_MIME[extension], extension };
 }
 function ascii(bytes, offset, length) {
   return String.fromCharCode(...bytes.subarray(offset, offset + length));
@@ -1155,45 +1180,66 @@ function readinessResponse(value, requestId) {
   if (result.status === "ready" && !result.engine) throw new Error("\uC5F0\uACB0\uD560 \uBC31\uC2E0 \uC5D4\uC9C4\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
   return result;
 }
+var readinessProtocol = {
+  action: "status",
+  timeoutMs: 6e4,
+  response: readinessResponse,
+  failure: (status, message) => ({ status, checkedAt: Date.now(), message }),
+  malformedMessage: "\uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uC758 \uC0C1\uD0DC \uC751\uB2F5\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uCD5C\uC2E0 \uB3C4\uC6B0\uBBF8\uB85C \uB2E4\uC2DC \uC124\uCE58\uD558\uC138\uC694.",
+  disconnectedMessage: "\uB85C\uCEEC \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8 \uC5F0\uACB0\uC774 \uC885\uB8CC\uB410\uC2B5\uB2C8\uB2E4. \uC124\uCE58 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694.",
+  timeoutMessage: "\uBC31\uC2E0 \uC5F0\uACB0 \uC0C1\uD0DC \uD655\uC778\uC774 \uC81C\uD55C \uC2DC\uAC04\uC744 \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4."
+};
+var scanProtocol = {
+  action: "scan",
+  timeoutMs: 24e4,
+  response: scanResponse,
+  failure: (status, message) => ({ status, message }),
+  malformedMessage: "\uBC31\uC2E0 \uC751\uB2F5\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC544 \uAC80\uC0AC \uC644\uB8CC\uB85C \uCC98\uB9AC\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.",
+  disconnectedMessage: "\uB85C\uCEEC \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uAC00 \uC5F0\uACB0\uC744 \uC885\uB8CC\uD588\uC2B5\uB2C8\uB2E4. \uC124\uCE58 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694.",
+  timeoutMessage: "\uBC31\uC2E0 \uAC80\uC0AC\uAC00 \uC81C\uD55C \uC2DC\uAC04\uC744 \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4. \uAC80\uC0AC\uB418\uC9C0 \uC54A\uC740 \uD30C\uC77C\uC785\uB2C8\uB2E4."
+};
+function nativeRequest(protocol, payload) {
+  return new Promise((resolve) => {
+    let port;
+    let timer;
+    let settled = false;
+    const finish2 = (result) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      try {
+        port?.disconnect();
+      } catch {
+      }
+      resolve(result);
+    };
+    try {
+      port = chrome.runtime.connectNative(ANTIVIRUS_HOST);
+      const requestId = crypto.randomUUID();
+      port.onMessage.addListener((value) => {
+        try {
+          finish2(protocol.response(value, requestId));
+        } catch {
+          finish2(protocol.failure("error", protocol.malformedMessage));
+        }
+      });
+      port.onDisconnect.addListener(() => {
+        const message = chrome.runtime.lastError?.message;
+        finish2(protocol.failure("unavailable", message ? `\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0 \uC2E4\uD328: ${message.slice(0, 300)}` : protocol.disconnectedMessage));
+      });
+      timer = setTimeout(() => finish2(protocol.failure("error", protocol.timeoutMessage)), protocol.timeoutMs);
+      port.postMessage({ version: 1, action: protocol.action, requestId, ...payload });
+    } catch {
+      finish2(protocol.failure("unavailable", "\uB85C\uCEEC \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uC5D0 \uC5F0\uACB0\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uC124\uCE58\uC640 \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694."));
+    }
+  });
+}
 var readinessPending;
 function probeAntivirus() {
   if (readinessPending) return readinessPending;
   readinessPending = (async () => {
     if (!await chrome.permissions.contains({ permissions: ["nativeMessaging"] })) return { status: "unavailable", checkedAt: Date.now(), message: "\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8 \uC124\uCE58 \uD6C4 \u2018\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0\u2019\uC744 \uB20C\uB7EC \uC8FC\uC138\uC694." };
-    return new Promise((resolve) => {
-      let port;
-      let timer;
-      let settled = false;
-      const finish2 = (result) => {
-        if (settled) return;
-        settled = true;
-        if (timer) clearTimeout(timer);
-        try {
-          port?.disconnect();
-        } catch {
-        }
-        resolve(result);
-      };
-      try {
-        port = chrome.runtime.connectNative(ANTIVIRUS_HOST);
-        const requestId = crypto.randomUUID();
-        port.onMessage.addListener((value) => {
-          try {
-            finish2(readinessResponse(value, requestId));
-          } catch {
-            finish2({ status: "error", checkedAt: Date.now(), message: "\uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uC758 \uC0C1\uD0DC \uC751\uB2F5\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uCD5C\uC2E0 \uB3C4\uC6B0\uBBF8\uB85C \uB2E4\uC2DC \uC124\uCE58\uD558\uC138\uC694." });
-          }
-        });
-        port.onDisconnect.addListener(() => {
-          const message = chrome.runtime.lastError?.message;
-          finish2({ status: "unavailable", checkedAt: Date.now(), message: message ? `\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0 \uC2E4\uD328: ${message.slice(0, 300)}` : "\uB85C\uCEEC \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8 \uC5F0\uACB0\uC774 \uC885\uB8CC\uB410\uC2B5\uB2C8\uB2E4. \uC124\uCE58 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694." });
-        });
-        timer = setTimeout(() => finish2({ status: "error", checkedAt: Date.now(), message: "\uBC31\uC2E0 \uC5F0\uACB0 \uC0C1\uD0DC \uD655\uC778\uC774 \uC81C\uD55C \uC2DC\uAC04\uC744 \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4." }), 6e4);
-        port.postMessage({ version: 1, action: "status", requestId });
-      } catch {
-        finish2({ status: "unavailable", checkedAt: Date.now(), message: "\uB85C\uCEEC \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uC5D0 \uC5F0\uACB0\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uC124\uCE58\uC640 \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694." });
-      }
-    });
+    return nativeRequest(readinessProtocol);
   })().finally(() => {
     readinessPending = void 0;
   });
@@ -1202,40 +1248,7 @@ function probeAntivirus() {
 async function scanFile(path) {
   return navigator.locks.request("my-video-app-antivirus", async () => {
     if (!await chrome.permissions.contains({ permissions: ["nativeMessaging"] })) return { status: "unavailable", message: "\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8 \uC124\uCE58 \uD6C4 \u2018\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0\u2019\uC744 \uB20C\uB7EC \uC8FC\uC138\uC694." };
-    return new Promise((resolve) => {
-      let port;
-      let timer;
-      let settled = false;
-      const finish2 = (result) => {
-        if (settled) return;
-        settled = true;
-        if (timer) clearTimeout(timer);
-        try {
-          port?.disconnect();
-        } catch {
-        }
-        resolve(result);
-      };
-      try {
-        port = chrome.runtime.connectNative(ANTIVIRUS_HOST);
-        const requestId = crypto.randomUUID();
-        port.onMessage.addListener((value) => {
-          try {
-            finish2(scanResponse(value, requestId));
-          } catch {
-            finish2({ status: "error", message: "\uBC31\uC2E0 \uC751\uB2F5\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC544 \uAC80\uC0AC \uC644\uB8CC\uB85C \uCC98\uB9AC\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4." });
-          }
-        });
-        port.onDisconnect.addListener(() => {
-          const message = chrome.runtime.lastError?.message;
-          finish2({ status: "unavailable", message: message ? `\uB85C\uCEEC \uBC31\uC2E0 \uC5F0\uACB0 \uC2E4\uD328: ${message.slice(0, 300)}` : "\uB85C\uCEEC \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uAC00 \uC5F0\uACB0\uC744 \uC885\uB8CC\uD588\uC2B5\uB2C8\uB2E4. \uC124\uCE58 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694." });
-        });
-        timer = setTimeout(() => finish2({ status: "error", message: "\uBC31\uC2E0 \uAC80\uC0AC\uAC00 \uC81C\uD55C \uC2DC\uAC04\uC744 \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4. \uAC80\uC0AC\uB418\uC9C0 \uC54A\uC740 \uD30C\uC77C\uC785\uB2C8\uB2E4." }), 24e4);
-        port.postMessage({ version: 1, action: "scan", requestId, path });
-      } catch {
-        finish2({ status: "unavailable", message: "\uB85C\uCEEC \uBC31\uC2E0 \uB3C4\uC6B0\uBBF8\uC5D0 \uC5F0\uACB0\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uC124\uCE58\uC640 \uAD8C\uD55C\uC744 \uD655\uC778\uD558\uC138\uC694." });
-      }
-    });
+    return nativeRequest(scanProtocol, { path });
   });
 }
 
@@ -1248,13 +1261,13 @@ var cancelled = /* @__PURE__ */ new Set();
 var finalizing = /* @__PURE__ */ new Set();
 var finalizeAgain = /* @__PURE__ */ new Set();
 var deciding = /* @__PURE__ */ new Set();
-var activeStates = ACTIVE_HISTORY_STATES;
+var trackedDownloadStates = ["downloading", "scanning", "review", "complete"];
 var lastTab;
 var creatingOffscreen;
 async function history() {
   if (chrome.extension.inIncognitoContext) return retainHistory([...privateHistory.values()]);
   const raw = (await appStorage.get(HISTORY_KEY))[HISTORY_KEY];
-  return Array.isArray(raw) ? raw.filter(isHistory).filter((row) => !row.incognito) : [];
+  return Array.isArray(raw) ? raw.filter((row) => isHistory(row) && !row.incognito) : [];
 }
 function updatePrivate(item) {
   const retained = retainHistory([item, ...privateHistory.values()].filter((row, index) => index === 0 || row.id !== item.id));
@@ -1346,7 +1359,7 @@ async function finish(download2) {
   }
   finalizing.add(download2.id);
   try {
-    const item = (await history()).find((row) => row.downloadId === download2.id && ["downloading", "scanning", "review", "complete"].includes(row.state));
+    const item = (await history()).find((row) => row.downloadId === download2.id && trackedDownloadStates.includes(row.state));
     if (!item) return;
     const current = (await chrome.downloads.search({ id: download2.id }))[0];
     if (!current) {
@@ -1356,7 +1369,7 @@ async function finish(download2) {
     const danger = chromeWarning(current.danger);
     if (danger) {
       if (item.state === "review" && item.security?.status === "chrome-warning" && item.security.danger === danger) return;
-      const next2 = await change(item.id, (row) => ["downloading", "scanning", "review", "complete"].includes(row.state) ? { ...row, state: "review", security: { status: "chrome-warning", token: crypto.randomUUID(), danger, message: "Chrome\uC774 \uC774 \uD30C\uC77C\uC744 \uACBD\uACE0\uD558\uAC70\uB098 \uAC80\uC0AC \uC911\uC785\uB2C8\uB2E4. Chrome \uB2E4\uC6B4\uB85C\uB4DC \uD654\uBA74\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694." } } : void 0);
+      const next2 = await change(item.id, (row) => trackedDownloadStates.includes(row.state) ? { ...row, state: "review", security: { status: "chrome-warning", token: crypto.randomUUID(), danger, message: "Chrome\uC774 \uC774 \uD30C\uC77C\uC744 \uACBD\uACE0\uD558\uAC70\uB098 \uAC80\uC0AC \uC911\uC785\uB2C8\uB2E4. Chrome \uB2E4\uC6B4\uB85C\uB4DC \uD654\uBA74\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694." } } : void 0);
       await revokeDownloadOffers(current.id).catch(() => {
       });
       if (next2) await reviewNotice(next2);
@@ -1477,7 +1490,7 @@ async function download(item, options = downloadOptions()) {
   const filename = filenameFor(item);
   const entry = { id: crypto.randomUUID(), url: item.url, filename: options.output === "original" ? filename : filename.replace(/\.[^.]+$/, "") + "." + options.output, kind: item.kind, state: "preparing", createdAt: Date.now(), incognito: !!tab.incognito || chrome.extension.inIncognitoContext, options };
   await navigator.locks.request("my-video-app-start", async () => {
-    const active = (await history()).filter((row) => activeStates.includes(row.state));
+    const active = (await history()).filter((row) => isActiveHistoryState(row.state));
     if (active.some((row) => row.url === item.url && (row.options?.quality ?? "highest") === options.quality && (row.options?.output ?? "original") === options.output)) throw new Error("\uAC19\uC740 \uBBF8\uB514\uC5B4\uB97C \uC774\uBBF8 \uCC98\uB9AC\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4.");
     if (active.length >= 8) throw new Error("\uB3D9\uC2DC\uC5D0 \uC900\uBE44\xB7\uB2E4\uC6B4\uB85C\uB4DC\uD558\uB294 \uD30C\uC77C\uC740 \uCD5C\uB300 8\uAC1C\uC785\uB2C8\uB2E4.");
     await update(entry);
@@ -1544,6 +1557,43 @@ async function currentTab() {
   if (tab?.id !== void 0 && tab.url && /^https?:/.test(tab.url)) return tab.id;
   return lastTab ?? Array.from(media.tabIds()).at(-1);
 }
+async function rescanCurrentTab() {
+  const tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true })).find((candidate) => !!candidate.incognito === chrome.extension.inIncognitoContext && candidate.id !== void 0 && typeof candidate.url === "string" && /^https?:/.test(candidate.url));
+  if (tab?.id === void 0 || !tab.url) throw new Error("\uC601\uC0C1\uC774 \uC788\uB294 \uC6F9\uD398\uC774\uC9C0\uB97C \uC5F0 \uB4A4 \uB2E4\uC2DC \uAC10\uC9C0\uD558\uC138\uC694.");
+  const tabId = tab.id;
+  const epoch = discoveryEpochs.get(tabId) ?? {};
+  discoveryEpochs.set(tabId, epoch);
+  const ticket = { id: crypto.randomUUID(), epoch, url: tab.url };
+  rescans.set(tabId, ticket);
+  let timeout;
+  try {
+    const result = await Promise.race([
+      chrome.tabs.sendMessage(tabId, { scope: SCOPE, type: "rescan", rescanId: ticket.id }, { frameId: 0 }),
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("\uD398\uC774\uC9C0\uC758 \uC751\uB2F5\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC0C8\uB85C\uACE0\uCE68\uD55C \uB4A4 \uB2E4\uC2DC \uAC10\uC9C0\uD558\uC138\uC694.")), 3e3);
+      })
+    ]);
+    if (!record(result) || result.ok !== true) throw new Error("\uD398\uC774\uC9C0\uB97C \uC0C8\uB85C\uACE0\uCE68\uD55C \uB4A4 \uB2E4\uC2DC \uAC10\uC9C0\uD558\uC138\uC694.");
+    const current = await chrome.tabs.get(tabId);
+    if (rescans.get(tabId) !== ticket || ticket.epoch !== discoveryEpochs.get(tabId) || current.url !== ticket.url || !!current.incognito !== chrome.extension.inIncognitoContext) {
+      throw new Error("\uD398\uC774\uC9C0\uAC00 \uBCC0\uACBD\uB418\uC5B4 \uAC10\uC9C0 \uACB0\uACFC\uB97C \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+  } finally {
+    clearTimeout(timeout);
+    if (rescans.get(tabId) === ticket) rescans.delete(tabId);
+  }
+  return tabId;
+}
+async function listMedia(tabId) {
+  const items = tabId === void 0 ? [] : Array.from(media.items(tabId)).sort((a, b) => b.createdAt - a.createdAt);
+  const rows = await history();
+  const progress = await Promise.all(rows.map(async (row) => {
+    if (row.state !== "downloading" || row.downloadId === void 0) return row;
+    const download2 = (await chrome.downloads.search({ id: row.downloadId }).catch(() => []))[0];
+    return download2 ? { ...row, receivedBytes: download2.bytesReceived, totalBytes: download2.totalBytes } : row;
+  }));
+  return { ok: true, items, history: progress, tabId };
+}
 async function handleLocalMessage(value, sender) {
   if (!record(value) || value.scope !== SCOPE || typeof value.type !== "string" || !boundedData(value, 128 * 1024)) throw new Error("\uC798\uBABB\uB41C \uC694\uCCAD\uC785\uB2C8\uB2E4.");
   if (value.type === "preparing-progress") {
@@ -1591,43 +1641,8 @@ async function handleLocalMessage(value, sender) {
     await chrome.tabs.create({ url: "chrome://downloads/" });
     return { ok: true };
   }
-  if (value.type === "list" || value.type === "rescan") {
-    let tabId;
-    if (value.type === "rescan") {
-      const tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true })).find((candidate) => !!candidate.incognito === chrome.extension.inIncognitoContext && candidate.id !== void 0 && typeof candidate.url === "string" && /^https?:/.test(candidate.url));
-      if (tab?.id === void 0 || !tab.url) throw new Error("\uC601\uC0C1\uC774 \uC788\uB294 \uC6F9\uD398\uC774\uC9C0\uB97C \uC5F0 \uB4A4 \uB2E4\uC2DC \uAC10\uC9C0\uD558\uC138\uC694.");
-      tabId = tab.id;
-      const epoch = discoveryEpochs.get(tabId) ?? {};
-      discoveryEpochs.set(tabId, epoch);
-      const ticket = { id: crypto.randomUUID(), epoch, url: tab.url };
-      rescans.set(tabId, ticket);
-      let timeout;
-      try {
-        const result = await Promise.race([
-          chrome.tabs.sendMessage(tabId, { scope: SCOPE, type: "rescan", rescanId: ticket.id }, { frameId: 0 }),
-          new Promise((_, reject) => {
-            timeout = setTimeout(() => reject(new Error("\uD398\uC774\uC9C0\uC758 \uC751\uB2F5\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC0C8\uB85C\uACE0\uCE68\uD55C \uB4A4 \uB2E4\uC2DC \uAC10\uC9C0\uD558\uC138\uC694.")), 3e3);
-          })
-        ]);
-        if (!record(result) || result.ok !== true) throw new Error("\uD398\uC774\uC9C0\uB97C \uC0C8\uB85C\uACE0\uCE68\uD55C \uB4A4 \uB2E4\uC2DC \uAC10\uC9C0\uD558\uC138\uC694.");
-        const current = await chrome.tabs.get(tabId);
-        if (rescans.get(tabId) !== ticket || ticket.epoch !== discoveryEpochs.get(tabId) || current.url !== ticket.url || !!current.incognito !== chrome.extension.inIncognitoContext) {
-          throw new Error("\uD398\uC774\uC9C0\uAC00 \uBCC0\uACBD\uB418\uC5B4 \uAC10\uC9C0 \uACB0\uACFC\uB97C \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.");
-        }
-      } finally {
-        clearTimeout(timeout);
-        if (rescans.get(tabId) === ticket) rescans.delete(tabId);
-      }
-    } else tabId = await currentTab();
-    const items = tabId === void 0 ? [] : Array.from(media.items(tabId)).sort((a, b) => b.createdAt - a.createdAt);
-    const rows = await history();
-    const progress = await Promise.all(rows.map(async (row) => {
-      if (row.state !== "downloading" || row.downloadId === void 0) return row;
-      const download2 = (await chrome.downloads.search({ id: row.downloadId }).catch(() => []))[0];
-      return download2 ? { ...row, receivedBytes: download2.bytesReceived, totalBytes: download2.totalBytes } : row;
-    }));
-    return { ok: true, items, history: progress, tabId };
-  }
+  if (value.type === "list") return listMedia(await currentTab());
+  if (value.type === "rescan") return listMedia(await rescanCurrentTab());
   if (value.type === "download" && typeof value.id === "string") {
     const item = media.find(value.id);
     if (!item) throw new Error("\uBBF8\uB514\uC5B4\uAC00 \uB9CC\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC6D0\uB798 \uD398\uC774\uC9C0\uB97C \uC0C8\uB85C\uACE0\uCE68\uD558\uC138\uC694.");
@@ -1665,8 +1680,8 @@ async function handleLocalMessage(value, sender) {
   if (value.type === "clear-history") {
     await navigator.locks.request("my-video-app-history", async () => {
       if (chrome.extension.inIncognitoContext) {
-        for (const [id, row] of privateHistory) if (!activeStates.includes(row.state)) privateHistory.delete(id);
-      } else await appStorage.set({ [HISTORY_KEY]: (await history()).filter((row) => activeStates.includes(row.state)) });
+        for (const [id, row] of privateHistory) if (!isActiveHistoryState(row.state)) privateHistory.delete(id);
+      } else await appStorage.set({ [HISTORY_KEY]: (await history()).filter((row) => isActiveHistoryState(row.state)) });
     });
     return { ok: true };
   }
@@ -1750,14 +1765,14 @@ async function setup(restarted = false) {
       await update({ ...item, state: "error", error: "\uBE0C\uB77C\uC6B0\uC800\uAC00 \uB2E4\uC2DC \uC2DC\uC791\uB418\uC5B4 \uC900\uBE44 \uC791\uC5C5\uC774 \uC911\uB2E8\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uB2E4\uC6B4\uB85C\uB4DC\uD558\uC138\uC694." });
       await dispose(item.id).catch(() => {
       });
-    } else if (["downloading", "scanning", "review", "complete"].includes(item.state) && item.downloadId !== void 0) {
+    } else if (trackedDownloadStates.includes(item.state) && item.downloadId !== void 0) {
       const current = (await chrome.downloads.search({ id: item.downloadId }))[0];
       if (current) await finish(current);
       else await missingDownload(item);
     }
   }
   if (!chrome.extension.inIncognitoContext && (await appStorage.status()).recoveryCount > 0) return;
-  const keep = new Set((await history()).filter((item) => activeStates.includes(item.state)).map((item) => `local-${item.id}.media`));
+  const keep = new Set((await history()).filter((item) => isActiveHistoryState(item.state)).map((item) => `local-${item.id}.media`));
   const root = await navigator.storage.getDirectory();
   for await (const name of root.keys()) if (/^local-[0-9a-f-]{36}\.media$/.test(name) && !keep.has(name)) await root.removeEntry(name).catch(() => {
   });

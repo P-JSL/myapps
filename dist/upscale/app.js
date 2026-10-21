@@ -1,3 +1,8 @@
+// src/shared/filename.ts
+function safeBasename(input2) {
+  return (input2.split(/[\\/]/).at(-1) ?? "media").replace(/[\x00-\x1f\x7f<>:"|?*\u202a-\u202e\u2066-\u2069]/g, "_").replace(/[. ]+$/g, "").slice(0, 180) || "media";
+}
+
 // src/upscale/policy.ts
 var MAX_INPUT_BYTES = 256 * 1024 * 1024;
 var MAX_QUEUE_BYTES = 512 * 1024 * 1024;
@@ -15,9 +20,6 @@ function isJob(value) {
   const v = value;
   return isJobId(v.id) && typeof v.filename === "string" && v.filename.length <= 240 && Number.isSafeInteger(v.size) && v.size > 0 && v.size <= MAX_INPUT_BYTES && typeof v.createdAt === "number" && Number.isFinite(v.createdAt) && (v.downloadId === void 0 || Number.isSafeInteger(v.downloadId) && v.downloadId >= 0);
 }
-function safeBasename(input2) {
-  return (input2.split(/[\\/]/).at(-1) ?? "media").replace(/[\x00-\x1f\x7f<>:"|?*\u202a-\u202e\u2066-\u2069]/g, "_").replace(/[. ]+$/g, "").slice(0, 180) || "media";
-}
 function outputName(filename, factor2, kind) {
   const base = safeBasename(filename).replace(/\.[^.]+$/, "") || "media";
   return `${base}-${factor2}x.${kind === "video" ? "mp4" : "png"}`;
@@ -32,21 +34,61 @@ function record(value) {
 var HISTORY_KEY = "my_video_app_history_v1";
 var MAX_HISTORY = 200;
 var MAX_STREAM_BYTES = 128 * 1024 * 1024;
+var DOWNLOAD_STATES = ["preparing", "downloading", "scanning", "review", "discarded", "complete", "cancelled", "error"];
 var ACTIVE_HISTORY_STATES = ["preparing", "downloading", "scanning", "review"];
+function isActiveHistoryState(state) {
+  return ACTIVE_HISTORY_STATES.includes(state);
+}
 function retainHistory(rows) {
   const sorted = [...rows].sort((a, b) => b.createdAt - a.createdAt);
-  const active = (row) => ACTIVE_HISTORY_STATES.includes(row.state);
+  const active = (row) => isActiveHistoryState(row.state);
   return [...sorted.filter(active), ...sorted.filter((row) => !active(row))].slice(0, MAX_HISTORY);
 }
 function isHistory(value) {
-  return record(value) && typeof value.id === "string" && /^[a-f0-9-]{36}$/.test(value.id) && typeof value.url === "string" && typeof value.filename === "string" && ["file", "hls", "dash"].includes(String(value.kind)) && ["preparing", "downloading", "scanning", "review", "discarded", "complete", "cancelled", "error"].includes(String(value.state)) && typeof value.createdAt === "number" && Number.isFinite(value.createdAt) && typeof value.incognito === "boolean";
+  return record(value) && typeof value.id === "string" && /^[a-f0-9-]{36}$/.test(value.id) && typeof value.url === "string" && typeof value.filename === "string" && ["file", "hls", "dash"].includes(String(value.kind)) && DOWNLOAD_STATES.includes(String(value.state)) && typeof value.createdAt === "number" && Number.isFinite(value.createdAt) && typeof value.incognito === "boolean";
 }
 
+// src/shared/media.ts
+var MEDIA_FILE_MIME = Object.freeze({
+  mp4: "video/mp4",
+  m4a: "audio/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  mkv: "video/x-matroska",
+  avi: "video/x-msvideo",
+  ogg: "audio/ogg",
+  wav: "audio/wav",
+  flac: "audio/flac",
+  mp3: "audio/mpeg",
+  aac: "audio/aac"
+});
+var PROCESSING_MIME = Object.freeze({
+  mp4: MEDIA_FILE_MIME.mp4,
+  webm: MEDIA_FILE_MIME.webm,
+  mkv: MEDIA_FILE_MIME.mkv,
+  mp3: MEDIA_FILE_MIME.mp3,
+  m4a: MEDIA_FILE_MIME.m4a,
+  wav: MEDIA_FILE_MIME.wav,
+  png: "image/png"
+});
+var VIDEO_FORMATS = Object.freeze(["mp4", "webm", "mkv"]);
+var AUDIO_FORMATS = Object.freeze(["mp3", "m4a", "wav"]);
+var MERGE_FORMATS = Object.freeze(["mp4", "mkv"]);
+var QUALITIES = Object.freeze(["highest", "2160", "1080", "720", "480"]);
+var DOWNLOAD_OUTPUTS = Object.freeze(["original", "mp3", "m4a"]);
+var ENCODER_ARGUMENTS = Object.freeze({
+  h264: Object.freeze(["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"]),
+  vp8: Object.freeze(["-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "4", "-crf", "10", "-b:v", "4M"]),
+  mp3: Object.freeze(["-c:a", "libmp3lame", "-b:a", "192k"]),
+  aac: Object.freeze(["-c:a", "aac", "-b:a", "192k"]),
+  pcm16: Object.freeze(["-c:a", "pcm_s16le"]),
+  opus: Object.freeze(["-c:a", "libopus", "-b:a", "192k"])
+});
+
 // src/local/preferences.ts
-var QUALITIES = ["highest", "2160", "1080", "720", "480"];
 function downloadOptions(value) {
   if (value === void 0) return { quality: "highest", output: "original" };
-  if (!record(value) || !QUALITIES.includes(value.quality) || !["original", "mp3", "m4a"].includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+  if (!record(value) || !QUALITIES.includes(value.quality) || !DOWNLOAD_OUTPUTS.includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
   return { quality: value.quality, output: value.output };
 }
 
@@ -185,13 +227,9 @@ function createAppStorage(options = {}) {
       tx.onabort = () => reject(transactionErrors.get(tx) ?? tx.error ?? new Error("\uB85C\uCEEC DB \uD2B8\uB79C\uC7AD\uC158\uC744 \uC644\uB8CC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."));
       tx.onerror = () => {
       };
-      try {
-        start2(tx, (value) => {
-          result = value;
-        });
-      } catch (error) {
-        abort(tx, error);
-      }
+      guarded(tx, () => start2(tx, (value) => {
+        result = value;
+      }));
     });
   }
   function guarded(tx, run) {
@@ -638,12 +676,12 @@ async function cleanupUnlocked(now = Date.now()) {
 function processingOptions(value) {
   if (!record(value)) throw new Error("\uCC98\uB9AC \uC124\uC815\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
   if (value.mode === "upscale" && (value.factor === 2 || value.factor === 4)) return { mode: "upscale", factor: value.factor };
-  if (value.mode === "convert" && ["mp4", "webm", "mkv"].includes(String(value.format)) && QUALITIES.includes(value.quality)) return { mode: "convert", format: value.format, quality: value.quality };
-  if (value.mode === "audio" && ["mp3", "m4a", "wav"].includes(String(value.format))) return { mode: "audio", format: value.format };
-  if (value.mode === "merge" && ["mp4", "mkv"].includes(String(value.format))) return { mode: "merge", format: value.format };
+  if (value.mode === "convert" && VIDEO_FORMATS.includes(String(value.format)) && QUALITIES.includes(value.quality)) return { mode: "convert", format: value.format, quality: value.quality };
+  if (value.mode === "audio" && AUDIO_FORMATS.includes(String(value.format))) return { mode: "audio", format: value.format };
+  if (value.mode === "merge" && MERGE_FORMATS.includes(String(value.format))) return { mode: "merge", format: value.format };
   throw new Error("\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uCC98\uB9AC \uC124\uC815\uC785\uB2C8\uB2E4.");
 }
-var MIME = { mp4: "video/mp4", webm: "video/webm", mkv: "video/x-matroska", mp3: "audio/mpeg", m4a: "audio/mp4", wav: "audio/wav", png: "image/png" };
+var MIME = PROCESSING_MIME;
 function processedName(filename, options, kind) {
   if (options.mode === "upscale") return outputName(filename, options.factor, kind === "image" ? "image" : "video");
   let base = safeBasename(filename).replace(/\.[^.]+$/, "") || "media";
@@ -675,6 +713,13 @@ var worker;
 var watchdog;
 var output;
 var offerTouched = false;
+var MODE_HINTS = Object.freeze({
+  upscale: "Lanczos 2x/4x \uBCF4\uAC04\uC785\uB2C8\uB2E4. AI \uBCF5\uC6D0\uC740 \uC544\uB2D9\uB2C8\uB2E4. \uC601\uC0C1\uC740 MP4(H.264/AAC), \uC774\uBBF8\uC9C0\uB294 PNG\uB85C \uC800\uC7A5\uD569\uB2C8\uB2E4.",
+  convert: "MP4\xB7MKV\uB294 H.264/AAC, WebM\uC740 VP8/Opus\uB85C \uBCC0\uD658\uD569\uB2C8\uB2E4. \uC120\uD0DD \uB192\uC774\uB294 \uC0C1\uD55C\uC774\uBA70 \uC791\uC740 \uC6D0\uBCF8\uC744 \uD655\uB300\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+  audio: "\uC601\uC0C1 \uB610\uB294 \uC624\uB514\uC624\uC758 \uCCAB \uC74C\uC131 \uD2B8\uB799\uC744 \uC800\uC7A5\uD569\uB2C8\uB2E4. MP3/M4A\uB294 192kbps\uB85C \uC778\uCF54\uB529\uD558\uBA70 WAV\uB294 \uC6D0\uBCF8\uC5D0\uC11C \uB514\uCF54\uB529\uD55C PCM\uC785\uB2C8\uB2E4.",
+  merge: "\uC601\uC0C1 \uD30C\uC77C\uACFC \uBCC4\uB3C4 \uC74C\uC131 \uD30C\uC77C\uC744 \uC120\uD0DD\uD558\uC138\uC694. \uC601\uC0C1\uC758 \uAE30\uC874 \uC74C\uC131 \uB300\uC2E0 \uC120\uD0DD\uD55C \uD30C\uC77C\uC758 \uCCAB \uC74C\uC131 \uD2B8\uB799\uC744 \uC0AC\uC6A9\uD569\uB2C8\uB2E4."
+});
+var MODE_START_LABELS = Object.freeze({ upscale: "\uD655\uB300 \uC2DC\uC791", convert: "\uC601\uC0C1 \uBCC0\uD658", audio: "\uC624\uB514\uC624 \uB9CC\uB4E4\uAE30", merge: "\uBCD1\uD569 \uC2DC\uC791" });
 if (isPrivate) {
   offer.checked = false;
   offer.disabled = true;
@@ -722,9 +767,8 @@ function changeMode() {
   releaseOutput();
   progress.value = 0;
   for (const name of ["upscale", "convert", "audio", "merge"]) element(`${name}-settings`).hidden = mode.value !== name;
-  const hints = { upscale: "Lanczos 2x/4x \uBCF4\uAC04\uC785\uB2C8\uB2E4. AI \uBCF5\uC6D0\uC740 \uC544\uB2D9\uB2C8\uB2E4. \uC601\uC0C1\uC740 MP4(H.264/AAC), \uC774\uBBF8\uC9C0\uB294 PNG\uB85C \uC800\uC7A5\uD569\uB2C8\uB2E4.", convert: "MP4\xB7MKV\uB294 H.264/AAC, WebM\uC740 VP8/Opus\uB85C \uBCC0\uD658\uD569\uB2C8\uB2E4. \uC120\uD0DD \uB192\uC774\uB294 \uC0C1\uD55C\uC774\uBA70 \uC791\uC740 \uC6D0\uBCF8\uC744 \uD655\uB300\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", audio: "\uC601\uC0C1 \uB610\uB294 \uC624\uB514\uC624\uC758 \uCCAB \uC74C\uC131 \uD2B8\uB799\uC744 \uC800\uC7A5\uD569\uB2C8\uB2E4. MP3/M4A\uB294 192kbps\uB85C \uC778\uCF54\uB529\uD558\uBA70 WAV\uB294 \uC6D0\uBCF8\uC5D0\uC11C \uB514\uCF54\uB529\uD55C PCM\uC785\uB2C8\uB2E4.", merge: "\uC601\uC0C1 \uD30C\uC77C\uACFC \uBCC4\uB3C4 \uC74C\uC131 \uD30C\uC77C\uC744 \uC120\uD0DD\uD558\uC138\uC694. \uC601\uC0C1\uC758 \uAE30\uC874 \uC74C\uC131 \uB300\uC2E0 \uC120\uD0DD\uD55C \uD30C\uC77C\uC758 \uCCAB \uC74C\uC131 \uD2B8\uB799\uC744 \uC0AC\uC6A9\uD569\uB2C8\uB2E4." };
-  element("mode-hint").textContent = hints[mode.value] ?? "";
-  start.textContent = { upscale: "\uD655\uB300 \uC2DC\uC791", convert: "\uC601\uC0C1 \uBCC0\uD658", audio: "\uC624\uB514\uC624 \uB9CC\uB4E4\uAE30", merge: "\uBCD1\uD569 \uC2DC\uC791" }[mode.value] ?? "\uC2DC\uC791";
+  element("mode-hint").textContent = MODE_HINTS[mode.value] ?? "";
+  start.textContent = MODE_START_LABELS[mode.value] ?? "\uC2DC\uC791";
   start.disabled = !input || mode.value === "merge" && !audioInput.files?.[0];
   status.textContent = "\uD30C\uC77C\uACFC \uCC98\uB9AC \uC124\uC815\uC744 \uC120\uD0DD\uD55C \uB4A4 \uC2DC\uC791\uD558\uC138\uC694.";
 }

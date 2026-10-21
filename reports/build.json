@@ -1,8 +1,8 @@
 {
   "engine": "independent-local",
   "productName": "My Video App",
-  "version": "1.9.0",
-  "buildSha256": "48c2b307c9965a7b832912a0f4339fa638f8ba4dd7766beff4a72dc6f29d82e6",
+  "version": "1.9.1",
+  "buildSha256": "a1da9d17ba1b8578784fd36f6114cd9af21073e916cce471647f4b5d03c85a8c",
   "originalRuntimeIncluded": false,
   "accountActivationIncluded": false,
   "capabilities": [
@@ -39,12 +39,163 @@
     "media-signature-validation",
     "canonical-media-filenames"
   ],
+  "entries": [
+    {
+      "input": "src/local/background.ts",
+      "output": "local/background.js",
+      "format": "esm",
+      "inputs": [
+        "src/data/database.ts",
+        "src/local/antivirus.ts",
+        "src/local/background.ts",
+        "src/local/media-file.ts",
+        "src/local/model.ts",
+        "src/local/preferences.ts",
+        "src/local/transport.ts",
+        "src/security/validation.ts",
+        "src/shared/filename.ts",
+        "src/shared/media.ts",
+        "src/upscale/completion.ts",
+        "src/upscale/policy.ts",
+        "src/upscale/storage.ts"
+      ],
+      "bytes": 88853
+    },
+    {
+      "input": "src/local/collect.ts",
+      "output": "local/collect.js",
+      "format": "iife",
+      "inputs": [
+        "src/local/collect.ts",
+        "src/local/model.ts",
+        "src/local/transport.ts",
+        "src/security/validation.ts",
+        "src/shared/filename.ts"
+      ],
+      "bytes": 6126
+    },
+    {
+      "input": "src/local/offscreen.ts",
+      "output": "local/offscreen.js",
+      "format": "esm",
+      "inputs": [
+        "src/local/byte-assembly.ts",
+        "src/local/dash.ts",
+        "src/local/hls.ts",
+        "src/local/media-file.ts",
+        "src/local/model.ts",
+        "src/local/network.ts",
+        "src/local/offscreen.ts",
+        "src/local/preferences.ts",
+        "src/local/queue.ts",
+        "src/local/transport.ts",
+        "src/security/validation.ts",
+        "src/shared/filename.ts",
+        "src/shared/media.ts",
+        "src/upscale/policy.ts"
+      ],
+      "bytes": 43863
+    },
+    {
+      "input": "src/local/ui.ts",
+      "output": "local/ui.js",
+      "format": "esm",
+      "inputs": [
+        "src/data/database.ts",
+        "src/local/labels.ts",
+        "src/local/model.ts",
+        "src/local/preferences.ts",
+        "src/local/transport.ts",
+        "src/local/ui.ts",
+        "src/security/validation.ts",
+        "src/shared/filename.ts",
+        "src/shared/media.ts",
+        "src/upscale/policy.ts"
+      ],
+      "bytes": 47934
+    },
+    {
+      "input": "src/local/popup.ts",
+      "output": "local/popup.js",
+      "format": "esm",
+      "inputs": [
+        "src/data/database.ts",
+        "src/local/model.ts",
+        "src/local/popup.ts",
+        "src/local/preferences.ts",
+        "src/security/validation.ts",
+        "src/shared/filename.ts",
+        "src/shared/media.ts",
+        "src/upscale/policy.ts"
+      ],
+      "bytes": 33434
+    },
+    {
+      "input": "src/local/stream-worker.ts",
+      "output": "local/stream-worker.js",
+      "format": "esm",
+      "external": [
+        "../vendor/ffmpeg/ffmpeg-core.js"
+      ],
+      "inputs": [
+        "src/local/assets.ts",
+        "src/local/byte-assembly.ts",
+        "src/local/model.ts",
+        "src/local/network.ts",
+        "src/local/preferences.ts",
+        "src/local/stream-worker.ts",
+        "src/local/transport.ts",
+        "src/security/transfer.ts",
+        "src/security/validation.ts",
+        "src/shared/filename.ts",
+        "src/shared/media.ts"
+      ],
+      "bytes": 18856
+    },
+    {
+      "input": "src/upscale/worker.ts",
+      "output": "hardening/upscale-worker.js",
+      "format": "esm",
+      "external": [
+        "../vendor/ffmpeg/ffmpeg-core.js"
+      ],
+      "inputs": [
+        "src/security/transfer.ts",
+        "src/security/validation.ts",
+        "src/shared/filename.ts",
+        "src/shared/media.ts",
+        "src/upscale/policy.ts",
+        "src/upscale/processing.ts",
+        "src/upscale/worker.ts"
+      ],
+      "bytes": 14277
+    },
+    {
+      "input": "src/ui/app.ts",
+      "output": "upscale/app.js",
+      "format": "esm",
+      "inputs": [
+        "src/data/database.ts",
+        "src/local/model.ts",
+        "src/local/preferences.ts",
+        "src/security/validation.ts",
+        "src/shared/filename.ts",
+        "src/shared/media.ts",
+        "src/ui/app.ts",
+        "src/upscale/policy.ts",
+        "src/upscale/processing.ts",
+        "src/upscale/storage.ts"
+      ],
+      "bytes": 38886
+    }
+  ],
+  "appJavaScriptBytes": 292229,
   "ffmpeg": {
     "package": "@ffmpeg/core",
     "version": "0.12.10",
     "wasmSha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7",
     "bytes": 32232419
   },
-  "distFiles": 28,
-  "distBytes": 32770056
+  "distFiles": 27,
+  "distBytes": 32746024
 }

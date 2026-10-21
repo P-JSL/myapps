@@ -1,0 +1,413 @@
+{
+  "status": "passed",
+  "release": "1.9.1",
+  "sourceSha256": {
+    "native/antivirus_host.py": "1d361bf15ab515f67a4267f938d6bfd6f2a61dd190b5a9bea59426176ecd1a75",
+    "native/install.py": "8a6cf94fac00ddd83f3181eb4af813cb69b5172afa02684109650e0e68948530",
+    "native/test_antivirus_host.py": "6146a036d2d8e5897d71dbdf901154971e7b9047be7e5ccb432be4af4cb2a2d2",
+    "native/test_antivirus_status.py": "793cb2d3c66aeefa1e15057cac0bdf899f451b61d34b829f8c3ac78e46d14b39",
+    "native/test_clamav_integration.py": "44f843b49d9a51140d16b4691d43640edbddb225b5c9641132bd94ef5ed8c127",
+    "native/test_windows_antivirus.py": "bd64dfa7b0f374602374eefd46b655779bcbdea46d5187e75ff38aaef8ec84fb",
+    "native/windows_antivirus.py": "d31d257a74e3f4f676f82ad7f5b2f0d4a04172d72af52fe8cb40999b83c30c88",
+    "package-lock.json": "8a21ccb4d17b7e2f43ab3cf9d5d184a0abd285c506a6736f6e065313a81d287a",
+    "package.json": "f225fa97cc4e58cd1c701a141f4eb6acbf1a1c0e750ab705123dc1a803de5490",
+    "scripts/archive.py": "c76b270e46bb2b72d5627d4b34c07690e59103945c9020ac5dd952b5a2938905",
+    "scripts/audit-source.mjs": "f8535f3516ed20a88cf35c8421591507c839503c90df613e683775fcd15b267d",
+    "scripts/benchmark-native.py": "91da1493e146253925494991f952e76eaa2daa7b6a4eb37819e2be9b822dccef",
+    "scripts/benchmark-security.mjs": "7b8f2ed9740502bf2c4ac27d27a8827fcebacd44a425a6fb5316fc047e7c1d54",
+    "scripts/benchmark.mjs": "9953ff872a0cc2139864c98a2655fb4b46c741cd0e810dbf5990946be01efa3c",
+    "scripts/build-local.mjs": "11645dea6af9c1f657429d4e4220a05a2e153b279b906c683c30a068bfd9f269",
+    "scripts/build.mjs": "6fc094bb2411a4eb531fb602ab55587d5d1849d6cb76e94e9bd80cc2b8b4a460",
+    "scripts/lib/artifacts.mjs": "125dbdffb509a78672bae186b25dee20b83fa50fc3fa7336f558b168c762111d",
+    "scripts/package.mjs": "99c085c8032dc8a4d71b3de451b1ae38e387388b22f0799a097757d92516201f",
+    "scripts/project.mjs": "1442c6a3252cdc7c5926ebc8cd12dcf355b6df5b9d113a911fa1aef1061d9be4",
+    "scripts/test-native.mjs": "20c593968ebd64b040b30b221ca31c1cd7e1a474a1b1255458169d429442fa17",
+    "src/data/database.ts": "d6f0d3ffbbc47808ce96228f4fd7f4440b63c972874bec14c41f7a34af247b73",
+    "src/local/antivirus.ts": "23a9add2c10821322709a66e9e6241f5d9705450623e575bc6eb6d658eb3bcee",
+    "src/local/assets.ts": "01157770847abd7e2c25eec2ba25f3993fd06578041c45de0f87a36306728e1a",
+    "src/local/background.ts": "7b3578ed448eaba317351a23a1268f9390ebdf9634f920700b11eba963de95e5",
+    "src/local/byte-assembly.ts": "e606342bc7097df6da427e10fa404a357f5d992931f01ee2f6f257a95077425c",
+    "src/local/collect.ts": "eb36555aa3441a421eafab00d1f449d09fd3d72aac5144a665894c95c00cce2a",
+    "src/local/dash.ts": "4740dd2ed9b89aa0196a9461ef6974ed4ffa4cd0e7d59e7b7437672dafc56e4e",
+    "src/local/hls.ts": "52b0a5019cbaff4aeeea920e1b00b9bc8b23fd0aeff4d24c6c582ecf713b3a6a",
+    "src/local/labels.ts": "08630bed483f2de08be93c11563065979b5636d408a41baddb07032a0efc324e",
+    "src/local/media-file.ts": "07f22b8c890fe2dcfcec53263190b9c6c571ce2e9358289a1ca14c70d36064d4",
+    "src/local/model.ts": "5005d9f9febbf577c37c8221b59366e84c9055614a28a0567350a89101be52ae",
+    "src/local/network.ts": "a23bbcd8fd452cb16377239c0bd71b87b2b7f0144c8977f48cd92c6476db50b9",
+    "src/local/offscreen.ts": "abd580335cfc9151cef3e41c10dbf7a7c2b114853d215439d272ada95575fb43",
+    "src/local/popup.ts": "1c729c399885f350f3c6507f5d0f5580cbe760b4b142dfcabe5ea3483340214a",
+    "src/local/preferences.ts": "f2cb22149e84490d22a2a2106f7d87dfa48aa4902e09c72b6d4665814aeb82a1",
+    "src/local/queue.ts": "70e7d979c58b9ff25031798d76a72e03e97d1d18917b1dad62a92be48b495def",
+    "src/local/stream-worker.ts": "59c8d2e592579f6da1883a964fd73b02c25127e09aa4b9d2afeab218929bb2d6",
+    "src/local/transport.ts": "8ffac2103d76a6e6d7425478bf95c7f9ddb013f236f283a176e1164124e4ea76",
+    "src/local/ui.ts": "eb285bda72a2e5b96c578c15bcc62760ba8e595b0c9acd4afc60b653e00e01e2",
+    "src/security/transfer.ts": "ac6bd1b7157b9888dffd863d187637cd23ac2a02f87f43e1c536205c3baeff2d",
+    "src/security/validation.ts": "112f0340ff3acd23c236e8477d900d18302b398ba65e0d77409d04f25440c7d2",
+    "src/shared/filename.ts": "e5edb2a4021105a4aa37e0cb5f23e72f3a1097948d75aeb861ca381369921887",
+    "src/shared/media.ts": "479392d4920a150da0baa66458dd4e7fe9807d3e3791d8b17c580623c9575365",
+    "src/ui/app.ts": "f0f50d4f4f0e9993a30654a8cffccd060f9fbb8cc67142cff6102681a1bc4900",
+    "src/upscale/completion.ts": "08d5758ec7291aa4dec9b6d28515a001f649af50696ef7ae4a20de432e1d3ad5",
+    "src/upscale/policy.ts": "d6c1d6bb3b8b4d9a2a2cc67de5a05d53eed7870a4766dd236627b13da452dfc3",
+    "src/upscale/processing.ts": "ead14d9cca4a644295e4979c50c5dbe3f29bee710a1fd63cf528ac4e3e523634",
+    "src/upscale/storage.ts": "175656146985b54efa761d343de283b0e93ef2f55a27711f231f71d9297ed977",
+    "src/upscale/worker.ts": "2ca34b668420fd128cc3bf89e9b925085be2b44a315a26c8720100d37d3721d8",
+    "src/vendor.d.ts": "a2e91abe302264fca044db1200fb3d9e743f456572d30515d2a4d5f1bbba728f",
+    "tests/algorithm-state.test.ts": "e8dbea0e0fa1c0384f580ac8f9ee22699a86b5ae47dbecdaf3a26a4b8dd396fe",
+    "tests/antivirus-lifecycle.test.ts": "2cc94de489f2c3893d0d3ba0c1c220c18ad242818859444ea9d30a9269b595fc",
+    "tests/antivirus.test.ts": "e849c0baf93506caa9d8d8ba95f23d603f43d585f400ff0e5186681b8923e807",
+    "tests/baselines/collect-1.7.0.txt": "70474f55531579eed1075779b21c1ebfb35f1554f721b615c560eafefc57d619",
+    "tests/baselines/ui-1.7.0.txt": "d420b0ab96e2d15aba7a962fd719fd583eb7b0539dc2bf9d51d2e0144c539f90",
+    "tests/bench-media.mjs": "4b3dc488e149d5a124de96daeaf4b6e7e18215901683b378fd8dced35dfbf734",
+    "tests/bench-state.mjs": "d14dd9143603c6c0ed5ae4a0956634134ac4058a50156be11a73f7c0d6752c00",
+    "tests/bench-transfer.mjs": "a7fd9a9dc65a2de8940662e9dafc474cb410014c2c39590a6d2bac5d8d1ee91f",
+    "tests/bench-ui.mjs": "c1a39ce1941e98ec2dfdd61a921794dd0ec8d824744542472fcdd5347cbbbd2d",
+    "tests/browser.mjs": "64e412ccb8ee0c2daf7daa91b801de701ff6733b2481884e5b88d408bf5701a1",
+    "tests/completion.test.ts": "0f6d7865fc7e2766645ea32a0936d297b92541bff939168dbfcb4057c7676fc5",
+    "tests/dash-audit.mjs": "cf0f3d7da5877b271c511c147df1aafaa148796591b6c5e0e2357fe85769c4a3",
+    "tests/database-audit.mjs": "1ee2ae1edd639a52882444f7f5b0786a2e6571ae0b4f6185cdb135691637527e",
+    "tests/download.test.ts": "05d91dc8ae36aa213c7b69bb40b43994edba9209d8a04905e512eb754a8c415a",
+    "tests/features.test.ts": "df875e43caf4b869ae65feba293278e3932a069768c90f90e7411bd2b65cacc0",
+    "tests/http3-server.py": "37c42deb235b8040d48d3ed7ab0320dd85ddb173d2f2c6dbc66a33d85fdd5fca",
+    "tests/http3.mjs": "2b41f17e61a94be6c40e686950419056e146cd1538a9e9c0299b5e04d0e34426",
+    "tests/local.test.ts": "15713bdc0f6094014ec36588a25520b0fe1fb01027e45150bcd2c4a629dedf52",
+    "tests/media-file.test.ts": "14001d56f3be27bb079d72e0981787083a37d1d4812010dfd34c5cb343592a9d",
+    "tests/media-optimization.test.ts": "dfe60418deffa16ebafe96698817ad10f90281ba5d4da991d6fd19c6dbbc948c",
+    "tests/metadata.test.ts": "299533bdb70296183b8cb7498cd8013664184d93a3c6d18b41bb9e1986ae9eed",
+    "tests/package.test.ts": "14073eec77ce04baacd80c1644816254c03348615185c59911e93bd636f9d853",
+    "tests/policy.test.ts": "64389249434841cdc3a1b565a2524b9fd3c1cd78afd38e7100b988c3f4896021",
+    "tests/popup-audit.mjs": "386f5281b9f06f0656af47c3bfcf190448897ba99c8d404d91f17d2a6c1c58ac",
+    "tests/queue-privacy.test.ts": "067fd865093d6da4bd27fde290e9236096885485f83cf1a01f8c6d3562ac732d",
+    "tests/tooling.test.mjs": "d51c2ba0a2aa0f3956d00cd6b8ef7656e74f32ad47f6b17d4b607738573234f8",
+    "tests/transfer.test.ts": "0ec03cafdd950d6f8e3a73695eea02a5edd3ee04d358a24254884671caf451c7",
+    "tests/validation-budget.test.ts": "5dc21fbdd3a1b30be8199ad32b1b4a77e9cf1cf6a9920b2328f9f3cbd082ceb1",
+    "tests/validation.test.ts": "92511ef3149c234fb704a126d0c76b9fd3d5950c7520b01c9e5e56933fe2d325",
+    "tests/worker-input-audit.mjs": "fe25cfe9f9a3eb247f467a39eafd0c489300bbcd9596ddfdaf8520209aa47519",
+    "tsconfig.json": "a447c838b1d18d1c8500c2dc125198660e6a600dde1bceed697a58c186758529"
+  },
+  "moduleCount": 29,
+  "entryCount": 8,
+  "edges": [
+    {
+      "from": "src/data/database.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/data/database.ts",
+      "to": "src/local/preferences.ts"
+    },
+    {
+      "from": "src/data/database.ts",
+      "to": "src/upscale/policy.ts"
+    },
+    {
+      "from": "src/local/antivirus.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/local/assets.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/assets.ts",
+      "to": "src/local/network.ts"
+    },
+    {
+      "from": "src/local/background.ts",
+      "to": "src/data/database.ts"
+    },
+    {
+      "from": "src/local/background.ts",
+      "to": "src/local/antivirus.ts"
+    },
+    {
+      "from": "src/local/background.ts",
+      "to": "src/local/media-file.ts"
+    },
+    {
+      "from": "src/local/background.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/background.ts",
+      "to": "src/local/preferences.ts"
+    },
+    {
+      "from": "src/local/background.ts",
+      "to": "src/local/transport.ts"
+    },
+    {
+      "from": "src/local/background.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/local/background.ts",
+      "to": "src/upscale/completion.ts"
+    },
+    {
+      "from": "src/local/background.ts",
+      "to": "src/upscale/policy.ts"
+    },
+    {
+      "from": "src/local/background.ts",
+      "to": "src/upscale/storage.ts"
+    },
+    {
+      "from": "src/local/collect.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/collect.ts",
+      "to": "src/local/transport.ts"
+    },
+    {
+      "from": "src/local/collect.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/local/dash.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/dash.ts",
+      "to": "src/local/network.ts"
+    },
+    {
+      "from": "src/local/dash.ts",
+      "to": "src/local/preferences.ts"
+    },
+    {
+      "from": "src/local/hls.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/hls.ts",
+      "to": "src/local/network.ts"
+    },
+    {
+      "from": "src/local/hls.ts",
+      "to": "src/local/preferences.ts"
+    },
+    {
+      "from": "src/local/media-file.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/media-file.ts",
+      "to": "src/shared/filename.ts"
+    },
+    {
+      "from": "src/local/media-file.ts",
+      "to": "src/shared/media.ts"
+    },
+    {
+      "from": "src/local/model.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/local/model.ts",
+      "to": "src/shared/filename.ts"
+    },
+    {
+      "from": "src/local/network.ts",
+      "to": "src/local/byte-assembly.ts"
+    },
+    {
+      "from": "src/local/network.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/network.ts",
+      "to": "src/local/transport.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
+      "to": "src/local/dash.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
+      "to": "src/local/hls.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
+      "to": "src/local/media-file.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
+      "to": "src/local/network.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
+      "to": "src/local/preferences.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
+      "to": "src/local/queue.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
+      "to": "src/local/transport.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
+      "to": "src/upscale/policy.ts"
+    },
+    {
+      "from": "src/local/popup.ts",
+      "to": "src/data/database.ts"
+    },
+    {
+      "from": "src/local/popup.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/popup.ts",
+      "to": "src/local/preferences.ts"
+    },
+    {
+      "from": "src/local/popup.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/local/preferences.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/local/preferences.ts",
+      "to": "src/shared/media.ts"
+    },
+    {
+      "from": "src/local/stream-worker.ts",
+      "to": "src/local/assets.ts"
+    },
+    {
+      "from": "src/local/stream-worker.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/stream-worker.ts",
+      "to": "src/local/preferences.ts"
+    },
+    {
+      "from": "src/local/stream-worker.ts",
+      "to": "src/security/transfer.ts"
+    },
+    {
+      "from": "src/local/stream-worker.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/local/stream-worker.ts",
+      "to": "src/shared/media.ts"
+    },
+    {
+      "from": "src/local/ui.ts",
+      "to": "src/data/database.ts"
+    },
+    {
+      "from": "src/local/ui.ts",
+      "to": "src/local/labels.ts"
+    },
+    {
+      "from": "src/local/ui.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/ui.ts",
+      "to": "src/local/preferences.ts"
+    },
+    {
+      "from": "src/local/ui.ts",
+      "to": "src/local/transport.ts"
+    },
+    {
+      "from": "src/local/ui.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/ui/app.ts",
+      "to": "src/data/database.ts"
+    },
+    {
+      "from": "src/ui/app.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/ui/app.ts",
+      "to": "src/upscale/policy.ts"
+    },
+    {
+      "from": "src/ui/app.ts",
+      "to": "src/upscale/processing.ts"
+    },
+    {
+      "from": "src/ui/app.ts",
+      "to": "src/upscale/storage.ts"
+    },
+    {
+      "from": "src/upscale/completion.ts",
+      "to": "src/data/database.ts"
+    },
+    {
+      "from": "src/upscale/completion.ts",
+      "to": "src/upscale/policy.ts"
+    },
+    {
+      "from": "src/upscale/completion.ts",
+      "to": "src/upscale/storage.ts"
+    },
+    {
+      "from": "src/upscale/policy.ts",
+      "to": "src/shared/filename.ts"
+    },
+    {
+      "from": "src/upscale/processing.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/upscale/processing.ts",
+      "to": "src/shared/filename.ts"
+    },
+    {
+      "from": "src/upscale/processing.ts",
+      "to": "src/shared/media.ts"
+    },
+    {
+      "from": "src/upscale/processing.ts",
+      "to": "src/upscale/policy.ts"
+    },
+    {
+      "from": "src/upscale/storage.ts",
+      "to": "src/data/database.ts"
+    },
+    {
+      "from": "src/upscale/storage.ts",
+      "to": "src/upscale/policy.ts"
+    },
+    {
+      "from": "src/upscale/worker.ts",
+      "to": "src/security/transfer.ts"
+    },
+    {
+      "from": "src/upscale/worker.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/upscale/worker.ts",
+      "to": "src/upscale/policy.ts"
+    },
+    {
+      "from": "src/upscale/worker.ts",
+      "to": "src/upscale/processing.ts"
+    }
+  ],
+  "orphanModules": [],
+  "runtimeCycles": []
+}

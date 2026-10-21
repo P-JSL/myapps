@@ -5,11 +5,6 @@
     return value !== null && typeof value === "object" && !Array.isArray(value);
   }
 
-  // src/upscale/policy.ts
-  var MAX_INPUT_BYTES = 256 * 1024 * 1024;
-  var MAX_QUEUE_BYTES = 512 * 1024 * 1024;
-  var RETENTION_MS = 24 * 60 * 60 * 1e3;
-
   // src/local/model.ts
   var SCOPE = "my-video-app/local";
   var MAX_STREAM_BYTES = 128 * 1024 * 1024;

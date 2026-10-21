@@ -2,6 +2,7 @@
  * This is deliberately not described as a successfully installed extension test.
  */
 import { chromium } from 'playwright-core';
+import { build } from 'esbuild';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, stat, mkdtemp } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
@@ -61,6 +62,7 @@ await writeFile(`${fixtures}/plain.txt`, 'This response is text, not a video fil
 await prepareDashAuditFixtures(fixtures);
 await prepareOwnedInputAudit(fixtures);
 await prepareDatabaseAudit(fixtures);
+await build({ entryPoints: ['src/upscale/completion.ts'], bundle: true, format: 'esm', platform: 'browser', target: 'chrome120', outfile: `${fixtures}/completion-audit.js` });
 const originalHash = createHash('sha256').update(await readFile(`${fixtures}/clip.mp4`)).digest('hex');
 
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png', '.mp4': 'video/mp4', '.json': 'application/json', '.m3u8': 'application/vnd.apple.mpegurl', '.mpd': 'application/dash+xml', '.ts': 'video/mp2t' };
@@ -283,7 +285,8 @@ try {
   });
   await checks('Local install uses independent entry points without an account/activation engine', async () => {
     const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
-    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.9.0');
+    assert.equal(manifest.background.service_worker, 'local/background.js');
+    assert.equal(manifest.version, JSON.parse(await readFile('package.json', 'utf8')).version);
     assert.equal(manifest.key, undefined); assert.equal(manifest.update_url, undefined);
     const result = await context.request.get(`${origin}/service/main.js`); assert.equal(result.status(), 404);
   });
@@ -362,7 +365,7 @@ try {
   });
   await checks('Completion hook stages successful file before original cleanup; other outcomes skipped', async () => {
     const result = await page.evaluate(async () => {
-      const { offerUpscale } = await import('/hardening/service.js');
+      const { offerUpscale } = await import('/fixtures/completion-audit.js');
       const root = await navigator.storage.getDirectory();
       const file = await (await root.getFileHandle('finished-download.mp4', { create: true })).createWritable();
       const response = await fetch('/fixtures/clip.mp4'); await response.body.pipeTo(file);
@@ -386,7 +389,7 @@ try {
   await checks('Shared queue lock survives simultaneous offer and cleanup in two tabs', async () => {
     const second = await context.newPage(); await openTools(second);
     const stage = page.evaluate(async () => {
-      const { offerUpscale } = await import('/hardening/service.js');
+      const { offerUpscale } = await import('/fixtures/completion-audit.js');
       const root = await navigator.storage.getDirectory();
       const file = await (await root.getFileHandle('parallel.png', { create: true })).createWritable();
       await (await fetch('/fixtures/image.png')).body.pipeTo(file);
@@ -428,7 +431,7 @@ try {
   await checks('Opt-out skips staging; TTL and delete clean real OPFS data', async () => {
     await page.locator('#offer').uncheck();
     await page.evaluate(async () => {
-      const { offerUpscale } = await import('/hardening/service.js');
+      const { offerUpscale } = await import('/fixtures/completion-audit.js');
       await offerUpscale({ internalFilename: 'does-not-need-to-exist', filename: 'disabled.mp4', downloadId: 101, success: true, incognito: false });
       const key = 'vdh_upscale_jobs_v1';
       const stored = (await window.__appGet(key))[key];

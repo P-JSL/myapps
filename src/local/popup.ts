@@ -1,6 +1,6 @@
 import { appStorage, DOWNLOAD_OPTIONS_KEY } from '../data/database.ts';
 import { record } from '../security/validation.ts';
-import { ACTIVE_HISTORY_STATES, SCOPE, isHistory, type HistoryItem, type MediaItem } from './model.ts';
+import { SCOPE, isActiveHistoryState, isHistory, type HistoryItem, type MediaItem } from './model.ts';
 import { downloadOptions } from './preferences.ts';
 
 function node<T extends HTMLElement>(id: string): T {
@@ -44,7 +44,7 @@ const preferencesReady = (async () => {
 })();
 function activeDownload(item: MediaItem): boolean {
   return currentHistory.some(entry => entry.url === item.url
-    && (ACTIVE_HISTORY_STATES as readonly string[]).includes(entry.state)
+    && isActiveHistoryState(entry.state)
     && (entry.options?.quality ?? 'highest') === selectedOptions.quality
     && (entry.options?.output ?? 'original') === selectedOptions.output);
 }

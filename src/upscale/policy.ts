@@ -1,3 +1,6 @@
+import { safeBasename } from '../shared/filename.ts';
+export { safeBasename } from '../shared/filename.ts';
+
 export const MAX_INPUT_BYTES = 256 * 1024 * 1024;
 export const MAX_QUEUE_BYTES = 512 * 1024 * 1024;
 export const MAX_JOBS = 4;
@@ -33,9 +36,6 @@ export function outputDimensions(info: MediaInfo, factor: unknown): { width: num
   if (info.kind === 'video') { width += width % 2; height += height % 2; }
   if (width > MAX_EDGE || height > MAX_EDGE || width * height > MAX_OUTPUT_PIXELS) throw new Error('확대 결과는 한 변 8,192픽셀, 전체 1,677만 픽셀 이하여야 합니다.');
   return { width, height };
-}
-export function safeBasename(input: string): string {
-  return (input.split(/[\\/]/).at(-1) ?? 'media').replace(/[\x00-\x1f\x7f<>:"|?*\u202a-\u202e\u2066-\u2069]/g, '_').replace(/[. ]+$/g, '').slice(0, 180) || 'media';
 }
 export function outputName(filename: string, factor: Factor, kind: MediaInfo['kind']): string {
   const base = safeBasename(filename).replace(/\.[^.]+$/, '') || 'media';

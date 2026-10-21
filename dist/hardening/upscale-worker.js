@@ -50,16 +50,50 @@ function ffmpegArguments(info, factor) {
   return args;
 }
 
-// src/local/preferences.ts
-var QUALITIES = ["highest", "2160", "1080", "720", "480"];
+// src/shared/media.ts
+var MEDIA_FILE_MIME = Object.freeze({
+  mp4: "video/mp4",
+  m4a: "audio/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  mkv: "video/x-matroska",
+  avi: "video/x-msvideo",
+  ogg: "audio/ogg",
+  wav: "audio/wav",
+  flac: "audio/flac",
+  mp3: "audio/mpeg",
+  aac: "audio/aac"
+});
+var PROCESSING_MIME = Object.freeze({
+  mp4: MEDIA_FILE_MIME.mp4,
+  webm: MEDIA_FILE_MIME.webm,
+  mkv: MEDIA_FILE_MIME.mkv,
+  mp3: MEDIA_FILE_MIME.mp3,
+  m4a: MEDIA_FILE_MIME.m4a,
+  wav: MEDIA_FILE_MIME.wav,
+  png: "image/png"
+});
+var VIDEO_FORMATS = Object.freeze(["mp4", "webm", "mkv"]);
+var AUDIO_FORMATS = Object.freeze(["mp3", "m4a", "wav"]);
+var MERGE_FORMATS = Object.freeze(["mp4", "mkv"]);
+var QUALITIES = Object.freeze(["highest", "2160", "1080", "720", "480"]);
+var DOWNLOAD_OUTPUTS = Object.freeze(["original", "mp3", "m4a"]);
+var ENCODER_ARGUMENTS = Object.freeze({
+  h264: Object.freeze(["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"]),
+  vp8: Object.freeze(["-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "4", "-crf", "10", "-b:v", "4M"]),
+  mp3: Object.freeze(["-c:a", "libmp3lame", "-b:a", "192k"]),
+  aac: Object.freeze(["-c:a", "aac", "-b:a", "192k"]),
+  pcm16: Object.freeze(["-c:a", "pcm_s16le"]),
+  opus: Object.freeze(["-c:a", "libopus", "-b:a", "192k"])
+});
 
 // src/upscale/processing.ts
 function processingOptions(value) {
   if (!record(value)) throw new Error("\uCC98\uB9AC \uC124\uC815\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
   if (value.mode === "upscale" && (value.factor === 2 || value.factor === 4)) return { mode: "upscale", factor: value.factor };
-  if (value.mode === "convert" && ["mp4", "webm", "mkv"].includes(String(value.format)) && QUALITIES.includes(value.quality)) return { mode: "convert", format: value.format, quality: value.quality };
-  if (value.mode === "audio" && ["mp3", "m4a", "wav"].includes(String(value.format))) return { mode: "audio", format: value.format };
-  if (value.mode === "merge" && ["mp4", "mkv"].includes(String(value.format))) return { mode: "merge", format: value.format };
+  if (value.mode === "convert" && VIDEO_FORMATS.includes(String(value.format)) && QUALITIES.includes(value.quality)) return { mode: "convert", format: value.format, quality: value.quality };
+  if (value.mode === "audio" && AUDIO_FORMATS.includes(String(value.format))) return { mode: "audio", format: value.format };
+  if (value.mode === "merge" && MERGE_FORMATS.includes(String(value.format))) return { mode: "merge", format: value.format };
   throw new Error("\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uCC98\uB9AC \uC124\uC815\uC785\uB2C8\uB2E4.");
 }
 function sniffInput(bytes) {
@@ -93,14 +127,15 @@ function processingArguments(info, options) {
   if (options.mode === "merge") args.push("-protocol_whitelist", "file,pipe", "-i", "audio.media");
   args.push("-threads", "1", "-map_metadata", "-1", "-map_chapters", "-1", "-sn", "-dn");
   if (options.mode === "audio") {
-    args.push("-map", "0:a:0", "-vn", "-c:a", options.format === "mp3" ? "libmp3lame" : options.format === "m4a" ? "aac" : "pcm_s16le");
-    if (options.format !== "wav") args.push("-b:a", "192k");
-  } else if (options.mode === "merge") args.push("-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest");
+    const encoder = options.format === "mp3" ? ENCODER_ARGUMENTS.mp3 : options.format === "m4a" ? ENCODER_ARGUMENTS.aac : ENCODER_ARGUMENTS.pcm16;
+    args.push("-map", "0:a:0", "-vn", ...encoder);
+    if (options.format !== "wav" && encoder === ENCODER_ARGUMENTS.pcm16) args.push("-b:a", "192k");
+  } else if (options.mode === "merge") args.push("-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", ...ENCODER_ARGUMENTS.aac, "-shortest");
   else {
     const dimensions = convertedDimensions(info, options.quality);
     args.push("-map", "0:v:0", "-map", "0:a:0?", "-vf", `scale=${dimensions.width}:${dimensions.height}:flags=lanczos`, "-pix_fmt", "yuv420p");
-    if (options.format === "webm") args.push("-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "4", "-crf", "10", "-b:v", "4M", "-c:a", "libopus", "-b:a", "192k");
-    else args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-c:a", "aac", "-b:a", "192k");
+    if (options.format === "webm") args.push(...ENCODER_ARGUMENTS.vp8, ...ENCODER_ARGUMENTS.opus);
+    else args.push(...ENCODER_ARGUMENTS.h264, ...ENCODER_ARGUMENTS.aac);
   }
   if (options.format === "mp4" || options.format === "m4a") args.push("-movflags", "+faststart");
   args.push("-fs", String(MAX_INPUT_BYTES), "-y", `output.${options.format}`);

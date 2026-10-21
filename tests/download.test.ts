@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type RequestListener } from 'node:http';
-import { ByteBudget, fetchBytes, fetchManifest, fetchManifestResource, retryDelay } from '../src/local/network.ts';
+import { ByteBudget, fetchBytes, fetchManifestResource, retryDelay } from '../src/local/network.ts';
 import { planHls } from '../src/local/hls.ts';
 import { PreparationQueue } from '../src/local/queue.ts';
 import { downloadAssets } from '../src/local/assets.ts';
@@ -56,7 +56,6 @@ test('redirected HLS masters and child playlists resolve references against each
     const resource = await fetchManifestResource(base + '/entry.m3u8', signal);
     assert.equal(resource.url, base + '/cdn/master.m3u8');
     assert.equal(resource.text, playlists['/cdn/master.m3u8']);
-    assert.equal(await fetchManifest(base + '/entry.m3u8', signal), resource.text);
   });
 });
 test('authorization failures and long rate-limit waits are not repeatedly requested', async () => {

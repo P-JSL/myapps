@@ -1,9 +1,6 @@
-import { safeBasename } from '../upscale/policy.ts';
+import { safeBasename } from '../shared/filename.ts';
+import { MEDIA_FILE_MIME as MIME_BY_EXTENSION } from '../shared/media.ts';
 import { mediaURL } from './model.ts';
-const MIME_BY_EXTENSION = {
-  mp4: 'video/mp4', m4a: 'audio/mp4', mov: 'video/quicktime', webm: 'video/webm', mkv: 'video/x-matroska',
-  avi: 'video/x-msvideo', ogg: 'audio/ogg', wav: 'audio/wav', flac: 'audio/flac', mp3: 'audio/mpeg', aac: 'audio/aac',
-} as const;
 export interface MediaFileFormat { mime: string; extension: keyof typeof MIME_BY_EXTENSION; }
 export class InvalidMediaFileError extends Error {
   constructor() { super('실제 영상·오디오 파일이 아닙니다. HTML·텍스트·이미지 대신 원본 미디어 주소를 사용하세요.'); this.name = 'InvalidMediaFileError'; }

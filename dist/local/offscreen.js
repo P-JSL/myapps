@@ -241,8 +241,8 @@ async function fetchManifestResource(url, signal) {
   return { text: new TextDecoder("utf-8", { fatal: true }).decode(bytes), url: address };
 }
 
-// src/local/media-file.ts
-var MIME_BY_EXTENSION = {
+// src/shared/media.ts
+var MEDIA_FILE_MIME = Object.freeze({
   mp4: "video/mp4",
   m4a: "audio/mp4",
   mov: "video/quicktime",
@@ -254,7 +254,31 @@ var MIME_BY_EXTENSION = {
   flac: "audio/flac",
   mp3: "audio/mpeg",
   aac: "audio/aac"
-};
+});
+var PROCESSING_MIME = Object.freeze({
+  mp4: MEDIA_FILE_MIME.mp4,
+  webm: MEDIA_FILE_MIME.webm,
+  mkv: MEDIA_FILE_MIME.mkv,
+  mp3: MEDIA_FILE_MIME.mp3,
+  m4a: MEDIA_FILE_MIME.m4a,
+  wav: MEDIA_FILE_MIME.wav,
+  png: "image/png"
+});
+var VIDEO_FORMATS = Object.freeze(["mp4", "webm", "mkv"]);
+var AUDIO_FORMATS = Object.freeze(["mp3", "m4a", "wav"]);
+var MERGE_FORMATS = Object.freeze(["mp4", "mkv"]);
+var QUALITIES = Object.freeze(["highest", "2160", "1080", "720", "480"]);
+var DOWNLOAD_OUTPUTS = Object.freeze(["original", "mp3", "m4a"]);
+var ENCODER_ARGUMENTS = Object.freeze({
+  h264: Object.freeze(["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"]),
+  vp8: Object.freeze(["-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "4", "-crf", "10", "-b:v", "4M"]),
+  mp3: Object.freeze(["-c:a", "libmp3lame", "-b:a", "192k"]),
+  aac: Object.freeze(["-c:a", "aac", "-b:a", "192k"]),
+  pcm16: Object.freeze(["-c:a", "pcm_s16le"]),
+  opus: Object.freeze(["-c:a", "libopus", "-b:a", "192k"])
+});
+
+// src/local/media-file.ts
 var InvalidMediaFileError = class extends Error {
   constructor() {
     super("\uC2E4\uC81C \uC601\uC0C1\xB7\uC624\uB514\uC624 \uD30C\uC77C\uC774 \uC544\uB2D9\uB2C8\uB2E4. HTML\xB7\uD14D\uC2A4\uD2B8\xB7\uC774\uBBF8\uC9C0 \uB300\uC2E0 \uC6D0\uBCF8 \uBBF8\uB514\uC5B4 \uC8FC\uC18C\uB97C \uC0AC\uC6A9\uD558\uC138\uC694.");
@@ -262,7 +286,7 @@ var InvalidMediaFileError = class extends Error {
   }
 };
 function format(extension) {
-  return { mime: MIME_BY_EXTENSION[extension], extension };
+  return { mime: MEDIA_FILE_MIME[extension], extension };
 }
 function ascii(bytes, offset, length) {
   return String.fromCharCode(...bytes.subarray(offset, offset + length));
@@ -374,10 +398,9 @@ function inspectMediaFile(input) {
 }
 
 // src/local/preferences.ts
-var QUALITIES = ["highest", "2160", "1080", "720", "480"];
 function downloadOptions(value) {
   if (value === void 0) return { quality: "highest", output: "original" };
-  if (!record(value) || !QUALITIES.includes(value.quality) || !["original", "mp3", "m4a"].includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+  if (!record(value) || !QUALITIES.includes(value.quality) || !DOWNLOAD_OUTPUTS.includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
   return { quality: value.quality, output: value.output };
 }
 function chooseQuality(items, quality, height, bandwidth) {

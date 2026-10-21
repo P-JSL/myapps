@@ -111,9 +111,6 @@ export async function fetchBytes(url: string, maximum: number, signal: AbortSign
     await wait(failure instanceof Retryable && failure.delay !== undefined ? failure.delay : 300 * 2 ** attempt, signal);
   }
 }
-export async function fetchManifest(url: string, signal: AbortSignal): Promise<string> {
-  return (await fetchManifestResource(url, signal)).text;
-}
 export interface ManifestResource { text: string; url: string; }
 /** Relative manifest references use the URL of the successful response, after redirects. */
 export async function fetchManifestResource(url: string, signal: AbortSignal): Promise<ManifestResource> {

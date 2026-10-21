@@ -3,6 +3,69 @@ function record(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+// src/local/model.ts
+var SCOPE = "my-video-app/local";
+var HISTORY_KEY = "my_video_app_history_v1";
+var MAX_HISTORY = 200;
+var MAX_STREAM_BYTES = 128 * 1024 * 1024;
+var DOWNLOAD_STATES = ["preparing", "downloading", "scanning", "review", "discarded", "complete", "cancelled", "error"];
+var ACTIVE_HISTORY_STATES = ["preparing", "downloading", "scanning", "review"];
+function isActiveHistoryState(state) {
+  return ACTIVE_HISTORY_STATES.includes(state);
+}
+function retainHistory(rows) {
+  const sorted = [...rows].sort((a, b) => b.createdAt - a.createdAt);
+  const active = (row) => isActiveHistoryState(row.state);
+  return [...sorted.filter(active), ...sorted.filter((row) => !active(row))].slice(0, MAX_HISTORY);
+}
+function isHistory(value) {
+  return record(value) && typeof value.id === "string" && /^[a-f0-9-]{36}$/.test(value.id) && typeof value.url === "string" && typeof value.filename === "string" && ["file", "hls", "dash"].includes(String(value.kind)) && DOWNLOAD_STATES.includes(String(value.state)) && typeof value.createdAt === "number" && Number.isFinite(value.createdAt) && typeof value.incognito === "boolean";
+}
+
+// src/shared/media.ts
+var MEDIA_FILE_MIME = Object.freeze({
+  mp4: "video/mp4",
+  m4a: "audio/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  mkv: "video/x-matroska",
+  avi: "video/x-msvideo",
+  ogg: "audio/ogg",
+  wav: "audio/wav",
+  flac: "audio/flac",
+  mp3: "audio/mpeg",
+  aac: "audio/aac"
+});
+var PROCESSING_MIME = Object.freeze({
+  mp4: MEDIA_FILE_MIME.mp4,
+  webm: MEDIA_FILE_MIME.webm,
+  mkv: MEDIA_FILE_MIME.mkv,
+  mp3: MEDIA_FILE_MIME.mp3,
+  m4a: MEDIA_FILE_MIME.m4a,
+  wav: MEDIA_FILE_MIME.wav,
+  png: "image/png"
+});
+var VIDEO_FORMATS = Object.freeze(["mp4", "webm", "mkv"]);
+var AUDIO_FORMATS = Object.freeze(["mp3", "m4a", "wav"]);
+var MERGE_FORMATS = Object.freeze(["mp4", "mkv"]);
+var QUALITIES = Object.freeze(["highest", "2160", "1080", "720", "480"]);
+var DOWNLOAD_OUTPUTS = Object.freeze(["original", "mp3", "m4a"]);
+var ENCODER_ARGUMENTS = Object.freeze({
+  h264: Object.freeze(["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"]),
+  vp8: Object.freeze(["-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "4", "-crf", "10", "-b:v", "4M"]),
+  mp3: Object.freeze(["-c:a", "libmp3lame", "-b:a", "192k"]),
+  aac: Object.freeze(["-c:a", "aac", "-b:a", "192k"]),
+  pcm16: Object.freeze(["-c:a", "pcm_s16le"]),
+  opus: Object.freeze(["-c:a", "libopus", "-b:a", "192k"])
+});
+
+// src/local/preferences.ts
+function downloadOptions(value) {
+  if (value === void 0) return { quality: "highest", output: "original" };
+  if (!record(value) || !QUALITIES.includes(value.quality) || !DOWNLOAD_OUTPUTS.includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+  return { quality: value.quality, output: value.output };
+}
+
 // src/upscale/policy.ts
 var MAX_INPUT_BYTES = 256 * 1024 * 1024;
 var MAX_QUEUE_BYTES = 512 * 1024 * 1024;
@@ -17,29 +80,6 @@ function isJob(value) {
   if (!value || typeof value !== "object") return false;
   const v = value;
   return isJobId(v.id) && typeof v.filename === "string" && v.filename.length <= 240 && Number.isSafeInteger(v.size) && v.size > 0 && v.size <= MAX_INPUT_BYTES && typeof v.createdAt === "number" && Number.isFinite(v.createdAt) && (v.downloadId === void 0 || Number.isSafeInteger(v.downloadId) && v.downloadId >= 0);
-}
-
-// src/local/model.ts
-var SCOPE = "my-video-app/local";
-var HISTORY_KEY = "my_video_app_history_v1";
-var MAX_HISTORY = 200;
-var MAX_STREAM_BYTES = 128 * 1024 * 1024;
-var ACTIVE_HISTORY_STATES = ["preparing", "downloading", "scanning", "review"];
-function retainHistory(rows) {
-  const sorted = [...rows].sort((a, b) => b.createdAt - a.createdAt);
-  const active = (row) => ACTIVE_HISTORY_STATES.includes(row.state);
-  return [...sorted.filter(active), ...sorted.filter((row) => !active(row))].slice(0, MAX_HISTORY);
-}
-function isHistory(value) {
-  return record(value) && typeof value.id === "string" && /^[a-f0-9-]{36}$/.test(value.id) && typeof value.url === "string" && typeof value.filename === "string" && ["file", "hls", "dash"].includes(String(value.kind)) && ["preparing", "downloading", "scanning", "review", "discarded", "complete", "cancelled", "error"].includes(String(value.state)) && typeof value.createdAt === "number" && Number.isFinite(value.createdAt) && typeof value.incognito === "boolean";
-}
-
-// src/local/preferences.ts
-var QUALITIES = ["highest", "2160", "1080", "720", "480"];
-function downloadOptions(value) {
-  if (value === void 0) return { quality: "highest", output: "original" };
-  if (!record(value) || !QUALITIES.includes(value.quality) || !["original", "mp3", "m4a"].includes(String(value.output))) throw new Error("\uB2E4\uC6B4\uB85C\uB4DC \uD654\uC9C8 \uB610\uB294 \uC800\uC7A5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
-  return { quality: value.quality, output: value.output };
 }
 
 // src/data/database.ts
@@ -177,13 +217,9 @@ function createAppStorage(options2 = {}) {
       tx.onabort = () => reject(transactionErrors.get(tx) ?? tx.error ?? new Error("\uB85C\uCEEC DB \uD2B8\uB79C\uC7AD\uC158\uC744 \uC644\uB8CC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."));
       tx.onerror = () => {
       };
-      try {
-        start(tx, (value) => {
-          result = value;
-        });
-      } catch (error2) {
-        abort(tx, error2);
-      }
+      guarded(tx, () => start(tx, (value) => {
+        result = value;
+      }));
     });
   }
   function guarded(tx, run) {
@@ -577,6 +613,32 @@ function transportLabel(value) {
   return value === "h3" ? "HTTP/3" : value === "h2" ? "HTTP/2" : "HTTP/1.1";
 }
 
+// src/local/labels.ts
+var HISTORY_STATE_LABELS = Object.freeze({
+  preparing: "\uD30C\uC77C \uC900\uBE44 \uC911",
+  downloading: "\uB2E4\uC6B4\uB85C\uB4DC \uC911",
+  scanning: "\uB85C\uCEEC \uBC31\uC2E0 \uAC80\uC0AC \uC911",
+  review: "\uBCF4\uC548 \uAC80\uC0AC \uD655\uC778 \uD544\uC694",
+  discarded: "\uD30C\uC77C \uC0AD\uC81C\uB428",
+  complete: "\uC644\uB8CC",
+  cancelled: "\uCDE8\uC18C\uB428",
+  error: "\uC2E4\uD328"
+});
+var SECURITY_STATUS_LABELS = Object.freeze({
+  scanning: "\uB85C\uCEEC \uBC31\uC2E0: \uAC80\uC0AC \uC911",
+  clean: "\uB85C\uCEEC \uBC31\uC2E0: \uC704\uD611 \uBBF8\uD0D0\uC9C0",
+  infected: "\uB85C\uCEEC \uBC31\uC2E0: \uC704\uD611 \uD0D0\uC9C0",
+  unavailable: "\uB85C\uCEEC \uBC31\uC2E0: \uC5F0\uACB0\uB418\uC9C0 \uC54A\uC74C",
+  error: "\uB85C\uCEEC \uBC31\uC2E0: \uAC80\uC0AC \uC2E4\uD328",
+  "chrome-warning": "Chrome \uB2E4\uC6B4\uB85C\uB4DC \uACBD\uACE0"
+});
+var PREPARATION_STAGE_LABELS = Object.freeze({
+  queued: "\uC900\uBE44 \uB300\uAE30 \uC911",
+  fetching: "\uD30C\uC77C \uBC1B\uB294 \uC911",
+  processing: "\uBBF8\uB514\uC5B4 \uD569\uCE58\uB294 \uC911",
+  saving: "\uC800\uC7A5 \uC900\uBE44 \uC911"
+});
+
 // src/local/ui.ts
 function node(id) {
   const element = document.getElementById(id);
@@ -584,7 +646,6 @@ function node(id) {
   return element;
 }
 var status = node("status");
-var DOWNLOAD_OPTIONS_KEY2 = "my_video_app_download_options_v1";
 var refreshing = false;
 var hasError = false;
 var preferencesTouched = false;
@@ -628,7 +689,7 @@ var preferencesReady = (async () => {
     return;
   }
   try {
-    const saved = (await appStorage.get(DOWNLOAD_OPTIONS_KEY2))[DOWNLOAD_OPTIONS_KEY2];
+    const saved = (await appStorage.get(DOWNLOAD_OPTIONS_KEY))[DOWNLOAD_OPTIONS_KEY];
     const restored = downloadOptions(saved);
     if (preferencesTouched) return;
     node("quality").value = restored.quality;
@@ -641,7 +702,7 @@ for (const id of ["quality", "download-output"]) node(id).addEventListener("chan
   preferencesTouched = true;
   if (chrome.extension.inIncognitoContext) return;
   const selected = options();
-  void preferencesReady.then(() => appStorage.set({ [DOWNLOAD_OPTIONS_KEY2]: selected })).then(() => {
+  void preferencesReady.then(() => appStorage.set({ [DOWNLOAD_OPTIONS_KEY]: selected })).then(() => {
     node("download-preferences-status").textContent = "\uD654\uC9C8\xB7\uC800\uC7A5 \uD615\uC2DD \uC120\uD0DD\uC744 \uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.";
   }).catch(() => {
     node("download-preferences-status").textContent = "\uC124\uC815\uC744 \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uD604\uC7AC \uC120\uD0DD\uC73C\uB85C \uB2E4\uC6B4\uB85C\uB4DC\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.";
@@ -722,8 +783,6 @@ function mediaRow(item) {
   row.append(kind, title, source, controls);
   return row;
 }
-var stateLabels = { preparing: "\uD30C\uC77C \uC900\uBE44 \uC911", downloading: "\uB2E4\uC6B4\uB85C\uB4DC \uC911", scanning: "\uB85C\uCEEC \uBC31\uC2E0 \uAC80\uC0AC \uC911", review: "\uBCF4\uC548 \uAC80\uC0AC \uD655\uC778 \uD544\uC694", discarded: "\uD30C\uC77C \uC0AD\uC81C\uB428", complete: "\uC644\uB8CC", cancelled: "\uCDE8\uC18C\uB428", error: "\uC2E4\uD328" };
-var securityLabels = { scanning: "\uB85C\uCEEC \uBC31\uC2E0: \uAC80\uC0AC \uC911", clean: "\uB85C\uCEEC \uBC31\uC2E0: \uC704\uD611 \uBBF8\uD0D0\uC9C0", infected: "\uB85C\uCEEC \uBC31\uC2E0: \uC704\uD611 \uD0D0\uC9C0", unavailable: "\uB85C\uCEEC \uBC31\uC2E0: \uC5F0\uACB0\uB418\uC9C0 \uC54A\uC74C", error: "\uB85C\uCEEC \uBC31\uC2E0: \uAC80\uC0AC \uC2E4\uD328", "chrome-warning": "Chrome \uB2E4\uC6B4\uB85C\uB4DC \uACBD\uACE0" };
 function closeReview(defer = false) {
   if (defer && activeReview?.security?.token) deferredReviews.add(activeReview.security.token);
   if (securityDialog.open) securityDialog.close();
@@ -746,7 +805,7 @@ function openReview(item) {
   const security = item.security;
   const chromeWarning = security.status === "chrome-warning";
   node("security-filename").textContent = item.filename;
-  node("security-result").textContent = securityLabels[security.status];
+  node("security-result").textContent = SECURITY_STATUS_LABELS[security.status];
   node("security-explanation").textContent = chromeWarning ? "Chrome\uC774 \uB2E4\uC6B4\uB85C\uB4DC\uC5D0 \uC704\uD5D8\uC744 \uD45C\uC2DC\uD588\uC2B5\uB2C8\uB2E4. Chrome \uB2E4\uC6B4\uB85C\uB4DC \uD654\uBA74\uC5D0\uC11C \uACBD\uACE0\uB97C \uD655\uC778\uD558\uC138\uC694. \uC774 \uC571\uC740 Chrome\uC758 \uACBD\uACE0\uB97C \uC790\uB3D9\uC73C\uB85C \uD574\uC81C\uD558\uC9C0 \uC54A\uC73C\uBA70, \uD655\uC778 \uC804\uC5D0\uB294 \uC644\uB8CC \uCC98\uB9AC\uB098 \uC5C5\uC2A4\uCF00\uC77C\uB9C1\uC744 \uC9C4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4." : "\uD30C\uC77C\uC740 \uC774\uBBF8 \uB514\uC2A4\uD06C\uC5D0 \uC800\uC7A5\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4. \uD655\uC778 \uC804\uC5D0\uB294 \uC571\uC5D0\uC11C \uC644\uB8CC \uCC98\uB9AC\uB098 \uC5C5\uC2A4\uCF00\uC77C\uB9C1\uC744 \uC9C4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC704\uD611\uC744 \uD0D0\uC9C0\uD588\uAC70\uB098 \uAC80\uC0AC\uB97C \uC644\uB8CC\uD558\uC9C0 \uBABB\uD55C \uD30C\uC77C\uC740 \uC0AD\uC81C\uB97C \uAD8C\uC7A5\uD569\uB2C8\uB2E4. \uBBF8\uD0D0\uC9C0 \uACB0\uACFC\uB3C4 \uD30C\uC77C\uC758 \uC548\uC804\uC744 \uBCF4\uC7A5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.";
   const details = node("security-details");
   details.replaceChildren();
@@ -801,9 +860,9 @@ function historyRow(item) {
   const title = document.createElement("h3");
   title.textContent = item.filename;
   const info = document.createElement("p");
-  info.textContent = `${stateLabels[item.state]} \xB7 ${new Date(item.createdAt).toLocaleString("ko-KR")}`;
+  info.textContent = `${HISTORY_STATE_LABELS[item.state]} \xB7 ${new Date(item.createdAt).toLocaleString("ko-KR")}`;
   if (item.state === "preparing" && item.preparation) {
-    const label = { queued: "\uC900\uBE44 \uB300\uAE30 \uC911", fetching: "\uD30C\uC77C \uBC1B\uB294 \uC911", processing: "\uBBF8\uB514\uC5B4 \uD569\uCE58\uB294 \uC911", saving: "\uC800\uC7A5 \uC900\uBE44 \uC911" }[item.preparation.stage];
+    const label = PREPARATION_STAGE_LABELS[item.preparation.stage];
     if (label) info.textContent += ` \xB7 ${label}`;
     if (typeof item.preparation.progress === "number" && Number.isFinite(item.preparation.progress)) info.textContent += ` ${Math.round(Math.max(0, Math.min(1, item.preparation.progress)) * 100)}%`;
   }
@@ -814,7 +873,7 @@ function historyRow(item) {
   row.append(title, info);
   const security = document.createElement("p");
   security.className = "security-summary";
-  security.textContent = item.security ? securityLabels[item.security.status] : "\uAC80\uC0AC \uAE30\uB85D \uC5C6\uC74C";
+  security.textContent = item.security ? SECURITY_STATUS_LABELS[item.security.status] : "\uAC80\uC0AC \uAE30\uB85D \uC5C6\uC74C";
   if (item.security?.engine) security.textContent += ` \xB7 ${item.security.engine}`;
   if (item.security?.decision === "keep") security.textContent += " \xB7 \uC704\uD5D8 \uC548\uB0B4 \uD655\uC778 \uD6C4 \uC0AC\uC6A9\uC790\uAC00 \uC720\uC9C0\uD568";
   if (item.security?.decision === "delete") security.textContent += " \xB7 \uC0AC\uC6A9\uC790\uAC00 \uD30C\uC77C \uC0AD\uC81C\uB97C \uC120\uD0DD\uD568";

@@ -49,70 +49,67 @@ export function readinessResponse(value: unknown, requestId: string): AntivirusR
   if (result.status === 'ready' && !result.engine) throw new Error('연결할 백신 엔진을 확인하지 못했습니다.');
   return result;
 }
+interface NativeProtocol<T> {
+  action: 'status' | 'scan'; timeoutMs: number;
+  response(value: unknown, requestId: string): T;
+  failure(status: 'error' | 'unavailable', message: string): T;
+  malformedMessage: string; disconnectedMessage: string; timeoutMessage: string;
+}
+const readinessProtocol: NativeProtocol<AntivirusReadiness> = {
+  action: 'status', timeoutMs: 60_000, response: readinessResponse,
+  failure: (status, message) => ({ status, checkedAt: Date.now(), message }),
+  malformedMessage: '백신 도우미의 상태 응답이 올바르지 않습니다. 최신 도우미로 다시 설치하세요.',
+  disconnectedMessage: '로컬 백신 도우미 연결이 종료됐습니다. 설치 상태를 확인하세요.',
+  timeoutMessage: '백신 연결 상태 확인이 제한 시간을 초과했습니다.',
+};
+const scanProtocol: NativeProtocol<ScanResult> = {
+  action: 'scan', timeoutMs: 240_000, response: scanResponse,
+  failure: (status, message) => ({ status, message }),
+  malformedMessage: '백신 응답이 올바르지 않아 검사 완료로 처리하지 않았습니다.',
+  disconnectedMessage: '로컬 백신 도우미가 연결을 종료했습니다. 설치 상태를 확인하세요.',
+  timeoutMessage: '백신 검사가 제한 시간을 초과했습니다. 검사되지 않은 파일입니다.',
+};
+function nativeRequest<T>(protocol: NativeProtocol<T>, payload?: { path: string }): Promise<T> {
+  return new Promise<T>(resolve => {
+    let port: chrome.runtime.Port | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let settled = false;
+    const finish = (result: T) => {
+      if (settled) return; settled = true;
+      if (timer) clearTimeout(timer);
+      try { port?.disconnect(); } catch { /* Already disconnected. */ }
+      resolve(result);
+    };
+    try {
+      port = chrome.runtime.connectNative(ANTIVIRUS_HOST);
+      const requestId = crypto.randomUUID();
+      port.onMessage.addListener((value: unknown) => {
+        try { finish(protocol.response(value, requestId)); }
+        catch { finish(protocol.failure('error', protocol.malformedMessage)); }
+      });
+      port.onDisconnect.addListener(() => {
+        const message = chrome.runtime.lastError?.message;
+        finish(protocol.failure('unavailable', message ? `로컬 백신 연결 실패: ${message.slice(0, 300)}` : protocol.disconnectedMessage));
+      });
+      timer = setTimeout(() => finish(protocol.failure('error', protocol.timeoutMessage)), protocol.timeoutMs);
+      port.postMessage({ version: 1, action: protocol.action, requestId, ...payload });
+    } catch {
+      finish(protocol.failure('unavailable', '로컬 백신 도우미에 연결할 수 없습니다. 설치와 권한을 확인하세요.'));
+    }
+  });
+}
 let readinessPending: Promise<AntivirusReadiness> | undefined;
 export function probeAntivirus(): Promise<AntivirusReadiness> {
   if (readinessPending) return readinessPending;
   readinessPending = (async () => {
     if (!await chrome.permissions.contains({ permissions: ['nativeMessaging'] })) return { status: 'unavailable' as const, checkedAt: Date.now(), message: '로컬 백신 연결 권한이 없습니다. 백신 도우미 설치 후 ‘로컬 백신 연결’을 눌러 주세요.' };
-    return new Promise<AntivirusReadiness>(resolve => {
-      let port: chrome.runtime.Port | undefined;
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      let settled = false;
-      const finish = (result: AntivirusReadiness) => {
-        if (settled) return; settled = true;
-        if (timer) clearTimeout(timer);
-        try { port?.disconnect(); } catch { /* Already disconnected. */ }
-        resolve(result);
-      };
-      try {
-        port = chrome.runtime.connectNative(ANTIVIRUS_HOST);
-        const requestId = crypto.randomUUID();
-        port.onMessage.addListener((value: unknown) => {
-          try { finish(readinessResponse(value, requestId)); }
-          catch { finish({ status: 'error', checkedAt: Date.now(), message: '백신 도우미의 상태 응답이 올바르지 않습니다. 최신 도우미로 다시 설치하세요.' }); }
-        });
-        port.onDisconnect.addListener(() => {
-          const message = chrome.runtime.lastError?.message;
-          finish({ status: 'unavailable', checkedAt: Date.now(), message: message ? `로컬 백신 연결 실패: ${message.slice(0, 300)}` : '로컬 백신 도우미 연결이 종료됐습니다. 설치 상태를 확인하세요.' });
-        });
-        timer = setTimeout(() => finish({ status: 'error', checkedAt: Date.now(), message: '백신 연결 상태 확인이 제한 시간을 초과했습니다.' }), 60_000);
-        port.postMessage({ version: 1, action: 'status', requestId });
-      } catch {
-        finish({ status: 'unavailable', checkedAt: Date.now(), message: '로컬 백신 도우미에 연결할 수 없습니다. 설치와 권한을 확인하세요.' });
-      }
-    });
+    return nativeRequest(readinessProtocol);
   })().finally(() => { readinessPending = undefined; });
   return readinessPending;
 }
 export async function scanFile(path: string): Promise<ScanResult> {
   return navigator.locks.request('my-video-app-antivirus', async () => {
     if (!await chrome.permissions.contains({ permissions: ['nativeMessaging'] })) return { status: 'unavailable', message: '로컬 백신 연결 권한이 없습니다. 백신 도우미 설치 후 ‘로컬 백신 연결’을 눌러 주세요.' };
-    return new Promise<ScanResult>(resolve => {
-      let port: chrome.runtime.Port | undefined;
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      let settled = false;
-      const finish = (result: ScanResult) => {
-        if (settled) return; settled = true;
-        if (timer) clearTimeout(timer);
-        try { port?.disconnect(); } catch { /* Already disconnected. */ }
-        resolve(result);
-      };
-      try {
-        port = chrome.runtime.connectNative(ANTIVIRUS_HOST);
-        const requestId = crypto.randomUUID();
-        port.onMessage.addListener((value: unknown) => {
-          try { finish(scanResponse(value, requestId)); }
-          catch { finish({ status: 'error', message: '백신 응답이 올바르지 않아 검사 완료로 처리하지 않았습니다.' }); }
-        });
-        port.onDisconnect.addListener(() => {
-          const message = chrome.runtime.lastError?.message;
-          finish({ status: 'unavailable', message: message ? `로컬 백신 연결 실패: ${message.slice(0, 300)}` : '로컬 백신 도우미가 연결을 종료했습니다. 설치 상태를 확인하세요.' });
-        });
-        timer = setTimeout(() => finish({ status: 'error', message: '백신 검사가 제한 시간을 초과했습니다. 검사되지 않은 파일입니다.' }), 240_000);
-        port.postMessage({ version: 1, action: 'scan', requestId, path });
-      } catch {
-        finish({ status: 'unavailable', message: '로컬 백신 도우미에 연결할 수 없습니다. 설치와 권한을 확인하세요.' });
-      }
-    });
+    return nativeRequest(scanProtocol, { path });
   });
 }

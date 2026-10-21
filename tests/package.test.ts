@@ -8,10 +8,7 @@ import path from 'node:path';
 
 // Run the product's archive writer itself, without executing release preconditions
 // or duplicating its traversal and exclusion rules in a test implementation.
-const packageSource = await readFile(new URL('../scripts/package.mjs', import.meta.url), 'utf8');
-const writerMatch = packageSource.match(/const script = String\.raw`([\s\S]*?)`;/);
-assert(writerMatch?.[1], 'The production Python archive writer must be available for verification');
-const writer = writerMatch[1];
+const writer = await readFile(new URL('../scripts/archive.py', import.meta.url), 'utf8');
 const python = process.platform === 'win32' ? 'python' : 'python3';
 const sentinel = 'Harmless external file: must never be copied into a release archive.';
 

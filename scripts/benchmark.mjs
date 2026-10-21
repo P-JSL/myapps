@@ -1,36 +1,15 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFile, readdir, writeFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
 import { cpus, totalmem } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { hash, sourceIdentity } from './lib/artifacts.mjs';
+import { algorithmSuites } from './project.mjs';
 
 process.chdir(fileURLToPath(new URL('../', import.meta.url)));
-const hash = bytes => createHash('sha256').update(bytes).digest('hex');
-async function sourceIdentity() {
-  const names = ['package.json', 'package-lock.json'];
-  async function visit(dir) {
-    for (const entry of await readdir(dir, { withFileTypes: true })) {
-      if (entry.name === '__pycache__') continue;
-      assert(!entry.isSymbolicLink(), `Unexpected source symlink: ${dir}/${entry.name}`);
-      const name = `${dir}/${entry.name}`;
-      if (entry.isDirectory()) await visit(name);
-      else if (/\.(?:ts|mjs|py)$/.test(name) || (name.startsWith('tests/baselines/') && name.endsWith('.txt'))) names.push(name);
-    }
-  }
-  for (const dir of ['src', 'native', 'scripts', 'tests']) await visit(dir);
-  return Object.fromEntries(await Promise.all(names.sort().map(async name => [name, hash(await readFile(name))])));
-}
-
 // Run sequentially: competing benchmark processes would distort the comparison.
 const sourceSha256 = await sourceIdentity();
-const suites = [
-  ['state', 'tests/bench-state.mjs'],
-  ['media', 'tests/bench-media.mjs'],
-  ['transfer', 'tests/bench-transfer.mjs'],
-  ['ui', 'tests/bench-ui.mjs'],
-  ['security', 'scripts/benchmark-security.mjs'],
-];
+const suites = algorithmSuites;
 const outcomes = [];
 for (const [name, script] of suites) {
   const result = spawnSync(process.execPath, ['--experimental-strip-types', script], {
