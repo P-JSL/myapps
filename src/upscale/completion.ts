@@ -1,4 +1,5 @@
 import { cleanup, cleanupUnlocked, deleteJob, directory, jobs, withQueueLock, privateContext } from './storage.ts';
+import { appStorage } from '../data/database.ts';
 import { OFFER_KEY, JOBS_KEY, MAX_INPUT_BYTES, MAX_QUEUE_BYTES, MAX_JOBS, safeBasename, sniffMedia, isJobId, type Job } from './policy.ts';
 
 interface CompletedDownload {
@@ -23,7 +24,8 @@ export async function offerUpscale(event: CompletedDownload): Promise<void> {
   const pending = serial.then(() => withQueueLock(async () => {
     const downloadId = event.downloadId;
     if (!event.success || event.incognito || typeof downloadId !== 'number' || !Number.isSafeInteger(downloadId) || downloadId < 0 || !permitted()) return;
-    if ((await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] === false) return;
+    if ((await appStorage.get(OFFER_KEY))[OFFER_KEY] === false) return;
+    if ((await appStorage.status()).recoveryCount > 0) return;
     const root = await navigator.storage.getDirectory();
     const source = await (await root.getFileHandle(event.internalFilename)).getFile();
     if (!source.size || source.size > MAX_INPUT_BYTES || !sniffMedia(new Uint8Array(await source.slice(0, 16).arrayBuffer()))) return;
@@ -43,9 +45,9 @@ export async function offerUpscale(event: CompletedDownload): Promise<void> {
     try { await source.stream().pipeTo(writable); }
     catch (error) { await dir.removeEntry(job.id).catch(() => {}); throw error; }
     if (!permitted()) { await dir.removeEntry(job.id).catch(() => {}); return; }
-    await chrome.storage.local.set({ [JOBS_KEY]: [job, ...retained] });
+    await appStorage.set({ [JOBS_KEY]: [job, ...retained] });
     if (!permitted()) {
-      await chrome.storage.local.set({ [JOBS_KEY]: retained });
+      await appStorage.set({ [JOBS_KEY]: retained });
       await dir.removeEntry(job.id).catch(() => {}); return;
     }
     await chrome.notifications.create(`vdh-upscale:${job.id}`, {
@@ -70,7 +72,7 @@ export async function revokeDownloadOffers(downloadId: number): Promise<void> {
     const revoked = retained.filter(job => job.downloadId === downloadId);
     if (!revoked.length) return;
     // Hide the jobs before deleting files so a failed removal cannot leave them selectable.
-    await chrome.storage.local.set({ [JOBS_KEY]: retained.filter(job => job.downloadId !== downloadId) });
+    await appStorage.set({ [JOBS_KEY]: retained.filter(job => job.downloadId !== downloadId) });
     await Promise.all(revoked.map(job => chrome.notifications.clear(`vdh-upscale:${job.id}`).catch(() => {})));
     const dir = await directory();
     const removals = await Promise.allSettled(revoked.map(job => dir.removeEntry(job.id).catch((error: unknown) => {

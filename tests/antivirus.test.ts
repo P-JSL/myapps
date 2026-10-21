@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { ANTIVIRUS_HOST, chromeWarning, scanFile, scanResponse, probeAntivirus, readinessResponse } from '../src/local/antivirus.ts';
-import { HISTORY_KEY, SCOPE, type HistoryItem } from '../src/local/model.ts';
-import { DIRECTORY, JOBS_KEY, OFFER_KEY } from '../src/upscale/policy.ts';
+import { HISTORY_KEY, SCOPE, MAX_HISTORY, retainHistory, type HistoryItem } from '../src/local/model.ts';
+import { DIRECTORY, JOBS_KEY, OFFER_KEY, RETENTION_MS, MAX_JOBS } from '../src/upscale/policy.ts';
 
 const mediaBytes = Buffer.from([0, 0, 0, 16, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0]);
 const digest = createHash('sha256').update(mediaBytes).digest('hex');
@@ -59,6 +59,8 @@ interface State {
   notices: string[]; cleared: string[]; removed: number[]; removeFails: boolean;
   shown: number[]; root: string;
   searches: number[];
+  fileRemovals: string[]; storageCalls: string[];
+  storageFailure?: 'ready' | 'get' | 'set' | 'status'; recoveryCount: number;
 }
 let state: State;
 const changed = new FakeEvent<[chrome.downloads.DownloadDelta]>();
@@ -80,6 +82,7 @@ function fileDirectory(path: string): unknown {
       };
     },
     async removeEntry(name: string) {
+      state.fileRemovals.push(name);
       try { await rm(join(path, name)); }
       catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new DOMException('Missing test file', 'NotFoundError'); throw error; }
     },
@@ -166,11 +169,42 @@ test('local antivirus and background safety decisions', async t => {
     root: temp, data: { [HISTORY_KEY]: [], [OFFER_KEY]: false }, downloads: new Map(), permission: true, permissionRequests: 0,
     connections: [], requests: [], native: (request, port) => port.onMessage.emit(nativeResponse(request.requestId)),
     notices: [], cleared: [], removed: [], removeFails: false, shown: [], searches: [],
+    fileRemovals: [], storageCalls: [], recoveryCount: 0,
   };
   const originalChrome = Object.getOwnPropertyDescriptor(globalThis, 'chrome');
   const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage');
   installChrome();
+  const { appStorage } = await import('../src/data/database.ts');
+  const originalAppStorage = { ...appStorage };
+  const databaseAccess = (operation: 'ready' | 'get' | 'set' | 'status') => {
+    state.storageCalls.push(operation);
+    if (state.storageFailure === operation) throw new Error(`Test database ${operation} failure`);
+  };
+  // Workflow double; actual IndexedDB retention is covered by browser tests.
+  const databaseValues = (values: Record<string, unknown>) => {
+    const result = structuredClone(values);
+    if (state.recoveryCount === 0 && Array.isArray(result[HISTORY_KEY])) result[HISTORY_KEY] = retainHistory(result[HISTORY_KEY] as HistoryItem[]);
+    return result;
+  };
+  Object.assign(appStorage, {
+    async ready() { databaseAccess('ready'); },
+    async get(keys: string | string[]) {
+      databaseAccess('get');
+      return databaseValues(Object.fromEntries((Array.isArray(keys) ? keys : [keys]).map(key => [key, state.data[key]])));
+    },
+    async set(values: Record<string, unknown>) {
+      databaseAccess('set'); Object.assign(state.data, databaseValues(values));
+    },
+    async status() {
+      databaseAccess('status');
+      return { name: 'my-video-app', version: 1, privateContext: false,
+        historyCount: (state.data[HISTORY_KEY] as unknown[] | undefined)?.length ?? 0,
+        jobCount: (state.data[JOBS_KEY] as unknown[] | undefined)?.length ?? 0,
+        recoveryCount: state.recoveryCount, lastMaintenanceAt: Date.now(), migratedAt: Date.now(), legacyCleanupPending: false };
+    },
+  });
   try {
+    const { cleanup, jobs, deleteJob } = await import('../src/upscale/storage.ts');
     const resumedPreparation = await seed('preparing'); delete resumedPreparation.downloadId;
     state.data[HISTORY_KEY] = [resumedPreparation];
     const { handleLocalMessage } = await import('../src/local/background.ts');
@@ -178,11 +212,24 @@ test('local antivirus and background safety decisions', async t => {
     await new Promise<void>(resolve => setTimeout(resolve, 20));
     const resumedHistory = structuredClone(rows());
     const command = (type: string, value: Record<string, unknown> = {}, sender = ui) => handleLocalMessage({ scope: SCOPE, type, ...value }, sender);
+    const popup = { ...ui, url: 'chrome-extension://test-extension/local/popup.html' };
+    const replaceTabs = (query: () => Promise<unknown[]>, sendMessage: unknown) => {
+      const originalQuery = Object.getOwnPropertyDescriptor(chrome.tabs, 'query');
+      const originalSend = Object.getOwnPropertyDescriptor(chrome.tabs, 'sendMessage');
+      Object.defineProperty(chrome.tabs, 'query', { configurable: true, value: query });
+      Object.defineProperty(chrome.tabs, 'sendMessage', { configurable: true, value: sendMessage });
+      return () => {
+        (chrome.tabs.onRemoved as unknown as FakeEvent<[number]>).emit(42);
+        if (originalQuery) Object.defineProperty(chrome.tabs, 'query', originalQuery);
+        if (originalSend) Object.defineProperty(chrome.tabs, 'sendMessage', originalSend); else Reflect.deleteProperty(chrome.tabs, 'sendMessage');
+      };
+    };
     t.beforeEach(async () => {
       state.data = { [HISTORY_KEY]: [], [OFFER_KEY]: false }; state.downloads.clear();
       state.permission = true; state.permissionRequests = 0; state.connections = []; state.requests = [];
       state.native = (request, port) => port.onMessage.emit(nativeResponse(request.requestId));
       state.notices = []; state.cleared = []; state.removed = []; state.removeFails = false; state.shown = []; state.searches = [];
+      state.fileRemovals = []; state.storageCalls = []; delete state.storageFailure; state.recoveryCount = 0;
     });
     t.afterEach(async () => {
       // Drain filesystem cleanup and lock callbacks before changing the shared Chrome test double.
@@ -195,6 +242,87 @@ test('local antivirus and background safety decisions', async t => {
 
     await t.test('routine MV3 worker activation preserves preparation until an actual restart or update event', () => {
       assert.deepEqual(resumedHistory, [resumedPreparation]);
+    });
+
+    await t.test('queue cleanup preserves files and metadata when database ready, read, status or commit fails', async () => {
+      const directory = join(temp, DIRECTORY); await mkdir(directory, { recursive: true });
+      for (const phase of ['ready', 'get', 'status', 'set'] as const) {
+        const id = crypto.randomUUID(); const path = join(directory, id); await writeFile(path, mediaBytes);
+        const retained = [{ id, filename: 'expired.mp4', size: 16, createdAt: Date.now() - RETENTION_MS - 1 }];
+        state.data[JOBS_KEY] = retained; state.storageFailure = phase;
+        await assert.rejects(cleanup(), new RegExp(`Test database ${phase} failure`));
+        assert.deepEqual(state.data[JOBS_KEY], retained); assert.equal((await stat(path)).size, 16);
+        assert.deepEqual(state.fileRemovals, [], `${phase} failure must precede every file removal`);
+      }
+      delete state.storageFailure;
+    });
+
+    await t.test('recovered legacy metadata suspends queue expiry, index rewrites and orphan-file deletion', async () => {
+      const directory = join(temp, DIRECTORY); await mkdir(directory, { recursive: true });
+      const id = crypto.randomUUID(); const orphan = crypto.randomUUID();
+      await writeFile(join(directory, id), mediaBytes); await writeFile(join(directory, orphan), mediaBytes);
+      const retained = [{ id, filename: 'expired.mp4', size: 16, createdAt: Date.now() - RETENTION_MS - 1 }];
+      state.data[JOBS_KEY] = retained; state.recoveryCount = 1;
+      assert.deepEqual(await cleanup(), retained); assert.deepEqual(state.data[JOBS_KEY], retained);
+      assert.equal((await stat(join(directory, id))).size, 16); assert.equal((await stat(join(directory, orphan))).size, 16);
+      assert.deepEqual(state.fileRemovals, []); assert.ok(!state.storageCalls.includes('set'));
+    });
+
+    await t.test('recovery preserves over-cap history and jobs through decisions and explicit deletion', async () => {
+      const item = await seed('review');
+      const histories: HistoryItem[] = [item, ...Array.from({ length: MAX_HISTORY + 4 }, (_, index) => ({
+        id: crypto.randomUUID(), url: 'https://media.test/recovered-' + index + '.mp4',
+        filename: 'recovered-' + index + '.mp4', kind: 'file' as const,
+        state: 'complete' as const, createdAt: item.createdAt + index + 1, incognito: false,
+      }))];
+      const retained = Array.from({ length: MAX_JOBS + 2 }, (_, index) => ({
+        id: crypto.randomUUID(), filename: 'recovered-copy-' + index + '.mp4',
+        size: 128 * 1024 * 1024, createdAt: Date.now() - RETENTION_MS - index - 1,
+      }));
+      const directory = join(temp, DIRECTORY); await mkdir(directory, { recursive: true });
+      for (const job of retained) await writeFile(join(directory, job.id), mediaBytes);
+      const orphan = crypto.randomUUID(); await writeFile(join(directory, orphan), mediaBytes);
+      state.data[HISTORY_KEY] = histories; state.data[JOBS_KEY] = retained; state.recoveryCount = 1;
+      const listed = await command('list') as { history: HistoryItem[] };
+      assert.deepEqual(listed.history.map(row => row.id), histories.map(row => row.id));
+      assert.deepEqual(await jobs(), retained); assert.deepEqual(await cleanup(), retained);
+      assert.deepEqual(state.fileRemovals, []); assert.ok(!state.storageCalls.includes('set'));
+      await command('security-keep', { id: item.id, token: item.security!.token, confirmed: true });
+      assert.equal(rows().length, histories.length); assert.equal(rows().find(row => row.id === item.id)?.state, 'complete');
+      await deleteJob(retained[0]!); assert.deepEqual(await jobs(), retained.slice(1));
+      await assert.rejects(stat(join(directory, retained[0]!.id)), { code: 'ENOENT' });
+      for (const job of retained.slice(1)) assert.equal((await stat(join(directory, job.id))).size, mediaBytes.length);
+      assert.equal((await stat(join(directory, orphan))).size, mediaBytes.length);
+    });
+    await t.test('startup preserves unindexed temporary inputs while legacy recovery remains unresolved', async () => {
+      const filename = `local-${crypto.randomUUID()}.media`; await writeFile(join(temp, filename), mediaBytes);
+      state.data[JOBS_KEY] = []; state.recoveryCount = 1;
+      (chrome.runtime.onStartup as unknown as FakeEvent<[]>).emit();
+      await until(() => state.storageCalls.filter(operation => operation === 'status').length >= 2);
+      // Completion cleanup and background setup are separate startup listeners.
+      await navigator.locks.request('vdh-upscale-queue-v1', async () => {});
+      await navigator.locks.request('my-video-app-history', async () => {});
+      assert.equal((await stat(join(temp, filename))).size, 16); assert.deepEqual(state.fileRemovals, []);
+    });
+
+    await t.test('startup database failure leaves unindexed temporary inputs untouched', async () => {
+      const filename = `local-${crypto.randomUUID()}.media`; await writeFile(join(temp, filename), mediaBytes);
+      state.storageFailure = 'ready';
+      (chrome.runtime.onStartup as unknown as FakeEvent<[]>).emit();
+      await until(() => state.storageCalls.filter(operation => operation === 'ready').length >= 2);
+      // Completion cleanup and background setup are separate startup listeners.
+      await navigator.locks.request('vdh-upscale-queue-v1', async () => {});
+      await navigator.locks.request('my-video-app-history', async () => {});
+      assert.equal((await stat(join(temp, filename))).size, 16); assert.deepEqual(state.fileRemovals, []);
+    });
+
+    await t.test('private queue cleanup returns without touching the embedded database', async () => {
+      const originalContext = Object.getOwnPropertyDescriptor(chrome.extension, 'inIncognitoContext');
+      Object.defineProperty(chrome.extension, 'inIncognitoContext', { configurable: true, value: true });
+      state.storageFailure = 'ready';
+      try {
+        assert.deepEqual(await cleanup(), []); assert.deepEqual(state.storageCalls, []); assert.deepEqual(state.fileRemovals, []);
+      } finally { if (originalContext) Object.defineProperty(chrome.extension, 'inIncognitoContext', originalContext); }
     });
 
     await t.test('missing nativeMessaging permission leaves the file unverified without opening a native port', async () => {
@@ -458,16 +586,57 @@ test('local antivirus and background safety decisions', async t => {
     });
     await t.test('website senders cannot connect, scan arbitrary paths or decide security outcomes', async () => {
       const item = await seed('review');
-      for (const type of ['security-connect', 'antivirus-status', 'security-rescan', 'security-delete', 'security-keep', 'review-chrome']) {
+      for (const type of ['security-connect', 'antivirus-status', 'security-rescan', 'security-delete', 'security-keep', 'review-chrome', 'rescan']) {
         await assert.rejects(command(type, { id: item.id, token: item.security!.token, confirmed: true, path: '/private/file' }, content), /확장 화면/);
       }
       assert.equal(state.permissionRequests, 0); assert.equal(state.connections.length, 0);
       assert.equal(state.requests.length, 0); assert.equal(state.removed.length, 0); assert.equal(rows()[0]!.state, 'review');
     });
+    await t.test('popup rescan rejects unavailable, privileged and opposite-mode pages before messaging or database access', async () => {
+      let active: unknown[] = []; const messages: unknown[] = [];
+      const restore = replaceTabs(async () => active, async (...args: unknown[]) => { messages.push(args); return { ok: true }; });
+      try {
+        for (active of [[], [{ id: 42, url: 'chrome://extensions/', active: true, incognito: false }],
+          [{ id: 42, url: 'https://site.test/private', active: true, incognito: true }]]) await assert.rejects(command('rescan', {}, popup));
+        assert.deepEqual(messages, []); assert.deepEqual(state.storageCalls, []);
+      } finally { restore(); }
+    });
+    await t.test('popup rescan targets active main frame and returns matching-ticket media', async () => {
+      const address = 'https://media.test/rescan-' + crypto.randomUUID() + '.mp4'; let messages = 0;
+      const restore = replaceTabs(async () => [{ id: 42, url: 'https://site.test/player', active: true, incognito: false }],
+        async (tabId: number, message: { scope: string; type: string; rescanId: string }, options: unknown) => {
+          assert.equal(tabId, 42); assert.deepEqual(options, { frameId: 0 }); assert.equal(message.scope, SCOPE); assert.equal(message.type, 'rescan');
+          assert.match(message.rescanId, /^[0-9a-f-]{36}$/); messages++;
+          await command('capture', { rescanId: message.rescanId, items: [{ url: address, mime: 'video/mp4', title: 'Fresh media', fromElement: true }] }, content);
+          return { ok: true };
+        });
+      try {
+        const result = await command('rescan', {}, popup) as { ok: boolean; items: Array<{ url: string }> };
+        assert.equal(result.ok, true); assert.equal(messages, 1); assert(result.items.some(item => item.url === address));
+        assert.deepEqual(rows(), []); assert.equal(state.connections.length, 0);
+      } finally { restore(); }
+    });
+    await t.test('navigation invalidates pending popup rescan and stale capture ticket', async () => {
+      const address = 'https://media.test/stale-' + crypto.randomUUID() + '.mp4';
+      let ticket: string | undefined; let release: ((value: unknown) => void) | undefined;
+      const restore = replaceTabs(async () => [{ id: 42, url: 'https://site.test/player', active: true, incognito: false }],
+        async (_tabId: number, value: { rescanId: string }) => { ticket = value.rescanId; return await new Promise(resolve => { release = resolve; }); });
+      let pending: Promise<unknown> | undefined;
+      try {
+        pending = command('rescan', {}, popup); const outcome = pending.then(value => ({ value }), (error: unknown) => ({ error }));
+        await until(() => ticket !== undefined && release !== undefined);
+        (chrome.tabs.onUpdated as unknown as FakeEvent<[number, unknown, unknown]>).emit(42, { status: 'loading' }, { id: 42, url: 'https://site.test/new', active: true, incognito: false });
+        await assert.rejects(command('capture', { rescanId: ticket, items: [{ url: address, mime: 'video/mp4', title: 'Stale media', fromElement: true }] }, content));
+        release!({ ok: true }); assert('error' in await outcome);
+        const result = await command('list') as { items: Array<{ url: string }> }; assert(!result.items.some(item => item.url === address));
+      } finally { release?.({ ok: true }); await pending?.catch(() => {}); restore(); }
+    });
     await t.test('split incognito history clears private completed rows while preserving reviews and ordinary history', async () => {
       const ordinary = await seed('complete'); const ordinaryHistory = structuredClone(rows());
       const originalDownload = Object.getOwnPropertyDescriptor(chrome.downloads, 'download');
       const originalContext = Object.getOwnPropertyDescriptor(chrome.extension, 'inIncognitoContext');
+      const originalFetch = Object.getOwnPropertyDescriptor(globalThis, 'fetch');
+      const requestedMedia: string[] = [];
       const list = async () => (await command('list') as { history: HistoryItem[] }).history;
       let nextId = ++sequence;
       const createPrivateDownload = async () => {
@@ -476,6 +645,15 @@ test('local antivirus and background safety decisions', async t => {
         return id;
       };
       Object.defineProperty(chrome.downloads, 'download', { configurable: true, value: createPrivateDownload });
+      Object.defineProperty(globalThis, 'fetch', { configurable: true, value: async (input: RequestInfo | URL, init?: RequestInit) => {
+        const address = input instanceof Request ? input.url : String(input);
+        assert.ok(['https://media.test/private-clean.mp4', 'https://media.test/private-review.mp4'].includes(address), address);
+        assert.equal(init?.credentials, 'include'); assert.equal(new Headers(init?.headers).get('range'), 'bytes=0-65535');
+        requestedMedia.push(address);
+        const response = new Response(new Uint8Array(mediaBytes), { status: 206, headers: { 'Content-Type': 'video/mp4', 'Content-Range': 'bytes 0-15/16', 'Content-Length': '16' } });
+        Object.defineProperty(response, 'url', { value: address }); return response;
+      } });
+      state.storageCalls = [];
       Object.defineProperty(chrome.extension, 'inIncognitoContext', { configurable: true, value: true });
       try {
         assert.deepEqual(await list(), [], 'ordinary history is hidden in a private extension context');
@@ -488,20 +666,26 @@ test('local antivirus and background safety decisions', async t => {
         await command('clear-history');
         const retained = await list(); assert.equal(retained.length, 1); assert.equal(retained[0]!.state, 'review');
         assert.equal(retained[0]!.url, 'https://media.test/private-review.mp4');
+        assert.deepEqual(requestedMedia, ['https://media.test/private-clean.mp4', 'https://media.test/private-review.mp4']);
         assert.deepEqual(rows(), ordinaryHistory, 'private history operations must not rewrite shared ordinary history');
+        assert.deepEqual(state.storageCalls, [], 'private downloads and review decisions must never touch the database');
         Object.defineProperty(chrome.extension, 'inIncognitoContext', { configurable: true, value: false });
         assert.deepEqual((await list()).map(row => row.id), [ordinary.id]);
         await command('clear-history'); assert.deepEqual(rows(), []);
+        state.storageCalls = [];
         Object.defineProperty(chrome.extension, 'inIncognitoContext', { configurable: true, value: true });
         assert.equal((await list()).length, 1, 'ordinary clear does not discard a private unresolved review');
         await command('security-delete', { id: retained[0]!.id, token: retained[0]!.security!.token });
         await command('clear-history'); assert.deepEqual(await list(), []);
+        assert.deepEqual(state.storageCalls, []);
       } finally {
+        if (originalFetch) Object.defineProperty(globalThis, 'fetch', originalFetch); else Reflect.deleteProperty(globalThis, 'fetch');
         if (originalDownload) Object.defineProperty(chrome.downloads, 'download', originalDownload); else Reflect.deleteProperty(chrome.downloads, 'download');
         if (originalContext) Object.defineProperty(chrome.extension, 'inIncognitoContext', originalContext);
       }
     });
   } finally {
+    Object.assign(appStorage, originalAppStorage);
     await rm(temp, { recursive: true, force: true });
     if (originalChrome) Object.defineProperty(globalThis, 'chrome', originalChrome); else Reflect.deleteProperty(globalThis, 'chrome');
     if (originalStorage) Object.defineProperty(navigator, 'storage', originalStorage); else Reflect.deleteProperty(navigator, 'storage');

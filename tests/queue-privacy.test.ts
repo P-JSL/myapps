@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { DIRECTORY, JOBS_KEY, OFFER_KEY, type Job } from '../src/upscale/policy.ts';
+import { appStorage } from '../src/data/database.ts';
 
 class Event<Args extends unknown[]> {
   private listeners: Array<(...args: Args) => unknown> = [];
@@ -19,7 +20,7 @@ test('split incognito queue APIs and events preserve ordinary retained files, no
   await writeFile(join(root, DIRECTORY, job.id), bytes);
   await writeFile(join(root, 'input.media'), bytes);
   const data: Record<string, unknown> = { [JOBS_KEY]: [job], [OFFER_KEY]: true };
-  const effects = { reads: 0, writes: 0, roots: 0, directories: 0, files: 0, fileWrites: 0, removals: 0, notices: 0, cleared: 0, menus: 0 };
+  const effects = { reads: 0, writes: 0, ready: 0, status: 0, roots: 0, directories: 0, files: 0, fileWrites: 0, removals: 0, notices: 0, cleared: 0, menus: 0 };
   const notices = new Set([`vdh-upscale:${job.id}`]);
   const opened: string[] = [];
   const clicked = new Event<[string]>(); const buttonClicked = new Event<[string, number]>();
@@ -27,6 +28,11 @@ test('split incognito queue APIs and events preserve ordinary retained files, no
   const extension = { inIncognitoContext: false };
   const originalChrome = Object.getOwnPropertyDescriptor(globalThis, 'chrome');
   const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage');
+  const originalAppStorage = { get: appStorage.get, set: appStorage.set, ready: appStorage.ready, status: appStorage.status };
+  appStorage.get = async keys => { effects.reads++; return Object.fromEntries((typeof keys === 'string' ? [keys] : keys).map(key => [key, structuredClone(data[key])])); };
+  appStorage.set = async values => { effects.writes++; Object.assign(data, structuredClone(values)); };
+  appStorage.ready = async () => { effects.ready++; };
+  appStorage.status = async () => { effects.status++; return { name: 'queue-test', version: 1, privateContext: false, historyCount: 0, jobCount: (data[JOBS_KEY] as unknown[] | undefined)?.length ?? 0, recoveryCount: 0, lastMaintenanceAt: null, migratedAt: null, legacyCleanupPending: false }; };
   const absent = (error: unknown): never => {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new DOMException('Missing test file', 'NotFoundError');
     throw error;
@@ -129,6 +135,7 @@ test('split incognito queue APIs and events preserve ordinary retained files, no
       assert.deepEqual(new Uint8Array(await readFile(join(root, DIRECTORY, job.id))), bytes);
     });
   } finally {
+    Object.assign(appStorage, originalAppStorage);
     if (originalChrome) Object.defineProperty(globalThis, 'chrome', originalChrome); else Reflect.deleteProperty(globalThis, 'chrome');
     if (originalStorage) Object.defineProperty(navigator, 'storage', originalStorage); else Reflect.deleteProperty(navigator, 'storage');
     await rm(root, { recursive: true, force: true });

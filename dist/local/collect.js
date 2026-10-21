@@ -1,5 +1,10 @@
 "use strict";
 (() => {
+  // src/security/validation.ts
+  function record(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+  }
+
   // src/upscale/policy.ts
   var MAX_INPUT_BYTES = 256 * 1024 * 1024;
   var MAX_QUEUE_BYTES = 512 * 1024 * 1024;
@@ -47,7 +52,7 @@
   var scannedTitle = document.title;
   var scannedBase = document.baseURI;
   var saturated = false;
-  function scan() {
+  function scan(rescanId) {
     scannedTitle = document.title;
     scannedBase = document.baseURI;
     const found = [];
@@ -75,8 +80,10 @@
     }
     saturated = found.length >= 100;
     if (sent.size > 1e3) sent.clear();
-    for (let index = 0; index < found.length; index += 10) void chrome.runtime.sendMessage({ scope: SCOPE, type: "capture", items: found.slice(index, index + 10) }).catch(() => {
-    });
+    const pending = [];
+    for (let index = 0; index < found.length; index += 10) pending.push(chrome.runtime.sendMessage({ scope: SCOPE, type: "capture", ...rescanId ? { rescanId } : {}, items: found.slice(index, index + 10) }).catch(() => {
+    }));
+    return Promise.all(pending);
   }
   function schedule() {
     clearTimeout(timer);
@@ -123,5 +130,13 @@
     }
   }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["src", "href", "type"] });
   document.addEventListener("loadedmetadata", schedule, true);
+  chrome.runtime.onMessage?.addListener((message, sender, reply) => {
+    if (!record(message) || message.scope !== SCOPE || message.type !== "rescan" || typeof sender.id !== "string" || sender.id !== chrome.runtime.id || sender.tab || typeof message.rescanId !== "string" || !/^[0-9a-f-]{36}$/.test(message.rescanId)) return false;
+    const rescanId = message.rescanId;
+    clearTimeout(timer);
+    sent.clear();
+    void Promise.resolve().then(() => scan(rescanId)).then(() => reply({ ok: true })).catch(() => reply({ ok: false }));
+    return true;
+  });
   scan();
 })();

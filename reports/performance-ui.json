@@ -6,12 +6,12 @@
     "src/local/ui.ts": "d420b0ab96e2d15aba7a962fd719fd583eb7b0539dc2bf9d51d2e0144c539f90"
   },
   "sourceSha256": {
-    "src/local/collect.ts": "e640517615508db922874ac8c4453e1c03c8ce0de7e205f92287ea9c0c6051f4",
-    "src/local/ui.ts": "9df2fea747085204852ebd29bd9e17a29e1ca22a483cd4ce4b0c973a95cd9643"
+    "src/local/collect.ts": "eb36555aa3441a421eafab00d1f449d09fd3d72aac5144a665894c95c00cce2a",
+    "src/local/ui.ts": "029d03fdcdc0341db399820857a82acb1d6c79a18a054fd1e53b379af8239367"
   },
   "browser": "154.0.8037.57",
   "platform": "linux",
-  "mode": "real Chromium DOM; Chrome APIs/resource timing/debounce clock are test doubles; no network latency benchmark",
+  "mode": "real Chromium DOM and IndexedDB; Chrome APIs/resource timing/debounce clock are test doubles; no network latency benchmark",
   "scenarios": [
     {
       "name": "collector-unrelated-churn-200-anchors",
@@ -21,11 +21,11 @@
         "nonMediaTimings": 200
       },
       "baseline": {
-        "elapsedMs": 55.70000000298023,
+        "elapsedMs": 73.60000002384186,
         "fullDocumentScans": 40
       },
       "optimized": {
-        "elapsedMs": 3.199999988079071,
+        "elapsedMs": 3.400000035762787,
         "fullDocumentScans": 0
       }
     },
@@ -37,11 +37,11 @@
         "nonMediaTimings": 1000
       },
       "baseline": {
-        "elapsedMs": 10993.70000000298,
+        "elapsedMs": 11031,
         "fullDocumentScans": 200
       },
       "optimized": {
-        "elapsedMs": 5.0999999940395355,
+        "elapsedMs": 5.399999976158142,
         "fullDocumentScans": 0
       }
     },
@@ -53,12 +53,12 @@
         "polls": 100
       },
       "baseline": {
-        "elapsedMs": 786.4000000059605,
+        "elapsedMs": 781.3999999761581,
         "createdElements": 240000,
         "listNodeMutations": 80000
       },
       "optimized": {
-        "elapsedMs": 82.29999999701977,
+        "elapsedMs": 118.60000002384186,
         "createdElements": 0,
         "listNodeMutations": 0
       }
@@ -71,12 +71,12 @@
         "polls": 100
       },
       "baseline": {
-        "elapsedMs": 772.0999999940395,
+        "elapsedMs": 819.5,
         "createdElements": 240000,
         "listNodeMutations": 80000
       },
       "optimized": {
-        "elapsedMs": 83.09999999403954,
+        "elapsedMs": 87.20000004768372,
         "createdElements": 600,
         "listNodeMutations": 200
       }

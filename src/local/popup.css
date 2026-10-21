@@ -1,0 +1,49 @@
+:root{color-scheme:dark;font-family:Arial,"Noto Sans KR",sans-serif;background:#2b2b30;color:#d4d5d8;font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0;width:640px;height:600px;max-width:100vw;max-height:100vh}
+button,textarea{font:inherit}
+button{cursor:pointer}
+button:disabled{cursor:default;opacity:.48}
+button:focus-visible,textarea:focus-visible{outline:2px solid #9badf1;outline-offset:3px}
+[hidden]{display:none!important}
+.popup-shell{height:100%;display:flex;flex-direction:column}
+main{flex:1;min-height:0;overflow:hidden}
+.waiting{height:100%;display:flex;flex-direction:column;align-items:center;padding:64px 24px 20px}
+.app-logo{object-fit:contain;width:48px;height:48px}
+.waiting h1{margin:12px 0 0;font-size:19px;line-height:1.5;font-weight:400;color:#dedee5}
+.notices{flex:none;padding:0 14px}
+#status{font-size:12px;line-height:1.5;margin:0 0 10px;color:#e2bb9e;overflow-wrap:anywhere}
+.review-summary{display:block;width:100%;margin:0 0 10px;padding:9px 12px;background:#4a3e2b;border:1px solid #79643f;border-radius:6px;color:#f1d7a2;font-size:13px;text-align:left}
+.discovery-card{position:relative;flex:none;margin:0 14px 16px;padding:16px 9px 9px;background:#1b1b1f;border:1px solid #38383d;border-radius:8px;box-shadow:0 2px 4px #0003}
+#discovery-heading{margin:0 26px 4px 0;font-size:17px;font-weight:700;line-height:1.4;color:#e1e1e6}
+.discovery-copy{word-break:keep-all;margin:0 22px 10px 0;font-size:17px;color:#dedee5;line-height:1.5}
+#dismiss-hint{position:absolute;right:10px;top:12px;border:0;background:none;color:#85858b;font-size:23px;line-height:1;padding:3px}
+.discovery-actions{display:flex;justify-content:flex-end;gap:16px}
+.discovery-actions button{border:3px solid #404044;border-radius:7px;background:#262629;color:#dedee5;padding:5px 8px;font-size:17px}
+.discovery-actions button:hover{background:#38383d}
+footer{flex:none;display:flex;justify-content:space-between;align-items:center;height:48px;padding:4px 6px;border-top:1px solid #3a3a3f;background:#1b1b1f}
+.footer-actions{display:flex;gap:9px;align-items:center}
+.icon-button{width:41px;height:36px;display:grid;place-items:center;padding:5px;border:3px solid #404044;border-radius:7px;background:#262629;color:#c5c5cb}
+.icon-button:hover{color:#fff;background:#39393f}
+.icon-button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+.media-view{height:100%;overflow:auto;padding:25px 22px 16px}
+.media-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.media-heading h1{font-size:18px;font-weight:500;margin:0;color:#e0e2e7}
+#media-count{font-size:13px;color:#989da9}
+#media{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.media-row{display:flex;gap:15px;align-items:center;padding:15px;background:#32353a;border:1px solid #41444c;border-radius:7px}
+.media-copy{flex:1;min-width:0}
+.media-title{margin:0 0 7px;font-size:14px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e1e3e8}
+.media-detail{margin:0;font-size:12px;line-height:1.4;color:#a5a9b2;overflow-wrap:anywhere}
+.download-button{flex:none;padding:9px 13px;border:1px solid #6676a4;border-radius:5px;background:#46577f;color:#eef2ff;font-size:13px}
+.download-button:hover:not(:disabled){background:#536791}
+dialog{width:480px;max-width:calc(100vw - 48px);padding:24px;border:1px solid #545963;border-radius:10px;background:#303339;color:#d9dce3;box-shadow:0 18px 70px #0008}
+dialog::backdrop{background:#0008}
+dialog h2{font-size:18px;margin:0 0 15px}
+dialog p{font-size:14px;line-height:1.7;white-space:pre-line;margin:0 0 16px}
+dialog label{font-size:12px;color:#b3b8c4}
+dialog textarea{width:100%;resize:vertical;max-height:150px;margin-top:9px;border:1px solid #626775;border-radius:5px;padding:10px;background:#24272c;color:#e6e8ee}
+dialog form{margin:18px 0 0;text-align:right}
+dialog form button{border:1px solid #68728c;border-radius:5px;background:#46577f;color:#f1f3f9;padding:8px 20px}
+@media(max-height:460px){.waiting{padding-top:28px}.discovery-card{margin-bottom:10px;padding:10px}.discovery-copy{font-size:14px}}
+@media(prefers-reduced-motion:no-preference){button{transition:background-color .12s,color .12s}}

@@ -1,0 +1,32 @@
+{
+  "release": "1.9.0",
+  "buildSha256": "48c2b307c9965a7b832912a0f4339fa638f8ba4dd7766beff4a72dc6f29d82e6",
+  "recordedAtUtc": "2026-10-21T06:58:17.408Z",
+  "unitTests": 121,
+  "nativeTests": 48,
+  "browserScenarios": 77,
+  "embeddedDatabaseSubchecks": 19,
+  "popupCollectorSubchecks": 6,
+  "http3Checks": 4,
+  "algorithmSuites": 5,
+  "unitAndBrowserLogSha256": "e7deaa2a77978588e4cfe536d7aa413d833d73585d06f2569bee137c143724e9",
+  "independentReview": {
+    "agent": "/root/review",
+    "status": "approved",
+    "scope": "Source, real DOM screenshots, recomputed dist/report hashes and final verification reports"
+  },
+  "userTxtSample": {
+    "sha256": "704a5e15ae1068e4df52a8bcff04270efdad595cf685e0eccff86ab335471a46",
+    "actualMime": "audio/mp4",
+    "actualExtension": "m4a",
+    "videoTracks": 0,
+    "audioCodec": "aac",
+    "durationSeconds": 0.487619
+  },
+  "limitations": [
+    "Actual extension installation blocked by administrator policy; Chrome APIs doubled",
+    "Windows antivirus APIs not executed on Linux",
+    "Native fallback signature request and actual download are separate; large ID3 may be rejected",
+    "User TXT sample is a short audio-only fragment; it cannot recreate a complete video"
+  ]
+}

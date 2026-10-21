@@ -10,6 +10,8 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { prepareDashAuditFixtures, verifyDashPlanner } from './dash-audit.mjs';
 import { prepareOwnedInputAudit, verifyOwnedInputProcessing } from './worker-input-audit.mjs';
+import { prepareDatabaseAudit, verifyDatabaseAudit } from './database-audit.mjs';
+import { verifyPopupAudit } from './popup-audit.mjs';
 
 const root = path.resolve('.');
 const results = path.join(root, 'test-results');
@@ -22,6 +24,7 @@ function command(binary, args) {
   return result.stdout;
 }
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=160x90:rate=12:duration=1', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100:duration=1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', '-y', `${fixtures}/clip.mp4`]);
+command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-c:v', 'libvpx', '-c:a', 'libopus', '-y', `${fixtures}/clip.webm`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=64x48', '-frames:v', '1', '-threads', '1', '-y', `${fixtures}/image.png`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=size=8192x2', '-frames:v', '1', '-threads', '1', '-y', `${fixtures}/wide.png`]);
 for (const directory of ['hls', 'dash', 'range', 'video', 'audio', 'low', 'high', 'quality-dash', 'parallel', 'retry', 'redirect']) await mkdir(`${fixtures}/${directory}`, { recursive: true });
@@ -54,8 +57,10 @@ for (const name of ['parallel', 'retry', 'redirect']) command('ffmpeg', ['-hide_
 await writeFile(`${fixtures}/encrypted.m3u8`, '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="https://invalid.example/key"\n#EXTINF:1,\nclip.mp4\n#EXT-X-ENDLIST\n');
 await writeFile(`${fixtures}/protected.mpd`, '<MPD type="static" mediaPresentationDuration="PT1S"><Period><AdaptationSet mimeType="video/mp4"><ContentProtection schemeIdUri="urn:uuid:protected"/><Representation id="v" bandwidth="1"><BaseURL>https://invalid.example/private.mp4</BaseURL></Representation></AdaptationSet></Period></MPD>');
 await writeFile(`${fixtures}/malicious.mp4`, '<html><script>fetch("https://invalid.example/upload")</script></html>');
+await writeFile(`${fixtures}/plain.txt`, 'This response is text, not a video file.');
 await prepareDashAuditFixtures(fixtures);
 await prepareOwnedInputAudit(fixtures);
+await prepareDatabaseAudit(fixtures);
 const originalHash = createHash('sha256').update(await readFile(`${fixtures}/clip.mp4`)).digest('hex');
 
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png', '.mp4': 'video/mp4', '.json': 'application/json', '.m3u8': 'application/vnd.apple.mpegurl', '.mpd': 'application/dash+xml', '.ts': 'video/mp2t' };
@@ -72,16 +77,25 @@ const server = createServer(async (request, response) => {
     if (name === '/fixtures/retry/seg-000.ts' && ++retrySegmentHits === 1) { response.writeHead(503, { 'Retry-After': '0' }).end('busy'); return; }
     if (name.startsWith('/fixtures/parallel/') && name.endsWith('.ts')) { parallelActive++; parallelPeak = Math.max(parallelPeak, parallelActive); await new Promise(resolve => setTimeout(resolve, 60)); parallelActive--; }
     if (address.searchParams.has('slow')) { const id = address.searchParams.get('slow'); slowHits.set(id, (slowHits.get(id) ?? 0) + 1); slowActive++; slowPeak = Math.max(slowPeak, slowActive); await new Promise(resolve => setTimeout(resolve, 100)); slowActive--; }
-    const target = name.startsWith('/fixtures/') ? path.join(fixtures, name.slice('/fixtures/'.length)) : path.join(root, 'dist', name);
+    const alias = {
+      '/fixtures/video.txt': ['clip.mp4', 'text/plain'],
+      '/fixtures/webm.txt': ['clip.webm', 'text/plain', 'attachment; filename="video.txt"'],
+      '/fixtures/disposition.txt': ['clip.mp4', 'application/octet-stream', 'attachment; filename="video.txt"'],
+      '/fixtures/html.txt': ['malicious.mp4', 'text/html'],
+      '/fixtures/spoofed.mp4': ['malicious.mp4', 'video/mp4'],
+    }[name];
+    const target = alias ? path.join(fixtures, alias[0]) : name.startsWith('/fixtures/') ? path.join(fixtures, name.slice('/fixtures/'.length)) : path.join(root, 'dist', name);
     const bytes = await readFile(target);
+    const contentType = alias?.[1] ?? types[path.extname(target)] ?? 'application/octet-stream';
+    const disposition = alias?.[2] ? { 'Content-Disposition': alias[2] } : {};
     if (request.headers.range) {
       const range = request.headers.range.match(/^bytes=(\d+)-(\d+)$/);
-      if (!range || Number(range[2]) >= bytes.length) { response.writeHead(416).end(); return; }
-      const start = Number(range[1]), end = Number(range[2]);
-      response.writeHead(206, { 'Content-Type': types[path.extname(target)] ?? 'application/octet-stream', 'Content-Range': `bytes ${start}-${end}/${bytes.length}`, 'Content-Length': end - start + 1 });
+      if (!range || Number(range[1]) >= bytes.length || Number(range[2]) < Number(range[1])) { response.writeHead(416).end(); return; }
+      const start = Number(range[1]), end = Math.min(Number(range[2]), bytes.length - 1);
+      response.writeHead(206, { 'Content-Type': contentType, ...disposition, 'Content-Range': `bytes ${start}-${end}/${bytes.length}`, 'Content-Length': end - start + 1 });
       response.end(bytes.subarray(start, end + 1)); return;
     }
-    response.writeHead(200, { 'Content-Type': types[path.extname(target)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' }); response.end(bytes);
+    response.writeHead(200, { 'Content-Type': contentType, ...disposition, 'Cache-Control': 'no-store' }); response.end(bytes);
   } catch { response.writeHead(404).end('Not found'); }
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -108,6 +122,35 @@ await context.addInitScript(() => {
   const read = () => JSON.parse(localStorage.getItem(storageKey) ?? '{}');
   const downloads = new Map(); let sequence = 0; let hasOffscreen = false;
   window.__testDownloads = downloads;
+  window.__appGet = async key => (await import('/fixtures/database-audit.js')).appStorage.get(key);
+  window.__appSet = async values => (await import('/fixtures/database-audit.js')).appStorage.set(values);
+  // Actual IndexedDB reads and commits run normally. Preference timing tests
+  // explicitly delay delivery of the transaction completion callback.
+  const originalGet = IDBObjectStore.prototype.get;
+  IDBObjectStore.prototype.get = function (key) {
+    const request = originalGet.call(this, key);
+    if (this.name === 'settings' && key === 'vdh_upscale_offer_v1') window.__offerReads = (window.__offerReads || 0) + 1;
+    if (this.name === 'settings' && key === 'my_video_app_download_options_v1') {
+      window.__prefsReads = (window.__prefsReads || 0) + 1;
+      if (new URL(location.href).searchParams.has('test-delay-preferences') && !window.__preferencesReleased) {
+        const pending = []; let released = false;
+        const transaction = request.transaction;
+        const completed = transaction.oncomplete;
+        if (typeof completed !== 'function') throw new Error('Preference audit requires an installed transaction completion callback');
+        transaction.oncomplete = function (event) {
+          if (released) completed.call(this, event);
+          else pending.push(() => completed.call(this, event));
+        };
+        window.__releasePreferences = () => { released = true; window.__preferencesReleased = true; for (const replay of pending.splice(0)) replay(); };
+      }
+    }
+    return request;
+  };
+  const originalPut = IDBObjectStore.prototype.put;
+  IDBObjectStore.prototype.put = function (value, ...args) {
+    if (this.name === 'settings' && value?.key === 'vdh_upscale_offer_v1') window.__offerWrites = (window.__offerWrites || 0) + 1;
+    return originalPut.call(this, value, ...args);
+  };
   const api = {
     permissions: { contains: async () => window.__avPermission !== false, request: async () => { window.__avPermission = true; return true; } },
     runtime: { connectNative: () => {
@@ -121,7 +164,7 @@ await context.addInitScript(() => {
     }, id: 'test-double-only', getURL: path => `${location.origin}/${path.replace(/^\//, '')}`, onInstalled: listeners(), onStartup: listeners(), onMessage: listeners(), sendMessage: async message => {
       if (message.scope === 'my-video-app/offscreen') {
         const module = await import('/local/offscreen.js');
-        if (message.type === 'prepare') { try { return await module.prepareLocal(message.id, message.url, message.kind, message.options); } catch (error) { await module.disposeLocal(message.id); return { ok: false, error: error.message }; } }
+        if (message.type === 'prepare') { try { return await module.prepareLocal(message.id, message.url, message.kind, message.options); } catch (error) { await module.disposeLocal(message.id); return { ok: false, error: error.message, invalidMedia: error.name === 'InvalidMediaFileError' }; } }
         if (message.type === 'cancel') { module.cancelLocal(message.id); return { ok: true }; }
         if (message.type === 'dispose') { await module.disposeLocal(message.id); return { ok: true }; }
       }
@@ -134,8 +177,9 @@ await context.addInitScript(() => {
     } },
     extension: { inIncognitoContext: new URL(location.href).searchParams.has('test-incognito') },
     storage: { local: {
-      get: async key => { const data = read(); if (key === 'vdh_upscale_offer_v1') window.__offerReads = (window.__offerReads || 0) + 1; if (key === 'my_video_app_download_options_v1') { window.__prefsReads = (window.__prefsReads || 0) + 1; if (new URL(location.href).searchParams.has('test-delay-preferences')) await new Promise(resolve => { window.__releasePreferences = resolve; }); } if (!key) return data; if (typeof key === 'string') return { [key]: data[key] }; return Object.fromEntries(key.map(k => [k, data[k]])); },
-      set: async values => { if (Object.hasOwn(values, 'vdh_upscale_offer_v1')) window.__offerWrites = (window.__offerWrites || 0) + 1; localStorage.setItem(storageKey, JSON.stringify({ ...read(), ...values })); },
+      get: async key => { const data = read(); if (!key) return data; if (typeof key === 'string') return { [key]: data[key] }; return Object.fromEntries(key.map(k => [k, data[k]])); },
+      set: async values => { localStorage.setItem(storageKey, JSON.stringify({ ...read(), ...values })); },
+      remove: async keys => { const data = read(); for (const key of typeof keys === 'string' ? [keys] : keys) delete data[key]; localStorage.setItem(storageKey, JSON.stringify(data)); },
     } },
     notifications: {
       onClicked: listeners(), onButtonClicked: listeners(), clear: async () => true,
@@ -230,6 +274,8 @@ function toneFrequency(filename) {
   return crossings * 44100 / (bytes.length / 2);
 }
 try {
+  await checks('Embedded database creates, migrates and manages data atomically in real IndexedDB', () => verifyDatabaseAudit(context, origin));
+  await checks('Toolbar popup and authenticated collector rescan work with real DOM and IndexedDB', () => verifyPopupAudit(browser, origin));
   await checks('Built UI loads with CSP; actual FFmpeg Worker assets available', async () => {
     await openTools(); assert.equal(await page.title(), '미디어 도구 · My Video App');
     assert.equal(await page.locator('#start').isDisabled(), true);
@@ -237,7 +283,7 @@ try {
   });
   await checks('Local install uses independent entry points without an account/activation engine', async () => {
     const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
-    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.8.0');
+    assert.equal(manifest.background.service_worker, 'local/background.js'); assert.equal(manifest.version, '1.9.0');
     assert.equal(manifest.key, undefined); assert.equal(manifest.update_url, undefined);
     const result = await context.request.get(`${origin}/service/main.js`); assert.equal(result.status(), 404);
   });
@@ -322,9 +368,9 @@ try {
       const response = await fetch('/fixtures/clip.mp4'); await response.body.pipeTo(file);
       const args = { internalFilename: 'finished-download.mp4', filename: 'folder/completed.mp4', downloadId: 99, success: true, incognito: false };
       await offerUpscale({ ...args, success: false }); await offerUpscale({ ...args, incognito: true });
-      const before = (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1 ?? [];
+      const before = (await window.__appGet('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1 ?? [];
       await offerUpscale(args);
-      const jobs = (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1;
+      const jobs = (await window.__appGet('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1;
       await root.removeEntry('finished-download.mp4');
       const dir = await root.getDirectoryHandle('vdh-upscale-v1');
       const blob = await (await dir.getFileHandle(jobs[0].id)).getFile();
@@ -352,7 +398,7 @@ try {
     await second.close();
   });
   await checks('Private tools hide the shared normal queue and preserve its files while manual processing remains usable', async () => {
-    const before = await page.evaluate(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1);
+    const before = await page.evaluate(async () => (await window.__appGet('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1);
     assert.equal(before.length, 2);
     const target = await context.newPage();
     try {
@@ -369,7 +415,7 @@ try {
       const file = await pending; await file.saveAs(`${results}/private-manual-image.png`);
       const probe = JSON.parse(command('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', `${results}/private-manual-image.png`]));
       assert.equal(probe.streams[0].width, 128); assert.equal(probe.streams[0].height, 96);
-      const after = await target.evaluate(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1);
+      const after = await page.evaluate(async () => (await window.__appGet('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1);
       assert.deepEqual(after, before);
       assert.deepEqual(await target.evaluate(() => [window.__offerReads || 0, window.__offerWrites || 0]), [0, 0]);
       const retained = await page.evaluate(async ids => {
@@ -385,9 +431,9 @@ try {
       const { offerUpscale } = await import('/hardening/service.js');
       await offerUpscale({ internalFilename: 'does-not-need-to-exist', filename: 'disabled.mp4', downloadId: 101, success: true, incognito: false });
       const key = 'vdh_upscale_jobs_v1';
-      const stored = (await chrome.storage.local.get(key))[key];
+      const stored = (await window.__appGet(key))[key];
       stored[0].createdAt = Date.now() - 25 * 60 * 60 * 1000;
-      await chrome.storage.local.set({ [key]: stored });
+      await window.__appSet({ [key]: stored });
     });
     await page.locator('#refresh').click(); await page.waitForFunction(() => document.querySelectorAll('#jobs li').length === 1);
     await page.locator('#clear').click(); await page.waitForFunction(() => document.querySelectorAll('#jobs li').length === 0);
@@ -519,11 +565,11 @@ try {
     const pending = page.waitForEvent('download'); await page.locator('#media button').click();
     const file = await pending; await file.saveAs(`${results}/local-direct.mp4`);
     assert.equal(createHash('sha256').update(await readFile(`${results}/local-direct.mp4`)).digest('hex'), originalHash);
-    await waitForAsync(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1?.[0]?.state === 'complete');
+    await waitForAsync(async () => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1?.[0]?.state === 'complete');
     await page.locator('#history-tab').click(); await page.waitForFunction(() => document.querySelector('#history li')?.textContent.includes('완료'));
     assert.match(await page.locator('#history').innerText(), /로컬 테스트 영상\.mp4/);
-    await waitForAsync(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1?.length === 1);
-    assert.equal(await page.evaluate(async () => (await chrome.storage.local.get('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1.length), 1);
+    await waitForAsync(async () => (await window.__appGet('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1?.length === 1);
+    assert.equal(await page.evaluate(async () => (await window.__appGet('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1.length), 1);
   });
   await checks('Polling reuses unchanged rows, restores focus on changed rows and leaves outside controls focused', async () => {
     await page.locator('#media-tab').click();
@@ -546,12 +592,12 @@ try {
     await page.locator('#download-output').selectOption('mp3'); await page.locator('#quality').selectOption('720');
     const pending = page.waitForEvent('download'); await page.locator('#media li button').first().click();
     const file = await pending; assert(file.suggestedFilename().endsWith('.mp3')); await file.saveAs(`${results}/local-ui-audio.mp3`);
-    await waitForAsync(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.filename.endsWith('.mp3') && row.state === 'complete'));
+    await waitForAsync(async () => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.filename.endsWith('.mp3') && row.state === 'complete'));
     assert(Math.abs(toneFrequency(`${results}/local-ui-audio.mp3`) - 440) < 10);
     await page.locator('#download-output').selectOption('original'); await page.locator('#quality').selectOption('highest');
   });
   await checks('Concurrent duplicate requests are coalesced and native cancellation updates history using API doubles', async () => {
-    await page.evaluate(async () => { window.__holdDownloads = true; await chrome.storage.local.set({ vdh_upscale_offer_v1: false }); });
+    await page.evaluate(async () => { window.__holdDownloads = true; await window.__appSet({ vdh_upscale_offer_v1: false }); });
     const pending = page.waitForEvent('download');
     const result = await page.evaluate(async origin => {
       const background = await import('/local/background.js');
@@ -561,12 +607,12 @@ try {
     }, origin);
     assert.deepEqual(result.sort(), ['fulfilled', 'rejected']);
     const saved = await pending; await saved.saveAs(`${results}/local-cancel-api-double.mp4`);
-    await waitForAsync(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.state === 'downloading'));
+    await waitForAsync(async () => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.state === 'downloading'));
     const progress = await page.evaluate(async () => (await chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'list' })).history.find(row => row.state === 'downloading'));
     assert.equal(progress.receivedBytes, 12); assert.equal(progress.totalBytes, 24);
     await page.locator('#history-tab').click(); await page.getByRole('button', { name: '취소', exact: true }).click();
-    await waitForAsync(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.state === 'cancelled'));
-    await page.evaluate(async () => { window.__holdDownloads = false; await chrome.storage.local.set({ vdh_upscale_offer_v1: true }); });
+    await waitForAsync(async () => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.state === 'cancelled'));
+    await page.evaluate(async () => { window.__holdDownloads = false; await window.__appSet({ vdh_upscale_offer_v1: true }); });
   });
   await checks('History retry creates a new intact download and keeps the cancelled record using API doubles', async () => {
     await page.locator('#history-tab').click();
@@ -574,7 +620,7 @@ try {
     const pending = page.waitForEvent('download'); await row.getByRole('button', { name: '다시 시도' }).click();
     const file = await pending; await file.saveAs(`${results}/local-history-retry.mp4`);
     assert.equal(createHash('sha256').update(await readFile(`${results}/local-history-retry.mp4`)).digest('hex'), originalHash);
-    await waitForAsync(async () => { const rows = (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1; return rows[0]?.state === 'complete' && rows.some(row => row.state === 'cancelled'); });
+    await waitForAsync(async () => { const rows = (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1; return rows[0]?.state === 'complete' && rows.some(row => row.state === 'cancelled'); });
   });
   await checks('Cancellation while the offscreen document starts prevents the later media request using API doubles', async () => {
     const id = await page.evaluate(async origin => {
@@ -593,7 +639,7 @@ try {
         return result.item.id;
       } finally { release(); chrome.offscreen.createDocument = originalCreate; }
     }, origin);
-    await waitForAsync(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'cancelled', id);
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'cancelled', id);
     assert.equal(slowHits.get('startup-cancel'), undefined);
   });
   async function securityFixture(status, danger = 'safe') {
@@ -601,8 +647,8 @@ try {
       window.__avStatus = status;
       const id = crypto.randomUUID(); const downloadId = 5000 + window.__testDownloads.size;
       window.__testDownloads.set(downloadId, { id: downloadId, state: 'complete', filename: '/test-downloads/review.mp4', danger, exists: true, fileSize: 12 });
-      const data = (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1 || [];
-      await chrome.storage.local.set({ my_video_app_history_v1: [{ id, downloadId, url: location.origin + '/fixtures/clip.mp4?review=' + id, filename: '검사 확인 영상.mp4', kind: 'file', state: 'downloading', createdAt: Date.now(), incognito: false }, ...data] });
+      const data = (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1 || [];
+      await window.__appSet({ my_video_app_history_v1: [{ id, downloadId, url: location.origin + '/fixtures/clip.mp4?review=' + id, filename: '검사 확인 영상.mp4', kind: 'file', state: 'downloading', createdAt: Date.now(), incognito: false }, ...data] });
       chrome.downloads.onChanged.fire({ id: downloadId, state: { current: 'complete' } });
       return { id, downloadId };
     }, { status, danger });
@@ -625,11 +671,11 @@ try {
     await page.evaluate(() => { window.__avDeleteFail = true; });
     await page.locator('#security-delete').click();
     await page.waitForFunction(() => document.querySelector('#security-dialog').open && !document.querySelector('#security-delete').disabled && document.querySelector('#security-details').textContent.includes('파일 삭제를 확인하지 못했습니다'));
-    const row = await page.evaluate(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id), reviewFixture.id);
+    const row = await page.evaluate(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id), reviewFixture.id);
     assert.equal(row.state, 'review');
     await page.evaluate(() => { window.__avDeleteFail = false; });
     await page.locator('#security-delete').click();
-    await waitForAsync(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id).state === 'discarded', reviewFixture.id);
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id).state === 'discarded', reviewFixture.id);
     assert.equal(await page.evaluate(id => window.__testDownloads.get(id).exists, reviewFixture.downloadId), false);
     await page.waitForFunction(() => !document.querySelector('#security-dialog').open);
   });
@@ -639,8 +685,8 @@ try {
     assert.equal(await page.locator('#security-keep').isDisabled(), true);
     await page.locator('#security-acknowledge').check();
     await page.locator('#security-keep').click();
-    await waitForAsync(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id).state === 'complete', fixture.id);
-    const row = await page.evaluate(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id), fixture.id);
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id).state === 'complete', fixture.id);
+    const row = await page.evaluate(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id), fixture.id);
     assert.equal(row.security.status, 'unavailable'); assert.equal(row.security.decision, 'keep');
     await page.waitForFunction(() => !document.querySelector('#security-dialog').open);
   });
@@ -653,7 +699,7 @@ try {
     await page.waitForFunction(() => window.__lastCreatedTab?.url === 'chrome://downloads/');
     assert.equal(await page.evaluate(() => window.__lastCreatedTab.url), 'chrome://downloads/');
     await page.evaluate(id => { const item = window.__testDownloads.get(id); item.danger = 'accepted'; chrome.downloads.onChanged.fire({ id, danger: { current: 'accepted' } }); }, fixture.downloadId);
-    await waitForAsync(async id => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id).state === 'complete', fixture.id);
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id).state === 'complete', fixture.id);
   });
   await checks('Local antivirus permission is requested only by the visible connect button using API doubles', async () => {
     await page.evaluate(() => { window.__avPermission = false; });
@@ -681,21 +727,21 @@ try {
     await page.evaluate(async ({ id, origin }) => {
       const file = await (await (await navigator.storage.getDirectory()).getFileHandle(`local-${id}.media`, { create: true })).createWritable();
       await file.write('temporary test input'); await file.close();
-      await chrome.storage.local.set({ my_video_app_history_v1: [{ id, url: `${origin}/fixtures/clip.mp4`, filename: 'interrupted.mp4', kind: 'file', state: 'preparing', createdAt: Date.now(), incognito: false }] });
+      await window.__appSet({ my_video_app_history_v1: [{ id, url: `${origin}/fixtures/clip.mp4`, filename: 'interrupted.mp4', kind: 'file', state: 'preparing', createdAt: Date.now(), incognito: false }] });
       chrome.runtime.onStartup.fire();
     }, { id, origin });
-    await waitForAsync(async () => (await chrome.storage.local.get('my_video_app_history_v1')).my_video_app_history_v1[0]?.state === 'error');
+    await waitForAsync(async () => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1[0]?.state === 'error');
     await waitForAsync(async id => { try { await (await navigator.storage.getDirectory()).getFileHandle(`local-${id}.media`); return false; } catch { return true; } }, id);
   });
   await checks('Validated download quality and output choices survive reopening the local app', async () => {
     await page.locator('#media-tab').click();
     await page.locator('#quality').selectOption('720'); await page.locator('#download-output').selectOption('mp3');
-    await waitForAsync(async () => { const v = (await chrome.storage.local.get('my_video_app_download_options_v1')).my_video_app_download_options_v1; return v?.quality === '720' && v.output === 'mp3'; });
+    await waitForAsync(async () => { const v = (await window.__appGet('my_video_app_download_options_v1')).my_video_app_download_options_v1; return v?.quality === '720' && v.output === 'mp3'; });
     await page.reload();
     await page.waitForFunction(() => document.querySelector('#quality').value === '720' && document.querySelector('#download-output').value === 'mp3');
   });
   async function immediatePreferenceDownload(kind, changeBeforeRestore = false) {
-    await page.evaluate(async () => chrome.storage.local.set({ my_video_app_download_options_v1: { quality: '720', output: 'mp3' } }));
+    await page.evaluate(async () => window.__appSet({ my_video_app_download_options_v1: { quality: '720', output: 'mp3' } }));
     const target = await context.newPage();
     try {
       await target.goto(`${origin}/local/index.html?test-delay-preferences=1`);
@@ -743,7 +789,7 @@ try {
       await target.evaluate(() => window.__releasePreferences());
       await target.waitForFunction(() => document.querySelector('#download-preferences-status').textContent.includes('저장했습니다'));
       assert.equal(await target.locator('#quality').inputValue(), '480'); assert.equal(await target.locator('#download-output').inputValue(), 'm4a');
-      const stored = await target.evaluate(() => JSON.parse(localStorage.getItem('VDH_TEST_CHROME_STORAGE')).my_video_app_download_options_v1);
+      const stored = await page.evaluate(async () => (await window.__appGet('my_video_app_download_options_v1')).my_video_app_download_options_v1);
       assert.deepEqual(stored, { quality: '480', output: 'm4a' });
     } finally { await target.close(); }
   });
@@ -755,10 +801,80 @@ try {
       assert.equal(await target.locator('#quality').inputValue(), 'highest'); assert.equal(await target.locator('#download-output').inputValue(), 'original');
       assert.equal(await target.evaluate(() => window.__prefsReads || 0), 0);
       await target.locator('#quality').selectOption('1080'); await target.locator('#download-output').selectOption('mp3');
-      const stored = await target.evaluate(() => JSON.parse(localStorage.getItem('VDH_TEST_CHROME_STORAGE')).my_video_app_download_options_v1);
+      const stored = await page.evaluate(async () => (await window.__appGet('my_video_app_download_options_v1')).my_video_app_download_options_v1);
       assert.deepEqual(stored, { quality: '480', output: 'm4a' });
     } finally { await target.close(); }
     await page.locator('#quality').selectOption('highest'); await page.locator('#download-output').selectOption('original');
+  });
+  const misleadingMedia = [
+    { alias: 'video.txt', source: 'clip.mp4', extension: 'mp4', mime: 'video/mp4' },
+    { alias: 'disposition.txt', source: 'clip.mp4', extension: 'mp4', mime: 'video/mp4' },
+    { alias: 'webm.txt', source: 'clip.webm', extension: 'webm', mime: 'video/webm' },
+  ];
+  async function assertExactPlayable(filename, source) {
+    const saved = await readFile(filename), original = await readFile(`${fixtures}/${source}`);
+    assert.equal(createHash('sha256').update(saved).digest('hex'), createHash('sha256').update(original).digest('hex'));
+    const probe = JSON.parse(command('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', filename]));
+    assert(probe.streams.some(stream => stream.codec_type === 'video'));
+    assert(probe.streams.some(stream => stream.codec_type === 'audio'));
+    command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', filename, '-f', 'null', '-']);
+  }
+  await checks('Prepared files ignore misleading text MIME and attachment names and save exact playable MP4/WebM', async () => {
+    for (const fixture of misleadingMedia) {
+      const prepared = await page.evaluate(async ({ url }) => {
+        const module = await import('/local/offscreen.js'), id = crypto.randomUUID();
+        const result = await module.prepareLocal(id, url, 'file');
+        return { id, ...result, blobType: (await (await fetch(result.url)).blob()).type };
+      }, { url: `${origin}/fixtures/${fixture.alias}` });
+      try {
+        assert.equal(prepared.mime, fixture.mime); assert.equal(prepared.extension, fixture.extension); assert.equal(prepared.blobType, fixture.mime);
+        const pending = page.waitForEvent('download');
+        await page.evaluate(url => {
+          const link = document.createElement('a'); link.href = url; link.download = ''; document.body.append(link); link.click(); link.remove();
+        }, prepared.url);
+        const download = await pending;
+        assert(download.suggestedFilename().endsWith('.' + fixture.extension), download.suggestedFilename());
+        assert(!download.suggestedFilename().endsWith('.txt'));
+        const filename = `${results}/typed-${fixture.alias}.${fixture.extension}`; await download.saveAs(filename);
+        assert.equal(await download.failure(), null); await assertExactPlayable(filename, fixture.source);
+      } finally { await page.evaluate(async id => (await import('/local/offscreen.js')).disposeLocal(id), prepared.id); }
+    }
+  });
+  await checks('Background downloads preserve playable media and canonical extensions with upscale disabled using API doubles', async () => {
+    await page.evaluate(async () => {
+      await window.__appSet({ vdh_upscale_offer_v1: false });
+      window.__avStatus = 'clean'; window.__avHold = false; window.__avHostMissing = false;
+      window.__downloadDanger = 'safe'; window.__holdDownloads = false;
+    });
+    try {
+      for (const fixture of misleadingMedia) {
+        const pending = page.waitForEvent('download');
+        const reply = await page.evaluate(url => chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'download-url', url, options: { quality: 'highest', output: 'original' } }), `${origin}/fixtures/${fixture.alias}?background=1`);
+        assert.equal(reply.ok, true);
+        const download = await pending;
+        assert(download.suggestedFilename().endsWith('.' + fixture.extension), download.suggestedFilename());
+        assert(!download.suggestedFilename().endsWith('.txt'));
+        const filename = `${results}/background-${fixture.alias}.${fixture.extension}`; await download.saveAs(filename);
+        assert.equal(await download.failure(), null); await assertExactPlayable(filename, fixture.source);
+        await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.id === id && row.state === 'complete'), reply.item.id);
+      }
+    } finally { await page.evaluate(async () => window.__appSet({ vdh_upscale_offer_v1: true })); }
+  });
+  await checks('HTML, plain text and fake video MIME are rejected before the browser download API using real file bytes', async () => {
+    for (const name of ['html.txt', 'plain.txt', 'spoofed.mp4']) {
+      const direct = await page.evaluate(async url => {
+        const module = await import('/local/offscreen.js'), id = crypto.randomUUID();
+        try { await module.prepareLocal(id, url, 'file'); return 'unexpected success'; }
+        catch (error) { return error.message; }
+        finally { await module.disposeLocal(id); }
+      }, `${origin}/fixtures/${name}`);
+      assert.match(direct, /실제 영상·오디오 파일/);
+      const before = await page.evaluate(() => window.__testDownloads.size);
+      const reply = await page.evaluate(url => chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'download-url', url, options: { quality: 'highest', output: 'original' } }), `${origin}/fixtures/${name}?background=1`);
+      assert.equal(reply.ok, true);
+      await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.id === id && row.state === 'error'), reply.item.id, 10_000);
+      assert.equal(await page.evaluate(() => window.__testDownloads.size), before);
+    }
   });
   await checks('No outbound requests or page exceptions in new processing workflow', async () => { assert.deepEqual(outbound, []); assert.deepEqual(pageErrors, []); });
   await page.locator('#media-tab').click();

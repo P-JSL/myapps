@@ -1,0 +1,87 @@
+{
+  "browser": "154.0.8037.57",
+  "mode": "real Chromium IndexedDB in an isolated localhost browser context; Chrome legacy storage adapter mocked; abort/quota/open/version faults explicitly injected",
+  "sourceSha256": {
+    "src/data/database.ts": "80c30dc1dd24439e3c7c6ba2558b454faf4358c409d1d8f591c2d783d524fdb1",
+    "tests/database-audit.mjs": "1ee2ae1edd639a52882444f7f5b0786a2e6571ae0b4f6185cdb135691637527e"
+  },
+  "outcomes": [
+    {
+      "name": "Automatic schema creation and real indexes",
+      "status": "passed"
+    },
+    {
+      "name": "Legacy import commits before cleanup and preserves tied order",
+      "status": "passed"
+    },
+    {
+      "name": "Reopen and repeated initialization preserve current DB over stale legacy",
+      "status": "passed"
+    },
+    {
+      "name": "Concurrent stale legacy snapshot cannot overwrite a newer committed write",
+      "status": "passed"
+    },
+    {
+      "name": "Actual migration transaction abort preserves legacy and supports retry",
+      "status": "passed"
+    },
+    {
+      "name": "Quota exception aborts a multi-key write without clearing existing records",
+      "status": "passed"
+    },
+    {
+      "name": "Open failure is reported without legacy cleanup or fallback",
+      "status": "passed"
+    },
+    {
+      "name": "Real blocked upgrade times out and late success releases its connection",
+      "status": "passed"
+    },
+    {
+      "name": "Versionchange closes the live connection and unknown versions remain intact",
+      "status": "passed"
+    },
+    {
+      "name": "Private mode makes zero IndexedDB and legacy calls",
+      "status": "passed"
+    },
+    {
+      "name": "History retention caps at 200 with unresolved work and stable ties first",
+      "status": "passed"
+    },
+    {
+      "name": "Job management enforces count bytes TTL and lazy maintenance",
+      "status": "passed"
+    },
+    {
+      "name": "Malformed legacy is quarantined without persisting private rows or pruning bindings",
+      "status": "passed"
+    },
+    {
+      "name": "Corrupted current DB row rejects reads without clearing the row",
+      "status": "passed"
+    },
+    {
+      "name": "Legacy cleanup failure is visible and retry preserves newer DB writes",
+      "status": "passed"
+    },
+    {
+      "name": "Legacy read failure leaves no marker and a later retry can migrate",
+      "status": "passed"
+    },
+    {
+      "name": "Duplicate legacy IDs are retained in recovery instead of silently overwritten",
+      "status": "passed"
+    },
+    {
+      "name": "Missing migration marker in a populated DB rejects without reimport or deletion",
+      "status": "passed"
+    },
+    {
+      "name": "Live migration marker corruption blocks reads writes status and due maintenance",
+      "status": "passed"
+    }
+  ],
+  "pageErrors": []
+}

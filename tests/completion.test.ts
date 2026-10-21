@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DIRECTORY, JOBS_KEY } from '../src/upscale/policy.ts';
+import { appStorage } from '../src/data/database.ts';
 
 test('revoked upscale copies stay unpublished and a fresh clean scan can authorize a new offer', async () => {
   const bytes = new Uint8Array([0, 0, 0, 16, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0, 0, 0]);
@@ -36,6 +37,11 @@ test('revoked upscale copies stay unpublished and a fresh clean scan can authori
   };
   const originalChrome = Object.getOwnPropertyDescriptor(globalThis, 'chrome');
   const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage');
+  const originalAppStorage = { get: appStorage.get, set: appStorage.set, ready: appStorage.ready, status: appStorage.status };
+  appStorage.get = async keys => Object.fromEntries((typeof keys === 'string' ? [keys] : keys).map(key => [key, structuredClone(data[key])]));
+  appStorage.set = async values => { Object.assign(data, structuredClone(values)); };
+  appStorage.ready = async () => {};
+  appStorage.status = async () => ({ name: 'completion-test', version: 1, privateContext: false, historyCount: 0, jobCount: (data[JOBS_KEY] as unknown[] | undefined)?.length ?? 0, recoveryCount: 0, lastMaintenanceAt: null, migratedAt: null, legacyCleanupPending: false });
   Object.defineProperty(globalThis, 'chrome', { configurable: true, value: {
     storage: { local: { async get(key: string) { return { [key]: data[key] }; }, async set(values: Record<string, unknown>) { Object.assign(data, structuredClone(values)); } } },
     runtime: { getURL: (path: string) => path, onInstalled: event, onStartup: event },
@@ -73,6 +79,7 @@ test('revoked upscale copies stay unpublished and a fresh clean scan can authori
     assert.equal(notices.length, 1);
     assert.deepEqual(Array.from(copies.values())[0], bytes);
   } finally {
+    Object.assign(appStorage, originalAppStorage);
     if (originalChrome) Object.defineProperty(globalThis, 'chrome', originalChrome); else Reflect.deleteProperty(globalThis, 'chrome');
     if (originalStorage) Object.defineProperty(navigator, 'storage', originalStorage); else Reflect.deleteProperty(navigator, 'storage');
   }

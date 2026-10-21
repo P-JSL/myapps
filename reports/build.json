@@ -1,8 +1,8 @@
 {
   "engine": "independent-local",
   "productName": "My Video App",
-  "version": "1.8.0",
-  "buildSha256": "f2cb04ce401fe6efa08bcba58472a7a03819af9db83a045f001777c82224b2ad",
+  "version": "1.9.0",
+  "buildSha256": "48c2b307c9965a7b832912a0f4339fa638f8ba4dd7766beff4a72dc6f29d82e6",
   "originalRuntimeIncluded": false,
   "accountActivationIncluded": false,
   "capabilities": [
@@ -32,7 +32,12 @@
     "inherited-dash-templates",
     "antivirus-readiness",
     "remembered-download-options",
-    "stable-keyboard-focus"
+    "stable-keyboard-focus",
+    "automatic-indexeddb-management",
+    "toolbar-media-popup",
+    "authenticated-rescan",
+    "media-signature-validation",
+    "canonical-media-filenames"
   ],
   "ffmpeg": {
     "package": "@ffmpeg/core",
@@ -40,6 +45,6 @@
     "wasmSha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7",
     "bytes": 32232419
   },
-  "distFiles": 24,
-  "distBytes": 32605344
+  "distFiles": 28,
+  "distBytes": 32770056
 }

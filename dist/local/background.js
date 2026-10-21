@@ -55,202 +55,14 @@ function safeBasename(input) {
   return (input.split(/[\\/]/).at(-1) ?? "media").replace(/[\x00-\x1f\x7f<>:"|?*\u202a-\u202e\u2066-\u2069]/g, "_").replace(/[. ]+$/g, "").slice(0, 180) || "media";
 }
 function sniffMedia(bytes) {
-  const ascii = (start, count) => String.fromCharCode(...bytes.subarray(start, start + count));
-  if (bytes[0] === 137 && ascii(1, 3) === "PNG" && bytes[4] === 13 && bytes[5] === 10 && bytes[6] === 26 && bytes[7] === 10) return "image";
+  const ascii2 = (start, count) => String.fromCharCode(...bytes.subarray(start, start + count));
+  if (bytes[0] === 137 && ascii2(1, 3) === "PNG" && bytes[4] === 13 && bytes[5] === 10 && bytes[6] === 26 && bytes[7] === 10) return "image";
   if (bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return "image";
-  if (ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP") return "image";
-  if (ascii(4, 4) === "ftyp" || ascii(0, 4) === "RIFF" && ascii(8, 4) === "AVI ") return "video";
+  if (ascii2(0, 4) === "RIFF" && ascii2(8, 4) === "WEBP") return "image";
+  if (ascii2(4, 4) === "ftyp" || ascii2(0, 4) === "RIFF" && ascii2(8, 4) === "AVI ") return "video";
   if (bytes[0] === 26 && bytes[1] === 69 && bytes[2] === 223 && bytes[3] === 163) return "video";
   return void 0;
 }
-
-// src/upscale/storage.ts
-function privateContext() {
-  return chrome.extension?.inIncognitoContext === true;
-}
-async function jobs() {
-  if (privateContext()) return [];
-  const stored = (await chrome.storage.local.get(JOBS_KEY))[JOBS_KEY];
-  return Array.isArray(stored) ? stored.filter(isJob).slice(0, MAX_JOBS) : [];
-}
-async function directory() {
-  return (await navigator.storage.getDirectory()).getDirectoryHandle(DIRECTORY, { create: true });
-}
-async function removeIfExists(dir, name) {
-  try {
-    await dir.removeEntry(name);
-  } catch (error) {
-    if (!(error instanceof DOMException && error.name === "NotFoundError")) throw error;
-  }
-}
-async function deleteJob(job) {
-  if (privateContext()) return;
-  await withQueueLock(async () => {
-    const dir = await directory();
-    await removeIfExists(dir, job.id);
-    await chrome.storage.local.set({ [JOBS_KEY]: (await jobs()).filter((j) => j.id !== job.id) });
-  });
-}
-async function withQueueLock(operation) {
-  return await navigator.locks.request("vdh-upscale-queue-v1", { mode: "exclusive" }, operation);
-}
-function cleanup(now = Date.now()) {
-  if (privateContext()) return Promise.resolve([]);
-  return withQueueLock(() => cleanupUnlocked(now));
-}
-async function cleanupUnlocked(now = Date.now()) {
-  if (privateContext()) return [];
-  const dir = await directory();
-  const stored = await jobs();
-  const retained = [];
-  let size = 0;
-  for (const job of stored.sort((a, b) => b.createdAt - a.createdAt)) {
-    if (now - job.createdAt < RETENTION_MS && job.createdAt <= now && size + job.size <= MAX_QUEUE_BYTES && retained.length < MAX_JOBS) {
-      try {
-        await dir.getFileHandle(job.id);
-        retained.push(job);
-        size += job.size;
-      } catch (error) {
-        if (!(error instanceof DOMException && error.name === "NotFoundError")) throw error;
-      }
-    }
-  }
-  const keep = new Set(retained.map((j) => j.id));
-  const iterable = dir;
-  for await (const name of iterable.keys()) if (!keep.has(name)) await removeIfExists(dir, name);
-  await chrome.storage.local.set({ [JOBS_KEY]: retained });
-  return retained;
-}
-
-// src/upscale/completion.ts
-var serial = Promise.resolve();
-var revokedDownloads = /* @__PURE__ */ new Set();
-var offerGenerations = /* @__PURE__ */ new Map();
-function authorizeDownloadOffers(downloadId) {
-  if (privateContext()) return;
-  if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
-  offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
-  revokedDownloads.delete(downloadId);
-}
-async function offerUpscale(event) {
-  if (privateContext()) return;
-  const generation = event.downloadId === void 0 ? void 0 : offerGenerations.get(event.downloadId) ?? 0;
-  const permitted = () => event.downloadId !== void 0 && !revokedDownloads.has(event.downloadId) && (offerGenerations.get(event.downloadId) ?? 0) === generation;
-  const pending = serial.then(() => withQueueLock(async () => {
-    const downloadId = event.downloadId;
-    if (!event.success || event.incognito || typeof downloadId !== "number" || !Number.isSafeInteger(downloadId) || downloadId < 0 || !permitted()) return;
-    if ((await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] === false) return;
-    const root = await navigator.storage.getDirectory();
-    const source = await (await root.getFileHandle(event.internalFilename)).getFile();
-    if (!source.size || source.size > MAX_INPUT_BYTES || !sniffMedia(new Uint8Array(await source.slice(0, 16).arrayBuffer()))) return;
-    if (event.expectedSha256 !== void 0 || event.expectedSize !== void 0) {
-      if (typeof event.expectedSha256 !== "string" || !/^[a-f0-9]{64}$/.test(event.expectedSha256) || !Number.isSafeInteger(event.expectedSize) || source.size !== event.expectedSize) return;
-      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", await source.arrayBuffer()));
-      const sha256 = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
-      if (sha256 !== event.expectedSha256) return;
-    }
-    if (!permitted()) return;
-    const retained = await cleanupUnlocked();
-    if (retained.length >= MAX_JOBS || retained.reduce((total, job2) => total + job2.size, 0) + source.size > MAX_QUEUE_BYTES) return;
-    const job = { id: crypto.randomUUID(), filename: safeBasename(event.filename), size: source.size, createdAt: Date.now(), downloadId };
-    const dir = await directory();
-    const writable = await (await dir.getFileHandle(job.id, { create: true })).createWritable();
-    try {
-      await source.stream().pipeTo(writable);
-    } catch (error) {
-      await dir.removeEntry(job.id).catch(() => {
-      });
-      throw error;
-    }
-    if (!permitted()) {
-      await dir.removeEntry(job.id).catch(() => {
-      });
-      return;
-    }
-    await chrome.storage.local.set({ [JOBS_KEY]: [job, ...retained] });
-    if (!permitted()) {
-      await chrome.storage.local.set({ [JOBS_KEY]: retained });
-      await dir.removeEntry(job.id).catch(() => {
-      });
-      return;
-    }
-    await chrome.notifications.create(`vdh-upscale:${job.id}`, {
-      type: "basic",
-      iconUrl: chrome.runtime.getURL("bitmaps/logo-128-color.png"),
-      title: "\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC \xB7 \uC5C5\uC2A4\uCF00\uC77C\uB9C1",
-      message: `${job.filename}
-\uD655\uB300\uBCF8\uC744 \uBCC4\uB3C4 \uD30C\uC77C\uB85C \uB9CC\uB4E4 \uC218 \uC788\uC2B5\uB2C8\uB2E4.`,
-      buttons: [{ title: "\uC5C5\uC2A4\uCF00\uC77C\uB9C1 \uC120\uD0DD" }, { title: "\uC784\uC2DC \uBCF5\uC0AC\uBCF8 \uC0AD\uC81C" }]
-    }).catch(() => {
-    });
-    if (!permitted()) await chrome.notifications.clear(`vdh-upscale:${job.id}`).catch(() => {
-    });
-  }));
-  serial = pending.catch(() => {
-  });
-  await serial;
-}
-async function revokeDownloadOffers(downloadId) {
-  if (privateContext()) return;
-  if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
-  revokedDownloads.add(downloadId);
-  offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
-  const pending = serial.then(() => withQueueLock(async () => {
-    const retained = await jobs();
-    const revoked = retained.filter((job) => job.downloadId === downloadId);
-    if (!revoked.length) return;
-    await chrome.storage.local.set({ [JOBS_KEY]: retained.filter((job) => job.downloadId !== downloadId) });
-    await Promise.all(revoked.map((job) => chrome.notifications.clear(`vdh-upscale:${job.id}`).catch(() => {
-    })));
-    const dir = await directory();
-    const removals = await Promise.allSettled(revoked.map((job) => dir.removeEntry(job.id).catch((error) => {
-      if (!(error instanceof DOMException && error.name === "NotFoundError")) throw error;
-    })));
-    const failed = removals.find((result) => result.status === "rejected");
-    if (failed?.status === "rejected") throw failed.reason;
-  }));
-  serial = pending.catch(() => {
-  });
-  await pending;
-}
-function openTools(job) {
-  const suffix = job && isJobId(job) ? `?job=${encodeURIComponent(job)}` : "";
-  return chrome.tabs.create({ url: chrome.runtime.getURL(`upscale/index.html${suffix}`) });
-}
-chrome.notifications.onClicked.addListener((id) => {
-  if (privateContext()) return;
-  if (id.startsWith("vdh-upscale:")) void openTools(id.slice("vdh-upscale:".length));
-});
-chrome.notifications.onButtonClicked.addListener((id, button) => {
-  if (privateContext()) return;
-  if (!id.startsWith("vdh-upscale:")) return;
-  const jobId = id.slice("vdh-upscale:".length);
-  if (!isJobId(jobId)) return;
-  if (button === 0) void openTools(jobId);
-  else if (button === 1) {
-    serial = serial.then(async () => {
-      const job = (await jobs()).find((j) => j.id === jobId);
-      if (job) await deleteJob(job);
-    }).catch(() => {
-    });
-  }
-  void chrome.notifications.clear(id);
-});
-chrome.runtime.onInstalled.addListener(() => {
-  if (privateContext()) return;
-  chrome.contextMenus.create({ id: "vdh-upscale-tools", title: "\uC5C5\uC2A4\uCF00\uC77C\uB9C1 \xB7 \uBCF4\uC548 \uC124\uC815", contexts: ["action"] }, () => {
-    void chrome.runtime.lastError;
-  });
-  void cleanup().catch(() => {
-  });
-});
-chrome.runtime.onStartup.addListener(() => {
-  if (!privateContext()) void cleanup().catch(() => {
-  });
-});
-chrome.contextMenus.onClicked.addListener((info) => {
-  if (info.menuItemId === "vdh-upscale-tools") void openTools();
-});
 
 // src/local/model.ts
 var SCOPE = "my-video-app/local";
@@ -347,7 +159,7 @@ function trustedUI(sender, id, base) {
   if (sender.id !== id || typeof sender.url !== "string") return false;
   try {
     const u = new URL(sender.url);
-    return ["local/index.html", "upscale/index.html"].some((page) => u.href.split(/[?#]/)[0] === `${base}${page}`);
+    return ["local/index.html", "local/popup.html", "upscale/index.html"].some((page) => u.href.split(/[?#]/)[0] === `${base}${page}`);
   } catch {
     return false;
   }
@@ -370,6 +182,721 @@ function downloadOptions(value) {
   return { quality: value.quality, output: value.output };
 }
 
+// src/data/database.ts
+var DATABASE_NAME = "my-video-app";
+var DATABASE_VERSION = 1;
+var DOWNLOAD_OPTIONS_KEY = "my_video_app_download_options_v1";
+var STORAGE_KEYS = [HISTORY_KEY, JOBS_KEY, OFFER_KEY, DOWNLOAD_OPTIONS_KEY];
+var STORES = ["history", "jobs", "settings", "meta", "recovery"];
+var MIGRATION = "migration-v1";
+var MAINTENANCE = "last-maintenance";
+var CLEANUP_PENDING = "legacy-cleanup-pending";
+var MAINTENANCE_INTERVAL = 6e4;
+function privateRow(value) {
+  return value !== null && typeof value === "object" && value.incognito === true;
+}
+function containsPrivate(value, seen = /* @__PURE__ */ new Set()) {
+  if (value === null || typeof value !== "object" || seen.has(value)) return false;
+  if (privateRow(value)) return true;
+  seen.add(value);
+  return Object.values(value).some((item) => containsPrivate(item, seen));
+}
+function validHistory(value) {
+  return isHistory(value) && value.incognito === false && (value.downloadId === void 0 || Number.isSafeInteger(value.downloadId) && value.downloadId >= 0);
+}
+function validSetting(key, value) {
+  if (key === OFFER_KEY) return typeof value === "boolean";
+  if (key !== DOWNLOAD_OPTIONS_KEY || value === void 0) return false;
+  try {
+    downloadOptions(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function keyList(keys) {
+  const result = typeof keys === "string" ? [keys] : keys;
+  if (!Array.isArray(result) || result.some((key) => !STORAGE_KEYS.includes(key))) {
+    throw new Error("\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uB85C\uCEEC DB \uD56D\uBAA9\uC785\uB2C8\uB2E4.");
+  }
+  return [...new Set(result)];
+}
+function wrap(values) {
+  return values.map((value, order) => ({ id: value.id, order, value }));
+}
+function unwrap(rows, valid) {
+  const orders = /* @__PURE__ */ new Set();
+  const result = [];
+  for (const candidate of rows) {
+    const row = candidate;
+    if (!row || !Number.isSafeInteger(row.order) || row.order < 0 || orders.has(row.order) || !valid(row.value) || containsPrivate(row.value) || row.id !== row.value.id) {
+      throw new Error("\uB85C\uCEEC DB \uAE30\uB85D\uC774 \uC190\uC0C1\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC790\uB3D9 \uD30C\uC77C \uC815\uB9AC\uB97C \uC911\uB2E8\uD588\uC2B5\uB2C8\uB2E4.");
+    }
+    orders.add(row.order);
+    result.push(row);
+  }
+  return result.sort((a, b) => a.order - b.order).map((row) => row.value);
+}
+function retainJobs(values, now) {
+  let size = 0;
+  const retained = [];
+  for (const job of [...values].sort((a, b) => b.createdAt - a.createdAt)) {
+    if (now - job.createdAt >= RETENTION_MS || job.createdAt > now || size + job.size > MAX_QUEUE_BYTES || retained.length >= MAX_JOBS) continue;
+    retained.push(job);
+    size += job.size;
+  }
+  return retained;
+}
+function replace(store, values) {
+  store.clear();
+  for (const row of wrap(values)) store.put(row);
+}
+function metaNumber(value) {
+  if (value === void 0) return null;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new Error("\uB85C\uCEEC DB \uAD00\uB9AC \uC815\uBCF4\uAC00 \uC190\uC0C1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+  }
+  return value;
+}
+function migrationTime(marker) {
+  if (marker === void 0) return null;
+  const value = metaNumber(marker.value);
+  if (value === null) throw new Error("\uB85C\uCEEC DB \uC774\uC804 \uC815\uBCF4\uAC00 \uC190\uC0C1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+  return value;
+}
+function requireMigration(marker) {
+  const value = migrationTime(marker);
+  if (value === null) {
+    throw new Error("\uB85C\uCEEC DB \uC774\uC804 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uAE30\uC874 \uAE30\uB85D\uC744 \uBCF4\uD638\uD558\uAE30 \uC704\uD574 \uC790\uB3D9 \uC774\uC804\uACFC \uD30C\uC77C \uC815\uB9AC\uB97C \uC911\uB2E8\uD588\uC2B5\uB2C8\uB2E4.");
+  }
+  return value;
+}
+function createAppStorage(options = {}) {
+  const name = options.name ?? DATABASE_NAME;
+  const isPrivate = options.privateContext ?? (() => globalThis.chrome?.extension?.inIncognitoContext === true);
+  const now = options.now ?? Date.now;
+  const transactionErrors = /* @__PURE__ */ new WeakMap();
+  let connection;
+  let barrier;
+  let lastMaintenance = -Infinity;
+  function assertNormal() {
+    if (isPrivate()) throw new Error("\uC2DC\uD06C\uB9BF \uBAA8\uB4DC\uC5D0\uC11C\uB294 \uB85C\uCEEC DB\uB97C \uC0AC\uC6A9\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+  }
+  function timestamp() {
+    const value = now();
+    if (!Number.isFinite(value) || value < 0) {
+      throw new Error("\uB85C\uCEEC DB \uAD00\uB9AC \uC2DC\uAC04\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+    }
+    return value;
+  }
+  function legacy() {
+    return options.legacy ?? {
+      get: (keys) => chrome.storage.local.get(keys),
+      remove: (keys) => chrome.storage.local.remove(keys)
+    };
+  }
+  function abort(tx, error) {
+    if (!transactionErrors.has(tx)) transactionErrors.set(tx, error);
+    try {
+      tx.abort();
+    } catch (abortError) {
+      if (!(abortError instanceof DOMException && abortError.name === "InvalidStateError")) throw abortError;
+    }
+  }
+  function transaction(db, names, mode, start) {
+    return new Promise((resolve, reject) => {
+      let result;
+      let tx;
+      try {
+        tx = db.transaction(names, mode);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+      tx.oncomplete = () => resolve(result);
+      tx.onabort = () => reject(transactionErrors.get(tx) ?? tx.error ?? new Error("\uB85C\uCEEC DB \uD2B8\uB79C\uC7AD\uC158\uC744 \uC644\uB8CC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."));
+      tx.onerror = () => {
+      };
+      try {
+        start(tx, (value) => {
+          result = value;
+        });
+      } catch (error) {
+        abort(tx, error);
+      }
+    });
+  }
+  function guarded(tx, run) {
+    try {
+      run();
+    } catch (error) {
+      abort(tx, error);
+    }
+  }
+  function open() {
+    assertNormal();
+    return new Promise((resolve, reject) => {
+      let request;
+      let settled = false;
+      let timeout;
+      const fail = (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        reject(error);
+      };
+      try {
+        const factory = options.factory ?? globalThis.indexedDB;
+        if (!factory) throw new Error("\uC774 \uBE0C\uB77C\uC6B0\uC800\uC5D0\uC11C \uB0B4\uC7A5 DB\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+        request = factory.open(name, DATABASE_VERSION);
+      } catch (error) {
+        fail(error);
+        return;
+      }
+      request.onblocked = () => {
+        timeout ??= setTimeout(
+          () => fail(new Error("\uB2E4\uB978 \uCC3D\uC774 \uB85C\uCEEC DB \uAC31\uC2E0\uC744 \uB9C9\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uD574\uB2F9 \uCC3D\uC744 \uB2EB\uACE0 \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC138\uC694.")),
+          options.blockedTimeoutMs ?? 5e3
+        );
+      };
+      request.onerror = () => fail(request.error ?? new Error("\uB85C\uCEEC DB\uB97C \uC5F4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."));
+      request.onupgradeneeded = () => {
+        if (settled) {
+          request.transaction?.abort();
+          return;
+        }
+        const db = request.result;
+        for (const storeName of ["history", "jobs"]) {
+          const store = db.objectStoreNames.contains(storeName) ? request.transaction.objectStore(storeName) : db.createObjectStore(storeName, { keyPath: "id" });
+          const indexes = [
+            ["order", "order"],
+            ["createdAt", "value.createdAt"],
+            ["downloadId", "value.downloadId"]
+          ];
+          if (storeName === "history") indexes.push(["state", "value.state"]);
+          for (const [index, path] of indexes) {
+            if (!store.indexNames.contains(index)) store.createIndex(index, path);
+          }
+        }
+        for (const storeName of ["settings", "meta"]) {
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: "key" });
+          }
+        }
+        if (!db.objectStoreNames.contains("recovery")) {
+          db.createObjectStore("recovery", { keyPath: "id", autoIncrement: true });
+        }
+      };
+      request.onsuccess = () => {
+        if (settled) {
+          request.result.close();
+          return;
+        }
+        settled = true;
+        clearTimeout(timeout);
+        const db = request.result;
+        const invalidate = () => {
+          db.close();
+          if (connection === db) {
+            connection = void 0;
+            barrier = void 0;
+            lastMaintenance = -Infinity;
+          }
+        };
+        db.onversionchange = invalidate;
+        db.onclose = invalidate;
+        resolve(db);
+      };
+    });
+  }
+  async function migration(db) {
+    const marker = await transaction(
+      db,
+      ["meta"],
+      "readonly",
+      (tx, result) => {
+        const request = tx.objectStore("meta").get(MIGRATION);
+        request.onsuccess = () => result(request.result);
+      }
+    );
+    migrationTime(marker);
+    if (marker === void 0) {
+      let quarantine2 = function(key, value, reason) {
+        if (!containsPrivate(value)) recovery.push({ key, reason, value, createdAt: at });
+      }, importRows2 = function(key, valid) {
+        const value = source[key];
+        if (value === void 0) return [];
+        if (!Array.isArray(value)) {
+          quarantine2(key, value, "invalid-container");
+          return [];
+        }
+        const seen = /* @__PURE__ */ new Set();
+        const rows = [];
+        for (const row of value) {
+          if (containsPrivate(row)) continue;
+          if (!valid(row) || seen.has(row.id)) {
+            quarantine2(key, row, "invalid-or-duplicate-row");
+            continue;
+          }
+          seen.add(row.id);
+          rows.push(row);
+        }
+        return rows;
+      };
+      var quarantine = quarantine2, importRows = importRows2;
+      const source = structuredClone(await legacy().get([...STORAGE_KEYS]));
+      const at = timestamp();
+      const recovery = [];
+      const history2 = importRows2(HISTORY_KEY, validHistory);
+      const jobs2 = importRows2(JOBS_KEY, isJob);
+      const settings = [];
+      for (const key of [OFFER_KEY, DOWNLOAD_OPTIONS_KEY]) {
+        if (source[key] === void 0) continue;
+        if (validSetting(key, source[key]) && !containsPrivate(source[key])) {
+          settings.push({ key, value: source[key] });
+        } else {
+          quarantine2(key, source[key], "invalid-setting");
+        }
+      }
+      await transaction(db, STORES, "readwrite", (tx) => {
+        const check = tx.objectStore("meta").get(MIGRATION);
+        check.onsuccess = () => guarded(tx, () => {
+          if (check.result !== void 0) {
+            migrationTime(check.result);
+            return;
+          }
+          let remaining = STORES.length;
+          let populated = false;
+          for (const storeName of STORES) {
+            const count = tx.objectStore(storeName).count();
+            count.onsuccess = () => guarded(tx, () => {
+              populated ||= count.result !== 0;
+              if (--remaining) return;
+              if (populated) {
+                throw new Error("\uB85C\uCEEC DB \uC774\uC804 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uAE30\uC874 \uAE30\uB85D\uC744 \uBCF4\uD638\uD558\uAE30 \uC704\uD574 \uC790\uB3D9 \uC774\uC804\uACFC \uD30C\uC77C \uC815\uB9AC\uB97C \uC911\uB2E8\uD588\uC2B5\uB2C8\uB2E4.");
+              }
+              replace(tx.objectStore("history"), history2);
+              replace(tx.objectStore("jobs"), jobs2);
+              for (const setting of settings) tx.objectStore("settings").put(setting);
+              for (const row of recovery) tx.objectStore("recovery").add(row);
+              tx.objectStore("meta").put({ key: MIGRATION, value: at });
+              tx.objectStore("meta").put({ key: CLEANUP_PENDING, value: true });
+            });
+          }
+        });
+      });
+    }
+    const pending = await transaction(
+      db,
+      ["meta"],
+      "readonly",
+      (tx, result) => {
+        const request = tx.objectStore("meta").get(CLEANUP_PENDING);
+        request.onsuccess = () => result(request.result?.value);
+      }
+    );
+    if (pending === true) {
+      try {
+        await legacy().remove([...STORAGE_KEYS]);
+      } catch {
+        return;
+      }
+      await transaction(db, ["meta"], "readwrite", (tx) => {
+        tx.objectStore("meta").put({ key: CLEANUP_PENDING, value: false });
+      });
+    }
+  }
+  async function maintain(db) {
+    const at = timestamp();
+    await transaction(db, STORES, "readwrite", (tx) => {
+      const history2 = tx.objectStore("history").getAll();
+      const jobs2 = tx.objectStore("jobs").getAll();
+      const recovery = tx.objectStore("recovery").count();
+      const marker = tx.objectStore("meta").get(MIGRATION);
+      let remaining = 4;
+      const finish2 = () => {
+        if (--remaining) return;
+        guarded(tx, () => {
+          requireMigration(marker.result);
+          const histories = unwrap(history2.result, validHistory);
+          const queued = unwrap(jobs2.result, isJob);
+          if (recovery.result === 0) {
+            replace(tx.objectStore("history"), retainHistory(histories));
+            replace(tx.objectStore("jobs"), retainJobs(queued, at));
+          }
+          tx.objectStore("meta").put({ key: MAINTENANCE, value: at });
+        });
+      };
+      history2.onsuccess = finish2;
+      jobs2.onsuccess = finish2;
+      recovery.onsuccess = finish2;
+      marker.onsuccess = finish2;
+    });
+    lastMaintenance = at;
+  }
+  async function ensure() {
+    assertNormal();
+    if (!barrier) {
+      const pending = (async () => {
+        const db = await open();
+        connection = db;
+        try {
+          await migration(db);
+          await maintain(db);
+        } catch (error) {
+          db.close();
+          if (connection === db) connection = void 0;
+          throw error;
+        }
+      })();
+      barrier = pending;
+      void pending.catch(() => {
+        if (barrier === pending) barrier = void 0;
+      });
+    }
+    await barrier;
+    if (!connection) return ensure();
+    return connection;
+  }
+  async function current() {
+    const db = await ensure();
+    if (timestamp() - lastMaintenance >= MAINTENANCE_INTERVAL) await maintain(db);
+    return db;
+  }
+  const storage = {
+    async ready() {
+      if (!isPrivate()) await ensure();
+    },
+    async get(keys) {
+      assertNormal();
+      const requested = keyList(keys);
+      const db = await current();
+      return transaction(
+        db,
+        ["history", "jobs", "settings", "meta"],
+        "readonly",
+        (tx, result) => {
+          const values = {};
+          result(values);
+          const marker = tx.objectStore("meta").get(MIGRATION);
+          marker.onsuccess = () => guarded(tx, () => {
+            requireMigration(marker.result);
+          });
+          for (const key of requested) {
+            if (key === HISTORY_KEY || key === JOBS_KEY) {
+              const request = tx.objectStore(
+                key === HISTORY_KEY ? "history" : "jobs"
+              ).getAll();
+              request.onsuccess = () => guarded(tx, () => {
+                values[key] = key === HISTORY_KEY ? unwrap(request.result, validHistory) : unwrap(request.result, isJob);
+              });
+            } else {
+              const request = tx.objectStore("settings").get(key);
+              request.onsuccess = () => guarded(tx, () => {
+                if (request.result === void 0) {
+                  values[key] = void 0;
+                  return;
+                }
+                if (request.result.key !== key || !validSetting(key, request.result.value) || containsPrivate(request.result.value)) {
+                  throw new Error("\uB85C\uCEEC DB \uC124\uC815\uC774 \uC190\uC0C1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+                }
+                values[key] = request.result.value;
+              });
+            }
+          }
+        }
+      );
+    },
+    async set(values) {
+      assertNormal();
+      const snapshot = structuredClone(values);
+      const keys = keyList(Object.keys(snapshot));
+      for (const key of keys) {
+        const value = snapshot[key];
+        if (key === HISTORY_KEY || key === JOBS_KEY) {
+          if (!Array.isArray(value) || value.some((row) => containsPrivate(row) || !(key === HISTORY_KEY ? validHistory(row) : isJob(row))) || new Set(value.map((row) => row.id)).size !== value.length) {
+            throw new Error("\uC800\uC7A5\uD560 \uB85C\uCEEC DB \uAE30\uB85D\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+          }
+        } else if (!validSetting(key, value) || containsPrivate(value)) {
+          throw new Error("\uC800\uC7A5\uD560 \uB85C\uCEEC DB \uC124\uC815\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+        }
+      }
+      const db = await current();
+      const at = timestamp();
+      await transaction(db, STORES, "readwrite", (tx) => {
+        const recovery = tx.objectStore("recovery").count();
+        const marker = tx.objectStore("meta").get(MIGRATION);
+        let remaining = 2;
+        const write = () => {
+          if (--remaining) return;
+          guarded(tx, () => {
+            requireMigration(marker.result);
+            for (const key of keys) {
+              if (key === HISTORY_KEY) {
+                const rows = snapshot[key];
+                replace(
+                  tx.objectStore("history"),
+                  recovery.result ? rows : retainHistory(rows)
+                );
+              } else if (key === JOBS_KEY) {
+                const rows = snapshot[key];
+                replace(
+                  tx.objectStore("jobs"),
+                  recovery.result ? rows : retainJobs(rows, at)
+                );
+              } else {
+                tx.objectStore("settings").put({ key, value: snapshot[key] });
+              }
+            }
+          });
+        };
+        recovery.onsuccess = write;
+        marker.onsuccess = write;
+      });
+    },
+    async status() {
+      const status = {
+        name,
+        version: DATABASE_VERSION,
+        privateContext: isPrivate(),
+        historyCount: 0,
+        jobCount: 0,
+        recoveryCount: 0,
+        lastMaintenanceAt: null,
+        migratedAt: null,
+        legacyCleanupPending: false
+      };
+      if (status.privateContext) return status;
+      const db = await current();
+      return transaction(db, STORES, "readonly", (tx, result) => {
+        result(status);
+        for (const [storeName, key] of [
+          ["history", "historyCount"],
+          ["jobs", "jobCount"],
+          ["recovery", "recoveryCount"]
+        ]) {
+          const request = tx.objectStore(storeName).count();
+          request.onsuccess = () => {
+            status[key] = request.result;
+          };
+        }
+        const maintenance = tx.objectStore("meta").get(MAINTENANCE);
+        maintenance.onsuccess = () => guarded(tx, () => {
+          status.lastMaintenanceAt = metaNumber(maintenance.result?.value);
+        });
+        const migration2 = tx.objectStore("meta").get(MIGRATION);
+        migration2.onsuccess = () => guarded(tx, () => {
+          status.migratedAt = requireMigration(migration2.result);
+        });
+        const pending = tx.objectStore("meta").get(CLEANUP_PENDING);
+        pending.onsuccess = () => {
+          status.legacyCleanupPending = pending.result?.value === true;
+        };
+      });
+    },
+    close() {
+      connection?.close();
+      connection = void 0;
+      barrier = void 0;
+      lastMaintenance = -Infinity;
+    }
+  };
+  return storage;
+}
+var appStorage = createAppStorage();
+
+// src/upscale/storage.ts
+function privateContext() {
+  return chrome.extension?.inIncognitoContext === true;
+}
+async function jobs() {
+  if (privateContext()) return [];
+  const stored = (await appStorage.get(JOBS_KEY))[JOBS_KEY];
+  return Array.isArray(stored) ? stored.filter(isJob) : [];
+}
+async function directory() {
+  return (await navigator.storage.getDirectory()).getDirectoryHandle(DIRECTORY, { create: true });
+}
+async function removeIfExists(dir, name) {
+  try {
+    await dir.removeEntry(name);
+  } catch (error) {
+    if (!(error instanceof DOMException && error.name === "NotFoundError")) throw error;
+  }
+}
+async function deleteJob(job) {
+  if (privateContext()) return;
+  await withQueueLock(async () => {
+    const retained = (await jobs()).filter((j) => j.id !== job.id);
+    await appStorage.set({ [JOBS_KEY]: retained });
+    const dir = await directory();
+    await removeIfExists(dir, job.id);
+  });
+}
+async function withQueueLock(operation) {
+  return await navigator.locks.request("vdh-upscale-queue-v1", { mode: "exclusive" }, operation);
+}
+function cleanup(now = Date.now()) {
+  if (privateContext()) return Promise.resolve([]);
+  return withQueueLock(() => cleanupUnlocked(now));
+}
+async function cleanupUnlocked(now = Date.now()) {
+  if (privateContext()) return [];
+  await appStorage.ready();
+  const stored = await jobs();
+  if ((await appStorage.status()).recoveryCount > 0) return stored;
+  const dir = await directory();
+  const retained = [];
+  let size = 0;
+  for (const job of stored.sort((a, b) => b.createdAt - a.createdAt)) {
+    if (now - job.createdAt < RETENTION_MS && job.createdAt <= now && size + job.size <= MAX_QUEUE_BYTES && retained.length < MAX_JOBS) {
+      try {
+        await dir.getFileHandle(job.id);
+        retained.push(job);
+        size += job.size;
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "NotFoundError")) throw error;
+      }
+    }
+  }
+  const keep = new Set(retained.map((j) => j.id));
+  await appStorage.set({ [JOBS_KEY]: retained });
+  const iterable = dir;
+  for await (const name of iterable.keys()) if (!keep.has(name)) await removeIfExists(dir, name);
+  return retained;
+}
+
+// src/upscale/completion.ts
+var serial = Promise.resolve();
+var revokedDownloads = /* @__PURE__ */ new Set();
+var offerGenerations = /* @__PURE__ */ new Map();
+function authorizeDownloadOffers(downloadId) {
+  if (privateContext()) return;
+  if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
+  offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
+  revokedDownloads.delete(downloadId);
+}
+async function offerUpscale(event) {
+  if (privateContext()) return;
+  const generation = event.downloadId === void 0 ? void 0 : offerGenerations.get(event.downloadId) ?? 0;
+  const permitted = () => event.downloadId !== void 0 && !revokedDownloads.has(event.downloadId) && (offerGenerations.get(event.downloadId) ?? 0) === generation;
+  const pending = serial.then(() => withQueueLock(async () => {
+    const downloadId = event.downloadId;
+    if (!event.success || event.incognito || typeof downloadId !== "number" || !Number.isSafeInteger(downloadId) || downloadId < 0 || !permitted()) return;
+    if ((await appStorage.get(OFFER_KEY))[OFFER_KEY] === false) return;
+    if ((await appStorage.status()).recoveryCount > 0) return;
+    const root = await navigator.storage.getDirectory();
+    const source = await (await root.getFileHandle(event.internalFilename)).getFile();
+    if (!source.size || source.size > MAX_INPUT_BYTES || !sniffMedia(new Uint8Array(await source.slice(0, 16).arrayBuffer()))) return;
+    if (event.expectedSha256 !== void 0 || event.expectedSize !== void 0) {
+      if (typeof event.expectedSha256 !== "string" || !/^[a-f0-9]{64}$/.test(event.expectedSha256) || !Number.isSafeInteger(event.expectedSize) || source.size !== event.expectedSize) return;
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", await source.arrayBuffer()));
+      const sha256 = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+      if (sha256 !== event.expectedSha256) return;
+    }
+    if (!permitted()) return;
+    const retained = await cleanupUnlocked();
+    if (retained.length >= MAX_JOBS || retained.reduce((total, job2) => total + job2.size, 0) + source.size > MAX_QUEUE_BYTES) return;
+    const job = { id: crypto.randomUUID(), filename: safeBasename(event.filename), size: source.size, createdAt: Date.now(), downloadId };
+    const dir = await directory();
+    const writable = await (await dir.getFileHandle(job.id, { create: true })).createWritable();
+    try {
+      await source.stream().pipeTo(writable);
+    } catch (error) {
+      await dir.removeEntry(job.id).catch(() => {
+      });
+      throw error;
+    }
+    if (!permitted()) {
+      await dir.removeEntry(job.id).catch(() => {
+      });
+      return;
+    }
+    await appStorage.set({ [JOBS_KEY]: [job, ...retained] });
+    if (!permitted()) {
+      await appStorage.set({ [JOBS_KEY]: retained });
+      await dir.removeEntry(job.id).catch(() => {
+      });
+      return;
+    }
+    await chrome.notifications.create(`vdh-upscale:${job.id}`, {
+      type: "basic",
+      iconUrl: chrome.runtime.getURL("bitmaps/logo-128-color.png"),
+      title: "\uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC \xB7 \uC5C5\uC2A4\uCF00\uC77C\uB9C1",
+      message: `${job.filename}
+\uD655\uB300\uBCF8\uC744 \uBCC4\uB3C4 \uD30C\uC77C\uB85C \uB9CC\uB4E4 \uC218 \uC788\uC2B5\uB2C8\uB2E4.`,
+      buttons: [{ title: "\uC5C5\uC2A4\uCF00\uC77C\uB9C1 \uC120\uD0DD" }, { title: "\uC784\uC2DC \uBCF5\uC0AC\uBCF8 \uC0AD\uC81C" }]
+    }).catch(() => {
+    });
+    if (!permitted()) await chrome.notifications.clear(`vdh-upscale:${job.id}`).catch(() => {
+    });
+  }));
+  serial = pending.catch(() => {
+  });
+  await serial;
+}
+async function revokeDownloadOffers(downloadId) {
+  if (privateContext()) return;
+  if (!Number.isSafeInteger(downloadId) || downloadId < 0) throw new Error("\uC798\uBABB\uB41C \uB2E4\uC6B4\uB85C\uB4DC \uBC88\uD638\uC785\uB2C8\uB2E4.");
+  revokedDownloads.add(downloadId);
+  offerGenerations.set(downloadId, (offerGenerations.get(downloadId) ?? 0) + 1);
+  const pending = serial.then(() => withQueueLock(async () => {
+    const retained = await jobs();
+    const revoked = retained.filter((job) => job.downloadId === downloadId);
+    if (!revoked.length) return;
+    await appStorage.set({ [JOBS_KEY]: retained.filter((job) => job.downloadId !== downloadId) });
+    await Promise.all(revoked.map((job) => chrome.notifications.clear(`vdh-upscale:${job.id}`).catch(() => {
+    })));
+    const dir = await directory();
+    const removals = await Promise.allSettled(revoked.map((job) => dir.removeEntry(job.id).catch((error) => {
+      if (!(error instanceof DOMException && error.name === "NotFoundError")) throw error;
+    })));
+    const failed = removals.find((result) => result.status === "rejected");
+    if (failed?.status === "rejected") throw failed.reason;
+  }));
+  serial = pending.catch(() => {
+  });
+  await pending;
+}
+function openTools(job) {
+  const suffix = job && isJobId(job) ? `?job=${encodeURIComponent(job)}` : "";
+  return chrome.tabs.create({ url: chrome.runtime.getURL(`upscale/index.html${suffix}`) });
+}
+chrome.notifications.onClicked.addListener((id) => {
+  if (privateContext()) return;
+  if (id.startsWith("vdh-upscale:")) void openTools(id.slice("vdh-upscale:".length));
+});
+chrome.notifications.onButtonClicked.addListener((id, button) => {
+  if (privateContext()) return;
+  if (!id.startsWith("vdh-upscale:")) return;
+  const jobId = id.slice("vdh-upscale:".length);
+  if (!isJobId(jobId)) return;
+  if (button === 0) void openTools(jobId);
+  else if (button === 1) {
+    serial = serial.then(async () => {
+      const job = (await jobs()).find((j) => j.id === jobId);
+      if (job) await deleteJob(job);
+    }).catch(() => {
+    });
+  }
+  void chrome.notifications.clear(id);
+});
+chrome.runtime.onInstalled.addListener(() => {
+  if (privateContext()) return;
+  chrome.contextMenus.create({ id: "vdh-upscale-tools", title: "\uC5C5\uC2A4\uCF00\uC77C\uB9C1 \xB7 \uBCF4\uC548 \uC124\uC815", contexts: ["action"] }, () => {
+    void chrome.runtime.lastError;
+  });
+  void cleanup().catch(() => {
+  });
+});
+chrome.runtime.onStartup.addListener(() => {
+  if (!privateContext()) void cleanup().catch(() => {
+  });
+});
+chrome.contextMenus.onClicked.addListener((info) => {
+  if (info.menuItemId === "vdh-upscale-tools") void openTools();
+});
+
 // src/local/transport.ts
 function transport(value) {
   if (typeof value !== "string") return void 0;
@@ -377,6 +904,220 @@ function transport(value) {
   if (value === "h2") return "h2";
   if (value === "http/1.1") return "http/1.1";
   return void 0;
+}
+
+// src/local/media-file.ts
+var MIME_BY_EXTENSION = {
+  mp4: "video/mp4",
+  m4a: "audio/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  mkv: "video/x-matroska",
+  avi: "video/x-msvideo",
+  ogg: "audio/ogg",
+  wav: "audio/wav",
+  flac: "audio/flac",
+  mp3: "audio/mpeg",
+  aac: "audio/aac"
+};
+var InvalidMediaFileError = class extends Error {
+  constructor() {
+    super("\uC2E4\uC81C \uC601\uC0C1\xB7\uC624\uB514\uC624 \uD30C\uC77C\uC774 \uC544\uB2D9\uB2C8\uB2E4. HTML\xB7\uD14D\uC2A4\uD2B8\xB7\uC774\uBBF8\uC9C0 \uB300\uC2E0 \uC6D0\uBCF8 \uBBF8\uB514\uC5B4 \uC8FC\uC18C\uB97C \uC0AC\uC6A9\uD558\uC138\uC694.");
+    this.name = "InvalidMediaFileError";
+  }
+};
+function isMediaFileFormat(value) {
+  if (!value || typeof value !== "object") return false;
+  const actual = value;
+  return typeof actual.extension === "string" && Object.hasOwn(MIME_BY_EXTENSION, actual.extension) && (actual.mime === MIME_BY_EXTENSION[actual.extension] || actual.extension === "ogg" && actual.mime === "video/ogg");
+}
+function format(extension) {
+  return { mime: MIME_BY_EXTENSION[extension], extension };
+}
+function ascii(bytes, offset, length) {
+  return String.fromCharCode(...bytes.subarray(offset, offset + length));
+}
+function uint32(bytes, offset, little = false) {
+  return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(offset, little);
+}
+function vint(bytes, offset) {
+  const first = bytes[offset];
+  if (first === void 0 || first === 0) return void 0;
+  let length = 1, marker = 128;
+  while (!(first & marker)) {
+    length++;
+    marker >>= 1;
+  }
+  if (offset + length > bytes.length) return void 0;
+  let value = first & marker - 1;
+  for (let i = 1; i < length; i++) value = value * 256 + bytes[offset + i];
+  return Number.isSafeInteger(value) ? { value, length } : void 0;
+}
+function ebmlFormat(bytes) {
+  if (bytes.length < 5 || uint32(bytes, 0) !== 440786851) return void 0;
+  const header = vint(bytes, 4);
+  if (!header) return void 0;
+  const end = 4 + header.length + header.value;
+  if (end > bytes.length) return void 0;
+  for (let offset = 4 + header.length; offset < end; ) {
+    const id = vint(bytes, offset);
+    if (!id || id.length > 4) return void 0;
+    const idText = ascii(bytes, offset, id.length);
+    offset += id.length;
+    const size = vint(bytes, offset);
+    if (!size) return void 0;
+    offset += size.length;
+    if (offset + size.value > end) return void 0;
+    if (idText === "B\x82") {
+      const type = ascii(bytes, offset, size.value);
+      return type === "webm" ? format("webm") : type === "matroska" ? format("mkv") : void 0;
+    }
+    offset += size.value;
+  }
+  return void 0;
+}
+var IMAGE_BRANDS = /* @__PURE__ */ new Set(["avif", "avis", "heic", "heix", "hevc", "hevx", "heim", "heis", "hevm", "hevs", "mif1", "msf1", "miaf", "MA1A", "MA1B"]);
+var MP4_BRANDS = /* @__PURE__ */ new Set(["isom", "iso2", "iso3", "iso4", "iso5", "iso6", "iso7", "iso8", "iso9", "mp41", "mp42", "avc1", "dash", "MSNV", "M4V ", "M4VH", "M4VP", "F4V "]);
+var AUDIO_BRANDS = /* @__PURE__ */ new Set(["M4A ", "M4B ", "M4P ", "F4A ", "F4B "]);
+function isoFormat(bytes) {
+  for (let offset = 0; offset + 8 <= bytes.length; ) {
+    const size = uint32(bytes, offset), type = ascii(bytes, offset + 4, 4);
+    if (type === "ftyp") {
+      if (size < 16 || size % 4 !== 0 || offset + size > bytes.length) return void 0;
+      const brands = [ascii(bytes, offset + 8, 4)];
+      for (let i = offset + 16; i < offset + size; i += 4) brands.push(ascii(bytes, i, 4));
+      if (brands.some((brand) => IMAGE_BRANDS.has(brand))) return void 0;
+      if (brands[0] === "qt  ") return format("mov");
+      if (AUDIO_BRANDS.has(brands[0])) return format("m4a");
+      if (brands.some((brand) => MP4_BRANDS.has(brand))) return format("mp4");
+      return void 0;
+    }
+    if (type === "moov" && size >= 16 && offset + 16 <= bytes.length) {
+      const childSize = uint32(bytes, offset + 8), childType = ascii(bytes, offset + 12, 4);
+      if (childSize >= 8 && childSize <= size - 8 && ["mvhd", "trak", "udta", "cmov"].includes(childType)) return format("mov");
+    }
+    if (!["free", "skip", "wide"].includes(type) || size < 8 || offset + size > bytes.length) return void 0;
+    offset += size;
+  }
+  return void 0;
+}
+function mp3Header(bytes, offset) {
+  if (offset + 4 > bytes.length || bytes[offset] !== 255) return false;
+  const second = bytes[offset + 1], third = bytes[offset + 2], fourth = bytes[offset + 3];
+  return (second & 224) === 224 && (second >> 3 & 3) !== 1 && (second >> 1 & 3) === 1 && third >> 4 > 0 && third >> 4 < 15 && (third >> 2 & 3) < 3 && (fourth & 3) !== 2;
+}
+function inspectMediaFile(input) {
+  const bytes = input.subarray(0, 65536);
+  if (bytes.length >= 12 && ascii(bytes, 0, 4) === "RIFF" && uint32(bytes, 4, true) >= 4) {
+    if (ascii(bytes, 8, 4) === "WAVE") return format("wav");
+    if (ascii(bytes, 8, 4) === "AVI ") return format("avi");
+  }
+  const iso = isoFormat(bytes);
+  if (iso) return iso;
+  const ebml = ebmlFormat(bytes);
+  if (ebml) return ebml;
+  if (bytes.length >= 28 && ascii(bytes, 0, 4) === "OggS" && bytes[4] === 0 && bytes[26] > 0) {
+    const segments = bytes[26], body = 27 + segments;
+    let packet = 0;
+    for (let i = 27; i < body && i < bytes.length; i++) {
+      packet += bytes[i];
+      if (bytes[i] !== 255) break;
+    }
+    if (packet > 0 && body + packet <= bytes.length) {
+      if (ascii(bytes, body, 7) === "\x80theora") return { mime: "video/ogg", extension: "ogg" };
+      if (ascii(bytes, body, 7) === "vorbis" || ascii(bytes, body, 8) === "OpusHead" || ascii(bytes, body, 5) === "\x7FFLAC" || ascii(bytes, body, 8) === "Speex   ") return format("ogg");
+    }
+  }
+  if (bytes.length >= 42 && ascii(bytes, 0, 4) === "fLaC" && (bytes[4] & 127) === 0 && bytes[5] === 0 && bytes[6] === 0 && bytes[7] === 34) return format("flac");
+  let audioOffset = 0;
+  if (bytes.length >= 10 && ascii(bytes, 0, 3) === "ID3") {
+    if (![2, 3, 4].includes(bytes[3]) || bytes[4] === 255 || bytes.subarray(6, 10).some((value) => value >= 128)) throw new InvalidMediaFileError();
+    audioOffset = 10 + bytes[6] * 2 ** 21 + bytes[7] * 2 ** 14 + bytes[8] * 128 + bytes[9];
+    if (bytes[3] === 4 && bytes[5] & 16) audioOffset += 10;
+  }
+  if (mp3Header(input, audioOffset)) return format("mp3");
+  if (bytes.length >= 7 && bytes[0] === 255 && (bytes[1] & 246) === 240 && (bytes[2] >> 2 & 15) < 13) {
+    const length = (bytes[3] & 3) * 2048 + bytes[4] * 8 + (bytes[5] >> 5);
+    if (length >= (bytes[1] & 1 ? 7 : 9)) return format("aac");
+  }
+  throw new InvalidMediaFileError();
+}
+function mediaFilename(old, actual) {
+  if (!isMediaFileFormat(actual)) throw new InvalidMediaFileError();
+  let base = safeBasename(old).replace(/\.[^.]+$/, "").replace(/(?:\.(?:txt|text))+$/i, "").replace(/[. ]+$/g, "") || "media";
+  if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(base)) base = `_${base}`;
+  return `${base.slice(0, 174)}.${actual.extension}`;
+}
+function abortable(work, signal) {
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      signal.removeEventListener("abort", abort);
+      reject(signal.reason ?? new DOMException("\uC791\uC5C5\uC744 \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.", "AbortError"));
+    };
+    signal.addEventListener("abort", abort, { once: true });
+    if (signal.aborted) abort();
+    work.then((value) => {
+      signal.removeEventListener("abort", abort);
+      resolve(value);
+    }, (error) => {
+      signal.removeEventListener("abort", abort);
+      reject(error);
+    });
+  });
+}
+async function probeMediaFile(url, signal, options = {}) {
+  const controller = new AbortController();
+  const timeoutMs = Math.min(15e3, Math.max(1, Number.isFinite(options.timeoutMs) ? options.timeoutMs : 15e3));
+  const timer = setTimeout(() => controller.abort(new Error("\uBBF8\uB514\uC5B4 \uD30C\uC77C \uD655\uC778 \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.")), timeoutMs);
+  const combined = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
+  let response, reader;
+  const prefix = new Uint8Array(65536);
+  try {
+    combined.throwIfAborted();
+    const request = (options.fetch ?? globalThis.fetch)(mediaURL(url).href, {
+      method: "GET",
+      headers: { Range: "bytes=0-65535" },
+      credentials: "include",
+      redirect: "follow",
+      signal: combined
+    }).then((value) => {
+      if (combined.aborted) {
+        if (value.body) void value.body.cancel().catch(() => {
+        });
+        combined.throwIfAborted();
+      }
+      return value;
+    });
+    response = await abortable(request, combined);
+    combined.throwIfAborted();
+    if (!response.ok || ![200, 206].includes(response.status)) throw new Error(`\uBBF8\uB514\uC5B4 \uD655\uC778 \uC694\uCCAD \uC2E4\uD328 (${response.status})`);
+    if (response.url) mediaURL(response.url);
+    if (response.status === 206) {
+      const range = response.headers.get("Content-Range")?.match(/^bytes 0-(\d+)\/(\d+|\*)$/i);
+      if (!range || Number(range[1]) > 65535 || range[2] !== "*" && Number(range[2]) <= Number(range[1])) throw new Error("\uC11C\uBC84\uAC00 \uC798\uBABB\uB41C \uBBF8\uB514\uC5B4 \uD655\uC778 \uBC94\uC704\uB97C \uBC18\uD658\uD588\uC2B5\uB2C8\uB2E4.");
+      const encoding = response.headers.get("Content-Encoding");
+      if (encoding && encoding.toLowerCase() !== "identity") throw new Error("\uC555\uCD95\uB41C \uBBF8\uB514\uC5B4 \uD655\uC778 \uBC94\uC704\uB294 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+    }
+    if (!response.body) throw new InvalidMediaFileError();
+    reader = response.body.getReader();
+    let used = 0;
+    while (used < prefix.length) {
+      const chunk = await abortable(reader.read(), combined);
+      combined.throwIfAborted();
+      if (chunk.done) break;
+      const take = Math.min(chunk.value.length, prefix.length - used);
+      prefix.set(chunk.value.subarray(0, take), used);
+      used += take;
+    }
+    return inspectMediaFile(prefix.subarray(0, used));
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+    if (reader) void reader.cancel().catch(() => {
+    });
+    else if (response?.body) void response.body.cancel().catch(() => {
+    });
+  }
 }
 
 // src/local/antivirus.ts
@@ -501,6 +1242,7 @@ async function scanFile(path) {
 // src/local/background.ts
 var media = new MediaCatalog();
 var discoveryEpochs = /* @__PURE__ */ new Map();
+var rescans = /* @__PURE__ */ new Map();
 var privateHistory = /* @__PURE__ */ new Map();
 var cancelled = /* @__PURE__ */ new Set();
 var finalizing = /* @__PURE__ */ new Set();
@@ -511,8 +1253,8 @@ var lastTab;
 var creatingOffscreen;
 async function history() {
   if (chrome.extension.inIncognitoContext) return retainHistory([...privateHistory.values()]);
-  const raw = (await chrome.storage.local.get(HISTORY_KEY))[HISTORY_KEY];
-  return retainHistory(Array.isArray(raw) ? raw.filter(isHistory).filter((row) => !row.incognito) : []);
+  const raw = (await appStorage.get(HISTORY_KEY))[HISTORY_KEY];
+  return Array.isArray(raw) ? raw.filter(isHistory).filter((row) => !row.incognito) : [];
 }
 function updatePrivate(item) {
   const retained = retainHistory([item, ...privateHistory.values()].filter((row, index) => index === 0 || row.id !== item.id));
@@ -528,7 +1270,7 @@ async function update(item, onlyIfPreparing = false) {
     const current = await history();
     if (onlyIfPreparing && current.find((row) => row.id === item.id)?.state !== "preparing") return;
     const existing = current.filter((row) => !row.incognito && row.id !== item.id);
-    await chrome.storage.local.set({ [HISTORY_KEY]: retainHistory([item, ...existing]) });
+    await appStorage.set({ [HISTORY_KEY]: [item, ...existing] });
   });
 }
 async function change(id, edit) {
@@ -539,7 +1281,7 @@ async function change(id, edit) {
     const next = edit(current);
     if (!next) return void 0;
     if (next.incognito) updatePrivate(next);
-    else await chrome.storage.local.set({ [HISTORY_KEY]: rows.filter((row) => !row.incognito).map((row) => row.id === id ? next : row) });
+    else await appStorage.set({ [HISTORY_KEY]: rows.filter((row) => !row.incognito).map((row) => row.id === id ? next : row) });
     return next;
   });
 }
@@ -744,21 +1486,40 @@ async function download(item, options = downloadOptions()) {
     try {
       let address = item.url;
       let transferProtocols = [];
-      const offers = (await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] !== false;
-      if (options.output !== "original" || item.kind !== "file" || offers && !entry.incognito && (!item.size || item.size <= MAX_INPUT_BYTES)) {
+      const directOriginal = options.output === "original" && item.kind === "file";
+      if (!directOriginal || !item.size || item.size <= MAX_INPUT_BYTES) {
+        let result;
         try {
           await ensureOffscreen();
           if (cancelled.has(entry.id)) throw new DOMException("\uC791\uC5C5\uC744 \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.", "AbortError");
-          const result = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: "prepare", id: entry.id, url: item.url, kind: item.kind, options });
-          if (!record(result) || result.ok !== true || typeof result.url !== "string" || !result.url.startsWith(`blob:${chrome.runtime.getURL("")}`)) throw new Error(record(result) && typeof result.error === "string" ? result.error : "\uD30C\uC77C\uC744 \uC900\uBE44\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
-          address = result.url;
-          if (Array.isArray(result.protocols)) transferProtocols = result.protocols.map(transport).filter((value) => value !== void 0);
+          result = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: "prepare", id: entry.id, url: item.url, kind: item.kind, options });
         } catch (error) {
-          if (options.output !== "original" || item.kind !== "file" || cancelled.has(entry.id)) throw error;
-          address = item.url;
+          if (!directOriginal || cancelled.has(entry.id)) throw error;
+        }
+        if (record(result) && result.ok === true) {
+          if (typeof result.url !== "string" || !result.url.startsWith(`blob:${chrome.runtime.getURL("")}`) || !isMediaFileFormat(result)) throw new Error("\uC900\uBE44\uD55C \uD30C\uC77C\uC758 \uBBF8\uB514\uC5B4 \uD615\uC2DD\uC744 \uD655\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+          address = result.url;
+          entry.filename = mediaFilename(entry.filename, result);
+          if (Array.isArray(result.protocols)) transferProtocols = result.protocols.map(transport).filter((value) => value !== void 0);
+        } else if (!directOriginal || record(result) && result.invalidMedia === true) {
+          throw new Error(record(result) && typeof result.error === "string" ? result.error : "\uD30C\uC77C\uC744 \uC900\uBE44\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
         }
       }
-      if (cancelled.has(entry.id)) throw new Error("\uC791\uC5C5\uC744 \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.");
+      if (cancelled.has(entry.id)) throw new DOMException("\uC791\uC5C5\uC744 \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.", "AbortError");
+      if (address === item.url) {
+        const controller = new AbortController();
+        const stop = setInterval(() => {
+          if (cancelled.has(entry.id)) controller.abort();
+        }, 50);
+        try {
+          entry.filename = mediaFilename(entry.filename, await probeMediaFile(item.url, controller.signal));
+        } finally {
+          clearInterval(stop);
+        }
+      }
+      if (cancelled.has(entry.id)) throw new DOMException("\uC791\uC5C5\uC744 \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.", "AbortError");
+      await update(entry, true);
+      if (cancelled.has(entry.id)) throw new DOMException("\uC791\uC5C5\uC744 \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.", "AbortError");
       const id = await chrome.downloads.download({ url: address, filename: entry.filename, saveAs: true, conflictAction: "uniquify" });
       const downloading = { ...entry, state: "downloading", downloadId: id, transferProtocols };
       await update(downloading);
@@ -801,6 +1562,10 @@ async function handleLocalMessage(value, sender) {
   if (value.type === "capture") {
     if (!trustedCapture(sender, chrome.runtime.id) || !Array.isArray(value.items) || value.items.length > 100) throw new Error("\uD5C8\uC6A9\uB418\uC9C0 \uC54A\uC740 \uC218\uC9D1 \uC694\uCCAD\uC785\uB2C8\uB2E4.");
     if (!!sender.tab?.incognito !== chrome.extension.inIncognitoContext) throw new Error("\uB2E4\uB978 \uBE0C\uB77C\uC6B0\uC9D5 \uBAA8\uB4DC\uC758 \uC218\uC9D1 \uC694\uCCAD\uC785\uB2C8\uB2E4.");
+    if (value.rescanId !== void 0) {
+      const ticket = rescans.get(sender.tab.id);
+      if (!ticket || value.rescanId !== ticket.id || ticket.epoch !== discoveryEpochs.get(sender.tab.id) || mediaURL(sender.url).href !== mediaURL(ticket.url).href) throw new Error("\uD398\uC774\uC9C0\uAC00 \uBCC0\uACBD\uB418\uC5B4 \uAC10\uC9C0 \uACB0\uACFC\uB97C \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.");
+    }
     for (const item of value.items) if (record(item) && typeof item.url === "string") add(sender.tab.id, item.url, typeof item.mime === "string" ? item.mime : "", typeof item.title === "string" ? item.title : "", item.fromElement === true, void 0, item.observedTransport);
     return { ok: true };
   }
@@ -826,8 +1591,34 @@ async function handleLocalMessage(value, sender) {
     await chrome.tabs.create({ url: "chrome://downloads/" });
     return { ok: true };
   }
-  if (value.type === "list") {
-    const tabId = await currentTab();
+  if (value.type === "list" || value.type === "rescan") {
+    let tabId;
+    if (value.type === "rescan") {
+      const tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true })).find((candidate) => !!candidate.incognito === chrome.extension.inIncognitoContext && candidate.id !== void 0 && typeof candidate.url === "string" && /^https?:/.test(candidate.url));
+      if (tab?.id === void 0 || !tab.url) throw new Error("\uC601\uC0C1\uC774 \uC788\uB294 \uC6F9\uD398\uC774\uC9C0\uB97C \uC5F0 \uB4A4 \uB2E4\uC2DC \uAC10\uC9C0\uD558\uC138\uC694.");
+      tabId = tab.id;
+      const epoch = discoveryEpochs.get(tabId) ?? {};
+      discoveryEpochs.set(tabId, epoch);
+      const ticket = { id: crypto.randomUUID(), epoch, url: tab.url };
+      rescans.set(tabId, ticket);
+      let timeout;
+      try {
+        const result = await Promise.race([
+          chrome.tabs.sendMessage(tabId, { scope: SCOPE, type: "rescan", rescanId: ticket.id }, { frameId: 0 }),
+          new Promise((_, reject) => {
+            timeout = setTimeout(() => reject(new Error("\uD398\uC774\uC9C0\uC758 \uC751\uB2F5\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC0C8\uB85C\uACE0\uCE68\uD55C \uB4A4 \uB2E4\uC2DC \uAC10\uC9C0\uD558\uC138\uC694.")), 3e3);
+          })
+        ]);
+        if (!record(result) || result.ok !== true) throw new Error("\uD398\uC774\uC9C0\uB97C \uC0C8\uB85C\uACE0\uCE68\uD55C \uB4A4 \uB2E4\uC2DC \uAC10\uC9C0\uD558\uC138\uC694.");
+        const current = await chrome.tabs.get(tabId);
+        if (rescans.get(tabId) !== ticket || ticket.epoch !== discoveryEpochs.get(tabId) || current.url !== ticket.url || !!current.incognito !== chrome.extension.inIncognitoContext) {
+          throw new Error("\uD398\uC774\uC9C0\uAC00 \uBCC0\uACBD\uB418\uC5B4 \uAC10\uC9C0 \uACB0\uACFC\uB97C \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.");
+        }
+      } finally {
+        clearTimeout(timeout);
+        if (rescans.get(tabId) === ticket) rescans.delete(tabId);
+      }
+    } else tabId = await currentTab();
     const items = tabId === void 0 ? [] : Array.from(media.items(tabId)).sort((a, b) => b.createdAt - a.createdAt);
     const rows = await history();
     const progress = await Promise.all(rows.map(async (row) => {
@@ -875,7 +1666,7 @@ async function handleLocalMessage(value, sender) {
     await navigator.locks.request("my-video-app-history", async () => {
       if (chrome.extension.inIncognitoContext) {
         for (const [id, row] of privateHistory) if (!activeStates.includes(row.state)) privateHistory.delete(id);
-      } else await chrome.storage.local.set({ [HISTORY_KEY]: (await history()).filter((row) => activeStates.includes(row.state)) });
+      } else await appStorage.set({ [HISTORY_KEY]: (await history()).filter((row) => activeStates.includes(row.state)) });
     });
     return { ok: true };
   }
@@ -923,9 +1714,11 @@ chrome.notifications.onClicked.addListener((id) => {
 chrome.tabs.onRemoved.addListener((id) => {
   media.deleteTab(id);
   discoveryEpochs.delete(id);
+  rescans.delete(id);
   if (lastTab === id) lastTab = void 0;
 });
 chrome.tabs.onUpdated.addListener((id, changes, tab) => {
+  if (changes.url !== void 0) rescans.delete(id);
   if (!!tab.incognito !== chrome.extension.inIncognitoContext) return;
   if (changes.status === "loading") {
     media.deleteTab(id);
@@ -940,8 +1733,11 @@ chrome.tabs.onActivated.addListener((info) => {
   });
 });
 async function setup(restarted = false) {
-  await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => chrome.action.setPopup({ popup: "local/index.html" }));
+  await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => {
+  });
+  await chrome.action.setPopup({ popup: "local/popup.html" });
   if (!chrome.extension.inIncognitoContext) {
+    await appStorage.ready();
     const ids = new Set((await jobs()).map((job) => job.downloadId).filter((id) => id !== void 0));
     for (const id of ids) {
       const current = (await chrome.downloads.search({ id }))[0];
@@ -960,6 +1756,7 @@ async function setup(restarted = false) {
       else await missingDownload(item);
     }
   }
+  if (!chrome.extension.inIncognitoContext && (await appStorage.status()).recoveryCount > 0) return;
   const keep = new Set((await history()).filter((item) => activeStates.includes(item.state)).map((item) => `local-${item.id}.media`));
   const root = await navigator.storage.getDirectory();
   for await (const name of root.keys()) if (/^local-[0-9a-f-]{36}\.media$/.test(name) && !keep.has(name)) await root.removeEntry(name).catch(() => {

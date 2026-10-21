@@ -51,6 +51,13 @@ test('local commands distinguish extension UI from website collectors', () => {
   assert(!trustedCapture({ id, url: base + 'local/index.html', tab: { id: 5 } }, id));
   assert(!trustedCapture({ id, url: 'https://example.test/page' }, id));
 });
+test('popup commands require exact extension page and origin', () => {
+  const id = 'example', base = 'chrome-extension://example/';
+  for (const suffix of ['', '?view=history', '#settings']) assert(trustedUI({ id, url: base + 'local/popup.html' + suffix }, id, base));
+  for (const url of [base + 'local/popup.html.evil', base + 'local/popup.html/other', base + 'local/POPUP.html',
+    'https://example.test/local/popup.html', 'chrome-extension://other/local/popup.html']) assert(!trustedUI({ id, url }, id, base), url);
+  assert(!trustedUI({ id: 'other', url: base + 'local/popup.html' }, id, base));
+});
 test('HLS attributes preserve quoted commas and reject dangerous byte ranges', () => {
   assert.equal(attributes('TYPE=AUDIO,GROUP-ID="audio",NAME="English, main",DEFAULT=YES').NAME, 'English, main');
   assert.deepEqual(parseByteRange('42@10'), { length: 42, offset: 10 });

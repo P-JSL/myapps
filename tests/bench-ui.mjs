@@ -133,7 +133,7 @@ async function ui(variant) {
       window.__commands.push(message);
       if (message.type === 'download' && window.__holdDownload) await new Promise(resolve => { window.__releaseDownload = resolve; });
       return { ok: true };
-    } }, storage: { local: { get: async () => ({}), set: async () => {} } } };
+    } }, storage: { local: { get: async () => ({}), set: async () => {}, remove: async () => {} } } };
   });
   await page.goto(`${origin}/${variant}/index.html`);
   await page.waitForFunction(() => document.querySelectorAll('#history>li').length === 200);
@@ -200,7 +200,7 @@ try {
   }
   assert.deepEqual(await uiRegression('optimized'), await uiRegression('baseline'));
   regressions.push('UI: unchanged/changed focus, ordering/removal, duplicate IDs, new security tokens/actions, and retained pending disabled button');
-  process.stdout.write(JSON.stringify({ suite: 'ui-collector', baselineRef, baselineSha256, sourceSha256, browser: browser.version(), platform: process.platform, mode: 'real Chromium DOM; Chrome APIs/resource timing/debounce clock are test doubles; no network latency benchmark', scenarios, regressions, status: 'passed' }) + '\n');
+  process.stdout.write(JSON.stringify({ suite: 'ui-collector', baselineRef, baselineSha256, sourceSha256, browser: browser.version(), platform: process.platform, mode: 'real Chromium DOM and IndexedDB; Chrome APIs/resource timing/debounce clock are test doubles; no network latency benchmark', scenarios, regressions, status: 'passed' }) + '\n');
 } finally {
   await context.close(); await browser.close(); await new Promise(resolve => server.close(resolve));
 }

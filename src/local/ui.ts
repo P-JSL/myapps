@@ -1,4 +1,5 @@
 import { record } from '../security/validation.ts';
+import { appStorage } from '../data/database.ts';
 import { SCOPE, isHistory, type MediaItem, type HistoryItem } from './model.ts';
 import { downloadOptions } from './preferences.ts';
 import { transport, transportLabel } from './transport.ts';
@@ -19,6 +20,23 @@ async function request(type: string, data: Record<string, unknown> = {}): Promis
   return result;
 }
 function error(value: unknown) { hasError = true; status.textContent = value instanceof Error ? value.message : '요청 중 오류가 발생했습니다.'; }
+async function refreshDatabaseStatus() {
+  const hint = node('database-status');
+  if (chrome.extension.inIncognitoContext) {
+    hint.textContent = '시크릿 창의 기록은 메모리에서만 관리하며 일반 창의 내장 DB와 저장 설정을 읽거나 변경하지 않습니다.';
+    return;
+  }
+  try {
+    const database = await appStorage.status();
+    const parts = [`내장 DB v${database.version} 준비됨`, `다운로드 기록 ${database.historyCount}개`, `임시 복사본 기록 ${database.jobCount}개`];
+    if (database.lastMaintenanceAt !== null) parts.push(`최근 자동 정리 ${new Date(database.lastMaintenanceAt).toLocaleString('ko-KR')}`);
+    if (database.legacyCleanupPending) parts.push('이전 데이터의 원본 정리를 다음 실행에서 다시 시도합니다.');
+    if (database.recoveryCount > 0) parts.push(`확인이 필요한 이전 데이터 ${database.recoveryCount}개를 보존하고 있어 파일 자동 정리와 완료 후 자동 확대 제안을 보류합니다.`);
+    hint.textContent = parts.join(' · ');
+  } catch (value) {
+    hint.textContent = `내장 DB를 확인하지 못했습니다. 자동 파일 정리를 중단하고 기존 데이터를 보존합니다.${value instanceof Error ? ` ${value.message}` : ''}`;
+  }
+}
 function options() { return downloadOptions({ quality: node<HTMLSelectElement>('quality').value, output: node<HTMLSelectElement>('download-output').value }); }
 const preferencesReady = (async () => {
   const hint = node('download-preferences-status');
@@ -27,7 +45,7 @@ const preferencesReady = (async () => {
     return;
   }
   try {
-    const saved: unknown = (await chrome.storage.local.get(DOWNLOAD_OPTIONS_KEY))[DOWNLOAD_OPTIONS_KEY];
+    const saved: unknown = (await appStorage.get(DOWNLOAD_OPTIONS_KEY))[DOWNLOAD_OPTIONS_KEY];
     const restored = downloadOptions(saved);
     if (preferencesTouched) return;
     node<HTMLSelectElement>('quality').value = restored.quality;
@@ -40,7 +58,7 @@ for (const id of ['quality', 'download-output']) node(id).addEventListener('chan
   preferencesTouched = true;
   if (chrome.extension.inIncognitoContext) return;
   const selected = options();
-  void preferencesReady.then(() => chrome.storage.local.set({ [DOWNLOAD_OPTIONS_KEY]: selected })).then(() => {
+  void preferencesReady.then(() => appStorage.set({ [DOWNLOAD_OPTIONS_KEY]: selected })).then(() => {
     node('download-preferences-status').textContent = '화질·저장 형식 선택을 이 브라우저에 저장했습니다.';
   }).catch(() => {
     node('download-preferences-status').textContent = '설정을 저장하지 못했습니다. 현재 선택으로 다운로드할 수 있습니다.';
@@ -217,7 +235,7 @@ function show(history: boolean) {
 }
 node('media-tab').addEventListener('click', () => show(false));
 node('history-tab').addEventListener('click', () => show(true));
-node('refresh').addEventListener('click', () => { hasError = false; void refresh().catch(error); });
+node('refresh').addEventListener('click', () => { hasError = false; void refresh().catch(error); void refreshDatabaseStatus(); });
 node('upscale').addEventListener('click', () => { void request('upscale').catch(error); });
 node('clear-history').addEventListener('click', () => { void request('clear-history').then(refresh).catch(error); });
 node('security-acknowledge').addEventListener('change', reviewControls);
@@ -266,5 +284,6 @@ node('url-form').addEventListener('submit', event => {
 });
 const timer = setInterval(() => { if (!document.hidden) void refresh().catch(error); }, 2000);
 addEventListener('pagehide', () => clearInterval(timer), { once: true });
+void refreshDatabaseStatus();
 if (new URL(location.href).searchParams.get('view') === 'history') show(true);
 else void refresh().catch(error);

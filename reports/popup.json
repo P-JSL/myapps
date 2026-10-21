@@ -1,0 +1,33 @@
+{
+  "buildSha256": "48c2b307c9965a7b832912a0f4339fa638f8ba4dd7766beff4a72dc6f29d82e6",
+  "browser": "154.0.8037.57",
+  "mode": "Real popup DOM, IndexedDB and built collector; Chrome APIs are doubles",
+  "outcomes": [
+    {
+      "name": "Dark popup and settings, history, folder, help, rescan and tools actions",
+      "status": "passed"
+    },
+    {
+      "name": "Media titles remain literal text and review rows open history",
+      "status": "passed"
+    },
+    {
+      "name": "Download waits for real IndexedDB saved preferences",
+      "status": "passed"
+    },
+    {
+      "name": "Private popup uses defaults without IndexedDB",
+      "status": "passed"
+    },
+    {
+      "name": "Errors display and controls recover",
+      "status": "passed"
+    },
+    {
+      "name": "Built collector authenticates rescan nonce and awaits every capture acknowledgement",
+      "status": "passed"
+    }
+  ],
+  "outboundRequests": [],
+  "pageErrors": []
+}

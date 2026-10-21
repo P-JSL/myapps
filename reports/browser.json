@@ -1,5 +1,5 @@
 {
-  "buildSha256": "f2cb04ce401fe6efa08bcba58472a7a03819af9db83a045f001777c82224b2ad",
+  "buildSha256": "48c2b307c9965a7b832912a0f4339fa638f8ba4dd7766beff4a72dc6f29d82e6",
   "browser": "154.0.8037.57",
   "engine": "independent-local",
   "mode": "localhost harness: real browser/Wasm/OPFS; Chrome extension APIs mocked",
@@ -8,6 +8,14 @@
     "reason": "Chromium administrator policy: Loading of unpacked extensions is disabled by the administrator. Verified separately; policy was not changed."
   },
   "outcomes": [
+    {
+      "name": "Embedded database creates, migrates and manages data atomically in real IndexedDB",
+      "status": "passed"
+    },
+    {
+      "name": "Toolbar popup and authenticated collector rescan work with real DOM and IndexedDB",
+      "status": "passed"
+    },
     {
       "name": "Built UI loads with CSP; actual FFmpeg Worker assets available",
       "status": "passed"
@@ -290,6 +298,18 @@
     },
     {
       "name": "Incognito choices neither read nor overwrite the stored normal-window preferences using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "Prepared files ignore misleading text MIME and attachment names and save exact playable MP4/WebM",
+      "status": "passed"
+    },
+    {
+      "name": "Background downloads preserve playable media and canonical extensions with upscale disabled using API doubles",
+      "status": "passed"
+    },
+    {
+      "name": "HTML, plain text and fake video MIME are rejected before the browser download API using real file bytes",
       "status": "passed"
     },
     {

@@ -103,7 +103,7 @@ export function trustedUI(sender: LocalSender, id: string, base: string): boolea
   if (sender.id !== id || typeof sender.url !== 'string') return false;
   try {
     const u = new URL(sender.url);
-    return ['local/index.html', 'upscale/index.html'].some(page => u.href.split(/[?#]/)[0] === `${base}${page}`);
+    return ['local/index.html', 'local/popup.html', 'upscale/index.html'].some(page => u.href.split(/[?#]/)[0] === `${base}${page}`);
   } catch { return false; }
 }
 export function trustedCapture(sender: LocalSender, id: string): boolean {

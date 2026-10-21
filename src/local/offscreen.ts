@@ -2,6 +2,7 @@ import { record } from '../security/validation.ts';
 import { MAX_INPUT_BYTES } from '../upscale/policy.ts';
 import { OFFSCREEN_SCOPE, PREPARE_TIMEOUT_MS, SCOPE, mediaURL } from './model.ts';
 import { fetchBytes, fetchManifestResource } from './network.ts';
+import { inspectMediaFile, InvalidMediaFileError } from './media-file.ts';
 import { planHls, type StreamPlan } from './hls.ts';
 import { planDash } from './dash.ts';
 import { downloadOptions } from './preferences.ts';
@@ -76,6 +77,7 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
       });
     }
     if (task.controller.signal.aborted) throw new Error('작업을 취소했습니다.');
+    const actual = inspectMediaFile(data);
     report({ stage: 'saving', progress: 1 }, true);
     const root = await navigator.storage.getDirectory();
     const filename = `local-${id}.media`;
@@ -84,8 +86,8 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
     try { await writable.write(data); await writable.close(); } catch (error) { await writable.abort().catch(() => {}); throw error; }
     signal.throwIfAborted();
     const file = await handle.getFile();
-    const blob = URL.createObjectURL(file); prepared.set(id, { url: blob, filename });
-    return { ok: true, url: blob, filename, protocols: [...protocols] };
+    const blob = URL.createObjectURL(new Blob([file], { type: actual.mime })); prepared.set(id, { url: blob, filename });
+    return { ok: true, url: blob, filename, ...actual, protocols: [...protocols] };
   } catch (error) { await disposeLocal(id).catch(() => {}); throw error; }
   finally { clearTimeout(timeout); signal.removeEventListener('abort', abort); task.worker?.terminate(); }
 }
@@ -99,6 +101,6 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, reply) => {
   if (message.type !== 'prepare' || !['file', 'hls', 'dash'].includes(String(message.kind))) return false;
   let url: string;
   try { url = mediaURL(message.url).href; } catch { reply({ ok: false, error: '미디어 주소가 올바르지 않습니다.' }); return false; }
-  void prepareLocal(id, url, String(message.kind), message.options).then(reply).catch((error: unknown) => { reply({ ok: false, error: error instanceof Error ? error.message : '파일 준비 오류' }); });
+  void prepareLocal(id, url, String(message.kind), message.options).then(reply).catch((error: unknown) => { reply({ ok: false, error: error instanceof Error ? error.message : '파일 준비 오류', invalidMedia: error instanceof InvalidMediaFileError }); });
   return true;
 });

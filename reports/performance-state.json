@@ -3,30 +3,30 @@
   "baselineCommit": "6983b53",
   "node": "v24.19.0",
   "platform": "linux/x64",
-  "modelSha256": "23866302bb09bf2980f2e2c6dbcad6eae9d71c814f0a35793e54f98f94a01969",
+  "modelSha256": "b0e38a7dd89783920c95bdd8e56d4d8c181d595cd2bdfef43ab013cb2bf83845",
   "unit": "microseconds per operation",
   "cases": [
     {
       "tabCount": 1,
       "retainedItems": 200,
       "lookup": {
-        "beforeMedianUs": 3.6705833333333375,
-        "afterMedianUs": 0.013729166666666496,
-        "speedup": 267.35660091047407,
+        "beforeMedianUs": 3.6430750000000005,
+        "afterMedianUs": 0.014279999999994667,
+        "speedup": 255.11729691886282,
         "iterationsPerRound": 1200,
         "rounds": 7
       },
       "construction": {
-        "beforeMedianUs": 13.704959999999744,
-        "afterMedianUs": 21.05639999999994,
-        "speedup": 0.6508690944320864,
+        "beforeMedianUs": 11.606999999999914,
+        "afterMedianUs": 20.44082000000003,
+        "speedup": 0.5678343628093148,
         "iterationsPerRound": 50,
         "rounds": 5
       },
       "constructionAndRemovalOfOneFullTab": {
-        "beforeMedianUs": 10.007664999999974,
-        "afterMedianUs": 23.364865000000062,
-        "speedup": 0.4283211137748901,
+        "beforeMedianUs": 9.321715000000097,
+        "afterMedianUs": 23.701260000000133,
+        "speedup": 0.3933003983754469,
         "iterationsPerRound": 200,
         "rounds": 5
       },
@@ -36,23 +36,23 @@
       "tabCount": 10,
       "retainedItems": 2000,
       "lookup": {
-        "beforeMedianUs": 36.95221916666665,
-        "afterMedianUs": 0.016891666666675558,
-        "speedup": 2187.6005426727497,
+        "beforeMedianUs": 36.365249166666636,
+        "afterMedianUs": 0.02138166666666071,
+        "speedup": 1700.7677527481535,
         "iterationsPerRound": 1200,
         "rounds": 7
       },
       "construction": {
-        "beforeMedianUs": 129.39020000000028,
-        "afterMedianUs": 283.8859999999954,
-        "speedup": 0.4557822506217368,
+        "beforeMedianUs": 118.17100000000664,
+        "afterMedianUs": 284.4041999999945,
+        "speedup": 0.41550370915763174,
         "iterationsPerRound": 5,
         "rounds": 5
       },
       "constructionAndRemovalOfOneFullTab": {
-        "beforeMedianUs": 9.65488999999991,
-        "afterMedianUs": 22.945785,
-        "speedup": 0.42076965333719935,
+        "beforeMedianUs": 9.365934999999581,
+        "afterMedianUs": 23.216285000000312,
+        "speedup": 0.40342091768771166,
         "iterationsPerRound": 200,
         "rounds": 5
       },
@@ -62,30 +62,30 @@
       "tabCount": 50,
       "retainedItems": 10000,
       "lookup": {
-        "beforeMedianUs": 159.6646366666667,
-        "afterMedianUs": 0.016834166666702306,
-        "speedup": 9484.558388178526,
+        "beforeMedianUs": 170.5575375,
+        "afterMedianUs": 0.018394166666742724,
+        "speedup": 9272.370996201409,
         "iterationsPerRound": 1200,
         "rounds": 7
       },
       "construction": {
-        "beforeMedianUs": 730.9669999999642,
-        "afterMedianUs": 1828.5939999999528,
-        "speedup": 0.3997426438017313,
+        "beforeMedianUs": 950.6450000001223,
+        "afterMedianUs": 1970.9745000000112,
+        "speedup": 0.4823223232974942,
         "iterationsPerRound": 2,
         "rounds": 5
       },
       "constructionAndRemovalOfOneFullTab": {
-        "beforeMedianUs": 9.966660000001184,
-        "afterMedianUs": 24.011335000000145,
-        "speedup": 0.41508146048527184,
+        "beforeMedianUs": 20.20187999999962,
+        "afterMedianUs": 51.33349499999895,
+        "speedup": 0.3935418774817501,
         "iterationsPerRound": 200,
         "rounds": 5
       },
       "extraIndexEntries": 10000
     }
   ],
-  "historyRetentionAt200MeanUs": 21.246818399999984,
+  "historyRetentionAt200MeanUs": 26.86804750000001,
   "complexity": {
     "selectBefore": "O(N) time and O(N) intermediate references across all retained tabs",
     "selectAfter": "Map lookup expected O(1), no full-catalog intermediate array",

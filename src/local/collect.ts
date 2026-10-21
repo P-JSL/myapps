@@ -1,4 +1,5 @@
 import { mediaKind, mediaURL, SCOPE } from './model.ts';
+import { record } from '../security/validation.ts';
 import { resourceTransport, transport, type Transport } from './transport.ts';
 
 const sent = new Map<string, string>();
@@ -9,7 +10,7 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 let scannedTitle = document.title;
 let scannedBase = document.baseURI;
 let saturated = false;
-function scan() {
+function scan(rescanId?: string) {
   scannedTitle = document.title;
   scannedBase = document.baseURI;
   const found: Array<{ url: string; title: string; mime: string; fromElement: boolean; observedTransport?: Transport }> = [];
@@ -34,7 +35,9 @@ function scan() {
   // continuation even when that event itself does not contain media.
   saturated = found.length >= 100;
   if (sent.size > 1000) sent.clear();
-  for (let index = 0; index < found.length; index += 10) void chrome.runtime.sendMessage({ scope: SCOPE, type: 'capture', items: found.slice(index, index + 10) }).catch(() => {});
+  const pending: Promise<unknown>[] = [];
+  for (let index = 0; index < found.length; index += 10) pending.push(chrome.runtime.sendMessage({ scope: SCOPE, type: 'capture', ...(rescanId ? { rescanId } : {}), items: found.slice(index, index + 10) }).catch(() => {}));
+  return Promise.all(pending);
 }
 function schedule() { clearTimeout(timer); timer = setTimeout(scan, 500); }
 try {
@@ -66,4 +69,14 @@ new MutationObserver(records => {
   }
 }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'href', 'type'] });
 document.addEventListener('loadedmetadata', schedule, true);
+chrome.runtime.onMessage?.addListener((message: unknown, sender, reply) => {
+  if (!record(message) || message.scope !== SCOPE || message.type !== 'rescan'
+    || typeof sender.id !== 'string' || sender.id !== chrome.runtime.id || sender.tab
+    || typeof message.rescanId !== 'string' || !/^[0-9a-f-]{36}$/.test(message.rescanId)) return false;
+  const rescanId = message.rescanId;
+  clearTimeout(timer);
+  sent.clear();
+  void Promise.resolve().then(() => scan(rescanId)).then(() => reply({ ok: true })).catch(() => reply({ ok: false }));
+  return true;
+});
 scan();

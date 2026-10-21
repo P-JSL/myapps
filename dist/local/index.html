@@ -14,6 +14,7 @@
   </section>
   <section id="history-view" aria-label="다운로드 기록" hidden><div class="heading"><h2>로컬 기록</h2><button id="clear-history" class="secondary">완료 기록 삭제</button></div><p class="hint">기록을 삭제해도 저장한 파일은 그대로 남습니다. 다운로드가 끝나면 로컬 백신으로 검사합니다. 위협 탐지·검사 실패·Chrome 경고가 있으면 확인이 필요합니다.</p><ul id="history"></ul><p id="history-empty" class="hint">저장한 다운로드 기록이 없습니다.</p></section>
   <section class="security-connection" aria-labelledby="security-connection-title"><h2 id="security-connection-title">로컬 백신 연결</h2><p class="hint">Windows에서는 Microsoft Defender를 기본으로 사용하고, 다른 활성 백신이 Windows 표준 검사 인터페이스를 지원하면 자동 연결합니다. 검사 도우미는 한 번 설치해야 합니다. 백신의 기존 클라우드 보호·샘플 전송 설정과 Chrome 기본 보호는 그대로 적용됩니다.</p><p class="hint"><a href="../SECURITY_DOWNLOADS.ko.md" target="_blank" rel="noopener">로컬 백신 설치·연결 안내 ↗</a></p><p class="hint">설치 도우미에 사용할 확장 프로그램 ID: <code id="extension-id"></code></p><button id="security-connect" class="secondary">백신 연결</button><p id="security-connection-status" class="hint" role="status" aria-live="polite">연결 상태 미확인 · 도우미 설치 후 백신 연결을 눌러 검사기의 준비 상태를 확인하세요. 실제 파일 검사는 다운로드 후 수행합니다.</p></section>
+  <section aria-labelledby="database-title"><h2 id="database-title">로컬 저장소</h2><p id="database-status" class="hint" role="status" aria-live="polite">다운로드 기록과 설정을 저장할 내장 DB를 준비하고 있습니다…</p></section>
   <footer>앱 계정이나 구독이 필요하지 않습니다. 다운로드는 해당 미디어 사이트와 통신하며, 파일 처리와 기록 저장은 로컬에서 수행합니다. DRM·라이브 녹화·사이트별 전용 추출기는 지원하지 않습니다.</footer>
 </main>
 <dialog id="security-dialog" aria-labelledby="security-dialog-title" aria-describedby="security-explanation">

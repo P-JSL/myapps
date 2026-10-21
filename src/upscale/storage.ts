@@ -1,10 +1,12 @@
 import { DIRECTORY, JOBS_KEY, RETENTION_MS, MAX_QUEUE_BYTES, MAX_JOBS, isJob, type Job } from './policy.ts';
+import { appStorage } from '../data/database.ts';
 
 export function privateContext(): boolean { return chrome.extension?.inIncognitoContext === true; }
 export async function jobs(): Promise<Job[]> {
   if (privateContext()) return [];
-  const stored: unknown = (await chrome.storage.local.get(JOBS_KEY))[JOBS_KEY];
-  return Array.isArray(stored) ? stored.filter(isJob).slice(0, MAX_JOBS) : [];
+  const stored: unknown = (await appStorage.get(JOBS_KEY))[JOBS_KEY];
+  // Recovery suspends caps in IndexedDB; do not hide valid recovered bindings.
+  return Array.isArray(stored) ? stored.filter(isJob) : [];
 }
 export async function directory(): Promise<FileSystemDirectoryHandle> {
   return (await navigator.storage.getDirectory()).getDirectoryHandle(DIRECTORY, { create: true });
@@ -16,9 +18,11 @@ async function removeIfExists(dir: FileSystemDirectoryHandle, name: string): Pro
 export async function deleteJob(job: Job): Promise<void> {
   if (privateContext()) return;
   await withQueueLock(async () => {
+    const retained = (await jobs()).filter(j => j.id !== job.id);
+    // Persist the user's removal before deleting bytes; a DB failure preserves the file.
+    await appStorage.set({ [JOBS_KEY]: retained });
     const dir = await directory();
     await removeIfExists(dir, job.id);
-    await chrome.storage.local.set({ [JOBS_KEY]: (await jobs()).filter(j => j.id !== job.id) });
   });
 }
 export async function withQueueLock<T>(operation: () => Promise<T>): Promise<T> {
@@ -31,8 +35,12 @@ export function cleanup(now = Date.now()): Promise<Job[]> {
 /** Caller must hold the origin-wide queue lock for the entire transaction. */
 export async function cleanupUnlocked(now = Date.now()): Promise<Job[]> {
   if (privateContext()) return [];
-  const dir = await directory();
+  await appStorage.ready();
   const stored = await jobs();
+  // Unknown recovered metadata may still refer to files missing from this index.
+  // Leave both metadata and bytes untouched until recovery is resolved.
+  if ((await appStorage.status()).recoveryCount > 0) return stored;
+  const dir = await directory();
   const retained: Job[] = [];
   let size = 0;
   for (const job of stored.sort((a, b) => b.createdAt - a.createdAt)) {
@@ -42,9 +50,10 @@ export async function cleanupUnlocked(now = Date.now()): Promise<Job[]> {
     }
   }
   const keep = new Set(retained.map(j => j.id));
+  // A failed index commit must not discard any of the previously retained files.
+  await appStorage.set({ [JOBS_KEY]: retained });
   // Clean orphan copies too, including a crash between writing the file and saving the index.
   const iterable = dir as FileSystemDirectoryHandle & { keys(): AsyncIterableIterator<string> };
   for await (const name of iterable.keys()) if (!keep.has(name)) await removeIfExists(dir, name);
-  await chrome.storage.local.set({ [JOBS_KEY]: retained });
   return retained;
 }

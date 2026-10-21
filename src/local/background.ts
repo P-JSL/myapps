@@ -1,14 +1,17 @@
 import { boundedData, record } from '../security/validation.ts';
+import { appStorage } from '../data/database.ts';
 import { offerUpscale, revokeDownloadOffers, authorizeDownloadOffers } from '../upscale/completion.ts';
 import { jobs } from '../upscale/storage.ts';
-import { OFFER_KEY, MAX_INPUT_BYTES } from '../upscale/policy.ts';
+import { MAX_INPUT_BYTES } from '../upscale/policy.ts';
 import { SCOPE, OFFSCREEN_SCOPE, HISTORY_KEY, ACTIVE_HISTORY_STATES, MediaCatalog, retainHistory, filenameFor, isHistory, mediaKind, mediaURL, trustedCapture, trustedUI, type MediaItem, type HistoryItem } from './model.ts';
 import { downloadOptions, type DownloadOptions } from './preferences.ts';
 import { transport, type Transport } from './transport.ts';
+import { isMediaFileFormat, mediaFilename, probeMediaFile } from './media-file.ts';
 import { chromeWarning, scanFile, probeAntivirus, type ScanResult } from './antivirus.ts';
 
 const media = new MediaCatalog();
 const discoveryEpochs = new Map<number, object>();
+const rescans = new Map<number, { id: string; epoch: object; url: string }>();
 const privateHistory = new Map<string, HistoryItem>();
 const cancelled = new Set<string>();
 const finalizing = new Set<number>();
@@ -21,8 +24,9 @@ let creatingOffscreen: Promise<void> | undefined;
 async function history(): Promise<HistoryItem[]> {
   // storage.local is shared between split incognito and ordinary extension contexts.
   if (chrome.extension.inIncognitoContext) return retainHistory([...privateHistory.values()]);
-  const raw: unknown = (await chrome.storage.local.get(HISTORY_KEY))[HISTORY_KEY];
-  return retainHistory(Array.isArray(raw) ? raw.filter(isHistory).filter(row => !row.incognito) : []);
+  const raw: unknown = (await appStorage.get(HISTORY_KEY))[HISTORY_KEY];
+  // IndexedDB enforces normal retention; recovery must preserve every valid row.
+  return Array.isArray(raw) ? raw.filter(isHistory).filter(row => !row.incognito) : [];
 }
 function updatePrivate(item: HistoryItem) {
   const retained = retainHistory([item, ...privateHistory.values()].filter((row, index) => index === 0 || row.id !== item.id));
@@ -35,7 +39,7 @@ async function update(item: HistoryItem, onlyIfPreparing = false): Promise<void>
     const current = await history();
     if (onlyIfPreparing && current.find(row => row.id === item.id)?.state !== 'preparing') return;
     const existing = current.filter(row => !row.incognito && row.id !== item.id);
-    await chrome.storage.local.set({ [HISTORY_KEY]: retainHistory([item, ...existing]) });
+    await appStorage.set({ [HISTORY_KEY]: [item, ...existing] });
   });
 }
 async function change(id: string, edit: (item: HistoryItem) => HistoryItem | undefined): Promise<HistoryItem | undefined> {
@@ -44,7 +48,7 @@ async function change(id: string, edit: (item: HistoryItem) => HistoryItem | und
     if (!current) return undefined;
     const next = edit(current); if (!next) return undefined;
     if (next.incognito) updatePrivate(next);
-    else await chrome.storage.local.set({ [HISTORY_KEY]: rows.filter(row => !row.incognito).map(row => row.id === id ? next : row) });
+    else await appStorage.set({ [HISTORY_KEY]: rows.filter(row => !row.incognito).map(row => row.id === id ? next : row) });
     return next;
   });
 }
@@ -209,22 +213,36 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
     try {
       let address = item.url;
       let transferProtocols: Transport[] = [];
-      const offers = (await chrome.storage.local.get(OFFER_KEY))[OFFER_KEY] !== false;
-      if (options.output !== 'original' || item.kind !== 'file' || (offers && !entry.incognito && (!item.size || item.size <= MAX_INPUT_BYTES))) {
+      const directOriginal = options.output === 'original' && item.kind === 'file';
+      // Type ordinary originals regardless of private mode or upscale preferences.
+      if (!directOriginal || !item.size || item.size <= MAX_INPUT_BYTES) {
+        let result: unknown;
         try {
           await ensureOffscreen();
           if (cancelled.has(entry.id)) throw new DOMException('작업을 취소했습니다.', 'AbortError');
-          const result: unknown = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: 'prepare', id: entry.id, url: item.url, kind: item.kind, options });
-          if (!record(result) || result.ok !== true || typeof result.url !== 'string' || !result.url.startsWith(`blob:${chrome.runtime.getURL('')}`)) throw new Error(record(result) && typeof result.error === 'string' ? result.error : '파일을 준비할 수 없습니다.');
-          address = result.url;
-          if (Array.isArray(result.protocols)) transferProtocols = result.protocols.map(transport).filter((value): value is Transport => value !== undefined);
+          result = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: 'prepare', id: entry.id, url: item.url, kind: item.kind, options });
         } catch (error) {
-          if (options.output !== 'original' || item.kind !== 'file' || cancelled.has(entry.id)) throw error;
-          // A native direct download still works when optional local prefetch fails.
-          address = item.url;
+          if (!directOriginal || cancelled.has(entry.id)) throw error;
+        }
+        if (record(result) && result.ok === true) {
+          if (typeof result.url !== 'string' || !result.url.startsWith(`blob:${chrome.runtime.getURL('')}`) || !isMediaFileFormat(result)) throw new Error('준비한 파일의 미디어 형식을 확인할 수 없습니다.');
+          address = result.url;
+          entry.filename = mediaFilename(entry.filename, result);
+          if (Array.isArray(result.protocols)) transferProtocols = result.protocols.map(transport).filter((value): value is Transport => value !== undefined);
+        } else if (!directOriginal || (record(result) && result.invalidMedia === true)) {
+          throw new Error(record(result) && typeof result.error === 'string' ? result.error : '파일을 준비할 수 없습니다.');
         }
       }
-      if (cancelled.has(entry.id)) throw new Error('작업을 취소했습니다.');
+      if (cancelled.has(entry.id)) throw new DOMException('작업을 취소했습니다.', 'AbortError');
+      if (address === item.url) {
+        const controller = new AbortController();
+        const stop = setInterval(() => { if (cancelled.has(entry.id)) controller.abort(); }, 50);
+        try { entry.filename = mediaFilename(entry.filename, await probeMediaFile(item.url, controller.signal)); }
+        finally { clearInterval(stop); }
+      }
+      if (cancelled.has(entry.id)) throw new DOMException('작업을 취소했습니다.', 'AbortError');
+      await update(entry, true);
+      if (cancelled.has(entry.id)) throw new DOMException('작업을 취소했습니다.', 'AbortError');
       const id = await chrome.downloads.download({ url: address, filename: entry.filename, saveAs: true, conflictAction: 'uniquify' });
       const downloading: HistoryItem = { ...entry, state: 'downloading', downloadId: id, transferProtocols };
       await update(downloading);
@@ -263,6 +281,11 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
   if (value.type === 'capture') {
     if (!trustedCapture(sender, chrome.runtime.id) || !Array.isArray(value.items) || value.items.length > 100) throw new Error('허용되지 않은 수집 요청입니다.');
     if (!!sender.tab?.incognito !== chrome.extension.inIncognitoContext) throw new Error('다른 브라우징 모드의 수집 요청입니다.');
+    if (value.rescanId !== undefined) {
+      const ticket = rescans.get(sender.tab!.id!);
+      if (!ticket || value.rescanId !== ticket.id || ticket.epoch !== discoveryEpochs.get(sender.tab!.id!)
+        || mediaURL(sender.url).href !== mediaURL(ticket.url).href) throw new Error('페이지가 변경되어 감지 결과를 취소했습니다.');
+    }
     for (const item of value.items) if (record(item) && typeof item.url === 'string') add(sender.tab!.id!, item.url, typeof item.mime === 'string' ? item.mime : '', typeof item.title === 'string' ? item.title : '', item.fromElement === true, undefined, item.observedTransport);
     return { ok: true };
   }
@@ -286,8 +309,35 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
     if (!item) throw new Error('검사 상태가 변경되었습니다.');
     await chrome.tabs.create({ url: 'chrome://downloads/' }); return { ok: true };
   }
-  if (value.type === 'list') {
-    const tabId = await currentTab();
+  if (value.type === 'list' || value.type === 'rescan') {
+    let tabId: number | undefined;
+    if (value.type === 'rescan') {
+      const tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true })).find(candidate =>
+        !!candidate.incognito === chrome.extension.inIncognitoContext && candidate.id !== undefined
+        && typeof candidate.url === 'string' && /^https?:/.test(candidate.url));
+      if (tab?.id === undefined || !tab.url) throw new Error('영상이 있는 웹페이지를 연 뒤 다시 감지하세요.');
+      tabId = tab.id;
+      const epoch = discoveryEpochs.get(tabId) ?? {};
+      discoveryEpochs.set(tabId, epoch);
+      const ticket = { id: crypto.randomUUID(), epoch, url: tab.url };
+      rescans.set(tabId, ticket);
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const result: unknown = await Promise.race([
+          chrome.tabs.sendMessage(tabId, { scope: SCOPE, type: 'rescan', rescanId: ticket.id }, { frameId: 0 }),
+          new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error('페이지의 응답이 없습니다. 새로고침한 뒤 다시 감지하세요.')), 3000); }),
+        ]);
+        if (!record(result) || result.ok !== true) throw new Error('페이지를 새로고침한 뒤 다시 감지하세요.');
+        const current = await chrome.tabs.get(tabId);
+        if (rescans.get(tabId) !== ticket || ticket.epoch !== discoveryEpochs.get(tabId)
+          || current.url !== ticket.url || !!current.incognito !== chrome.extension.inIncognitoContext) {
+          throw new Error('페이지가 변경되어 감지 결과를 취소했습니다.');
+        }
+      } finally {
+        clearTimeout(timeout);
+        if (rescans.get(tabId) === ticket) rescans.delete(tabId);
+      }
+    } else tabId = await currentTab();
     const items = tabId === undefined ? [] : Array.from(media.items(tabId)).sort((a, b) => b.createdAt - a.createdAt);
     const rows = await history();
     const progress = await Promise.all(rows.map(async row => {
@@ -333,7 +383,7 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
     await navigator.locks.request('my-video-app-history', async () => {
       if (chrome.extension.inIncognitoContext) {
         for (const [id, row] of privateHistory) if (!activeStates.includes(row.state)) privateHistory.delete(id);
-      } else await chrome.storage.local.set({ [HISTORY_KEY]: (await history()).filter(row => activeStates.includes(row.state)) });
+      } else await appStorage.set({ [HISTORY_KEY]: (await history()).filter(row => activeStates.includes(row.state)) });
     });
     return { ok: true };
   }
@@ -368,16 +418,20 @@ chrome.notifications.onClicked.addListener(id => {
   if (!/^my-video-app-security:[a-f0-9-]{36}$/.test(id)) return;
   void chrome.tabs.create({ url: chrome.runtime.getURL('local/index.html?view=history') });
 });
-chrome.tabs.onRemoved.addListener(id => { media.deleteTab(id); discoveryEpochs.delete(id); if (lastTab === id) lastTab = undefined; });
+chrome.tabs.onRemoved.addListener(id => { media.deleteTab(id); discoveryEpochs.delete(id); rescans.delete(id); if (lastTab === id) lastTab = undefined; });
 chrome.tabs.onUpdated.addListener((id, changes, tab) => {
+  if (changes.url !== undefined) rescans.delete(id);
   if (!!tab.incognito !== chrome.extension.inIncognitoContext) return;
   if (changes.status === 'loading') { media.deleteTab(id); discoveryEpochs.set(id, {}); }
   if (tab.active && tab.url && /^https?:/.test(tab.url)) lastTab = id;
 });
 chrome.tabs.onActivated.addListener(info => { void chrome.tabs.get(info.tabId).then(tab => { if (!!tab.incognito === chrome.extension.inIncognitoContext && tab.url && /^https?:/.test(tab.url)) lastTab = info.tabId; }).catch(() => {}); });
 async function setup(restarted = false) {
-  await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => chrome.action.setPopup({ popup: 'local/index.html' }));
+  await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => {});
+  await chrome.action.setPopup({ popup: 'local/popup.html' });
   if (!chrome.extension.inIncognitoContext) {
+    // Migration/open errors must stop reconciliation before it can delete retained files.
+    await appStorage.ready();
     // An unsafe verdict may arrive while the service worker is stopped, after history was cleared.
     const ids = new Set((await jobs()).map(job => job.downloadId).filter((id): id is number => id !== undefined));
     for (const id of ids) {
@@ -395,6 +449,9 @@ async function setup(restarted = false) {
       else await missingDownload(item);
     }
   }
+  // Recovered legacy records can refer to otherwise unindexed temporary inputs.
+  // Automatic orphan deletion must wait; explicit safety decisions remain available.
+  if (!chrome.extension.inIncognitoContext && (await appStorage.status()).recoveryCount > 0) return;
   const keep = new Set((await history()).filter(item => activeStates.includes(item.state)).map(item => `local-${item.id}.media`));
   const root = await navigator.storage.getDirectory() as FileSystemDirectoryHandle & { keys(): AsyncIterableIterator<string> };
   for await (const name of root.keys()) if (/^local-[0-9a-f-]{36}\.media$/.test(name) && !keep.has(name)) await root.removeEntry(name).catch(() => {});

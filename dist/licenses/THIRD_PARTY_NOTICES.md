@@ -6,9 +6,9 @@ QuickJS and original libav binaries are not included in the current application
 or its install/source ZIPs. Historical upstream files remain in Git history at
 commit `806ef92`; the initial uploaded archive's hashes are recorded separately.
 
-The two PNG icons in `assets/bitmaps` came from the user-supplied upstream archive.
-Their rights and branding remain with their original owners. No rights to those
-images or to historical upstream materials are granted by this project.
+The two PNG icons in `assets/bitmaps` are the new video-download artwork generated
+for My Video App. Original upstream branding is no longer shipped. Historical
+upstream materials retain their original rights and notices in Git history.
 
 Local stream remuxing and upscaling use **@ffmpeg/core 0.12.10**, licensed
 **GPL-2.0-or-later**, from https://github.com/ffmpegwasm/ffmpeg.wasm.

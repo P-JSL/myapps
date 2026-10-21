@@ -241,6 +241,138 @@ async function fetchManifestResource(url, signal) {
   return { text: new TextDecoder("utf-8", { fatal: true }).decode(bytes), url: address };
 }
 
+// src/local/media-file.ts
+var MIME_BY_EXTENSION = {
+  mp4: "video/mp4",
+  m4a: "audio/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  mkv: "video/x-matroska",
+  avi: "video/x-msvideo",
+  ogg: "audio/ogg",
+  wav: "audio/wav",
+  flac: "audio/flac",
+  mp3: "audio/mpeg",
+  aac: "audio/aac"
+};
+var InvalidMediaFileError = class extends Error {
+  constructor() {
+    super("\uC2E4\uC81C \uC601\uC0C1\xB7\uC624\uB514\uC624 \uD30C\uC77C\uC774 \uC544\uB2D9\uB2C8\uB2E4. HTML\xB7\uD14D\uC2A4\uD2B8\xB7\uC774\uBBF8\uC9C0 \uB300\uC2E0 \uC6D0\uBCF8 \uBBF8\uB514\uC5B4 \uC8FC\uC18C\uB97C \uC0AC\uC6A9\uD558\uC138\uC694.");
+    this.name = "InvalidMediaFileError";
+  }
+};
+function format(extension) {
+  return { mime: MIME_BY_EXTENSION[extension], extension };
+}
+function ascii(bytes, offset, length) {
+  return String.fromCharCode(...bytes.subarray(offset, offset + length));
+}
+function uint32(bytes, offset, little = false) {
+  return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(offset, little);
+}
+function vint(bytes, offset) {
+  const first = bytes[offset];
+  if (first === void 0 || first === 0) return void 0;
+  let length = 1, marker = 128;
+  while (!(first & marker)) {
+    length++;
+    marker >>= 1;
+  }
+  if (offset + length > bytes.length) return void 0;
+  let value = first & marker - 1;
+  for (let i = 1; i < length; i++) value = value * 256 + bytes[offset + i];
+  return Number.isSafeInteger(value) ? { value, length } : void 0;
+}
+function ebmlFormat(bytes) {
+  if (bytes.length < 5 || uint32(bytes, 0) !== 440786851) return void 0;
+  const header = vint(bytes, 4);
+  if (!header) return void 0;
+  const end = 4 + header.length + header.value;
+  if (end > bytes.length) return void 0;
+  for (let offset = 4 + header.length; offset < end; ) {
+    const id = vint(bytes, offset);
+    if (!id || id.length > 4) return void 0;
+    const idText = ascii(bytes, offset, id.length);
+    offset += id.length;
+    const size = vint(bytes, offset);
+    if (!size) return void 0;
+    offset += size.length;
+    if (offset + size.value > end) return void 0;
+    if (idText === "B\x82") {
+      const type = ascii(bytes, offset, size.value);
+      return type === "webm" ? format("webm") : type === "matroska" ? format("mkv") : void 0;
+    }
+    offset += size.value;
+  }
+  return void 0;
+}
+var IMAGE_BRANDS = /* @__PURE__ */ new Set(["avif", "avis", "heic", "heix", "hevc", "hevx", "heim", "heis", "hevm", "hevs", "mif1", "msf1", "miaf", "MA1A", "MA1B"]);
+var MP4_BRANDS = /* @__PURE__ */ new Set(["isom", "iso2", "iso3", "iso4", "iso5", "iso6", "iso7", "iso8", "iso9", "mp41", "mp42", "avc1", "dash", "MSNV", "M4V ", "M4VH", "M4VP", "F4V "]);
+var AUDIO_BRANDS = /* @__PURE__ */ new Set(["M4A ", "M4B ", "M4P ", "F4A ", "F4B "]);
+function isoFormat(bytes) {
+  for (let offset = 0; offset + 8 <= bytes.length; ) {
+    const size = uint32(bytes, offset), type = ascii(bytes, offset + 4, 4);
+    if (type === "ftyp") {
+      if (size < 16 || size % 4 !== 0 || offset + size > bytes.length) return void 0;
+      const brands = [ascii(bytes, offset + 8, 4)];
+      for (let i = offset + 16; i < offset + size; i += 4) brands.push(ascii(bytes, i, 4));
+      if (brands.some((brand) => IMAGE_BRANDS.has(brand))) return void 0;
+      if (brands[0] === "qt  ") return format("mov");
+      if (AUDIO_BRANDS.has(brands[0])) return format("m4a");
+      if (brands.some((brand) => MP4_BRANDS.has(brand))) return format("mp4");
+      return void 0;
+    }
+    if (type === "moov" && size >= 16 && offset + 16 <= bytes.length) {
+      const childSize = uint32(bytes, offset + 8), childType = ascii(bytes, offset + 12, 4);
+      if (childSize >= 8 && childSize <= size - 8 && ["mvhd", "trak", "udta", "cmov"].includes(childType)) return format("mov");
+    }
+    if (!["free", "skip", "wide"].includes(type) || size < 8 || offset + size > bytes.length) return void 0;
+    offset += size;
+  }
+  return void 0;
+}
+function mp3Header(bytes, offset) {
+  if (offset + 4 > bytes.length || bytes[offset] !== 255) return false;
+  const second = bytes[offset + 1], third = bytes[offset + 2], fourth = bytes[offset + 3];
+  return (second & 224) === 224 && (second >> 3 & 3) !== 1 && (second >> 1 & 3) === 1 && third >> 4 > 0 && third >> 4 < 15 && (third >> 2 & 3) < 3 && (fourth & 3) !== 2;
+}
+function inspectMediaFile(input) {
+  const bytes = input.subarray(0, 65536);
+  if (bytes.length >= 12 && ascii(bytes, 0, 4) === "RIFF" && uint32(bytes, 4, true) >= 4) {
+    if (ascii(bytes, 8, 4) === "WAVE") return format("wav");
+    if (ascii(bytes, 8, 4) === "AVI ") return format("avi");
+  }
+  const iso = isoFormat(bytes);
+  if (iso) return iso;
+  const ebml = ebmlFormat(bytes);
+  if (ebml) return ebml;
+  if (bytes.length >= 28 && ascii(bytes, 0, 4) === "OggS" && bytes[4] === 0 && bytes[26] > 0) {
+    const segments = bytes[26], body = 27 + segments;
+    let packet = 0;
+    for (let i = 27; i < body && i < bytes.length; i++) {
+      packet += bytes[i];
+      if (bytes[i] !== 255) break;
+    }
+    if (packet > 0 && body + packet <= bytes.length) {
+      if (ascii(bytes, body, 7) === "\x80theora") return { mime: "video/ogg", extension: "ogg" };
+      if (ascii(bytes, body, 7) === "vorbis" || ascii(bytes, body, 8) === "OpusHead" || ascii(bytes, body, 5) === "\x7FFLAC" || ascii(bytes, body, 8) === "Speex   ") return format("ogg");
+    }
+  }
+  if (bytes.length >= 42 && ascii(bytes, 0, 4) === "fLaC" && (bytes[4] & 127) === 0 && bytes[5] === 0 && bytes[6] === 0 && bytes[7] === 34) return format("flac");
+  let audioOffset = 0;
+  if (bytes.length >= 10 && ascii(bytes, 0, 3) === "ID3") {
+    if (![2, 3, 4].includes(bytes[3]) || bytes[4] === 255 || bytes.subarray(6, 10).some((value) => value >= 128)) throw new InvalidMediaFileError();
+    audioOffset = 10 + bytes[6] * 2 ** 21 + bytes[7] * 2 ** 14 + bytes[8] * 128 + bytes[9];
+    if (bytes[3] === 4 && bytes[5] & 16) audioOffset += 10;
+  }
+  if (mp3Header(input, audioOffset)) return format("mp3");
+  if (bytes.length >= 7 && bytes[0] === 255 && (bytes[1] & 246) === 240 && (bytes[2] >> 2 & 15) < 13) {
+    const length = (bytes[3] & 3) * 2048 + bytes[4] * 8 + (bytes[5] >> 5);
+    if (length >= (bytes[1] & 1 ? 7 : 9)) return format("aac");
+  }
+  throw new InvalidMediaFileError();
+}
+
 // src/local/preferences.ts
 var QUALITIES = ["highest", "2160", "1080", "720", "480"];
 function downloadOptions(value) {
@@ -485,7 +617,7 @@ function planDash(text, address, options = downloadOptions()) {
       const presentationTimeOffset = Number(templateAttribute("presentationTimeOffset") ?? "0");
       let number = Number(templateAttribute("startNumber") ?? "1");
       if (!Number.isSafeInteger(timescale) || timescale <= 0 || !Number.isSafeInteger(presentationTimeOffset) || presentationTimeOffset < 0 || !Number.isSafeInteger(number) || number < 0) throw new Error("DASH \uD0C0\uC784\uB77C\uC778\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
-      const expand = (format2, time) => format2.replace(/\$\$|\$(RepresentationID|Bandwidth|Number|Time)(?:%0(\d+)d)?\$/g, (match, key, width) => {
+      const expand = (format3, time) => format3.replace(/\$\$|\$(RepresentationID|Bandwidth|Number|Time)(?:%0(\d+)d)?\$/g, (match, key, width) => {
         if (match === "$$") return "$";
         const value = key === "RepresentationID" ? item.representation.getAttribute("id") ?? "" : key === "Bandwidth" ? item.representation.getAttribute("bandwidth") ?? "" : String(key === "Time" ? time : number);
         const pad = Number(width ?? 0);
@@ -494,8 +626,8 @@ function planDash(text, address, options = downloadOptions()) {
       });
       const init = templateAttribute("initialization");
       if (init) add2(expand(init, 0));
-      const format = templateAttribute("media");
-      if (!format) throw new Error("DASH \uBBF8\uB514\uC5B4 \uD15C\uD50C\uB9BF\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
+      const format2 = templateAttribute("media");
+      if (!format2) throw new Error("DASH \uBBF8\uB514\uC5B4 \uD15C\uD50C\uB9BF\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
       const timeline = templates.map((node) => child(node, "SegmentTimeline")).find((node) => node !== void 0);
       if (timeline) {
         const entries = children(timeline, "S");
@@ -515,7 +647,7 @@ function planDash(text, address, options = downloadOptions()) {
           if (repeat >= MAX_SEGMENTS) throw new Error("DASH \uC870\uAC01 \uAC1C\uC218 \uD55C\uB3C4\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
           if (!Number.isSafeInteger(time + (repeat + 1) * d) || !Number.isSafeInteger(number + repeat)) throw new Error("DASH \uD0C0\uC784\uB77C\uC778\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
           for (let i = 0; i <= repeat; i++) {
-            add2(expand(format, time));
+            add2(expand(format2, time));
             time += d;
             number++;
           }
@@ -525,7 +657,7 @@ function planDash(text, address, options = downloadOptions()) {
         const count = Math.ceil(seconds * timescale / step);
         if (!Number.isFinite(count) || count < 1 || count > MAX_SEGMENTS) throw new Error("DASH \uAE38\uC774 \uB610\uB294 \uC870\uAC01 \uAC1C\uC218\uAC00 \uD5C8\uC6A9 \uBC94\uC704\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
         for (let i = 0; i < count; i++) {
-          add2(expand(format, i * step));
+          add2(expand(format2, i * step));
           number++;
         }
       }
@@ -659,8 +791,8 @@ async function prepareOne(id, url, kind, options, signal, report) {
           if (event.data.type === "progress" && typeof event.data.value === "number") report({ stage: event.data.stage === "processing" ? "processing" : "fetching", progress: event.data.value }, event.data.stage === "processing");
           else if (event.data.type === "done" && event.data.bytes instanceof ArrayBuffer) {
             if (Array.isArray(event.data.protocols)) for (const value of event.data.protocols) {
-              const actual = transport(value);
-              if (actual) protocols.add(actual);
+              const actual2 = transport(value);
+              if (actual2) protocols.add(actual2);
             }
             resolve(new Uint8Array(event.data.bytes));
           } else if (event.data.type === "error") reject(new Error(typeof event.data.message === "string" ? event.data.message : "\uC2A4\uD2B8\uB9BC \uCC98\uB9AC \uC624\uB958"));
@@ -669,6 +801,7 @@ async function prepareOne(id, url, kind, options, signal, report) {
       });
     }
     if (task.controller.signal.aborted) throw new Error("\uC791\uC5C5\uC744 \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.");
+    const actual = inspectMediaFile(data);
     report({ stage: "saving", progress: 1 }, true);
     const root = await navigator.storage.getDirectory();
     const filename = `local-${id}.media`;
@@ -684,9 +817,9 @@ async function prepareOne(id, url, kind, options, signal, report) {
     }
     signal.throwIfAborted();
     const file = await handle.getFile();
-    const blob = URL.createObjectURL(file);
+    const blob = URL.createObjectURL(new Blob([file], { type: actual.mime }));
     prepared.set(id, { url: blob, filename });
-    return { ok: true, url: blob, filename, protocols: [...protocols] };
+    return { ok: true, url: blob, filename, ...actual, protocols: [...protocols] };
   } catch (error) {
     await disposeLocal(id).catch(() => {
     });
@@ -718,7 +851,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     return false;
   }
   void prepareLocal(id, url, String(message.kind), message.options).then(reply).catch((error) => {
-    reply({ ok: false, error: error instanceof Error ? error.message : "\uD30C\uC77C \uC900\uBE44 \uC624\uB958" });
+    reply({ ok: false, error: error instanceof Error ? error.message : "\uD30C\uC77C \uC900\uBE44 \uC624\uB958", invalidMedia: error instanceof InvalidMediaFileError });
   });
   return true;
 });
