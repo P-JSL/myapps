@@ -3,6 +3,7 @@ declare module '*ffmpeg-core.js' {
     FS: {
       writeFile(name: string, data: Uint8Array, options?: { canOwn?: boolean }): void;
       readFile(name: string, options?: { encoding: 'utf8' }): Uint8Array | string;
+      stat(name: string): { size: number };
       unlink(name: string): void;
     };
     exec(...args: string[]): number;

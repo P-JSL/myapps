@@ -1,5 +1,5 @@
 // <stdin>
-import createFFmpegCore from "/assets/3698df86ae28f8265ebdc4c527234260.js";
+import createFFmpegCore from "/assets/0900c82d06bd62393adb89977d51cf8f.js";
 
 // src/upscale/policy.ts
 var MAX_INPUT_BYTES = 256 * 1024 * 1024;
@@ -121,6 +121,12 @@ function probe(core, filename, report) {
 self.onmessage = async ({ data }) => {
   try {
     const core = await createFFmpegCore();
+    const versionLog = [];
+    core.setLogger(({ message }) => versionLog.push(message));
+    core.reset();
+    core.exec("-version");
+    const engineVersion = versionLog.join(" | ");
+    if (!engineVersion.includes("ffmpeg version ")) throw Error("Engine version was not reported");
     core.setLogger(() => {
     });
     const routes = data.mode === "image" ? ["image.png"] : data.mode === "merge" ? ["clip.mp4", "audio-only.m4a"] : ["clip.mp4"];
@@ -163,6 +169,7 @@ self.onmessage = async ({ data }) => {
     self.postMessage({
       method: data.method,
       mode: data.mode,
+      engineVersion,
       ownedAliases,
       randomReads,
       metadata,

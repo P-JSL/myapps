@@ -51,6 +51,32 @@ export function rewriteJavaScript(source, logical, physical, assetMap) {
   return result;
 }
 
+/** Keep application entry points private while retaining their event listeners. */
+export function privateApplicationModule(source, filename = 'application.js') {
+  const ast = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  if (ast.parseDiagnostics.length) throw new Error(`Cannot parse application entry ${filename}`);
+  const edits = [];
+  let removedExports = 0;
+  for (const statement of ast.statements) {
+    if (ts.isExportDeclaration(statement)) {
+      if (statement.moduleSpecifier || !statement.exportClause || !ts.isNamedExports(statement.exportClause)) {
+        throw new Error(`Unexpected application re-export in ${filename}`);
+      }
+      removedExports += statement.exportClause.elements.length;
+      edits.push([statement.getStart(ast), statement.end]);
+    } else if (ts.isExportAssignment(statement)) {
+      throw new Error(`Unexpected application default export in ${filename}`);
+    } else {
+      for (const modifier of statement.modifiers ?? []) {
+        if (modifier.kind === ts.SyntaxKind.DefaultKeyword) throw new Error(`Unexpected application default export in ${filename}`);
+        if (modifier.kind === ts.SyntaxKind.ExportKeyword) { removedExports++; edits.push([modifier.getStart(ast), modifier.end]); }
+      }
+    }
+  }
+  for (const [start, end] of edits.sort((a, b) => b[0] - a[0])) source = source.slice(0, start) + source.slice(end);
+  return { source, removedExports };
+}
+
 export function rewriteHTML(source, logical, physical, assetMap) {
   return source.replace(/\b(src|href)\s*=\s*(["'])([^"']*)\2/gi, (_, attribute, quote, value) => `${attribute}=${quote}${assetReference(value, logical, physical, assetMap)}${quote}`);
 }
@@ -78,6 +104,7 @@ export async function protectBuild(directory, { version, formats = {} } = {}) {
   const relative = name => './' + path.posix.basename(name);
   const encrypted = encryptEngine(originals.get(wasmLogical), { cipherPath: relative(cipherPath), coreModulePath: relative(coreModulePath) });
   const outputs = new Map();
+  let removedApplicationExports = 0;
   const minifyJS = async (source, logical, physical, format = 'esm') => (await transform(rewriteJavaScript(source, logical, physical, assetMap), {
     loader: 'js', format, target: 'chrome120', minify: true, legalComments: 'eof', sourcemap: false,
   })).code;
@@ -87,7 +114,11 @@ export async function protectBuild(directory, { version, formats = {} } = {}) {
     else if (logical === engineLogical) {
       outputs.set(coreModulePath, await minifyJS(bytes.toString('utf8'), logical, coreModulePath));
       outputs.set(physical, await minifyJS(encrypted.loaderSource, logical, physical));
-    } else if (/\.m?js$/.test(logical)) outputs.set(physical, await minifyJS(bytes.toString('utf8'), logical, physical, formats[logical] ?? 'esm'));
+    } else if (/\.m?js$/.test(logical)) {
+      const application = privateApplicationModule(bytes.toString('utf8'), logical);
+      removedApplicationExports += application.removedExports;
+      outputs.set(physical, await minifyJS(application.source, logical, physical, formats[logical] ?? 'esm'));
+    }
     else if (logical.endsWith('.html')) outputs.set(physical, rewriteHTML(bytes.toString('utf8'), logical, physical, assetMap));
     else if (logical.endsWith('.css')) {
       const css = bytes.toString('utf8').replace(/url\(\s*(["']?)([^)'"\s]+)\1\s*\)/gi, (_, quote, value) => `url(${quote}${assetReference(value, logical, physical, assetMap)}${quote})`);
@@ -104,7 +135,7 @@ export async function protectBuild(directory, { version, formats = {} } = {}) {
   return {
     assetMap,
     protection: {
-      version: 1, minified: true, opaqueFilenames: true, sourceMaps: false, dynamicEvaluation: false,
+      version: 2, exportSurface: { application: 0, removedApplicationSymbols: removedApplicationExports, engineModules: 'default-only' }, minified: true, opaqueFilenames: true, sourceMaps: false, dynamicEvaluation: false,
       engine: { ...encrypted.metadataNoKey, cipherPath, coreModulePath },
       limitation: 'Client decryption keys are embedded and recoverable; packaging is not a secrecy boundary. The manifest and license notices remain readable.',
     },

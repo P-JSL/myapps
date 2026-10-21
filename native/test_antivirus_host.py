@@ -177,6 +177,32 @@ class AntivirusHostTests(unittest.TestCase):
             HOST.serve(io.BytesIO(raw), output)
             self.assertEqual(json.loads(output.getvalue()[4:])["status"], "error")
 
+    def test_deeply_nested_native_json_is_a_framed_error_not_a_host_crash(self):
+        # The byte limit alone does not bound JSON nesting; this valid document
+        # fits inside one native frame while exceeding the decoder stack budget.
+        body = b"[" * 20000 + b"0" + b"]" * 20000
+        self.assertLessEqual(len(body), HOST.MAX_MESSAGE)
+        output = io.BytesIO()
+        HOST.serve(io.BytesIO(struct.pack("<I", len(body)) + body), output)
+        framed = output.getvalue()
+        self.assertEqual(struct.unpack("<I", framed[:4])[0], len(framed) - 4)
+        response = json.loads(framed[4:])
+        self.assertEqual(response["version"], 1)
+        self.assertEqual(response["status"], "error")
+        self.assertNotIn("sha256", response)
+
+    def test_non_string_scanner_config_is_an_error_without_invoking_tools(self):
+        config = self.root / "invalid-config.json"
+        for mode in ([], {}, None, True, 7):
+            config.write_text(json.dumps({"scanner": mode}), encoding="utf-8")
+            with self.subTest(mode=mode), patch.object(HOST, "CONFIG_PATH", config), \
+                    patch.object(HOST, "select_scanner") as scanner:
+                result = HOST.status_request({"version": 1, "action": "status", "requestId": "config-test"})
+                self.assertEqual(result["status"], "error")
+                self.assertEqual(result["requestId"], "config-test")
+                self.assertNotIn("sha256", result)
+                scanner.assert_not_called()
+
     def test_defender_uses_current_protection_policy_without_changing_it(self):
         with patch.object(HOST, "run_tool", side_effect=[
                 (0, '{"enabled":true,"service":true,"mode":"Normal"}'),

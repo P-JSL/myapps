@@ -6,6 +6,7 @@ import type { StreamPlan } from './hls.ts';
 import { downloadOptions } from './preferences.ts';
 import { ownedTransferBuffer } from '../security/transfer.ts';
 import { ENCODER_ARGUMENTS } from '../shared/media.ts';
+import { hardenMediaCore } from '../security/decoder-policy.ts';
 
 const scope = globalThis as unknown as { onmessage: ((event: MessageEvent<unknown>) => void) | null; postMessage(value: unknown, transfer?: Transferable[]): void };
 let busy = false;
@@ -24,7 +25,7 @@ scope.onmessage = async event => {
     }
     const core = await createFFmpegCore();
     let log = '';
-    core.setLogger(({ message }) => { log = message.slice(0, 300); });
+    hardenMediaCore(core, ({ message }) => { log = message.slice(0, 300); });
     const protocols = new Set<string>();
     await downloadAssets(plan.assets, (name, bytes) => core.FS.writeFile(name, bytes), new AbortController().signal,
       completed => scope.postMessage({ type: 'progress', value: completed / plan.assets.length * 0.8, stage: 'fetching' }),

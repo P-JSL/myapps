@@ -5,7 +5,7 @@
   "nativeHost": "com.myvideoapp.antivirus",
   "fileUpload": false,
   "officialDatabaseVerified": false,
-  "sourceSha256": "1d361bf15ab515f67a4267f938d6bfd6f2a61dd190b5a9bea59426176ecd1a75",
+  "sourceSha256": "0dd9eb96d3afd10127a90d2e25c96acaa0057e3ef9c57db5c035c7677d258d7b",
   "outcomes": [
     {
       "name": "Native readiness request contacts real ClamAV without scanning a user file",

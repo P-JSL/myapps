@@ -109,7 +109,8 @@ def load_config() -> dict:
     value = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     if not isinstance(value, dict) or set(value) - {"clamav", "scanner"}:
         raise ValueError("Invalid native host configuration.")
-    if value.get("scanner", "auto") not in {"auto", "defender", "clamav"}:
+    mode = value.get("scanner", "auto")
+    if not isinstance(mode, str) or mode not in {"auto", "defender", "clamav"}:
         raise ValueError("Unsupported antivirus selection mode.")
     return value
 
@@ -437,7 +438,7 @@ def serve(source: BinaryIO, destination: BinaryIO) -> None:
                 return
             request = json.loads(read_exact(source, length).decode("utf-8"))
             write_message(destination, status_request(request) if isinstance(request, dict) and request.get("action") == "status" else scan_request(request))
-        except (EOFError, UnicodeError, ValueError):
+        except (EOFError, UnicodeError, ValueError, RecursionError):
             write_message(destination, reply("", "error", message="Malformed native message."))
             return
 

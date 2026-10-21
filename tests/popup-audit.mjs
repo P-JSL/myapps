@@ -74,7 +74,17 @@ export async function verifyPopupAudit(browser, origin, buildPaths) {
       try {
         await p.locator('#waiting').waitFor(); assert.match(await p.locator('#waiting').innerText(), /미디어 대기 중/);
         assert.deepEqual(await p.evaluate(() => [document.body.offsetWidth, document.body.offsetHeight,
-          getComputedStyle(document.documentElement).backgroundColor]), [640, 600, 'rgb(43, 43, 48)']);
+          getComputedStyle(document.documentElement).backgroundColor]), [640, 600, 'rgb(16, 20, 25)']);
+        assert.equal(await p.locator('.brand-name').innerText(), 'My Video App');
+        assert.equal(await p.locator('.tab-indicator').innerText(), '현재 탭');
+        assert.deepEqual(await p.evaluate(() => [...document.querySelectorAll('footer button, #rescan, #report')].map(button => {
+          const r = button.getBoundingClientRect();
+          return r.width >= 40 && r.height >= 30 && r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight;
+        })), Array(8).fill(true));
+        assert(await p.evaluate(() => document.documentElement.scrollHeight <= innerHeight));
+        await p.locator('#settings').focus(); await p.keyboard.press('Tab');
+        assert.equal(await p.evaluate(() => document.activeElement?.id), 'history');
+        assert.equal(await p.locator('#history').evaluate(button => getComputedStyle(button).outlineWidth), '2px');
         await p.screenshot({ path: 'test-results/popup-empty.png' });
         await p.locator('#settings').click(); await p.locator('#history').click();
         assert.deepEqual(await p.evaluate(() => window.__popupTabs.map(x => x.url)),
@@ -96,6 +106,8 @@ export async function verifyPopupAudit(browser, origin, buildPaths) {
         await p.locator('.media-title').waitFor();
         assert.equal(await p.locator('.media-title').innerText(), '<img src=x onerror=alert(1)> 안전한 제목');
         assert.equal(await p.locator('.media-title img').count(), 0);
+        assert.equal(await p.locator('.media-marker svg').count(), 1);
+        assert.equal(await p.locator('[data-action=download]').getAttribute('aria-label'), '<img src=x onerror=alert(1)> 안전한 제목 처리 중');
         await p.locator('#review-summary').waitFor(); assert(await p.locator('[data-action=download]').isDisabled());
         await p.screenshot({ path: 'test-results/popup-media.png' }); await p.locator('#review-summary').click();
         assert.equal(await p.evaluate(() => window.__popupTabs.at(-1).url), buildPaths.url(origin, 'local/index.html?view=history'));

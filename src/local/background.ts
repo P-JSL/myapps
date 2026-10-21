@@ -60,6 +60,33 @@ async function reviewNotice(item: HistoryItem) {
     requireInteraction: true,
   }).catch(() => {});
 }
+async function storageFailureNotice(item: HistoryItem, message: string, title = '다운로드 기록 저장 실패') {
+  if (item.incognito) return;
+  await chrome.notifications.create(`my-video-app-security:${item.id}`, {
+    type: 'basic', iconUrl: chrome.runtime.getURL('bitmaps/logo-128-color.png'), title,
+    message: `${item.filename}\n${message}`, requireInteraction: true,
+  }).catch(() => {});
+}
+/** A started native download must not continue silently without its safety record. */
+async function stopUntrackedDownload(item: HistoryItem) {
+  const id = item.downloadId!;
+  await chrome.downloads.cancel(id).catch(() => {});
+  const current = await chrome.downloads.search({ id }).then(items => items[0]).catch(() => undefined);
+  const danger = chromeWarning(current?.danger);
+  const stopped = current?.state === 'interrupted' && !danger;
+  const message = stopped
+    ? '다운로드 상태 확인에 실패하여 전송을 중단했습니다. 파일이 남아 있으면 Chrome 다운로드 화면에서 직접 확인하세요.'
+    : '다운로드 상태 확인에 실패하여 자동 검사를 보장할 수 없습니다. 파일을 열지 말고 Chrome 다운로드 화면과 로컬 백신으로 직접 확인하세요.';
+  const next: HistoryItem = { ...item, state: stopped ? 'cancelled' : 'review', error: message,
+    security: { status: danger ? 'chrome-warning' : 'error', token: crypto.randomUUID(), message, ...(danger ? { danger } : {}) } };
+  // A transient commit failure may have recovered. Keep the actual download ID
+  // so retries/explicit review remain possible; persistent failures still notify.
+  await update(next).catch(() => {});
+  await revokeDownloadOffers(id).catch(() => {});
+  await dispose(item.id).catch(() => {});
+  cancelled.delete(item.id);
+  await storageFailureNotice(next, message, '다운로드 상태 확인 필요');
+}
 async function missingDownload(item: HistoryItem) {
   const next = await change(item.id, row => ['downloading', 'scanning'].includes(row.state)
     ? { ...row, state: 'review', security: { status: 'error', token: crypto.randomUUID(), message: 'Chrome 다운로드 기록이 없어 파일 검사를 완료하지 못했습니다. 저장한 파일을 직접 확인하세요.' } } : undefined);
@@ -210,6 +237,7 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
     await update(entry);
   });
   void (async () => {
+    let startedDownload: HistoryItem | undefined;
     try {
       let address = item.url;
       let transferProtocols: Transport[] = [];
@@ -245,15 +273,20 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
       if (cancelled.has(entry.id)) throw new DOMException('작업을 취소했습니다.', 'AbortError');
       const id = await chrome.downloads.download({ url: address, filename: entry.filename, saveAs: true, conflictAction: 'uniquify' });
       const downloading: HistoryItem = { ...entry, state: 'downloading', downloadId: id, transferProtocols };
+      startedDownload = downloading;
       await update(downloading);
       if (cancelled.has(entry.id)) await chrome.downloads.cancel(id).catch(() => {});
       const current = (await chrome.downloads.search({ id }))[0]; if (current) await finish(current);
     } catch (error) {
+      if (startedDownload) { await stopUntrackedDownload(startedDownload); return; }
       const message = error instanceof Error ? error.message : '다운로드 오류';
       const wasCancelled = cancelled.has(entry.id) || /canceled by the user/i.test(message);
-      await update({ ...entry, state: wasCancelled ? 'cancelled' : 'error', error: wasCancelled ? '작업을 취소했습니다.' : message.slice(0, 500) });
-      await dispose(entry.id).catch(() => {}); cancelled.delete(entry.id);
-      if (entry.incognito) privateHistory.delete(entry.id);
+      try { await update({ ...entry, state: wasCancelled ? 'cancelled' : 'error', error: wasCancelled ? '작업을 취소했습니다.' : message.slice(0, 500) }); }
+      catch { await storageFailureNotice(entry, '작업 상태를 저장하지 못했습니다. 로컬 저장소 상태를 확인한 뒤 다시 시도하세요.'); }
+      finally {
+        await dispose(entry.id).catch(() => {}); cancelled.delete(entry.id);
+        if (entry.incognito) privateHistory.delete(entry.id);
+      }
     }
   })();
   return entry;

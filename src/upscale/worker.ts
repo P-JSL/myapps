@@ -1,7 +1,9 @@
-import createFFmpegCore, { type FFmpegCore } from '../vendor/ffmpeg/ffmpeg-core.js';
+import createFFmpegCore from '../vendor/ffmpeg/ffmpeg-core.js';
 import { record } from '../security/validation.ts';
 import { ownedTransferBuffer } from '../security/transfer.ts';
+import { hardenMediaCore } from '../security/decoder-policy.ts';
 import { MAX_INPUT_BYTES, MAX_RUNTIME_MS, outputDimensions, type MediaInfo } from './policy.ts';
+import { probeTrack } from './probe.ts';
 import { convertedDimensions, processingArguments, processingOptions, resultFormat, sniffInput, validateTrack, type TrackInfo } from './processing.ts';
 
 const scope = globalThis as unknown as { onmessage: ((event: MessageEvent<unknown>) => void) | null; postMessage(data: unknown, transfer?: Transferable[]): void };
@@ -11,21 +13,6 @@ async function checkFile(file: unknown): Promise<TrackInfo['kind']> {
   const kind = sniffInput(new Uint8Array(await file.slice(0, 16).arrayBuffer()));
   if (!kind) throw new Error('지원하는 형식: 영상·이미지·오디오. HTML·목록 파일은 처리하지 않습니다.');
   return kind;
-}
-function probe(core: FFmpegCore, filename: string, kind: TrackInfo['kind']): TrackInfo {
-  core.reset(); core.setTimeout(15_000);
-  const code = core.ffprobe('-v', 'error', '-max_alloc', '67108864', '-protocol_whitelist', 'file,pipe', '-show_error', '-show_streams', '-show_format', '-of', 'json', '-o', 'probe.json', filename);
-  // This pinned ffprobe also returns -1 on normal completion; require its fresh report.
-  if (code !== 0 && code !== -1) throw new Error('파일 정보를 읽을 수 없습니다.');
-  const raw = core.FS.readFile('probe.json', { encoding: 'utf8' }); core.FS.unlink('probe.json');
-  if (typeof raw !== 'string' || raw.length > 256_000) throw new Error('파일 정보가 허용 범위를 초과했습니다.');
-  const metadata: unknown = JSON.parse(raw);
-  if (!record(metadata) || metadata.error || !Array.isArray(metadata.streams)) throw new Error('미디어 정보가 없습니다. 파일이 손상되었거나 지원하지 않는 형식입니다.');
-  const video = metadata.streams.find((stream: unknown) => record(stream) && stream.codec_type === 'video' && !(record(stream.disposition) && stream.disposition.attached_pic === 1));
-  const audio = metadata.streams.find((stream: unknown) => record(stream) && stream.codec_type === 'audio');
-  const format = record(metadata.format) ? metadata.format : {};
-  return { width: record(video) ? Number(video.width) : 0, height: record(video) ? Number(video.height) : 0,
-    duration: Number(format.duration ?? (record(video) ? video.duration : record(audio) ? audio.duration : 0) ?? 0), video: !!video, audio: !!audio, kind: kind === 'image' ? 'image' : video ? 'video' : 'audio' };
 }
 scope.onmessage = async event => {
   if (busy) return; busy = true;
@@ -42,15 +29,15 @@ scope.onmessage = async event => {
     }
     scope.postMessage({ type: 'status', message: '브라우저 내부 처리 엔진을 준비하고 있습니다…' });
     const core = await createFFmpegCore();
-    let lastLog = ''; core.setLogger(({ message }) => { lastLog = message.slice(0, 500); });
+    let lastLog = ''; hardenMediaCore(core, ({ message }) => { lastLog = message.slice(0, 500); });
     // These fresh File buffers have no other consumer; MEMFS can retain them.
     core.FS.writeFile('input.media', new Uint8Array(await file.arrayBuffer()), { canOwn: true });
-    const info = probe(core, 'input.media', kind);
+    const info = probeTrack(core, 'input.media', kind);
     if (options.mode === 'upscale' && !info.video) throw new Error('업스케일링할 영상 또는 이미지 트랙이 없습니다.');
     validateTrack(info, options);
     if (secondary) {
       core.FS.writeFile('audio.media', new Uint8Array(await secondary.arrayBuffer()), { canOwn: true });
-      const audio = probe(core, 'audio.media', 'audio'); validateTrack(audio, { mode: 'audio', format: 'm4a' });
+      const audio = probeTrack(core, 'audio.media', 'audio'); validateTrack(audio, { mode: 'audio', format: 'm4a' });
     }
     const dimensions = options.mode === 'upscale' ? outputDimensions(info as MediaInfo, options.factor)
       : options.mode === 'convert' ? convertedDimensions(info, options.quality) : { width: info.width, height: info.height };

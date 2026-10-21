@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assetReference, rewriteJavaScript, rewriteHTML } from '../scripts/lib/protect-build.mjs';
+import { assetReference, rewriteJavaScript, rewriteHTML, privateApplicationModule } from '../scripts/lib/protect-build.mjs';
 
 const map = {
   'local/index.html': 'assets/111.html', 'upscale/index.html': 'assets/222.html',
@@ -30,4 +30,25 @@ test('JavaScript rewrites complete literals and template paths without substring
 test('HTML resource rewriting preserves policy text and relative destinations', () => {
   const source = '<meta http-equiv="Content-Security-Policy" content="default-src \'self\'"><link href="style.css"><a href="../local/index.html#history">Settings</a>';
   assert.equal(rewriteHTML(source, 'upscale/index.html', map['upscale/index.html'], map), '<meta http-equiv="Content-Security-Policy" content="default-src \'self\'"><link href="./444.css"><a href="./111.html#history">Settings</a>');
+});
+
+
+test('application exports are private but registered event handlers retain behavior', async () => {
+  const source = 'const secret = 41; function internal(value) { return secret + value; } globalThis.__privateEntryTest = internal; export { internal as inspect };';
+  const result = privateApplicationModule(source);
+  assert.equal(result.removedExports, 1);
+  try {
+    const namespace = await import('data:text/javascript,' + encodeURIComponent(result.source));
+    assert.deepEqual(Object.keys(namespace), []);
+    assert.equal(globalThis.__privateEntryTest(1), 42);
+    const direct = privateApplicationModule('export function hidden() { return 1; }');
+    assert.equal(direct.removedExports, 1);
+    assert.deepEqual(Object.keys(await import('data:text/javascript,' + encodeURIComponent(direct.source))), []);
+  } finally { delete globalThis.__privateEntryTest; }
+});
+
+test('unexpected application re-exports and default interfaces fail closed', () => {
+  for (const source of ['export * from "./private.js";', 'export { hidden } from "./private.js";', 'export default 1;', 'export default function hidden() {}']) {
+    assert.throws(() => privateApplicationModule(source), /Unexpected application/);
+  }
 });

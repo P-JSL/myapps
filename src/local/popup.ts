@@ -22,9 +22,10 @@ interface MediaRow {
   title: HTMLParagraphElement;
   detail: HTMLParagraphElement;
   download: HTMLButtonElement;
+  downloadLabel: HTMLSpanElement;
 }
-function message(text: string) { status.textContent = text; status.hidden = !text; }
-function showError(error: unknown) { message(error instanceof Error ? error.message : '요청 중 오류가 발생했습니다.'); }
+function message(text: string, tone: 'info' | 'warning' | 'error' = 'info') { status.textContent = text; status.dataset.tone = tone; status.hidden = !text; }
+function showError(error: unknown) { message(error instanceof Error ? error.message : '요청 중 오류가 발생했습니다.', 'error'); }
 async function request(type: string, data: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
   const result: unknown = await chrome.runtime.sendMessage({ scope: SCOPE, type, ...data });
   if (!record(result) || result.ok !== true) throw new Error(record(result) && typeof result.error === 'string' ? result.error : '확장 프로그램을 다시 로드하고 페이지를 새로고침하세요.');
@@ -39,7 +40,7 @@ function isMedia(value: unknown): value is MediaItem {
 const preferencesReady = (async () => {
   try {
     if (!chrome.extension.inIncognitoContext) selectedOptions = downloadOptions((await appStorage.get(DOWNLOAD_OPTIONS_KEY))[DOWNLOAD_OPTIONS_KEY]);
-  } catch { message('저장된 다운로드 설정을 불러오지 못했습니다. 최고 화질·원본 형식으로 다운로드합니다.'); }
+  } catch { message('저장된 다운로드 설정을 불러오지 못했습니다. 최고 화질·원본 형식으로 다운로드합니다.', 'warning'); }
   finally { preferencesLoaded = true; renderMedia(); }
 })();
 function activeDownload(item: MediaItem): boolean {
@@ -55,14 +56,24 @@ function mediaDetail(item: MediaItem): string {
   const size = typeof item.size === 'number' && item.size > 0 ? ' · ' + (item.size / 1024 / 1024).toFixed(1) + ' MB' : '';
   return kind + (host ? ' · ' + host : '') + size;
 }
+function icon(pathData: string, viewBox = '0 0 24 24'): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', viewBox); svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', pathData); svg.append(path); return svg;
+}
 function createRow(item: MediaItem): MediaRow {
   const row = document.createElement('li'); row.className = 'media-row'; row.dataset.rowId = item.id;
+  const marker = document.createElement('span'); marker.className = 'media-marker'; marker.setAttribute('aria-hidden', 'true');
+  marker.append(icon('M5 4h14v16H5zM10 8l5 4-5 4z'));
   const copy = document.createElement('div'); copy.className = 'media-copy';
   const title = document.createElement('p'); title.className = 'media-title';
   const detail = document.createElement('p'); detail.className = 'media-detail';
   const download = document.createElement('button'); download.className = 'download-button'; download.dataset.action = 'download';
-  copy.append(title, detail); row.append(copy, download);
-  const entry = { item, row, title, detail, download };
+  const downloadLabel = document.createElement('span');
+  download.append(icon('M12 4v11m-4-4 4 4 4-4M5 16v4h14v-4'), downloadLabel);
+  copy.append(title, detail); row.append(marker, copy, download);
+  const entry = { item, row, title, detail, download, downloadLabel };
   download.addEventListener('click', () => { void startDownload(entry.item); });
   return entry;
 }
@@ -79,7 +90,9 @@ function renderMedia() {
     entry.title.textContent = item.title || '제목 없는 미디어'; entry.title.title = item.title || '제목 없는 미디어';
     entry.detail.textContent = mediaDetail(item);
     const busy = pendingDownloads.has(item.id) || activeDownload(item);
-    entry.download.textContent = busy ? '처리 중' : '다운로드'; entry.download.disabled = busy || !preferencesLoaded;
+    entry.downloadLabel.textContent = busy ? '처리 중' : '다운로드'; entry.download.disabled = busy || !preferencesLoaded;
+    entry.download.setAttribute('aria-label', (item.title || '제목 없는 미디어') + (busy ? ' 처리 중' : ' 다운로드'));
+    entry.download.setAttribute('aria-busy', String(busy));
     if (entry.row === cursor) cursor = cursor.nextElementSibling;
     else list.insertBefore(entry.row, cursor);
   }

@@ -20,7 +20,12 @@ function probe(core, filename, report) {
 }
 self.onmessage = async ({ data }) => {
   try {
-    const core = await createFFmpegCore(); core.setLogger(() => {});
+    const core = await createFFmpegCore();
+    const versionLog = []; core.setLogger(({ message }) => versionLog.push(message));
+    core.reset(); core.exec('-version');
+    const engineVersion = versionLog.join(' | ');
+    if (!engineVersion.includes('ffmpeg version ')) throw Error('Engine version was not reported');
+    core.setLogger(() => {});
     const routes = data.mode === 'image' ? ['image.png'] : data.mode === 'merge' ? ['clip.mp4', 'audio-only.m4a'] : ['clip.mp4'];
     const files = await Promise.all(routes.map(async route => new File([await (await fetch('/fixtures/' + route)).blob()], route)));
     const originalHashes = await Promise.all(files.map(async file => digest(await file.arrayBuffer())));
@@ -50,7 +55,7 @@ self.onmessage = async ({ data }) => {
     const output = core.FS.readFile(name);
     const outputMetadata = probe(core, name, 'output-probe.json');
     const afterHashes = await Promise.all(files.map(async file => digest(await file.arrayBuffer())));
-    self.postMessage({ method: data.method, mode: data.mode, ownedAliases, randomReads, metadata, outputMetadata,
+    self.postMessage({ method: data.method, mode: data.mode, engineVersion, ownedAliases, randomReads, metadata, outputMetadata,
       sourceUnchanged: originalHashes.every((hash, index) => hash === afterHashes[index]), bytes: output.byteLength, sha256: await digest(output) });
   } catch (error) { self.postMessage({ error: error instanceof Error ? error.message : String(error) }); }
 };
@@ -87,6 +92,7 @@ export async function verifyOwnedInputProcessing(page, origin) {
     const optimized = cases.find(item => item.mode === mode && item.method === 'owned');
     for (const result of [baseline, optimized]) {
       assert(result); assert.equal(result.error, undefined, result.error);
+      assert.match(result.engineVersion, /ffmpeg version \S+/);
       assert(result.sourceUnchanged); assert(result.randomReads.every(Boolean)); assert(result.bytes > 0);
       assert(result.ownedAliases.every(aliased => aliased === (result.method === 'owned')));
     }

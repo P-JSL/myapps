@@ -135,6 +135,44 @@ await context.addInitScript(assetMap => {
     const handlers = [];
     return { addListener(fn) { handlers.push(fn); }, removeListener(fn) { const index = handlers.indexOf(fn); if (index >= 0) handlers.splice(index, 1); }, fire(...args) { for (const fn of handlers) fn(...args); } };
   };
+  // Exercise the shipped modules through their real message listeners. These
+  // facades exist only in the harness; production modules export no test APIs.
+  const messageHandlers = [];
+  const runtimeMessages = {
+    addListener(fn) { messageHandlers.push(fn); },
+    removeListener(fn) { const index = messageHandlers.indexOf(fn); if (index >= 0) messageHandlers.splice(index, 1); },
+  };
+  const dispatchMessage = (message, sender) => new Promise((resolve, reject) => {
+    let handled = false, replied = false;
+    const reply = value => { if (!replied) { replied = true; resolve(value); } };
+    try {
+      for (const handler of [...messageHandlers]) if (handler(message, sender, reply) === true) handled = true;
+      if (!handled && !replied) reject(new Error('No production message listener accepted the request'));
+    } catch (error) { reject(error); }
+  });
+  const unwrap = result => {
+    if (result?.ok === false) {
+      const error = new Error(result.error || 'Production message failed');
+      if (result.invalidMedia) error.name = 'InvalidMediaFileError';
+      throw error;
+    }
+    return result;
+  };
+  window.__testOffscreen = async () => {
+    const namespace = await import(assetURL('local/offscreen.js'));
+    if (Object.keys(namespace).length) throw new Error('Production offscreen must not export helper APIs');
+    const send = message => dispatchMessage({ scope: 'my-video-app/offscreen', ...message }, { id: chrome.runtime.id, url: assetURL('local/background.js') }).then(unwrap);
+    return {
+      prepareLocal: (id, url, kind, options) => send({ type: 'prepare', id, url, kind, options }),
+      cancelLocal: id => send({ type: 'cancel', id }),
+      disposeLocal: id => send({ type: 'dispose', id }),
+    };
+  };
+  window.__testBackground = async () => {
+    const namespace = await import(assetURL('local/background.js'));
+    if (Object.keys(namespace).length) throw new Error('Production background must not export helper APIs');
+    return { handleLocalMessage: (message, sender) => dispatchMessage(message, sender).then(unwrap) };
+  };
   const blobs = new Map();
   const createObjectURL = URL.createObjectURL.bind(URL); const revokeObjectURL = URL.revokeObjectURL.bind(URL);
   URL.createObjectURL = blob => { const url = createObjectURL(blob); blobs.set(url, blob); return url; };
@@ -182,17 +220,12 @@ await context.addInitScript(assetMap => {
         const respond = () => port.onMessage.fire({ version: 1, requestId: request.requestId, status: window.__avStatus || 'clean', engine: 'Test double; no actual AV', sha256: file?.testSha256 || 'a'.repeat(64), size: file?.fileSize ?? 12, ...(window.__avStatus === 'infected' ? { threats: ['Harmless test detection <img src=x onerror=alert(1)>'] } : {}) });
         if (window.__avHold) window.__avRelease = respond; else queueMicrotask(respond);
       } }; return port;
-    }, id: 'test-double-only', getURL: value => new URL(value.replace(/^\/+/, ''), location.origin + '/').href, onInstalled: listeners(), onStartup: listeners(), onMessage: listeners(), sendMessage: async message => {
-      if (message.scope === 'my-video-app/offscreen') {
-        const module = await import(window.__testAssetURL('local/offscreen.js'));
-        if (message.type === 'prepare') { try { return await module.prepareLocal(message.id, message.url, message.kind, message.options); } catch (error) { await module.disposeLocal(message.id); return { ok: false, error: error.message, invalidMedia: error.name === 'InvalidMediaFileError' }; } }
-        if (message.type === 'cancel') { module.cancelLocal(message.id); return { ok: true }; }
-        if (message.type === 'dispose') { await module.disposeLocal(message.id); return { ok: true }; }
-      }
-      const background = await import(window.__testAssetURL('local/background.js'));
-      const sender = { id: 'test-double-only', url: assetURL(message.type === 'preparing-progress' ? 'local/offscreen.html' : 'local/index.html') };
+    }, id: 'test-double-only', getURL: value => new URL(value.replace(/^\/+/, ''), location.origin + '/').href, onInstalled: listeners(), onStartup: listeners(), onMessage: runtimeMessages, sendMessage: async message => {
+      const offscreen = message.scope === 'my-video-app/offscreen';
+      await import(assetURL(offscreen ? 'local/offscreen.js' : 'local/background.js'));
+      const sender = { id: 'test-double-only', url: assetURL(offscreen ? 'local/background.js' : message.type === 'preparing-progress' ? 'local/offscreen.html' : 'local/index.html') };
       if (message.type === 'capture') { sender.url = `${location.origin}/example-page`; sender.tab = { id: 7 }; }
-      const result = await background.handleLocalMessage(message, sender);
+      const result = await dispatchMessage(message, sender);
       if (message.type === 'list') window.__listReads = (window.__listReads || 0) + 1;
       return result;
     } },
@@ -256,7 +289,7 @@ async function convert(filename, scale, destination) {
 }
 async function remux(playlist, kind, filename, options, expectedHeight = 90) {
   const prepared = await page.evaluate(async ({ url, kind, options }) => {
-    const offscreen = await import(window.__testAssetURL('local/offscreen.js'));
+    const offscreen = await window.__testOffscreen();
     const id = crypto.randomUUID();
     const result = await offscreen.prepareLocal(id, url, kind, options);
     return { id, ...result };
@@ -272,7 +305,7 @@ async function remux(playlist, kind, filename, options, expectedHeight = 90) {
     else { assert.equal(video.codec_name, 'h264'); assert.equal(Number(video.nb_frames), 12); assert.equal(video.height, expectedHeight); assert.equal(audio.codec_name, 'aac'); }
     assert(Number(probe.format.duration) >= 0.9 && Number(probe.format.duration) < 1.5);
     command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${results}/${filename}`, '-f', 'null', '-']);
-  } finally { await page.evaluate(async id => { const module = await import(window.__testAssetURL('local/offscreen.js')); await module.disposeLocal(id); }, prepared.id); }
+  } finally { await page.evaluate(async id => { const module = await window.__testOffscreen(); await module.disposeLocal(id); }, prepared.id); }
 }
 async function processFile(mode, format, destination, input = `${fixtures}/clip.mp4`, secondary) {
   await page.locator('#mode').selectOption(mode);
@@ -333,7 +366,10 @@ try {
     assert.equal(createHash('sha256').update(await readFile(`${fixtures}/clip.mp4`)).digest('hex'), originalHash);
     command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${results}/clip-2x.mp4`, '-f', 'null', '-']);
   });
-  await checks('Owned input buffers preserve exact media outputs, metadata, random reads and source files in eight real Workers', () => verifyOwnedInputProcessing(page, origin));
+  await checks('Owned input buffers preserve exact media outputs, metadata, random reads and source files in eight real Workers', async () => {
+    const cases = await verifyOwnedInputProcessing(page, origin);
+    await writeFile('reports/engine-runtime.json', JSON.stringify({ buildSha256: buildInfo.buildSha256, engineVersion: cases[0].engineVersion, cases: cases.length }, null, 2) + '\n');
+  });
   for (const format of ['mp4', 'mkv', 'webm']) await checks(`Local video conversion writes decodable ${format.toUpperCase()} with its expected codecs`, async () => {
     const result = await processFile('convert', format, `${results}/converted.${format}`);
     const video = result.streams.find(s => s.codec_type === 'video'); const audio = result.streams.find(s => s.codec_type === 'audio');
@@ -477,7 +513,7 @@ try {
   });
   await checks('Concurrent preparations queue successfully and cancelling a waiting job makes no file request', async () => {
     const results = await page.evaluate(async origin => {
-      const module = await import(window.__testAssetURL('local/offscreen.js'));
+      const module = await window.__testOffscreen();
       const ids = Array.from({ length: 3 }, () => crypto.randomUUID());
       const work = ids.map((id, i) => module.prepareLocal(id, `${origin}/fixtures/clip.mp4?slow=${['first', 'second', 'cancelled'][i]}`, 'file'));
       module.cancelLocal(ids[2]);
@@ -496,7 +532,7 @@ try {
   });
   await checks('Browser-reported HTTP/1.1 is observed on a real fetch without forcing a transport', async () => {
     const observation = await page.evaluate(async origin => {
-      const module = await import(window.__testAssetURL('local/offscreen.js')); const id = crypto.randomUUID();
+      const module = await window.__testOffscreen(); const id = crypto.randomUUID();
       try { const result = await module.prepareLocal(id, `${origin}/fixtures/clip.mp4?observe=1`, 'file'); return { protocols: result.protocols, entries: performance.getEntriesByName(`${origin}/fixtures/clip.mp4?observe=1`).map(entry => ({ protocol: entry.nextHopProtocol, start: entry.startTime, end: entry.responseEnd })) }; }
       finally { await module.disposeLocal(id); }
     }, origin);
@@ -529,7 +565,7 @@ try {
   });
   await checks('Encrypted HLS and protected DASH are rejected without any key/license requests', async () => {
     const messages = await page.evaluate(async origin => {
-      const offscreen = await import(window.__testAssetURL('local/offscreen.js')); const messages = [];
+      const offscreen = await window.__testOffscreen(); const messages = [];
       for (const [path, kind] of [['encrypted.m3u8', 'hls'], ['protected.mpd', 'dash']]) {
         try { await offscreen.prepareLocal(crypto.randomUUID(), `${origin}/fixtures/${path}`, kind); messages.push('unexpected success'); }
         catch (error) { messages.push(error.message); }
@@ -540,7 +576,7 @@ try {
   });
   await checks('Cancelling stream preparation terminates the real worker and allows a new task', async () => {
     const message = await page.evaluate(async origin => {
-      const offscreen = await import(window.__testAssetURL('local/offscreen.js')); const id = crypto.randomUUID();
+      const offscreen = await window.__testOffscreen(); const id = crypto.randomUUID();
       const pending = offscreen.prepareLocal(id, `${origin}/fixtures/hls/list.m3u8`, 'hls');
       const timeout = setTimeout(() => offscreen.cancelLocal(id), 50);
       try { await pending; return 'unexpected success'; } catch (error) { return error.message; }
@@ -551,7 +587,7 @@ try {
   });
   await checks('Website collectors cannot invoke download/history commands or impersonate the app', async () => {
     const result = await page.evaluate(async () => {
-      const background = await import(window.__testAssetURL('local/background.js')); const denied = [];
+      const background = await window.__testBackground(); const denied = [];
       for (const type of ['download-url', 'clear-history', 'upscale', 'retry', 'preparing-progress']) {
         try { await background.handleLocalMessage({ scope: 'my-video-app/local', type, url: location.origin + '/fixtures/clip.mp4' }, { id: chrome.runtime.id, url: 'https://website.example/page', tab: { id: 7 } }); denied.push(false); }
         catch { denied.push(true); }
@@ -567,7 +603,7 @@ try {
     await page.waitForFunction(() => document.querySelector('#status').textContent.includes('미디어'));
     await page.evaluate(origin => { const video = document.createElement('video'); video.preload = 'none'; video.src = `${origin}/fixtures/clip.mp4`; document.body.append(video); }, origin);
     await page.addScriptTag({ url: buildPaths.url(origin, 'local/collect.js') });
-    const discovered = await page.evaluate(async () => { const background = await import(window.__testAssetURL('local/background.js')); return background.handleLocalMessage({ scope: 'my-video-app/local', type: 'list' }, { id: chrome.runtime.id, url: window.__testAssetURL('local/index.html') }); });
+    const discovered = await page.evaluate(async () => { const background = await window.__testBackground(); return background.handleLocalMessage({ scope: 'my-video-app/local', type: 'list' }, { id: chrome.runtime.id, url: window.__testAssetURL('local/index.html') }); });
     assert.equal(discovered.items.length, 1); assert.match(discovered.items[0].url, /clip\.mp4$/);
     assert.equal(discovered.history.length, 0);
   });
@@ -627,7 +663,7 @@ try {
     await page.evaluate(async () => { window.__holdDownloads = true; await window.__appSet({ vdh_upscale_offer_v1: false }); });
     const pending = page.waitForEvent('download');
     const result = await page.evaluate(async origin => {
-      const background = await import(window.__testAssetURL('local/background.js'));
+      const background = await window.__testBackground();
       const sender = { id: chrome.runtime.id, url: window.__testAssetURL('local/index.html') };
       const message = { scope: 'my-video-app/local', type: 'download-url', url: `${origin}/fixtures/clip.mp4` };
       return (await Promise.allSettled([background.handleLocalMessage(message, sender), background.handleLocalMessage(message, sender)])).map(item => item.status);
@@ -651,7 +687,7 @@ try {
   });
   await checks('Cancellation while the offscreen document starts prevents the later media request using API doubles', async () => {
     const id = await page.evaluate(async origin => {
-      const background = await import(window.__testAssetURL('local/background.js'));
+      const background = await window.__testBackground();
       const originalHas = chrome.offscreen.hasDocument, originalCreate = chrome.offscreen.createDocument;
       let release, started;
       const gate = new Promise(resolve => { release = resolve; });
@@ -849,7 +885,7 @@ try {
   await checks('Prepared files ignore misleading text MIME and attachment names and save exact playable MP4/WebM', async () => {
     for (const fixture of misleadingMedia) {
       const prepared = await page.evaluate(async ({ url }) => {
-        const module = await import(window.__testAssetURL('local/offscreen.js')), id = crypto.randomUUID();
+        const module = await window.__testOffscreen(), id = crypto.randomUUID();
         const result = await module.prepareLocal(id, url, 'file');
         return { id, ...result, blobType: (await (await fetch(result.url)).blob()).type };
       }, { url: `${origin}/fixtures/${fixture.alias}` });
@@ -864,7 +900,7 @@ try {
         assert(!download.suggestedFilename().endsWith('.txt'));
         const filename = `${results}/typed-${fixture.alias}.${fixture.extension}`; await download.saveAs(filename);
         assert.equal(await download.failure(), null); await assertExactPlayable(filename, fixture.source);
-      } finally { await page.evaluate(async id => (await import(window.__testAssetURL('local/offscreen.js'))).disposeLocal(id), prepared.id); }
+      } finally { await page.evaluate(async id => (await window.__testOffscreen()).disposeLocal(id), prepared.id); }
     }
   });
   await checks('Background downloads preserve playable media and canonical extensions with upscale disabled using API doubles', async () => {
@@ -890,7 +926,7 @@ try {
   await checks('HTML, plain text and fake video MIME are rejected before the browser download API using real file bytes', async () => {
     for (const name of ['html.txt', 'plain.txt', 'spoofed.mp4']) {
       const direct = await page.evaluate(async url => {
-        const module = await import(window.__testAssetURL('local/offscreen.js')), id = crypto.randomUUID();
+        const module = await window.__testOffscreen(), id = crypto.randomUUID();
         try { await module.prepareLocal(id, url, 'file'); return 'unexpected success'; }
         catch (error) { return error.message; }
         finally { await module.disposeLocal(id); }

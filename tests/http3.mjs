@@ -87,8 +87,17 @@ db.commit(); db.close()
   assert.deepEqual(transfers.rangeProtocols, ['h3']); assert.deepEqual(transfers.range, [...fixture.subarray(2, 8)]);
   passed('HTTP/3 byte-range request preserves exactly the requested media bytes');
   await page.evaluate(() => {
+    const handlers = [];
+    window.__http3Message = (message, sender) => new Promise((resolve, reject) => {
+      let handled = false, replied = false;
+      const reply = value => { if (!replied) { replied = true; value?.ok === false ? reject(new Error(value.error || 'Offscreen request failed')) : resolve(value); } };
+      try {
+        for (const handler of handlers) if (handler(message, sender, reply) === true) handled = true;
+        if (!handled && !replied) reject(new Error('No production offscreen listener accepted request'));
+      } catch (error) { reject(error); }
+    });
     Object.defineProperty(window, 'chrome', { value: { runtime: { id: 'http3-test-double', getURL: name => new URL(name.replace(/^\/+/, ''), location.origin + '/').href,
-      onMessage: { addListener() {} }, sendMessage: async () => ({ ok: true }) } }, configurable: true });
+      onMessage: { addListener(fn) { handlers.push(fn); } }, sendMessage: async () => ({ ok: true }) } }, configurable: true });
   });
   const productionRequests = [];
   const productionPaths = new Set([...Object.values(buildPaths.assetMap), buildPaths.buildInfo.protection?.engine?.coreModulePath].filter(Boolean));
@@ -96,14 +105,17 @@ db.commit(); db.close()
     const name = new URL(request.url()).pathname.slice(1);
     if (productionPaths.has(name)) productionRequests.push(name);
   });
-  const stream = await page.evaluate(async offscreenPath => {
-    const module = await import(offscreenPath); const id = crypto.randomUUID();
+  const stream = await page.evaluate(async ({ offscreenPath, backgroundPath }) => {
+    const namespace = await import(offscreenPath);
+    if (Object.keys(namespace).length) throw new Error('Production offscreen must not export helper APIs');
+    const id = crypto.randomUUID();
+    const send = message => window.__http3Message({ scope: 'my-video-app/offscreen', id, ...message }, { id: chrome.runtime.id, url: chrome.runtime.getURL(backgroundPath) });
     try {
-      const result = await module.prepareLocal(id, location.origin + '/fixtures/parallel/list.m3u8', 'hls');
+      const result = await send({ type: 'prepare', url: location.origin + '/fixtures/parallel/list.m3u8', kind: 'hls' });
       const file = await (await (await navigator.storage.getDirectory()).getFileHandle(result.filename)).getFile();
       return { protocols: result.protocols, bytes: [...new Uint8Array(await file.arrayBuffer())] };
-    } finally { await module.disposeLocal(id); }
-  }, '/' + buildPaths.resolve('local/offscreen.js'));
+    } finally { await send({ type: 'dispose' }); }
+  }, { offscreenPath: '/' + buildPaths.resolve('local/offscreen.js'), backgroundPath: buildPaths.resolve('local/background.js') });
   for (const logical of ['local/offscreen.js', 'local/stream-worker.js', 'vendor/ffmpeg/ffmpeg-core.js', 'vendor/ffmpeg/ffmpeg-core.wasm']) {
     assert(productionRequests.includes(buildPaths.resolve(logical)), `HTTP/3 must execute the built ${logical}`);
   }

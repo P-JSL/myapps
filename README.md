@@ -1,6 +1,6 @@
 # My Video App · 개인용 로컬 버전
 
-My Video App 1.10.0은 **앱 계정·구독·활성화 서버가 없는 독립 TypeScript 확장**입니다.
+My Video App 1.11.0은 **앱 계정·구독·활성화 서버가 없는 독립 TypeScript 확장**입니다.
 미디어 감지, 일반 파일 다운로드, 비암호화 HLS/DASH VOD 저장, 로컬 기록과
 다운로드 후 선택적 2x/4x 업스케일링을 제공합니다. 파일과 기록은 브라우저에 저장합니다.
 1.2.0에서는 **최고화질·해상도 선택, MP3/M4A 오디오 다운로드, 영상/음성 변환,
@@ -14,6 +14,7 @@ My Video App 1.10.0은 **앱 계정·구독·활성화 서버가 없는 독립 T
 1.9.0은 **어두운 미디어 팝업·영상 다운로드 아이콘·실제 파일 형식에 따른 저장**, **내장 IndexedDB 자동 생성·기존 데이터 이전·보관 한도 관리**를 제공합니다. 설정 버튼은 기존 전체 앱을 엽니다. 저장 오류나 복구 기록이 있으면 데이터를 보존하며 자동 파일 정리와 완료 후 자동 확대 제안을 보류합니다. [DB 관리와 복구 한계](reports/DATABASE.ko.md)를 참고하세요.
 1.9.1은 **형식·인코더·화면 문구 메타데이터 공통화, 백신 요청 수명주기 통합, 배포용 테스트 번들 제외, 소스 구조 자동 점검**을 적용합니다. [전체 리팩토링 분석](reports/REFACTORING.ko.md)을 참고하세요.
 1.10.0은 **배포 JS/CSS 압축·런타임 파일명 해시화·gzip 후 AES-256-GCM 엔진 포장**과 별도 비밀번호 소스 보관 도구를 추가합니다. 실행 키는 설치본에 있으므로 역공학 방지를 보장하지 않습니다. [배포 보호 방식과 한계](reports/PROTECTED_BUILD.ko.md)를 참고하세요.
+1.11.0은 **모던 팝업·다운로드 검사 추적 실패 보완·미디어 메타데이터 제한·알려진 위험 디코더 경로 제외·공개 함수 최소화·배포 전 최신 npm 감사**를 적용합니다. [보안 검토와 남은 엔진 한계](reports/SECURITY_REVIEW_2026-10-21.ko.md)를 참고하세요.
 Windows에서는 별도 ClamAV 설치 없이 백신 도우미를 설치하고 앱에서 연결 권한을 허용하면 됩니다. 다른 백신의 자동 연결은 Windows AMSI 지원 여부에 따라 달라집니다.
 
 - [설치용 ZIP](artifacts/my-video-app-extension.zip)
@@ -25,6 +26,7 @@ Windows에서는 별도 ClamAV 설치 없이 백신 도우미를 설치하고 �
 - [내장 DB 자동 생성·이전·관리](reports/DATABASE.ko.md)
 - [리팩토링 분석·관리 기준](reports/REFACTORING.ko.md)
 - [압축·암호화 빌드와 소스 보관](reports/PROTECTED_BUILD.ko.md)
+- [최근 공지·전체 코드 보안 검토](reports/SECURITY_REVIEW_2026-10-21.ko.md)
 - [검증 결과](reports/VALIDATION.ko.md) · [보안 검토](reports/SECURITY.ko.md)
 
 ## 설치
@@ -92,7 +94,7 @@ SegmentTemplate/SegmentTimeline/SegmentList/BaseURL을 처리합니다.
 완료 알림 기능을 끌 수 있습니다. 영상 확대는 최대 10분, 결과 16,777,216픽셀·한 변
 8,192픽셀, 처리 최대 5분이며 실행 중에는 작업 탭을 열어 두어야 합니다.
 영상/오디오 변환·병합도 최대 10분·5분 처리, 입력/출력 각각 256MiB 한도를 적용합니다.
-병합 입력은 두 파일 크기를 합산합니다. WebM 출력은 VP8/Opus입니다.
+병합 입력은 두 파일 크기를 합산합니다. WebM 출력은 VP8/Opus입니다. 보안상 JPEG2000·PNM·MagicYUV·OpenEXR·SANM 디코딩 경로는 제외하며 해당 코덱은 처리되지 않을 수 있습니다.
 
 ## 개발
 
@@ -106,10 +108,11 @@ npm run bench:algorithms
 python3 -m venv /workspace/.cache/my-video-app-http3
 /workspace/.cache/my-video-app-http3/bin/python -m pip install -r tests/requirements-http3.txt
 HTTP3_PYTHON=/workspace/.cache/my-video-app-http3/bin/python npm run test:http3
+npm run check:dependencies
 npm run package
 ```
 
-`CHROMIUM_PATH`로 Chromium 경로를 지정할 수 있습니다.
+`CHROMIUM_PATH`로 Chromium 경로를 지정할 수 있습니다. `npm run check:dependencies`는 온라인 npm 공지를 확인하며, 배포는 24시간 이내의 동일 lockfile 감사 통과를 요구합니다. 이는 번들 C/Wasm·브라우저 취약점 전체의 검증은 아닙니다.
 `npm run check:source`는 미참조 런타임 모듈·순환 의존성·등록 누락된 진입점을 검사합니다. `verify`에도 포함됩니다. 타입 검사는 미사용 지역 변수·매개변수를 거부합니다.
 알고리즘 벤치마크는 CPU 간섭을 줄이기 위해 순서대로 실행하며 결과를 `reports/performance*.json`에 기록합니다. 개별 연산의 비교이며 전체 다운로드·인코딩 가속 배수가 아닙니다. 패키징은 현재 소스·검증·측정 보고서의 해시 일치를 요구합니다.
 HTTP/3 검사는 Linux Chromium 154·OpenSSL·Python venv/aioquic를 사용하며 별도 임시

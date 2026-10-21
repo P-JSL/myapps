@@ -54,6 +54,17 @@ export async function assertProtectedBuild(root, buildPaths) {
       // Parse literals so escaped characters and template prefixes are checked
       // as runtime strings rather than relying on a source-text substring scan.
       const source = ts.createSourceFile(physical, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+      assert.equal(source.parseDiagnostics.length, 0, `Invalid production module ${physical}`);
+      const exported = [];
+      for (const statement of source.statements) {
+        if (ts.isExportDeclaration(statement)) {
+          assert(!statement.moduleSpecifier && statement.exportClause && ts.isNamedExports(statement.exportClause), `Unexpected production re-export in ${physical}`);
+          exported.push(...statement.exportClause.elements.map(element => element.name.text));
+        } else if (ts.isExportAssignment(statement)) exported.push('default');
+        else if (statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)) exported.push(statement.modifiers.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword) ? 'default' : statement.name?.text ?? '<declaration>');
+      }
+      const engine = physical === assetMap['vendor/ffmpeg/ffmpeg-core.js'] || physical === engineModule;
+      assert.deepEqual(exported, engine ? ['default'] : [], `Unexpected public production API in ${physical}`);
       const visit = node => {
         if (ts.isStringLiteralLike(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) rejectLogicalPath(node.text);
         ts.forEachChild(node, visit);
