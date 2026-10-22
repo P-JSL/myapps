@@ -137,7 +137,7 @@
     "versions": 15,
     "first": "1.0.0",
     "latest": "1.12.1",
-    "sha256": "4afb3368bb173e5c46c9a09f0343bde354fa60d9a0737bef5036e2315fe144ed",
+    "sha256": "014a9e5ae60c7d6b528b746d784b858a54f78971ceda52e864ae76f12b49b270",
     "format": "Newest-first GFM table with version, changes and related document columns; historical project versions distinct from original extension10.6.1.2"
   }
 }
