@@ -11,7 +11,7 @@ process.chdir(fileURLToPath(new URL('../', import.meta.url)));
 await access('dist/manifest.json');
 validateDependencyAudit(JSON.parse(await readFile('reports/dependency-audit.json', 'utf8')), hash(await readFile('package-lock.json')));
 const report = JSON.parse(await readFile('reports/browser.json', 'utf8'));
-assert(report.outcomes.length >= 80 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
+assert(report.outcomes.length >= 84 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
 const http3 = JSON.parse(await readFile('reports/http3.json', 'utf8'));
 assert(http3.transport === 'h3' && http3.outcomes.length >= 4 && http3.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real HTTP/3 results required');
 const antivirus = JSON.parse(await readFile('reports/antivirus.json', 'utf8'));

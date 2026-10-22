@@ -7,7 +7,8 @@ import { SCOPE, OFFSCREEN_SCOPE, HISTORY_KEY, isActiveHistoryState, MediaCatalog
 import { downloadOptions, type DownloadOptions } from './preferences.ts';
 import { transport, type Transport } from './transport.ts';
 import { isMediaFileFormat, mediaFilename, probeMediaFile } from './media-file.ts';
-import { chromeWarning, scanFile, probeAntivirus, internalScanResponse, incompleteInternalScan, combineInternalScans, type ScanResult } from './antivirus.ts';
+import { chromeWarning, scanFile, probeAntivirus, cancelAntivirusRequests, internalScanResponse, incompleteInternalScan, combineInternalScans, type ScanResult, type FileSecurity } from './antivirus.ts';
+import { ANTIVIRUS_ENABLED_KEY, antivirusEnabled } from './security-preferences.ts';
 
 const media = new MediaCatalog();
 const discoveryEpochs = new Map<number, object>();
@@ -20,6 +21,30 @@ const deciding = new Set<number>();
 const trackedDownloadStates: readonly HistoryItem['state'][] = ['downloading', 'scanning', 'review', 'complete'];
 let lastTab: number | undefined;
 let creatingOffscreen: Promise<void> | undefined;
+let privateAntivirusEnabled = true;
+let antivirusPreferenceGeneration = 0;
+
+function infectionObserved(security: FileSecurity | undefined): boolean {
+  return security?.status === 'infected' || security?.infectionObserved === true;
+}
+
+async function antivirusIntegrationEnabled(): Promise<boolean> {
+  if (chrome.extension.inIncognitoContext) return privateAntivirusEnabled;
+  return antivirusEnabled((await appStorage.get(ANTIVIRUS_ENABLED_KEY))[ANTIVIRUS_ENABLED_KEY]);
+}
+async function setAntivirusEnabled(enabled: boolean): Promise<void> {
+  await navigator.locks.request('my-video-app-antivirus-settings', async () => {
+    if (chrome.extension.inIncognitoContext) privateAntivirusEnabled = enabled;
+    else await appStorage.set({ [ANTIVIRUS_ENABLED_KEY]: enabled });
+    antivirusPreferenceGeneration++;
+    // Only committed user choices cancel connections; failed writes preserve protection.
+    if (!enabled) {
+      cancelAntivirusRequests();
+      // Generation revocation is synchronous, even if queued file cleanup awaits.
+      for (const id of finalizing) void revokeDownloadOffers(id).catch(() => {});
+    }
+  });
+}
 
 async function history(): Promise<HistoryItem[]> {
   // storage.local is shared between split incognito and ordinary extension contexts.
@@ -132,7 +157,8 @@ async function finish(download: chrome.downloads.DownloadItem): Promise<void> {
     if (danger) {
       if (item.state === 'review' && item.security?.status === 'chrome-warning' && item.security.danger === danger) return;
       const next = await change(item.id, row => trackedDownloadStates.includes(row.state)
-        ? { ...row, state: 'review', security: { status: 'chrome-warning', token: crypto.randomUUID(), danger, message: 'Chrome이 이 파일을 경고하거나 검사 중입니다. Chrome 다운로드 화면에서 확인하세요.' } } : undefined);
+        ? { ...row, state: 'review', security: { ...(infectionObserved(row.security) ? { ...row.security, infectionObserved: true as const } : {}),
+          status: 'chrome-warning', token: crypto.randomUUID(), danger, message: 'Chrome이 이 파일을 경고하거나 검사 중입니다. Chrome 다운로드 화면에서 확인하세요.' } } : undefined);
       await revokeDownloadOffers(current.id).catch(() => {});
       if (next) await reviewNotice(next);
       return;
@@ -148,16 +174,15 @@ async function finish(download: chrome.downloads.DownloadItem): Promise<void> {
     }
     if (item.state === 'complete' || (item.state === 'review' && item.security?.status !== 'chrome-warning')) return;
     const scanning = await change(item.id, row => ['downloading', 'scanning', 'review'].includes(row.state)
-      ? { ...row, state: 'scanning', security: { status: 'scanning', token: crypto.randomUUID() } } : undefined);
+      ? { ...row, state: 'scanning', security: infectionObserved(row.security)
+        ? { ...row.security, status: 'infected', infectionObserved: true, token: crypto.randomUUID() } : { status: 'scanning', token: crypto.randomUUID() } } : undefined);
     if (!scanning) return;
+    const scanGeneration = antivirusPreferenceGeneration;
     let result: ScanResult;
-    try { result = await scanFile(current.filename); }
+    try { result = await scanFile(current.filename, antivirusIntegrationEnabled); }
     catch { result = { status: 'error', message: '로컬 백신 검사를 완료하지 못했습니다.' }; }
     const latest = (await chrome.downloads.search({ id: current.id }))[0];
     if (!latest) { await missingDownload(scanning); return; }
-    if (latest.state !== 'complete' || chromeWarning(latest.danger)) {
-      finalizeAgain.add(current.id); return;
-    }
     const measured = result.sha256 !== undefined && result.size !== undefined;
     const identityMismatch = latest.filename !== current.filename || (measured && latest.fileSize >= 0 && result.size !== latest.fileSize)
       || (measured && item.internalScanSha256 !== undefined && (result.sha256 !== item.internalScanSha256 || result.size !== item.internalScanSize));
@@ -166,19 +191,42 @@ async function finish(download: chrome.downloads.DownloadItem): Promise<void> {
       result = { status: 'error', message: '다운로드 파일 정보가 검사 결과 또는 앱 내부 검사 대상과 일치하지 않습니다. 다시 확인하세요.' };
       internalScan = scanning.internalScan?.status === 'suspicious' ? scanning.internalScan : incompleteInternalScan('앱에서 검사한 바이트와 저장 파일이 일치하는지 확인하지 못했습니다.');
     }
+    if (latest.state !== 'complete' || chromeWarning(latest.danger)) {
+      // Chrome wins presentation without dropping independently bound risk evidence.
+      if (result.status === 'infected' || internalScan.status === 'suspicious') {
+        const positive = { ...result }; delete positive.internalScan;
+        await change(item.id, row => row.state === 'scanning' && row.security?.token === scanning.security?.token
+          ? { ...row, internalScan, ...(measured && !identityMismatch ? { internalScanSha256: result.sha256!, internalScanSize: result.size! } : {}),
+            ...(result.status === 'infected' ? { security: { ...positive, status: 'infected', infectionObserved: true, token: row.security!.token } } : {}) } : undefined);
+      }
+      finalizeAgain.add(current.id); return;
+    }
     // The external antivirus verdict stays independent from app risk signals.
-    const external = { ...result }; delete external.internalScan;
+    let external: Omit<FileSecurity, 'token'> = { ...result }; delete external.internalScan;
+    // A cancelled rescan is not evidence that a previously infected file is safe.
+    if (result.status === 'disabled' && infectionObserved(scanning.security)) {
+      external = { ...scanning.security, status: 'infected', infectionObserved: true, message: '백신 연동을 꺼서 재검사를 중단했습니다. 이전 위협 탐지 결과를 유지합니다.' };
+    }
     const next = await change(item.id, row => row.state === 'scanning' && row.security?.token === scanning.security?.token
       ? { ...row, internalScan, ...(measured && !identityMismatch ? { internalScanSha256: result.sha256!, internalScanSize: result.size! } : {}),
-        state: result.status === 'clean' && internalScan.status !== 'suspicious' ? 'complete' : 'review', security: { ...external, token: crypto.randomUUID() } } : undefined);
+        state: ['clean', 'disabled'].includes(external.status) && internalScan.status !== 'suspicious' ? 'complete' : 'review', security: { ...external, token: crypto.randomUUID() } } : undefined);
     if (!next) return;
     if (next.state === 'review') { await revokeDownloadOffers(current.id).catch(() => {}); await reviewNotice(next); return; }
     await chrome.notifications.clear(`my-video-app-security:${item.id}`).catch(() => {});
+    // Opting out of AV is a download preference, never a verified processing verdict.
+    if (next.security?.status !== 'clean' || scanGeneration !== antivirusPreferenceGeneration
+      || !await antivirusIntegrationEnabled() || scanGeneration !== antivirusPreferenceGeneration) {
+      await revokeDownloadOffers(current.id).catch(() => {}); await dispose(item.id); cancelled.delete(item.id); return;
+    }
     const beforeOffer = (await chrome.downloads.search({ id: current.id }))[0];
     if (!beforeOffer || beforeOffer.state !== 'complete' || chromeWarning(beforeOffer.danger)) {
       await revokeDownloadOffers(current.id).catch(() => {});
       if (beforeOffer) finalizeAgain.add(current.id);
       return;
+    }
+    if (scanGeneration !== antivirusPreferenceGeneration
+      || !await antivirusIntegrationEnabled() || scanGeneration !== antivirusPreferenceGeneration) {
+      await revokeDownloadOffers(current.id).catch(() => {}); await dispose(item.id); cancelled.delete(item.id); return;
     }
     authorizeDownloadOffers(current.id);
     await offerUpscale({ internalFilename: `local-${item.id}.media`, filename: item.filename, downloadId: current.id, success: true, incognito: item.incognito, expectedSha256: result.sha256!, expectedSize: result.size! });
@@ -192,6 +240,7 @@ async function finish(download: chrome.downloads.DownloadItem): Promise<void> {
   }
 }
 async function securityDecision(id: string, token: string, action: 'keep' | 'delete' | 'rescan') {
+  if (action === 'rescan' && !await antivirusIntegrationEnabled()) throw new Error('다시 검사하려면 로컬 백신 연동을 켜세요. 기존 검사 결과는 유지됩니다.');
   const item = (await history()).find(row => row.id === id && row.state === 'review' && row.security?.token === token);
   if (!item || item.downloadId === undefined || deciding.has(item.downloadId)) throw new Error('검사 상태가 변경되었습니다. 기록을 새로고침하세요.');
   deciding.add(item.downloadId);
@@ -225,7 +274,8 @@ async function securityDecision(id: string, token: string, action: 'keep' | 'del
       await dispose(id);
     } else {
       await revokeDownloadOffers(current.id).catch(() => {});
-      await change(id, row => ({ ...row, state: 'scanning', security: { status: 'scanning', token: crypto.randomUUID() } }));
+      await change(id, row => ({ ...row, state: 'scanning', security: infectionObserved(row.security)
+        ? { ...row.security, status: 'infected', infectionObserved: true, token: crypto.randomUUID() } : { status: 'scanning', token: crypto.randomUUID() } }));
     }
     await chrome.notifications.clear(`my-video-app-security:${id}`).catch(() => {});
   } finally {
@@ -380,15 +430,24 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
     return { ok: true };
   }
   if (!trustedUI(sender, chrome.runtime.id, chrome.runtime.getURL(''))) throw new Error('확장 화면에서만 사용할 수 있습니다.');
-  if (value.type === 'antivirus-status') return { ok: true, antivirus: await probeAntivirus() };
+  if (value.type === 'antivirus-settings' || value.type === 'set-antivirus-enabled') {
+    if (sender.tab?.incognito !== undefined && sender.tab.incognito !== chrome.extension.inIncognitoContext) throw new Error('다른 브라우징 모드의 백신 설정에는 접근할 수 없습니다.');
+    if (value.type === 'set-antivirus-enabled') {
+      if (typeof value.enabled !== 'boolean') throw new Error('백신 연동 설정은 켜기 또는 끄기여야 합니다.');
+      await setAntivirusEnabled(value.enabled);
+    }
+    return { ok: true, enabled: await antivirusIntegrationEnabled() };
+  }
+  if (value.type === 'antivirus-status') return { ok: true, antivirus: await probeAntivirus(antivirusIntegrationEnabled) };
   if (['security-keep', 'security-delete', 'security-rescan'].includes(value.type) && typeof value.id === 'string' && typeof value.token === 'string') {
     if (value.type === 'security-keep' && value.confirmed !== true) throw new Error('파일의 위험을 이해했다는 확인이 필요합니다.');
     await securityDecision(value.id, value.token, value.type === 'security-keep' ? 'keep' : value.type === 'security-delete' ? 'delete' : 'rescan');
     return { ok: true };
   }
   if (value.type === 'security-connect') {
+    if (!await antivirusIntegrationEnabled()) throw new Error('로컬 백신 연동이 꺼져 있습니다. 설정에서 켠 뒤 연결하세요.');
     if (!await chrome.permissions.contains({ permissions: ['nativeMessaging'] })) throw new Error('로컬 백신 연결 권한을 먼저 허용하세요.');
-    const antivirus = await probeAntivirus();
+    const antivirus = await probeAntivirus(antivirusIntegrationEnabled);
     for (const item of await history()) if ((antivirus.status === 'ready' || antivirus.internalAvailable === true) && item.state === 'review' && item.security && ['unavailable', 'error'].includes(item.security.status)) {
       await securityDecision(item.id, item.security.token, 'rescan').catch(() => {});
     }

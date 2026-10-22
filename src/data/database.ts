@@ -1,11 +1,12 @@
 import { HISTORY_KEY, isHistory, retainHistory, type HistoryItem } from '../local/model.ts';
 import { downloadOptions } from '../local/preferences.ts';
+import { ANTIVIRUS_ENABLED_KEY } from '../local/security-preferences.ts';
 import { JOBS_KEY, OFFER_KEY, MAX_JOBS, MAX_QUEUE_BYTES, RETENTION_MS, isJob, type Job } from '../upscale/policy.ts';
 
 export const DATABASE_NAME = 'my-video-app';
 export const DATABASE_VERSION = 1;
 export const DOWNLOAD_OPTIONS_KEY = 'my_video_app_download_options_v1';
-export const STORAGE_KEYS = [HISTORY_KEY, JOBS_KEY, OFFER_KEY, DOWNLOAD_OPTIONS_KEY] as const;
+export const STORAGE_KEYS = [HISTORY_KEY, JOBS_KEY, OFFER_KEY, DOWNLOAD_OPTIONS_KEY, ANTIVIRUS_ENABLED_KEY] as const;
 const STORES = ['history', 'jobs', 'settings', 'meta', 'recovery'];
 const MIGRATION = 'migration-v1';
 const MAINTENANCE = 'last-maintenance';
@@ -78,7 +79,7 @@ function validHistory(value: unknown): value is HistoryItem {
 }
 
 function validSetting(key: string, value: unknown): boolean {
-  if (key === OFFER_KEY) return typeof value === 'boolean';
+  if (key === OFFER_KEY || key === ANTIVIRUS_ENABLED_KEY) return typeof value === 'boolean';
   if (key !== DOWNLOAD_OPTIONS_KEY || value === undefined) return false;
   try {
     downloadOptions(value);
@@ -353,7 +354,7 @@ export function createAppStorage(options: DatabaseOptions = {}): AppStorage {
       const history = importRows(HISTORY_KEY, validHistory);
       const jobs = importRows(JOBS_KEY, isJob);
       const settings: { key: string; value: unknown }[] = [];
-      for (const key of [OFFER_KEY, DOWNLOAD_OPTIONS_KEY]) {
+      for (const key of [OFFER_KEY, DOWNLOAD_OPTIONS_KEY, ANTIVIRUS_ENABLED_KEY]) {
         if (source[key] === undefined) continue;
         if (validSetting(key, source[key]) && !containsPrivate(source[key])) {
           settings.push({ key, value: source[key] });

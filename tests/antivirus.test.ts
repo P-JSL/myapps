@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { ANTIVIRUS_HOST, chromeWarning, scanFile, scanResponse, probeAntivirus, readinessResponse } from '../src/local/antivirus.ts';
 import { HISTORY_KEY, SCOPE, MAX_HISTORY, retainHistory, type HistoryItem } from '../src/local/model.ts';
 import { DIRECTORY, JOBS_KEY, OFFER_KEY, RETENTION_MS, MAX_JOBS } from '../src/upscale/policy.ts';
+import { ANTIVIRUS_ENABLED_KEY } from '../src/local/security-preferences.ts';
 
 const mediaBytes = Buffer.from([0, 0, 0, 16, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0]);
 const digest = createHash('sha256').update(mediaBytes).digest('hex');
@@ -29,7 +30,7 @@ test('native scan results bind the verdict to the request and measured file iden
 
 test('malformed, mismatched, oversized and unverifiable native verdicts never count as clean', () => {
   const valid = nativeResponse('request');
-  for (const value of [null, [], {}, { ...valid, version: 2 }, { ...valid, requestId: 'other' }, { ...valid, status: 'safe' }, { ...valid, status: null }, { ...valid, sha256: undefined }, { ...valid, sha256: 'not-a-hash' }, { ...valid, size: undefined }, { ...valid, size: -1 }, { ...valid, size: 1.5 }, { ...valid, engine: '' }, { ...valid, engine: 'x'.repeat(121) }, { ...valid, message: 'x'.repeat(70_000) }]) assert.throws(() => scanResponse(value, 'request'));
+  for (const value of [null, [], {}, { ...valid, version: 2 }, { ...valid, requestId: 'other' }, { ...valid, status: 'safe' }, { ...valid, status: 'disabled' }, { ...valid, status: null }, { ...valid, sha256: undefined }, { ...valid, sha256: 'not-a-hash' }, { ...valid, size: undefined }, { ...valid, size: -1 }, { ...valid, size: 1.5 }, { ...valid, engine: '' }, { ...valid, engine: 'x'.repeat(121) }, { ...valid, message: 'x'.repeat(70_000) }]) assert.throws(() => scanResponse(value, 'request'));
 });
 
 test('readiness responses identify the selected engine without accepting a file-scan verdict', () => {
@@ -37,7 +38,7 @@ test('readiness responses identify the selected engine without accepting a file-
   const result = readinessResponse(valid, 'request');
   assert.equal(result.status, 'ready'); assert.equal(result.engine, 'Microsoft Defender');
   assert.deepEqual(result.products, ['Microsoft Defender']); assert.ok(result.checkedAt <= Date.now());
-  for (const value of [null, {}, { ...valid, version: 2 }, { ...valid, requestId: 'other' }, { ...valid, status: 'clean' },
+  for (const value of [null, {}, { ...valid, version: 2 }, { ...valid, requestId: 'other' }, { ...valid, status: 'clean' }, { ...valid, status: 'disabled' },
     { ...valid, engine: undefined }, { ...valid, engine: '' }, { ...valid, products: [''] }, { ...valid, products: ['x'.repeat(501)] },
     { ...valid, products: Array(33).fill('Defender') }, { ...valid, message: 'x'.repeat(1001) }]) assert.throws(() => readinessResponse(value, 'request'));
 });
@@ -325,6 +326,258 @@ test('local antivirus and background safety decisions', async t => {
       } finally { if (originalContext) Object.defineProperty(chrome.extension, 'inIncognitoContext', originalContext); }
     });
 
+    await t.test('antivirus setting defaults on and every fresh read follows the persisted boolean', async () => {
+      assert.deepEqual(await command('antivirus-settings'), { ok: true, enabled: true });
+      assert.deepEqual(await command('set-antivirus-enabled', { enabled: false }), { ok: true, enabled: false });
+      assert.equal(state.data[ANTIVIRUS_ENABLED_KEY], false);
+      assert.deepEqual(await command('antivirus-settings'), { ok: true, enabled: false });
+      // A fresh read must use the durable state, not a stale worker-local UI cache.
+      state.data[ANTIVIRUS_ENABLED_KEY] = true;
+      assert.deepEqual(await command('antivirus-settings'), { ok: true, enabled: true });
+      state.data[ANTIVIRUS_ENABLED_KEY] = false;
+      assert.deepEqual(await command('antivirus-settings'), { ok: true, enabled: false });
+      assert.equal(state.permissionRequests, 0); assert.deepEqual(state.requests, []);
+    });
+    await t.test('antivirus setting rejects malformed and untrusted changes before any database or native side effect', async () => {
+      for (const enabled of [undefined, null, 0, 1, 'false', 'true', [], {}]) {
+        const before = structuredClone(state.data), reads = state.storageCalls.length;
+        await assert.rejects(command('set-antivirus-enabled', { enabled }));
+        assert.deepEqual(state.data, before); assert.equal(state.storageCalls.length, reads);
+      }
+      state.storageCalls = [];
+      const otherMode = { ...ui, tab: { id: 42, incognito: true } as chrome.tabs.Tab };
+      const otherExtension = { ...ui, id: 'other-extension' };
+      for (const sender of [content, otherMode, otherExtension]) {
+        for (const type of ['antivirus-settings', 'set-antivirus-enabled']) {
+          await assert.rejects(command(type, { enabled: false }, sender));
+        }
+      }
+      assert.deepEqual(state.storageCalls, []); assert.deepEqual(state.connections, []);
+      assert.equal(state.permissionRequests, 0); assert.equal(state.data[ANTIVIRUS_ENABLED_KEY], undefined);
+    });
+    await t.test('a failed antivirus-setting save leaves the durable setting enabled', async () => {
+      state.storageFailure = 'set';
+      await assert.rejects(command('set-antivirus-enabled', { enabled: false }));
+      delete state.storageFailure;
+      assert.deepEqual(await command('antivirus-settings'), { ok: true, enabled: true });
+      assert.equal(state.data[ANTIVIRUS_ENABLED_KEY], undefined); assert.deepEqual(state.connections, []);
+    });
+    await t.test('private antivirus choice neither reads nor overwrites the ordinary stored setting', async () => {
+      await command('set-antivirus-enabled', { enabled: false });
+      const originalContext = Object.getOwnPropertyDescriptor(chrome.extension, 'inIncognitoContext');
+      Object.defineProperty(chrome.extension, 'inIncognitoContext', { configurable: true, value: true });
+      state.storageCalls = [];
+      try {
+        assert.deepEqual(await command('antivirus-settings'), { ok: true, enabled: true });
+        await command('set-antivirus-enabled', { enabled: false });
+        assert.deepEqual(await command('antivirus-settings'), { ok: true, enabled: false });
+        assert.deepEqual(state.storageCalls, []); assert.equal(state.data[ANTIVIRUS_ENABLED_KEY], false);
+        await command('set-antivirus-enabled', { enabled: true });
+      } finally { if (originalContext) Object.defineProperty(chrome.extension, 'inIncognitoContext', originalContext); }
+      assert.deepEqual(await command('antivirus-settings'), { ok: true, enabled: false });
+      assert.equal(state.data[ANTIVIRUS_ENABLED_KEY], false);
+    });
+    await t.test('disabled antivirus avoids status and connection calls and resumes only after explicit enable', async () => {
+      await command('set-antivirus-enabled', { enabled: false });
+      const status = await command('antivirus-status') as { antivirus: { status: string; engine?: string } };
+      assert.equal(status.antivirus.status, 'disabled'); assert.equal(status.antivirus.engine, undefined);
+      await assert.rejects(command('security-connect'));
+      assert.equal(state.permissionRequests, 0); assert.equal(state.requests.length, 0); assert.deepEqual(state.connections, []);
+      await command('set-antivirus-enabled', { enabled: true });
+      state.native = (request, port) => port.onMessage.emit({ version: 1, requestId: request.requestId, status: 'ready', engine: 'Test scanner' });
+      const enabled = await command('antivirus-status') as { antivirus: { status: string } };
+      assert.equal(enabled.antivirus.status, 'ready'); assert.deepEqual(state.requests.map(request => request.action), ['status']);
+    });
+    await t.test('disabled antivirus completes a benign download without claiming clean or offering automatic processing', async () => {
+      state.data[OFFER_KEY] = true;
+      await command('set-antivirus-enabled', { enabled: false });
+      const item = await seed(); complete(item);
+      await until(() => rows()[0]?.state === 'complete');
+      assert.equal(rows()[0]!.security?.status, 'disabled'); assert.equal(rows()[0]!.security?.sha256, undefined);
+      assert.deepEqual(state.connections, []); assert.deepEqual(state.requests, []);
+      assert.equal(state.data[JOBS_KEY], undefined); assert.ok(!state.notices.some(id => id.startsWith('vdh-upscale:')));
+    });
+    await t.test('turning antivirus off preserves known infected review and its token instead of accepting the file', async () => {
+      const item = await seed('review');
+      const before = structuredClone(item);
+      await command('set-antivirus-enabled', { enabled: false });
+      assert.deepEqual(rows(), [before]);
+      await assert.rejects(command('security-rescan', { id: item.id, token: item.security!.token }));
+      assert.deepEqual(rows(), [before]);
+      await command('set-antivirus-enabled', { enabled: true });
+      assert.deepEqual(rows(), [before]); assert.deepEqual(state.connections, []);
+    });
+    await t.test('internal suspicious evidence and Chrome warnings still require review with antivirus disabled', async () => {
+      await command('set-antivirus-enabled', { enabled: false });
+      const internal = await seed();
+      internal.internalScan = { version: 1, engine: 'builtin-static-v1', status: 'suspicious', scannedBytes: 16, complete: true,
+        findings: [{ id: 'embedded-pe', severity: 'high', message: 'Test-only structured risk', offset: 4 }] };
+      state.data[HISTORY_KEY] = [internal]; complete(internal);
+      await until(() => rows()[0]?.state === 'review');
+      assert.equal(rows()[0]!.internalScan?.status, 'suspicious'); assert.equal(rows()[0]!.security?.status, 'disabled');
+      const chromeRisk = await seed(); state.downloads.get(chromeRisk.downloadId!)!.danger = 'content'; complete(chromeRisk);
+      await until(() => rows()[0]?.security?.status === 'chrome-warning');
+      assert.equal(rows()[0]!.state, 'review');
+      assert.deepEqual(state.connections, []); assert.deepEqual(state.requests, []);
+    });
+    await t.test('prior infection survives Chrome warning precedence and acceptance while antivirus is off', async () => {
+      state.data[OFFER_KEY] = true;
+      const item = await seed('review');
+      const threats = structuredClone(item.security!.threats);
+      state.downloads.get(item.downloadId!)!.danger = 'content'; complete(item);
+      await until(() => rows()[0]?.security?.status === 'chrome-warning');
+      assert.equal(rows()[0]!.state, 'review');
+      await command('set-antivirus-enabled', { enabled: false });
+      state.downloads.get(item.downloadId!)!.danger = 'accepted'; complete(item);
+      await until(() => rows()[0]?.state !== 'scanning' && rows()[0]?.security?.status !== 'chrome-warning');
+      assert.equal(rows()[0]!.state, 'review'); assert.equal(rows()[0]!.security?.status, 'infected');
+      assert.deepEqual(rows()[0]!.security?.threats, threats);
+      assert.equal(state.data[JOBS_KEY], undefined); assert.ok(!state.notices.some(id => id.startsWith('vdh-upscale:')));
+      assert.deepEqual(state.connections, []); assert.deepEqual(state.requests, []);
+    });
+    await t.test('a native infected reply arriving with a Chrome warning remains evidence after Chrome acceptance and OFF', async () => {
+      let held: { request: NativeRequest; port: FakePort } | undefined;
+      state.native = (request, port) => { held = { request, port }; };
+      const item = await seed(); complete(item);
+      await until(() => !!held && rows()[0]?.state === 'scanning');
+      state.downloads.get(item.downloadId!)!.danger = 'content'; complete(item);
+      held!.port.onMessage.emit(nativeResponse(held!.request.requestId, 'infected'));
+      await until(() => rows()[0]?.security?.status === 'chrome-warning');
+      await command('set-antivirus-enabled', { enabled: false });
+      state.downloads.get(item.downloadId!)!.danger = 'accepted'; complete(item);
+      await until(() => rows()[0]?.state !== 'scanning' && rows()[0]?.security?.status !== 'chrome-warning');
+      assert.equal(rows()[0]!.state, 'review'); assert.equal(rows()[0]!.security?.status, 'infected');
+      assert.deepEqual(rows()[0]!.security?.threats, ['Eicar-Test-Signature']);
+      assert.deepEqual(state.requests.map(request => request.action), ['scan']);
+      assert.equal(state.data[JOBS_KEY], undefined); assert.ok(!state.notices.some(id => id.startsWith('vdh-upscale:')));
+    });
+    await t.test('native-only internal risk survives Chrome precedence and later acceptance with antivirus disabled', async () => {
+      let held: { request: NativeRequest; port: FakePort } | undefined;
+      state.native = (request, port) => { held = { request, port }; };
+      const item = await seed(); complete(item);
+      await until(() => !!held && rows()[0]?.state === 'scanning');
+      state.downloads.get(item.downloadId!)!.danger = 'content'; complete(item);
+      const internalScan = { version: 1, engine: 'builtin-static-v1', status: 'suspicious', scannedBytes: 16, complete: true,
+        findings: [{ id: 'embedded-pe', severity: 'high', message: 'Test-only bound native risk', offset: 4 }] };
+      held!.port.onMessage.emit({ version: 1, requestId: held!.request.requestId, status: 'unavailable', sha256: digest, size: 16, internalScan });
+      await until(() => rows()[0]?.security?.status === 'chrome-warning');
+      assert.equal(rows()[0]!.internalScan?.status, 'suspicious'); assert.equal(rows()[0]!.internalScanSha256, digest);
+      await command('set-antivirus-enabled', { enabled: false });
+      state.downloads.get(item.downloadId!)!.danger = 'accepted'; complete(item);
+      await until(() => rows()[0]?.state !== 'scanning' && rows()[0]?.security?.status !== 'chrome-warning');
+      assert.equal(rows()[0]!.state, 'review'); assert.equal(rows()[0]!.security?.status, 'disabled');
+      assert.deepEqual(rows()[0]!.internalScan, internalScan);
+      assert.equal(rows()[0]!.internalScanSha256, digest); assert.equal(rows()[0]!.internalScanSize, 16);
+      assert.deepEqual(state.requests.map(request => request.action), ['scan']);
+      assert.equal(state.data[JOBS_KEY], undefined); assert.ok(!state.notices.some(id => id.startsWith('vdh-upscale:')));
+    });
+    await t.test('disabling an active native scan disconnects it and ignores a late clean reply', async () => {
+      state.data[OFFER_KEY] = true;
+      let held: { request: NativeRequest; port: FakePort } | undefined;
+      state.native = (request, port) => { held = { request, port }; };
+      const item = await seed(); complete(item);
+      await until(() => !!held && rows()[0]?.state === 'scanning');
+      await command('set-antivirus-enabled', { enabled: false });
+      await until(() => rows()[0]?.state === 'complete');
+      assert.equal(held!.port.disconnected, true); assert.equal(rows()[0]!.security?.status, 'disabled');
+      const disabled = structuredClone(rows()[0]);
+      held!.port.onMessage.emit(nativeResponse(held!.request.requestId));
+      await new Promise<void>(resolve => setTimeout(resolve, 10));
+      assert.deepEqual(rows()[0], disabled); assert.equal(state.data[JOBS_KEY], undefined);
+      assert.ok(!state.notices.some(id => id.startsWith('vdh-upscale:')));
+    });
+    await t.test('disabling an infected-file rescan retains the previous threat verdict and rejects a late clean reply', async () => {
+      let held: { request: NativeRequest; port: FakePort } | undefined;
+      state.native = (request, port) => { held = { request, port }; };
+      const item = await seed('review');
+      const threats = structuredClone(item.security!.threats);
+      await command('security-rescan', { id: item.id, token: item.security!.token });
+      await until(() => !!held && rows()[0]?.state === 'scanning');
+      assert.equal(rows()[0]!.security?.status, 'infected');
+      await command('set-antivirus-enabled', { enabled: false });
+      await until(() => rows()[0]?.state === 'review');
+      assert.equal(held!.port.disconnected, true); assert.equal(rows()[0]!.security?.status, 'infected');
+      assert.deepEqual(rows()[0]!.security?.threats, threats);
+      held!.port.onMessage.emit(nativeResponse(held!.request.requestId));
+      await new Promise<void>(resolve => setTimeout(resolve, 10));
+      assert.equal(rows()[0]!.state, 'review'); assert.equal(rows()[0]!.security?.status, 'infected');
+      assert.deepEqual(rows()[0]!.security?.threats, threats);
+    });
+    await t.test('turning antivirus off after a completed clean scan still blocks the pending automatic-processing offer', async () => {
+      state.data[OFFER_KEY] = true;
+      const originalSearch = Object.getOwnPropertyDescriptor(chrome.downloads, 'search');
+      const search = chrome.downloads.search.bind(chrome.downloads);
+      let release: (() => void) | undefined;
+      let intercepted = false;
+      Object.defineProperty(chrome.downloads, 'search', { configurable: true, value: async (query: { id: number }) => {
+        if (!intercepted && rows()[0]?.state === 'complete' && rows()[0]?.security?.status === 'clean') {
+          intercepted = true;
+          await new Promise<void>(resolve => { release = resolve; });
+        }
+        return search(query);
+      } });
+      try {
+        const item = await seed(); complete(item);
+        await until(() => !!release);
+        await command('set-antivirus-enabled', { enabled: false });
+        release!();
+        await until(async () => { try { await stat(join(temp, `local-${item.id}.media`)); return false; } catch { return true; } });
+        assert.equal(rows()[0]!.state, 'complete'); assert.equal(rows()[0]!.security?.status, 'clean');
+        assert.equal(state.data[JOBS_KEY], undefined); assert.ok(!state.notices.some(id => id.startsWith('vdh-upscale:')));
+      } finally {
+        release?.();
+        if (originalSearch) Object.defineProperty(chrome.downloads, 'search', originalSearch);
+      }
+    });
+    for (const reenable of [false, true]) await t.test(`a stale final enabled read cannot authorize automatic processing after OFF${reenable ? ' then ON' : ''}`, async () => {
+      state.data[OFFER_KEY] = true;
+      const originalGet = appStorage.get;
+      let release: (() => void) | undefined;
+      let completedSettingReads = 0;
+      let captured: unknown;
+      appStorage.get = async keys => {
+        const snapshot = await originalGet(keys);
+        if (keys === ANTIVIRUS_ENABLED_KEY && rows()[0]?.state === 'complete' && rows()[0]?.security?.status === 'clean') {
+          completedSettingReads++;
+          // The first read gates the Chrome file lookup; this second read is
+          // the final asynchronous boundary immediately before authorization.
+          if (completedSettingReads === 2) {
+            captured = snapshot[ANTIVIRUS_ENABLED_KEY];
+            await new Promise<void>(resolve => { release = resolve; });
+          }
+        }
+        return snapshot;
+      };
+      try {
+        // Persist true so the delayed response carries an explicit old ON value.
+        await command('set-antivirus-enabled', { enabled: true });
+        const item = await seed(); complete(item);
+        await until(() => !!release);
+        assert.equal(captured, true);
+        await command('set-antivirus-enabled', { enabled: false });
+        if (reenable) await command('set-antivirus-enabled', { enabled: true });
+        release!();
+        await until(async () => { try { await stat(join(temp, `local-${item.id}.media`)); return false; } catch { return true; } });
+        assert.equal(rows()[0]!.state, 'complete'); assert.equal(rows()[0]!.security?.status, 'clean');
+        assert.equal(state.data[ANTIVIRUS_ENABLED_KEY], reenable);
+        assert.equal(state.data[JOBS_KEY], undefined); assert.ok(!state.notices.some(id => id.startsWith('vdh-upscale:')));
+      } finally {
+        release?.();
+        appStorage.get = originalGet;
+      }
+    });
+    await t.test('a scan waiting for the native lock rechecks the disabled setting before connecting', async () => {
+      let release: (() => void) | undefined;
+      const locked = navigator.locks.request('my-video-app-antivirus', () => new Promise<void>(resolve => { release = resolve; }));
+      await until(() => !!release);
+      try {
+        const item = await seed(); complete(item);
+        await until(() => rows()[0]?.state === 'scanning');
+        await command('set-antivirus-enabled', { enabled: false });
+      } finally { release!(); await locked; }
+      await until(() => rows()[0]?.state === 'complete');
+      assert.equal(rows()[0]!.security?.status, 'disabled'); assert.deepEqual(state.connections, []); assert.deepEqual(state.requests, []);
+    });
     await t.test('missing nativeMessaging permission leaves the file unverified without opening a native port', async () => {
       state.permission = false;
       assert.equal((await scanFile(join(temp, 'video.mp4'))).status, 'unavailable');
@@ -586,7 +839,7 @@ test('local antivirus and background safety decisions', async t => {
     });
     await t.test('website senders cannot connect, scan arbitrary paths or decide security outcomes', async () => {
       const item = await seed('review');
-      for (const type of ['security-connect', 'antivirus-status', 'security-rescan', 'security-delete', 'security-keep', 'review-chrome', 'rescan']) {
+      for (const type of ['security-connect', 'antivirus-status', 'antivirus-settings', 'set-antivirus-enabled', 'security-rescan', 'security-delete', 'security-keep', 'review-chrome', 'rescan']) {
         await assert.rejects(command(type, { id: item.id, token: item.security!.token, confirmed: true, path: '/private/file' }, content), /확장 화면/);
       }
       assert.equal(state.permissionRequests, 0); assert.equal(state.connections.length, 0);

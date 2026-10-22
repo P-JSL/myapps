@@ -31,10 +31,10 @@
       "result": true,
       "repetitions": 15,
       "iterationsPerSample": 20,
-      "medianMs": 0.32998024999999986,
-      "minMs": 0.3215125499999999,
-      "maxMs": 0.5258619499999995,
-      "peakProcessRssKiB": 64480
+      "medianMs": 0.34377064999999973,
+      "minMs": 0.33973060000000005,
+      "maxMs": 0.3504366499999989,
+      "peakProcessRssKiB": 64844
     },
     {
       "mode": "optimized",
@@ -42,10 +42,10 @@
       "result": true,
       "repetitions": 15,
       "iterationsPerSample": 20,
-      "medianMs": 0.3443427999999997,
-      "minMs": 0.33334430000000026,
-      "maxMs": 0.37741339999999896,
-      "peakProcessRssKiB": 64068
+      "medianMs": 0.3329899999999995,
+      "minMs": 0.3294461499999997,
+      "maxMs": 0.38491285000000064,
+      "peakProcessRssKiB": 63532
     },
     {
       "mode": "baseline",
@@ -53,10 +53,10 @@
       "result": false,
       "repetitions": 7,
       "iterationsPerSample": 1,
-      "medianMs": 28.49860000000001,
-      "minMs": 28.001153000000045,
-      "maxMs": 43.89580599999999,
-      "peakProcessRssKiB": 189776
+      "medianMs": 29.42224299999998,
+      "minMs": 28.127460999999983,
+      "maxMs": 49.12375499999999,
+      "peakProcessRssKiB": 190232
     },
     {
       "mode": "optimized",
@@ -64,10 +64,10 @@
       "result": false,
       "repetitions": 7,
       "iterationsPerSample": 1,
-      "medianMs": 12.311398999999994,
-      "minMs": 11.876528000000008,
-      "maxMs": 21.10962099999999,
-      "peakProcessRssKiB": 82988
+      "medianMs": 12.466710000000006,
+      "minMs": 11.924657000000025,
+      "maxMs": 25.07392200000001,
+      "peakProcessRssKiB": 82784
     }
   ],
   "nativeExperiment": {
@@ -83,16 +83,16 @@
     "snapshotWriteBytesPerRun": 67108864,
     "metrics": {
       "baseline-read": {
-        "medianMs": 107.4180889991112,
-        "minMs": 106.6970570027479,
-        "maxMs": 108.6751130023913,
+        "medianMs": 107.57487699447665,
+        "minMs": 107.14525000366848,
+        "maxMs": 109.37491500226315,
         "repetitions": 7,
         "peakPythonBytes": 2107210
       },
       "unapplied-readinto": {
-        "medianMs": 107.84981600227184,
-        "minMs": 107.3439479987428,
-        "maxMs": 109.95760599689675,
+        "medianMs": 107.92491699976381,
+        "minMs": 107.7004529943224,
+        "maxMs": 108.48153100232594,
         "repetitions": 7,
         "peakPythonBytes": 1321726
       }

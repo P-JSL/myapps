@@ -162,6 +162,7 @@ export const capabilities = freeze([
   "builtin-static-risk-screening",
   "predecode-risk-check",
   "hash-bound-risk-evidence",
-  "sticky-risk-review"
+  "sticky-risk-review",
+  "antivirus-integration-toggle"
 ]);
 export const algorithmSuites = freeze([['state','tests/bench-state.mjs'],['media','tests/bench-media.mjs'],['transfer','tests/bench-transfer.mjs'],['ui','tests/bench-ui.mjs'],['security','scripts/benchmark-security.mjs']]);

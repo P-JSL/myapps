@@ -1,9 +1,9 @@
 {
   "version": 1,
   "status": "passed",
-  "checkedAtUtc": "2026-10-22T04:06:59.994Z",
+  "checkedAtUtc": "2026-10-22T23:20:11.298Z",
   "registry": "https://registry.npmjs.org",
-  "packageLockSha256": "6a26bea76d1dac6abadfd204aa0715ad504fde600657760e543724dab9af4eef",
+  "packageLockSha256": "02db8f9f42b41afb897862102aa0f88cd519657e90683bcecab357eaea87d1b9",
   "audit": {
     "auditReportVersion": 2,
     "vulnerabilities": {},

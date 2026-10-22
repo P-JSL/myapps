@@ -14,12 +14,62 @@ const deferredReviews = new Set<string>();
 const securityDialog = node<HTMLDialogElement>('security-dialog');
 let activeReview: HistoryItem | undefined;
 let reviewBusy = false;
+let antivirusEnabled: boolean | undefined;
+let antivirusSettingsBusy = false;
+let antivirusConnecting = false;
+let antivirusSettingsEpoch = 0;
+let antivirusSettingsPending: Promise<void> | undefined;
 async function request(type: string, data: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
   const result: unknown = await chrome.runtime.sendMessage({ scope: SCOPE, type, ...data });
   if (!record(result) || result.ok !== true) throw new Error(record(result) && typeof result.error === 'string' ? result.error : '확장 프로그램을 다시 로드하고 페이지를 새로고침하세요.');
   return result;
 }
 function error(value: unknown) { hasError = true; status.textContent = value instanceof Error ? value.message : '요청 중 오류가 발생했습니다.'; }
+function antivirusControls() {
+  const toggle = node<HTMLInputElement>('antivirus-enabled');
+  if (!antivirusSettingsBusy) toggle.checked = antivirusEnabled ?? true;
+  toggle.disabled = antivirusSettingsBusy || antivirusEnabled === undefined;
+  toggle.setAttribute('aria-checked', String(toggle.checked));
+  node('antivirus-toggle-state').textContent = antivirusSettingsBusy ? '저장 중…' : antivirusEnabled === undefined ? '확인 필요' : antivirusEnabled ? 'ON' : 'OFF';
+  node('antivirus-setting').setAttribute('aria-busy', String(antivirusSettingsBusy));
+  node<HTMLButtonElement>('security-connect').disabled = antivirusEnabled !== true || antivirusSettingsBusy || antivirusConnecting;
+  node<HTMLButtonElement>('security-rescan').disabled = reviewBusy || antivirusEnabled !== true || antivirusSettingsBusy;
+}
+function applyAntivirusSetting(enabled: boolean) {
+  const changed = antivirusEnabled !== enabled;
+  antivirusEnabled = enabled;
+  if (changed) {
+    antivirusSettingsEpoch++;
+    node('security-connection-status').textContent = enabled
+      ? '백신 연동 ON · 도우미 설치 후 백신 연결을 눌러 검사기의 준비 상태를 확인하세요.'
+      : '백신 연동 OFF · 앱에서 백신 도우미를 호출하지 않습니다. 브라우저 내부 위험 검사와 Chrome 기본 보호는 계속 적용됩니다.';
+  }
+  antivirusControls();
+}
+function refreshAntivirusSettings(): Promise<void> {
+  if (antivirusSettingsBusy) return Promise.resolve();
+  if (antivirusSettingsPending) return antivirusSettingsPending;
+  const epoch = antivirusSettingsEpoch;
+  antivirusSettingsPending = (async () => {
+    try {
+      const result = await request('antivirus-settings');
+      if (typeof result.enabled !== 'boolean') throw new Error('백신 연동 설정 응답을 확인할 수 없습니다.');
+      if (epoch !== antivirusSettingsEpoch || antivirusSettingsBusy) return;
+      applyAntivirusSetting(result.enabled);
+      node('antivirus-settings-status').textContent = chrome.extension.inIncognitoContext
+        ? '시크릿 창의 선택은 메모리에서만 유지하며 일반 창의 설정을 읽거나 변경하지 않습니다.'
+        : '백신 연동 선택은 이 브라우저에 저장되며 다음에도 적용됩니다.';
+      node('antivirus-settings-retry').hidden = true;
+    } catch (value) {
+      if (epoch !== antivirusSettingsEpoch || antivirusSettingsBusy) return;
+      antivirusEnabled = undefined;
+      node('antivirus-settings-status').textContent = `백신 연동 설정을 확인하지 못했습니다. 설정을 다시 불러온 뒤 변경하거나 연결하세요.${value instanceof Error ? ` ${value.message}` : ''}`;
+      node('antivirus-settings-retry').hidden = false;
+      antivirusControls();
+    }
+  })().finally(() => { antivirusSettingsPending = undefined; });
+  return antivirusSettingsPending;
+}
 async function refreshDatabaseStatus() {
   const hint = node('database-status');
   if (chrome.extension.inIncognitoContext) {
@@ -127,7 +177,7 @@ function closeReview(defer = false) {
 function reviewControls() {
   const chromeWarning = activeReview?.security?.status === 'chrome-warning';
   node<HTMLButtonElement>('security-delete').disabled = reviewBusy;
-  node<HTMLButtonElement>('security-rescan').disabled = reviewBusy;
+  node<HTMLButtonElement>('security-rescan').disabled = reviewBusy || antivirusEnabled !== true || antivirusSettingsBusy;
   node<HTMLButtonElement>('security-chrome').disabled = reviewBusy;
   node<HTMLInputElement>('security-acknowledge').disabled = reviewBusy;
   node<HTMLButtonElement>('security-keep').disabled = reviewBusy || chromeWarning || !node<HTMLInputElement>('security-acknowledge').checked;
@@ -229,6 +279,7 @@ function historyRow(item: HistoryItem) {
 async function refresh() {
   if (refreshing) return; refreshing = true;
   try {
+    void refreshAntivirusSettings();
     const result = await request('list');
     const media = Array.isArray(result.items) ? result.items.filter((item): item is MediaItem => record(item) && typeof item.id === 'string' && typeof item.url === 'string' && typeof item.title === 'string' && ['file', 'hls', 'dash'].includes(String(item.kind))) : [];
     const history = Array.isArray(result.history) ? result.history.filter(isHistory) : [];
@@ -266,8 +317,12 @@ node('security-later').addEventListener('click', () => { if (!reviewBusy) closeR
 securityDialog.addEventListener('cancel', event => { event.preventDefault(); if (!reviewBusy) closeReview(true); });
 node('extension-id').textContent = chrome.runtime.id || '설치한 확장 프로그램의 ID를 chrome://extensions에서 확인하세요.';
 function showAntivirusStatus(value: unknown) {
-  if (!record(value) || !['ready', 'unavailable', 'error'].includes(String(value.status))
+  if (!record(value) || !['ready', 'unavailable', 'error', 'disabled'].includes(String(value.status))
     || (value.internalAvailable !== undefined && typeof value.internalAvailable !== 'boolean')) throw new Error('백신 도우미의 준비 상태를 확인할 수 없습니다. 최신 도우미 설치 상태를 확인하세요.');
+  if (value.status === 'disabled') {
+    applyAntivirusSetting(false);
+    return;
+  }
   const parts = [value.status === 'ready' ? '도우미 연결됨 · 검사기 선택 확인'
     : value.internalAvailable === true ? '도우미 연결됨 · 내부 위험 검사 사용 가능'
     : value.status === 'unavailable' ? '백신 연결을 사용할 수 없습니다' : '백신 연결 확인에 실패했습니다'];
@@ -284,21 +339,53 @@ function showAntivirusStatus(value: unknown) {
   node('security-connection-status').textContent = parts.join(' · ');
 }
 node('security-connect').addEventListener('click', () => {
-  const connect = node<HTMLButtonElement>('security-connect');
+  if (antivirusEnabled !== true || antivirusSettingsBusy || antivirusConnecting) return;
+  const epoch = antivirusSettingsEpoch;
   const connection = node('security-connection-status');
-  connect.disabled = true; connection.textContent = '로컬 백신 연결 권한을 확인하고 있습니다…';
-  // Keep the permission request in the click handler's user gesture.
-  let permission: Promise<boolean>;
-  try { permission = chrome.permissions.request({ permissions: ['nativeMessaging'] }); }
-  catch { permission = Promise.reject(new Error('이 브라우저에서는 로컬 백신 연결 권한을 요청할 수 없습니다.')); }
-  void permission.then(async granted => {
+  antivirusConnecting = true; antivirusControls(); connection.textContent = '현재 백신 연동 설정을 확인하고 있습니다…';
+  // Other windows can turn integration off before this window's next poll.
+  // Check the authoritative setting before requesting an optional permission.
+  void request('antivirus-settings').then(async settings => {
+    if (typeof settings.enabled !== 'boolean') throw new Error('현재 백신 연동 설정을 확인할 수 없습니다.');
+    if (epoch !== antivirusSettingsEpoch || antivirusEnabled !== true || antivirusSettingsBusy) return;
+    applyAntivirusSetting(settings.enabled);
+    if (!settings.enabled) return;
+    if (!navigator.userActivation.isActive) {
+      connection.textContent = '백신 연동 ON을 확인했습니다. 연결 권한을 요청하려면 백신 연결을 다시 눌러 주세요.';
+      return;
+    }
+    connection.textContent = '로컬 백신 연결 권한을 확인하고 있습니다…';
+    const granted = await chrome.permissions.request({ permissions: ['nativeMessaging'] });
+    if (epoch !== antivirusSettingsEpoch || antivirusEnabled !== true || antivirusSettingsBusy) return;
     if (!granted) { connection.textContent = '연결 권한을 허용하지 않았습니다. 검사되지 않은 파일은 기록에서 확인하세요.'; return; }
     connection.textContent = '설치된 백신 도우미와 검사기의 준비 상태를 확인하고 있습니다…';
     const result = await request('security-connect');
+    if (epoch !== antivirusSettingsEpoch || antivirusEnabled !== true || antivirusSettingsBusy) return;
     showAntivirusStatus(result.antivirus);
     await refresh();
-  }).catch(value => { connection.textContent = value instanceof Error ? value.message : '로컬 백신 연결에 실패했습니다.'; }).finally(() => { connect.disabled = false; });
+  }).catch(value => { if (epoch === antivirusSettingsEpoch) connection.textContent = value instanceof Error ? value.message : '로컬 백신 연결에 실패했습니다.'; }).finally(() => { antivirusConnecting = false; antivirusControls(); });
 });
+node('antivirus-enabled').addEventListener('change', () => {
+  if (antivirusSettingsBusy || antivirusEnabled === undefined) { antivirusControls(); return; }
+  const enabled = node<HTMLInputElement>('antivirus-enabled').checked;
+  antivirusSettingsEpoch++;
+  antivirusSettingsBusy = true;
+  antivirusControls();
+  node('antivirus-settings-status').textContent = '백신 연동 설정을 저장하고 있습니다…';
+  void request('set-antivirus-enabled', { enabled }).then(result => {
+    if (typeof result.enabled !== 'boolean') throw new Error('저장한 백신 연동 설정을 확인할 수 없습니다.');
+    applyAntivirusSetting(result.enabled);
+    node('antivirus-settings-status').textContent = chrome.extension.inIncognitoContext
+      ? `백신 연동 ${result.enabled ? 'ON' : 'OFF'} · 시크릿 창 메모리에만 적용했습니다.`
+      : `백신 연동 ${result.enabled ? 'ON' : 'OFF'} 설정을 저장했습니다.`;
+    node('antivirus-settings-retry').hidden = true;
+  }).catch(value => {
+    antivirusEnabled = undefined;
+    node('antivirus-settings-status').textContent = `백신 연동 설정의 저장 여부를 확인하지 못했습니다. 다시 불러와 실제 설정을 확인하세요.${value instanceof Error ? ` ${value.message}` : ''}`;
+    node('antivirus-settings-retry').hidden = false;
+  }).finally(() => { antivirusSettingsBusy = false; antivirusControls(); });
+});
+node('antivirus-settings-retry').addEventListener('click', () => { void refreshAntivirusSettings(); });
 node('url-form').addEventListener('submit', event => {
   event.preventDefault();
   const url = node<HTMLInputElement>('url').value;

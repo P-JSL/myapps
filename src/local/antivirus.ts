@@ -2,18 +2,20 @@ import { boundedData, record } from '../security/validation.ts';
 import type { InternalScanResult, InternalFinding } from '../security/internal-scan.ts';
 
 export const ANTIVIRUS_HOST = 'com.myvideoapp.antivirus';
-export type ScanStatus = 'clean' | 'infected' | 'unavailable' | 'error';
+export type ScanStatus = 'clean' | 'infected' | 'unavailable' | 'error' | 'disabled';
 export interface ScanResult {
   status: ScanStatus; engine?: string; threats?: string[]; message?: string;
   sha256?: string; size?: number; checkedAt?: number; internalScan?: InternalScanResult;
 }
 export interface AntivirusReadiness {
-  status: 'ready' | 'unavailable' | 'error'; engine?: string; message?: string;
+  status: 'ready' | 'unavailable' | 'error' | 'disabled'; engine?: string; message?: string;
   products?: string[]; internalAvailable?: boolean; checkedAt: number;
 }
 export interface FileSecurity extends Omit<ScanResult, 'status'> {
   status: ScanStatus | 'scanning' | 'chrome-warning'; token: string;
   danger?: string; decision?: 'keep' | 'delete';
+  /** Preserve an observed AV threat beneath Chrome's higher-priority warning. */
+  infectionObserved?: true;
 }
 /** Parse bounded app/native metadata; findings never contain raw file contents. */
 export function internalScanResponse(value: unknown, size?: number): InternalScanResult {
@@ -100,11 +102,13 @@ interface NativeProtocol<T> {
   action: 'status' | 'scan'; timeoutMs: number;
   response(value: unknown, requestId: string): T;
   failure(status: 'error' | 'unavailable', message: string): T;
+  disabled(): T;
   malformedMessage: string; disconnectedMessage: string; timeoutMessage: string;
 }
 const readinessProtocol: NativeProtocol<AntivirusReadiness> = {
   action: 'status', timeoutMs: 60_000, response: readinessResponse,
   failure: (status, message) => ({ status, checkedAt: Date.now(), message }),
+  disabled: () => ({ status: 'disabled', checkedAt: Date.now(), message: '앱의 로컬 백신 연동을 껐습니다. 내부 위험 검사와 Chrome 보호는 유지됩니다.' }),
   malformedMessage: '백신 도우미의 상태 응답이 올바르지 않습니다. 최신 도우미로 다시 설치하세요.',
   disconnectedMessage: '로컬 백신 도우미 연결이 종료됐습니다. 설치 상태를 확인하세요.',
   timeoutMessage: '백신 연결 상태 확인이 제한 시간을 초과했습니다.',
@@ -112,21 +116,34 @@ const readinessProtocol: NativeProtocol<AntivirusReadiness> = {
 const scanProtocol: NativeProtocol<ScanResult> = {
   action: 'scan', timeoutMs: 240_000, response: scanResponse,
   failure: (status, message) => ({ status, message }),
+  disabled: () => ({ status: 'disabled', checkedAt: Date.now(), message: '사용자 설정으로 로컬 백신 연동을 꺼서 외부 백신 검사를 하지 않았습니다.' }),
   malformedMessage: '백신 응답이 올바르지 않아 검사 완료로 처리하지 않았습니다.',
   disconnectedMessage: '로컬 백신 도우미가 연결을 종료했습니다. 설치 상태를 확인하세요.',
   timeoutMessage: '백신 검사가 제한 시간을 초과했습니다. 검사되지 않은 파일입니다.',
 };
-function nativeRequest<T>(protocol: NativeProtocol<T>, payload?: { path: string }): Promise<T> {
+let connectionGeneration = 0;
+const activeRequests = new Set<() => void>();
+/** Cancel app connections only; this never changes the OS antivirus protection. */
+export function cancelAntivirusRequests(): void {
+  connectionGeneration++;
+  readinessPending = undefined;
+  for (const cancel of [...activeRequests]) cancel();
+}
+function nativeRequest<T>(protocol: NativeProtocol<T>, generation: number, payload?: { path: string }): Promise<T> {
   return new Promise<T>(resolve => {
     let port: chrome.runtime.Port | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let settled = false;
     const finish = (result: T) => {
       if (settled) return; settled = true;
+      activeRequests.delete(cancel);
       if (timer) clearTimeout(timer);
       try { port?.disconnect(); } catch { /* Already disconnected. */ }
       resolve(result);
     };
+    const cancel = () => finish(protocol.disabled());
+    if (generation !== connectionGeneration) { cancel(); return; }
+    activeRequests.add(cancel);
     try {
       port = chrome.runtime.connectNative(ANTIVIRUS_HOST);
       const requestId = crypto.randomUUID();
@@ -146,17 +163,31 @@ function nativeRequest<T>(protocol: NativeProtocol<T>, payload?: { path: string 
   });
 }
 let readinessPending: Promise<AntivirusReadiness> | undefined;
-export function probeAntivirus(): Promise<AntivirusReadiness> {
-  if (readinessPending) return readinessPending;
-  readinessPending = (async () => {
-    if (!await chrome.permissions.contains({ permissions: ['nativeMessaging'] })) return { status: 'unavailable' as const, checkedAt: Date.now(), message: '로컬 백신 연결 권한이 없습니다. 백신 도우미 설치 후 ‘로컬 백신 연결’을 눌러 주세요.' };
-    return nativeRequest(readinessProtocol);
-  })().finally(() => { readinessPending = undefined; });
-  return readinessPending;
+type EnabledGate = () => Promise<boolean>;
+const alwaysEnabled: EnabledGate = async () => true;
+async function permitted(enabled: EnabledGate, generation: number): Promise<boolean> {
+  return generation === connectionGeneration && await enabled() && generation === connectionGeneration;
 }
-export async function scanFile(path: string): Promise<ScanResult> {
+export function probeAntivirus(enabled: EnabledGate = alwaysEnabled): Promise<AntivirusReadiness> {
+  if (readinessPending) return readinessPending;
+  const generation = connectionGeneration;
+  const pending = (async () => {
+    if (!await permitted(enabled, generation)) return readinessProtocol.disabled();
+    const permission = await chrome.permissions.contains({ permissions: ['nativeMessaging'] });
+    if (!await permitted(enabled, generation)) return readinessProtocol.disabled();
+    if (!permission) return { status: 'unavailable' as const, checkedAt: Date.now(), message: '로컬 백신 연결 권한이 없습니다. 백신 도우미 설치 후 ‘로컬 백신 연결’을 눌러 주세요.' };
+    return nativeRequest(readinessProtocol, generation);
+  })().finally(() => { if (readinessPending === pending) readinessPending = undefined; });
+  readinessPending = pending;
+  return pending;
+}
+export async function scanFile(path: string, enabled: EnabledGate = alwaysEnabled): Promise<ScanResult> {
+  const generation = connectionGeneration;
   return navigator.locks.request('my-video-app-antivirus', async () => {
-    if (!await chrome.permissions.contains({ permissions: ['nativeMessaging'] })) return { status: 'unavailable', message: '로컬 백신 연결 권한이 없습니다. 백신 도우미 설치 후 ‘로컬 백신 연결’을 눌러 주세요.' };
-    return nativeRequest(scanProtocol, { path });
+    if (!await permitted(enabled, generation)) return scanProtocol.disabled();
+    const permission = await chrome.permissions.contains({ permissions: ['nativeMessaging'] });
+    if (!await permitted(enabled, generation)) return scanProtocol.disabled();
+    if (!permission) return { status: 'unavailable', message: '로컬 백신 연결 권한이 없습니다. 백신 도우미 설치 후 ‘로컬 백신 연결’을 눌러 주세요.' };
+    return nativeRequest(scanProtocol, generation, { path });
   });
 }

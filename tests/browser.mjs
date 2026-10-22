@@ -215,8 +215,9 @@ await context.addInitScript(assetMap => {
     return originalPut.call(this, value, ...args);
   };
   const api = {
-    permissions: { contains: async () => window.__avPermission !== false, request: async () => { window.__avPermission = true; return true; } },
+    permissions: { contains: async () => window.__avPermission !== false, request: async () => { window.__avPermissionRequests = (window.__avPermissionRequests || 0) + 1; window.__avPermission = true; return true; } },
     runtime: { connectNative: () => {
+      window.__avConnections = (window.__avConnections || 0) + 1;
       const port = { onMessage: listeners(), onDisconnect: listeners(), disconnect() {}, postMessage: request => {
         window.__avRequests = [...(window.__avRequests || []), request];
         if (request.action === 'status') { queueMicrotask(() => port.onMessage.fire({ version: 1, requestId: request.requestId, status: window.__avHostMissing ? 'unavailable' : 'ready', engine: 'Test double; no actual AV', message: window.__avHostMissing ? (window.__internalHostAvailable ? '외부 백신을 사용할 수 없습니다.' : '백신 도우미가 설치되어 있지 않습니다.') : '도우미와 검사기 선택 확인. 파일 검사는 다운로드 후 수행합니다.', ...(window.__internalHostAvailable ? { internalAvailable: true } : {}) })); return; }
@@ -843,6 +844,74 @@ try {
   await checks('Clearing local history leaves downloaded files intact', async () => {
     await page.locator('#clear-history').click(); await page.waitForFunction(() => document.querySelectorAll('#history li').length === 0);
     assert.equal(createHash('sha256').update(await readFile(`${results}/local-direct.mp4`)).digest('hex'), originalHash);
+  });
+  await checks('Antivirus OFF persists across reload without native requests or permission prompts', async () => {
+    assert.equal(await page.locator('#antivirus-enabled').isChecked(), true);
+    await page.locator('#antivirus-enabled').uncheck();
+    await waitForAsync(async () => (await window.__appGet('my_video_app_antivirus_enabled_v1')).my_video_app_antivirus_enabled_v1 === false);
+    await page.reload();
+    await page.waitForFunction(() => !document.querySelector('#antivirus-enabled').disabled);
+    assert.equal(await page.locator('#antivirus-enabled').isChecked(), false);
+    assert.equal(await page.locator('#security-connect').isDisabled(), true);
+    assert.equal(await page.locator('#antivirus-toggle-state').innerText(), 'OFF');
+    const result = await page.evaluate(async () => {
+      document.querySelector('#security-connect').click();
+      const reply = await chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'antivirus-status' });
+      return { reply, native: window.__avConnections || 0, permission: window.__avPermissionRequests || 0 };
+    });
+    assert.equal(result.reply.antivirus.status, 'disabled');
+    assert.equal(result.native, 0); assert.equal(result.permission, 0);
+  });
+  await checks('Antivirus OFF saves exact video with distinct disabled status and no automatic processing', async () => {
+    const pending = page.waitForEvent('download');
+    const reply = await page.evaluate(url => chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'download-url', url }), `${origin}/fixtures/clip.mp4?antivirus=off`);
+    assert.equal(reply.ok, true);
+    const downloaded = await pending; await downloaded.saveAs(`${results}/antivirus-off.mp4`);
+    assert.equal(createHash('sha256').update(await readFile(`${results}/antivirus-off.mp4`)).digest('hex'), originalHash);
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'complete', reply.item.id);
+    const result = await page.evaluate(async id => {
+      const row = (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id);
+      const jobs = (await window.__appGet('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1 || [];
+      return { row, offered: jobs.some(job => job.downloadId === row.downloadId), native: window.__avConnections || 0 };
+    }, reply.item.id);
+    assert.equal(result.row.security.status, 'disabled'); assert.equal(result.row.internalScan.status, 'no-signals');
+    assert.equal(result.offered, false); assert.equal(result.native, 0);
+    assert.equal(await page.locator('#security-dialog').evaluate(dialog => dialog.open), false);
+  });
+  await checks('Antivirus OFF preserves real prepared-byte internal risk and requires explicit review', async () => {
+    const pending = page.waitForEvent('download');
+    const reply = await page.evaluate(url => chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'download-url', url }), `${origin}/fixtures/internal-risk.mp4?antivirus=off`);
+    assert.equal(reply.ok, true); assert.equal(await (await pending).failure(), null);
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'review', reply.item.id);
+    await page.waitForFunction(() => document.querySelector('#security-dialog').open);
+    const row = await page.evaluate(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id), reply.item.id);
+    assert.equal(row.security.status, 'disabled'); assert.equal(row.internalScan.status, 'suspicious');
+    assert.equal(await page.locator('#security-keep').isDisabled(), true);
+    assert.equal(await page.evaluate(() => window.__avConnections || 0), 0);
+    await page.screenshot({ path: `${results}/antivirus-toggle-off.png`, fullPage: true });
+    await page.locator('#security-delete').click();
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'discarded', reply.item.id);
+    await page.waitForFunction(() => !document.querySelector('#security-dialog').open);
+  });
+  await checks('Chrome warning remains authoritative while OFF and enabling restores native connection', async () => {
+    const fixture = await securityFixture('clean', 'content');
+    await page.waitForFunction(() => document.querySelector('#security-dialog').open);
+    assert.equal(await page.locator('#security-chrome').isVisible(), true);
+    assert.equal(await page.locator('#security-native-actions').isVisible(), false);
+    assert.equal(await page.evaluate(() => window.__avConnections || 0), 0);
+    await page.evaluate(id => { const item = window.__testDownloads.get(id); item.danger = 'accepted'; chrome.downloads.onChanged.fire({ id, danger: { current: 'accepted' } }); }, fixture.downloadId);
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'complete', fixture.id);
+    const row = await page.evaluate(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id), fixture.id);
+    assert.equal(row.security.status, 'disabled');
+    await page.waitForFunction(() => !document.querySelector('#security-dialog').open);
+    await page.locator('#antivirus-enabled').check();
+    await waitForAsync(async () => (await window.__appGet('my_video_app_antivirus_enabled_v1')).my_video_app_antivirus_enabled_v1 === true);
+    await page.locator('#security-connect').click();
+    await page.waitForFunction(() => !document.querySelector('#security-connect').disabled);
+    assert.equal(await page.locator('#antivirus-toggle-state').innerText(), 'ON');
+    assert.match(await page.locator('#security-connection-status').innerText(), /도우미 연결됨/);
+    assert.equal(await page.evaluate(() => window.__avPermissionRequests), 1);
+    assert.equal(await page.evaluate(() => window.__avConnections), 1);
   });
   await checks('Restart reconciliation releases interrupted preparation slots and cleans owned temp files using API doubles', async () => {
     const id = '12345678-1234-4123-8123-123456789abc';

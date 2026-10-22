@@ -98,6 +98,7 @@ export function filenameFor(media: Pick<MediaItem, 'url' | 'title' | 'mime' | 'k
   return `${base || 'media'}.${ext}`;
 }
 export function isHistory(value: unknown): value is HistoryItem {
+  if (record(value) && record(value.security) && value.security.infectionObserved !== undefined && value.security.infectionObserved !== true) return false;
   if (record(value) && (value.internalScan !== undefined || value.internalScanSha256 !== undefined || value.internalScanSize !== undefined)) {
     try {
       if (value.internalScan !== undefined) internalScanResponse(value.internalScan, typeof value.internalScanSize === 'number' ? value.internalScanSize : undefined);

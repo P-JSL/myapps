@@ -8,6 +8,7 @@ export const HISTORY_STATE_LABELS = Object.freeze({
 export const SECURITY_STATUS_LABELS = Object.freeze({
   scanning: '로컬 백신: 검사 중', clean: '로컬 백신: 위협 미탐지', infected: '로컬 백신: 위협 탐지',
   unavailable: '로컬 백신: 연결되지 않음', error: '로컬 백신: 검사 실패', 'chrome-warning': 'Chrome 다운로드 경고',
+  disabled: '로컬 백신: 연동 OFF · 검사하지 않음',
 } satisfies Record<FileSecurity['status'], string>);
 export const PREPARATION_STAGE_LABELS = Object.freeze({
   queued: '준비 대기 중', fetching: '파일 받는 중', processing: '미디어 합치는 중', saving: '저장 준비 중',

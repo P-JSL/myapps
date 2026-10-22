@@ -1,6 +1,6 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { ANTIVIRUS_HOST, probeAntivirus, scanFile } from '../src/local/antivirus.ts';
+import { ANTIVIRUS_HOST, cancelAntivirusRequests, probeAntivirus, scanFile } from '../src/local/antivirus.ts';
 
 interface NativeRequest { version: number; action: string; requestId: string; path?: string; }
 class FakeEvent<Args extends unknown[]> {
@@ -15,6 +15,15 @@ class FakePort {
   disconnects = 0;
   postMessage(request: NativeRequest) { this.requests.push(request); }
   disconnect() { this.disconnects++; this.onDisconnect.emit(); }
+}
+/** Wait for the observable native request without advancing its mocked deadline. */
+async function posted(ports: FakePort[], index = 0): Promise<FakePort> {
+  for (let turn = 0; turn < 32; turn++) {
+    const port = ports[index];
+    if (port?.requests.length) return port;
+    await Promise.resolve();
+  }
+  assert.fail('Native request was not posted after bounded microtask delivery');
 }
 function installNative(t: TestContext) {
   const originalChrome = Object.getOwnPropertyDescriptor(globalThis, 'chrome');
@@ -44,6 +53,7 @@ function installNative(t: TestContext) {
     },
   } });
   t.after(() => {
+    cancelAntivirusRequests();
     if (originalChrome) Object.defineProperty(globalThis, 'chrome', originalChrome); else Reflect.deleteProperty(globalThis, 'chrome');
     if (originalLocks) Object.defineProperty(navigator, 'locks', originalLocks); else Reflect.deleteProperty(navigator, 'locks');
   });
@@ -73,8 +83,7 @@ for (const protocol of protocols) {
     const pending = protocol.start();
     let resolved = false;
     void pending.then(() => { resolved = true; });
-    await Promise.resolve();
-    const port = ports[0]!; const request = port.requests[0]!;
+    const port = await posted(ports); const request = port.requests[0]!;
     assert.deepEqual(calls, protocol.action === 'scan' ? ['lock', 'permission', 'connect'] : ['permission', 'connect']);
     assert.deepEqual(request, { version: 1, action: protocol.action, requestId: request.requestId,
       ...(protocol.action === 'scan' ? { path: '/downloads/video.mp4' } : {}) });
@@ -95,8 +104,8 @@ for (const protocol of protocols) {
 
   test(`${protocol.action} rejects malformed replies once even when cleanup disconnects synchronously`, async t => {
     const { ports } = installNative(t);
-    const pending = protocol.start(); await Promise.resolve();
-    const port = ports[0]!; const request = port.requests[0]!;
+    const pending = protocol.start();
+    const port = await posted(ports); const request = port.requests[0]!;
     port.onMessage.emit({ ...protocol.response(request.requestId), requestId: 'another-request' });
     const result = await pending;
     assert.equal(result.status, 'error'); assert.equal(result.message, protocol.malformedMessage);
@@ -107,8 +116,8 @@ for (const protocol of protocols) {
 
   test(`${protocol.action} keeps a valid response when cleanup disconnects synchronously`, async t => {
     const { ports } = installNative(t);
-    const pending = protocol.start(); await Promise.resolve();
-    const port = ports[0]!; const request = port.requests[0]!;
+    const pending = protocol.start();
+    const port = await posted(ports); const request = port.requests[0]!;
     port.onMessage.emit(protocol.response(request.requestId));
     const result = await pending;
     assert.equal(result.status, protocol.action === 'status' ? 'ready' : 'clean');
@@ -119,8 +128,9 @@ for (const protocol of protocols) {
   test(`${protocol.action} reports disconnect details and limits native error text`, async t => {
     const { ports, runtime } = installNative(t);
     for (const message of [undefined, 'x'.repeat(400)]) {
-      const pending = protocol.start(); await Promise.resolve();
-      const port = ports.at(-1)!;
+      const index = ports.length;
+      const pending = protocol.start();
+      const port = await posted(ports, index);
       runtime.lastError = message === undefined ? undefined : { message };
       port.onDisconnect.emit(); runtime.lastError = undefined;
       const result = await pending;
@@ -155,12 +165,12 @@ test('readiness shares the pending promise and starts a new request after a time
   const { ports, calls } = installNative(t);
   const first = probeAntivirus();
   assert.equal(probeAntivirus(), first);
-  await Promise.resolve();
+  await posted(ports);
   assert.deepEqual(calls, ['permission', 'connect']);
   t.mock.timers.tick(60_000); await first;
   const next = probeAntivirus(); assert.notEqual(next, first);
   assert.equal(probeAntivirus(), next);
-  await Promise.resolve();
+  await posted(ports, 1);
   assert.equal(ports.length, 2);
   const port = ports[1]!;
   port.onMessage.emit({ version: 1, requestId: port.requests[0]!.requestId, status: 'ready', engine: 'Test scanner' });

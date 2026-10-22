@@ -1,34 +1,34 @@
 {
-  "release": "1.12.0",
-  "buildSha256": "8db3950c25255ae454763b23b90977a7053ff5ad9e3a5aecfbe29bec6af27fe9",
-  "recordedAtUtc": "2026-10-22T04:15:17.612365Z",
-  "unitTests": 228,
+  "release": "1.12.1",
+  "buildSha256": "9363fb3c3cbcf5b26fceb510efd7fd3a1fdc2340b7caf841611436eef927ac62",
+  "recordedAtUtc": "2026-10-22T23:25:33.828274Z",
+  "unitTests": 257,
   "nativeTests": 69,
-  "browserScenarios": 80,
+  "browserScenarios": 84,
   "embeddedDatabaseSubchecks": 19,
   "popupCollectorSubchecks": 6,
   "http3Checks": 4,
   "algorithmSuites": 5,
   "realClamAvChecks": 6,
-  "unitAndBrowserLogSha256": "18a38d36989457b7e5b569baaeb1861301667dc7fb8dd233475de690e4ddb387",
-  "http3LogSha256": "8c59d7df6e5f8bcf7cec66da9274d3e8374a5169783b12149077dcf817787221",
-  "benchmarkLogSha256": "62d9287979157febb5a293b5eefc150476029e91d969228b9e579b3690c9d272",
+  "unitAndBrowserLogSha256": "b0543a9392e179c9dad476af7343bcbae11e231a67ab06812309bd6c34d022c6",
+  "http3LogSha256": "7e13f087bde1b14b544e14904515ac952b4b97eed9409700e818ba9118fb52c1",
+  "benchmarkLogSha256": "23e22af8cba11564073268123d0a204660a4941f80388855ba8436cf24e4e9fc",
   "independentReview": {
-    "agent": "/root/internal_final_review",
+    "agent": "/root/toggle_final_review",
     "status": "approved",
-    "scope": "Browser/native scanners, structured analysis limits, strict hash/size/metadata binding, sticky risk/review and rescan paths, honest independent AV status, current dist/source/browser/native/ClamAV identities. Separate release_artifact_review approved presentation-only benchmark adaptation without weakening assertions."
+    "scope": "Default-on persistent/isolated settings, trusted messages and strict boolean, disabled native boundary, queued/active transport cancellation, final-await generation races, bound AV/internal positive retention beneath Chrome, permission activation/UI errors, unchanged protection limits; lifecycle fixture waits observable posted request without weakening deadline/reentrancy checks. Current source/dist/browser/native identities independently recomputed."
   },
   "sourceArchitecture": {
     "status": "passed",
-    "moduleCount": 32,
+    "moduleCount": 33,
     "entryCount": 8,
-    "sourceFiles": 106,
-    "reportSha256": "d240e7418c2ae9497f85c737d53c9d9bd90338b66490a94402152231eda8bed5"
+    "sourceFiles": 109,
+    "reportSha256": "dfdacb1705f9eb4a9ca7ffdcffce42b3a4884f0a41a89193b98f686238357ccd"
   },
   "securityReview": {
     "report": "reports/SECURITY_REVIEW_2026-10-21.ko.md",
     "reportSha256": "cf9f6576e57014aef08a76af7487014007e47daf187f92ee6ce136ae7af9a221",
-    "dependencyAuditSha256": "2033692b9e9323e00aa3f733af57dd666bc2c9dd888849986a788b31eea8c833",
+    "dependencyAuditSha256": "a260990e5435543b917bdd0e91e4a682d98380e32df1cc72ea66f0ca391024b0",
     "npmKnownAdvisories": 0,
     "npmAuditScope": "npm dependency advisories only; bundled native/Wasm components and browser/OS vulnerabilities require separate review",
     "engineVersion": "FFmpeg 5.1.4",
@@ -52,9 +52,9 @@
       "format": "my-video-engine-v1",
       "algorithm": "AES-256-GCM",
       "compression": "gzip",
-      "cipherPath": "assets/2dc8c7edd71a5e6094a7e40ea5d0c478.bin",
-      "coreModulePath": "assets/3eb7e14be70bca84760ce184e4a39dcb.js",
-      "iv": "8fSta/+OcCzH8+yB",
+      "cipherPath": "assets/b728b6da3396eb7bc78f89236a44fad5.bin",
+      "coreModulePath": "assets/951550e1bc15f636881254f9565ca33d.js",
+      "iv": "CkJhBYts6zDfIFh7",
       "tagBits": 128,
       "plaintextBytes": 32232419,
       "compressedBytes": 10257774,
@@ -66,15 +66,15 @@
     "runtimeAssets": 20,
     "legacyRuntimeRequests": [],
     "comparison": {
-      "baselineCommit": "84821f1658e588105ac5ca7ce94b2b8df2437000",
-      "beforeAppJavaScriptBytes": 184883,
-      "afterAppJavaScriptBytes": 237889,
-      "beforeDistBytes": 10634965,
-      "afterDistBytes": 10695897,
-      "scope": "Application JS excludes vendor engine/loader. Built-in risk scanning, evidence validation and presentation increase bytes; no runtime speed or overall ZIP reduction claim."
+      "baselineCommit": "6a9121f276dde2f196cb366a7042c22f08fcfa0e",
+      "beforeAppJavaScriptBytes": 237889,
+      "afterAppJavaScriptBytes": 246677,
+      "beforeDistBytes": 10695897,
+      "afterDistBytes": 10709340,
+      "scope": "Application JS excludes vendor engine/loader. Preference controls, cancellation/evidence guards and documentation increase bytes; no runtime speed or overall ZIP reduction claim."
     }
   },
-  "antivirusEvidence": "Fresh native69 and real ClamAV1.4.6 integration6 rerun for modified host and internal scanner; both module hashes recorded. Private test-only local signatures; official database freshness/coverage and Windows APIs not validated.",
+  "antivirusEvidence": "Native69 rerun for1.12.1. Python production sources unchanged from1.12.0; matching-module-hash realClamAV1.4.6 integration6 evidence retained, not newly rerun. Private test-only signatures; official database freshness/coverage and actual Windows APIs not validated.",
   "userTxtSample": {
     "sha256": "704a5e15ae1068e4df52a8bcff04270efdad595cf685e0eccff86ab335471a46",
     "actualMime": "audio/mp4",
@@ -94,12 +94,15 @@
     "Native fallback signature probe and actual download are separate requests; large ID3 may be rejected",
     "Static no-signals does not mean safe or replace Defender/other AV/Chrome protection; unknown malware and crafted media may be missed",
     "Browser scan bounded to 256MiB, native to 2GiB minus 1; bounded structural analysis reports incomplete on scope limits; marker spanning distinct HLS chunks is not guaranteed detected",
-    "Browser cannot inspect arbitrary files written by Chrome downloads; updated native helper required for direct-disk full-file internal evidence; risk review can occur after the file is already saved"
+    "Browser cannot inspect arbitrary files written by Chrome downloads; updated native helper required for direct-disk full-file internal evidence; risk review can occur after the file is already saved",
+    "AV integration OFF disconnects app helper ports, not OS real-time protection or already-started OS scans; helper-dependent actual-disk internal scan unavailable while OFF",
+    "Incognito AV preference lives only in the current isolated worker execution memory; a new execution defaults ON",
+    "Actual extension optional-permission user gesture integration is unverified under administrator installation block; real Chromium UI tests verify active/expired activation behavior with Chrome API doubles"
   ],
   "builtinRiskScreening": {
     "engine": "builtin-static-v1",
     "report": "reports/INTERNAL_SCAN.ko.md",
-    "reportSha256": "c615c9b078b6035a096f772703727714f15ce2fc699d65c82c294c3bc4cc6802",
+    "reportSha256": "8b4f9268ceaddc3962c98078b8823471398236d39e17a54ef83c10304b2d1499",
     "browserScannerSha256": "525e925be98cbd1ad4a921fad1e7d9a529ec0cb729ce5ff30604f827e57ee288",
     "nativeScannerSha256": "7ea25bb21ff73c0055beba1d85f351389d737f02587189c91f84129754c7d6f7",
     "scope": "Offline bounded static risk signals; never a complete malware verdict. Predecode checks, prepared/final-byte scan, native private snapshot scan, separate external AV status, SHA-256/size-bound evidence and sticky risk review. No file execution/unpacking/upload. Direct disk scans require updated helper.",
@@ -109,5 +112,32 @@
     "maxFindings": 16,
     "releaseGuard": "Build and packaging reject a contiguous standard harmless antivirus test marker in distributable sources/resources/reports; tests construct it only at runtime. Test media/signatures/databases excluded from ZIPs.",
     "benchmarkScope": "Five existing algorithm domains rerun against current source. UI baseline receives presentation-only in-memory adaptation with original/adapted hashes, full text equality and focus/token/pending checks retained. Not a whole-scanner throughput benchmark."
+  },
+  "verificationLogs": {
+    "unitAndBrowser": "test-results/antivirus-toggle-verify.log",
+    "http3": "test-results/antivirus-toggle-http3.log",
+    "benchmark": "test-results/antivirus-toggle-benchmarks.log"
+  },
+  "antivirusIntegration": {
+    "preferenceKey": "my_video_app_antivirus_enabled_v1",
+    "defaultEnabled": true,
+    "normalPersistence": "Validated boolean in existing IndexedDB settings store; schema1 unchanged",
+    "incognitoPersistence": "Isolated execution memory only; never reads or writes normal-window AV setting",
+    "disabledStatus": "local-only disabled; native parsers reject forged disabled",
+    "disabledBehavior": "No new native readiness/scan requests; queued and pre-permission requests recheck policy; active ports disconnected and late replies ignored. Benign new downloads complete distinctly unscanned; no automatic processing. Browser byte/predecode checks, OS AV and Chrome protection remain. Helper-dependent actual disk internal scans do not run.",
+    "riskRetention": "Known AV threats, native-only hash/size-bound internal suspicious findings and prepared-byte risk survive Chrome priority, OFF and browser acceptance; explicit rescan while OFF cannot clear prior evidence.",
+    "raceProtection": "Connection and preference generations reject stale active/queued callbacks and stale final preference GET across OFF or OFF-to-ON; finalizing offer generations revoked on committed OFF.",
+    "permissionControl": "Fresh authoritative setting checked before optional permission prompt, with active user activation; expired click requests an explicit new click. Unknown/read/save failure disables uncertain controls and offers reread.",
+    "uiSubchecksIncludedInUnitTests": 8,
+    "report": "reports/SECURITY_DOWNLOADS.ko.md",
+    "reportSha256": "f0f146c4612ea0d7fb5719c302d65dbbbd325aebf48338c6b7504eeafcccacd1"
+  },
+  "readmeChangelog": {
+    "path": "README.md",
+    "versions": 15,
+    "first": "1.0.0",
+    "latest": "1.12.1",
+    "sha256": "4afb3368bb173e5c46c9a09f0343bde354fa60d9a0737bef5036e2315fe144ed",
+    "format": "Newest-first GFM table with version, changes and related document columns; historical project versions distinct from original extension10.6.1.2"
   }
 }
