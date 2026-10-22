@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { browserEntries, staticFiles, directoryCopies, capabilities } from './project.mjs';
 import { files, hash, treeIdentity } from './lib/artifacts.mjs';
 import { protectBuild } from './lib/protect-build.mjs';
+import { assertNoTestMarker } from './lib/release-safety.mjs';
 
 process.chdir(fileURLToPath(new URL('../', import.meta.url)));
 await rm('dist', { recursive: true, force: true });
@@ -25,6 +26,7 @@ const pkg = JSON.parse(await readFile('package.json', 'utf8'));
 const { assetMap, protection } = await protectBuild('dist', { version: pkg.version, formats: Object.fromEntries(browserEntries.map(entry => [entry.output, entry.format])) });
 for (const entry of entries) { entry.logicalOutput = entry.output; entry.output = assetMap[entry.output]; entry.bytes = (await stat(`dist/${entry.output}`)).size; }
 const names = await files('dist');
+for (const name of names) assertNoTestMarker(await readFile(`dist/${name}`), name);
 const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
 assert.equal(manifest.name, 'My Video App');
 assert.equal(manifest.version, pkg.version, 'Package and extension releases must match');

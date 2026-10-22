@@ -86,7 +86,7 @@ def main() -> int:
             print("Selected registration removed; companion files retained for another registered browser.")
             return 0
         # Only remove fixed filenames we install; never recursively remove user data.
-        for name in ("antivirus_host.py", "windows_antivirus.py", "config.json", "launch.sh", "launch.cmd"):
+        for name in ("antivirus_host.py", "windows_antivirus.py", "internal_scan.py", "config.json", "launch.sh", "launch.cmd"):
             target = base / name
             if target.is_symlink():
                 raise ValueError(f"Refusing to remove symbolic link: {target}")
@@ -115,6 +115,7 @@ def main() -> int:
     source = Path(__file__).with_name("antivirus_host.py")
     write_private(base / "antivirus_host.py", source.read_text(encoding="utf-8"))
     write_private(base / "windows_antivirus.py", source.with_name("windows_antivirus.py").read_text(encoding="utf-8"))
+    write_private(base / "internal_scan.py", source.with_name("internal_scan.py").read_text(encoding="utf-8"))
     write_private(base / "config.json", json.dumps(config, ensure_ascii=True, indent=2) + "\n")
     python = str(Path(sys.executable).absolute())
     host = str(base / "antivirus_host.py")

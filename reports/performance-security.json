@@ -31,10 +31,10 @@
       "result": true,
       "repetitions": 15,
       "iterationsPerSample": 20,
-      "medianMs": 0.3324451499999995,
-      "minMs": 0.32741724999999916,
-      "maxMs": 0.35171325000000025,
-      "peakProcessRssKiB": 64592
+      "medianMs": 0.32998024999999986,
+      "minMs": 0.3215125499999999,
+      "maxMs": 0.5258619499999995,
+      "peakProcessRssKiB": 64480
     },
     {
       "mode": "optimized",
@@ -42,10 +42,10 @@
       "result": true,
       "repetitions": 15,
       "iterationsPerSample": 20,
-      "medianMs": 0.34505840000000065,
-      "minMs": 0.33819170000000015,
-      "maxMs": 0.35790889999999964,
-      "peakProcessRssKiB": 64040
+      "medianMs": 0.3443427999999997,
+      "minMs": 0.33334430000000026,
+      "maxMs": 0.37741339999999896,
+      "peakProcessRssKiB": 64068
     },
     {
       "mode": "baseline",
@@ -53,10 +53,10 @@
       "result": false,
       "repetitions": 7,
       "iterationsPerSample": 1,
-      "medianMs": 28.460267999999985,
-      "minMs": 28.143868999999995,
-      "maxMs": 33.89031499999999,
-      "peakProcessRssKiB": 189048
+      "medianMs": 28.49860000000001,
+      "minMs": 28.001153000000045,
+      "maxMs": 43.89580599999999,
+      "peakProcessRssKiB": 189776
     },
     {
       "mode": "optimized",
@@ -64,10 +64,10 @@
       "result": false,
       "repetitions": 7,
       "iterationsPerSample": 1,
-      "medianMs": 12.259818999999993,
-      "minMs": 11.840115999999995,
-      "maxMs": 20.707458000000017,
-      "peakProcessRssKiB": 82676
+      "medianMs": 12.311398999999994,
+      "minMs": 11.876528000000008,
+      "maxMs": 21.10962099999999,
+      "peakProcessRssKiB": 82988
     }
   ],
   "nativeExperiment": {
@@ -83,22 +83,22 @@
     "snapshotWriteBytesPerRun": 67108864,
     "metrics": {
       "baseline-read": {
-        "medianMs": 108.85154900097405,
-        "minMs": 108.45427100139204,
-        "maxMs": 109.3784360018617,
+        "medianMs": 107.4180889991112,
+        "minMs": 106.6970570027479,
+        "maxMs": 108.6751130023913,
         "repetitions": 7,
         "peakPythonBytes": 2107210
       },
       "unapplied-readinto": {
-        "medianMs": 110.24211999756517,
-        "minMs": 108.85626699746354,
-        "maxMs": 111.1026220023632,
+        "medianMs": 107.84981600227184,
+        "minMs": 107.3439479987428,
+        "maxMs": 109.95760599689675,
         "repetitions": 7,
         "peakPythonBytes": 1321726
       }
     },
     "sourceSha256": {
-      "native/antivirus_host.py": "0dd9eb96d3afd10127a90d2e25c96acaa0057e3ef9c57db5c035c7677d258d7b",
+      "native/antivirus_host.py": "5c555bf12109fdf7fef83de4d1be95613777cc1b5cc95f1700961894ccd6c17c",
       "native/windows_antivirus.py": "d31d257a74e3f4f676f82ad7f5b2f0d4a04172d72af52fe8cb40999b83c30c88"
     },
     "experimentSha256": "ba56240c3e092a3b891daa1045f059a55d5c0eafda4719d4fdbfdd0e64707171"

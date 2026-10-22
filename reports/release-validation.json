@@ -1,40 +1,41 @@
 {
-  "release": "1.11.0",
-  "buildSha256": "a663d628c1dcc2aaf63742efd54e5fd78af2094d00f9d45775f981c1aab91bcc",
-  "recordedAtUtc": "2026-10-21T13:50:46.322Z",
-  "unitTests": 194,
-  "nativeTests": 50,
-  "browserScenarios": 77,
+  "release": "1.12.0",
+  "buildSha256": "8db3950c25255ae454763b23b90977a7053ff5ad9e3a5aecfbe29bec6af27fe9",
+  "recordedAtUtc": "2026-10-22T04:15:17.612365Z",
+  "unitTests": 228,
+  "nativeTests": 69,
+  "browserScenarios": 80,
   "embeddedDatabaseSubchecks": 19,
   "popupCollectorSubchecks": 6,
   "http3Checks": 4,
   "algorithmSuites": 5,
   "realClamAvChecks": 6,
-  "unitAndBrowserLogSha256": "97af4ee83723673a6c5441fa60321f183ffb5c95d59d6f68924e7f916d01f19d",
-  "http3LogSha256": "ef0a7d2ccca0422e1c262280cdb93f99c5af1995fa2e360124ada7e02bcdaba8",
-  "benchmarkLogSha256": "e2a3398e6ebdc796c0933a5761be8581f1f870cc2d9d630669f3c3905bcdeb20",
+  "unitAndBrowserLogSha256": "18a38d36989457b7e5b569baaeb1861301667dc7fb8dd233475de690e4ddb387",
+  "http3LogSha256": "8c59d7df6e5f8bcf7cec66da9274d3e8374a5169783b12149077dcf817787221",
+  "benchmarkLogSha256": "62d9287979157febb5a293b5eefc150476029e91d969228b9e579b3690c9d272",
   "independentReview": {
-    "agent": "/root/independent_security_review",
+    "agent": "/root/internal_final_review",
     "status": "approved",
-    "scope": "Runtime/native failure paths, decoder policy and probe, modern popup, release policy/cryptography, minimal app interface, unchanged permissions/CSP and independently recomputed final dist identity"
+    "scope": "Browser/native scanners, structured analysis limits, strict hash/size/metadata binding, sticky risk/review and rescan paths, honest independent AV status, current dist/source/browser/native/ClamAV identities. Separate release_artifact_review approved presentation-only benchmark adaptation without weakening assertions."
   },
   "sourceArchitecture": {
     "status": "passed",
-    "moduleCount": 31,
+    "moduleCount": 32,
     "entryCount": 8,
-    "sourceFiles": 97,
-    "reportSha256": "94527147fffa4979170aeb82732d38919b65d344f047669e03523db95c18a35c"
+    "sourceFiles": 106,
+    "reportSha256": "d240e7418c2ae9497f85c737d53c9d9bd90338b66490a94402152231eda8bed5"
   },
   "securityReview": {
     "report": "reports/SECURITY_REVIEW_2026-10-21.ko.md",
     "reportSha256": "cf9f6576e57014aef08a76af7487014007e47daf187f92ee6ce136ae7af9a221",
-    "dependencyAuditSha256": "116fa17d9cb7f588e17f42356fee72de1ebcf3412431cad9af6f02e88b55bafe",
+    "dependencyAuditSha256": "2033692b9e9323e00aa3f733af57dd666bc2c9dd888849986a788b31eea8c833",
     "npmKnownAdvisories": 0,
     "npmAuditScope": "npm dependency advisories only; bundled native/Wasm components and browser/OS vulnerabilities require separate review",
     "engineVersion": "FFmpeg 5.1.4",
     "enginePatched": false,
     "decoderMitigation": "Dynamically bounded per-input whitelist excludes JPEG2000/PNM/MagicYUV/EXR/SANM families before FFprobe/FFmpeg decoding. Targeted exposure reduction, not an engine update.",
-    "nativeHostRevalidated": true
+    "nativeHostRevalidated": true,
+    "priorReportRelease": "1.11.0"
   },
   "buildProtection": {
     "version": 2,
@@ -51,9 +52,9 @@
       "format": "my-video-engine-v1",
       "algorithm": "AES-256-GCM",
       "compression": "gzip",
-      "cipherPath": "assets/60a51567035bd32e4bd2968b1b9f607a.bin",
-      "coreModulePath": "assets/a60bcbbd82d394b3ca797c56834a9973.js",
-      "iv": "hzMUTgRbrtroHOJn",
+      "cipherPath": "assets/2dc8c7edd71a5e6094a7e40ea5d0c478.bin",
+      "coreModulePath": "assets/3eb7e14be70bca84760ce184e4a39dcb.js",
+      "iv": "8fSta/+OcCzH8+yB",
       "tagBits": 128,
       "plaintextBytes": 32232419,
       "compressedBytes": 10257774,
@@ -65,15 +66,15 @@
     "runtimeAssets": 20,
     "legacyRuntimeRequests": [],
     "comparison": {
-      "baselineCommit": "0422d4cba22d7e8b952871cbf203294470c21dd9",
-      "beforeAppJavaScriptBytes": 179416,
-      "afterAppJavaScriptBytes": 184883,
-      "beforeDistBytes": 10621697,
-      "afterDistBytes": 10634965,
-      "scope": "Application JS excludes vendor engine/loader. Additional security checks and redesigned popup increase bytes; no runtime speed or overall ZIP reduction claim."
+      "baselineCommit": "84821f1658e588105ac5ca7ce94b2b8df2437000",
+      "beforeAppJavaScriptBytes": 184883,
+      "afterAppJavaScriptBytes": 237889,
+      "beforeDistBytes": 10634965,
+      "afterDistBytes": 10695897,
+      "scope": "Application JS excludes vendor engine/loader. Built-in risk scanning, evidence validation and presentation increase bytes; no runtime speed or overall ZIP reduction claim."
     }
   },
-  "antivirusEvidence": "Fresh native50 and real ClamAV1.4.6 integration6 rerun for the modified Python host. Private test-only local signatures; official database freshness/coverage and Windows APIs not validated.",
+  "antivirusEvidence": "Fresh native69 and real ClamAV1.4.6 integration6 rerun for modified host and internal scanner; both module hashes recorded. Private test-only local signatures; official database freshness/coverage and Windows APIs not validated.",
   "userTxtSample": {
     "sha256": "704a5e15ae1068e4df52a8bcff04270efdad595cf685e0eccff86ab335471a46",
     "actualMime": "audio/mp4",
@@ -90,7 +91,23 @@
     "Encrypted packaging is for local developer-mode installation; Chrome Web Store policy acceptance is not validated",
     "Older bundled FFmpeg5.1.4 and linked C libraries remain; identified decoder exposure is limited, not all CVEs patched",
     "SANM blocked by name policy; no real SANM fixture executed",
-    "Chrome current release security announcements could not be queried due to destination policy; keep browser/OS/scanner/signatures updated",
-    "Native fallback signature probe and actual download are separate requests; large ID3 may be rejected"
-  ]
+    "Native fallback signature probe and actual download are separate requests; large ID3 may be rejected",
+    "Static no-signals does not mean safe or replace Defender/other AV/Chrome protection; unknown malware and crafted media may be missed",
+    "Browser scan bounded to 256MiB, native to 2GiB minus 1; bounded structural analysis reports incomplete on scope limits; marker spanning distinct HLS chunks is not guaranteed detected",
+    "Browser cannot inspect arbitrary files written by Chrome downloads; updated native helper required for direct-disk full-file internal evidence; risk review can occur after the file is already saved"
+  ],
+  "builtinRiskScreening": {
+    "engine": "builtin-static-v1",
+    "report": "reports/INTERNAL_SCAN.ko.md",
+    "reportSha256": "c615c9b078b6035a096f772703727714f15ce2fc699d65c82c294c3bc4cc6802",
+    "browserScannerSha256": "525e925be98cbd1ad4a921fad1e7d9a529ec0cb729ce5ff30604f827e57ee288",
+    "nativeScannerSha256": "7ea25bb21ff73c0055beba1d85f351389d737f02587189c91f84129754c7d6f7",
+    "scope": "Offline bounded static risk signals; never a complete malware verdict. Predecode checks, prepared/final-byte scan, native private snapshot scan, separate external AV status, SHA-256/size-bound evidence and sticky risk review. No file execution/unpacking/upload. Direct disk scans require updated helper.",
+    "browserByteLimit": 268435456,
+    "nativeByteLimit": 2147483647,
+    "nativeReadChunkBytes": 65536,
+    "maxFindings": 16,
+    "releaseGuard": "Build and packaging reject a contiguous standard harmless antivirus test marker in distributable sources/resources/reports; tests construct it only at runtime. Test media/signatures/databases excluded from ZIPs.",
+    "benchmarkScope": "Five existing algorithm domains rerun against current source. UI baseline receives presentation-only in-memory adaptation with original/adapted hashes, full text equality and focus/token/pending checks retained. Not a whole-scanner throughput benchmark."
+  }
 }

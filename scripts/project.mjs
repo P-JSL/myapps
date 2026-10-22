@@ -113,6 +113,10 @@ export const staticFiles = freeze([
     "output": "DATABASE.ko.md"
   },
   {
+    "input": "reports/INTERNAL_SCAN.ko.md",
+    "output": "INTERNAL_SCAN.ko.md"
+  },
+  {
     "input": "node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.js",
     "output": "vendor/ffmpeg/ffmpeg-core.js"
   },
@@ -154,6 +158,10 @@ export const capabilities = freeze([
   "toolbar-media-popup",
   "authenticated-rescan",
   "media-signature-validation",
-  "canonical-media-filenames"
+  "canonical-media-filenames",
+  "builtin-static-risk-screening",
+  "predecode-risk-check",
+  "hash-bound-risk-evidence",
+  "sticky-risk-review"
 ]);
 export const algorithmSuites = freeze([['state','tests/bench-state.mjs'],['media','tests/bench-media.mjs'],['transfer','tests/bench-transfer.mjs'],['ui','tests/bench-ui.mjs'],['security','scripts/benchmark-security.mjs']]);

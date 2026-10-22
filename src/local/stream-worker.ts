@@ -7,9 +7,22 @@ import { downloadOptions } from './preferences.ts';
 import { ownedTransferBuffer } from '../security/transfer.ts';
 import { ENCODER_ARGUMENTS } from '../shared/media.ts';
 import { hardenMediaCore } from '../security/decoder-policy.ts';
+import { scanBytes, type InternalScanResult } from '../security/internal-scan.ts';
 
 const scope = globalThis as unknown as { onmessage: ((event: MessageEvent<unknown>) => void) | null; postMessage(value: unknown, transfer?: Transferable[]): void };
 let busy = false;
+class InternalRiskError extends Error {
+  readonly internalScan: InternalScanResult;
+  constructor(scan: InternalScanResult) {
+    super(`내부 위험 검사에서 신호가 발견되어 스트림 처리를 중단했습니다. ${scan.findings.slice(0, 3).map(finding => finding.message).join(' ')}`);
+    this.internalScan = scan;
+  }
+}
+function inspectInput(bytes: Uint8Array) {
+  // Stream fragments need not carry a standalone media header.
+  const scan = scanBytes(bytes, { expectedMedia: false });
+  if (scan.status === 'suspicious') throw new InternalRiskError(scan);
+}
 scope.onmessage = async event => {
   if (busy) return; busy = true;
   try {
@@ -27,7 +40,10 @@ scope.onmessage = async event => {
     let log = '';
     hardenMediaCore(core, ({ message }) => { log = message.slice(0, 300); });
     const protocols = new Set<string>();
-    await downloadAssets(plan.assets, (name, bytes) => core.FS.writeFile(name, bytes), new AbortController().signal,
+    await downloadAssets(plan.assets, (name, bytes) => {
+      inspectInput(bytes);
+      core.FS.writeFile(name, bytes);
+    }, new AbortController().signal,
       completed => scope.postMessage({ type: 'progress', value: completed / plan.assets.length * 0.8, stage: 'fetching' }),
       value => protocols.add(value));
     scope.postMessage({ type: 'progress', value: 0.8, stage: 'processing' });
@@ -45,6 +61,8 @@ scope.onmessage = async event => {
         if (total > MAX_STREAM_BYTES) throw new Error('DASH 트랙 용량 한도를 초과했습니다.');
         const joined = new Uint8Array(total); let offset = 0;
         for (const chunk of chunks) { joined.set(chunk, offset); offset += chunk.length; }
+        // Inspect the joined track as well: signatures can span asset boundaries.
+        inspectInput(joined);
         core.FS.writeFile(input.filename, joined);
         for (const part of input.parts) core.FS.unlink(part);
         args.push('-protocol_whitelist', 'file,pipe', '-i', input.filename);
@@ -64,5 +82,6 @@ scope.onmessage = async event => {
     if (!(output instanceof Uint8Array) || !output.length || output.length >= MAX_STREAM_BYTES - 1024 * 1024) throw new Error('결과가 비어 있거나 안전한 출력 용량을 초과했습니다.');
     const buffer = ownedTransferBuffer(output);
     scope.postMessage({ type: 'done', bytes: buffer, protocols: [...protocols] }, [buffer]);
-  } catch (error) { scope.postMessage({ type: 'error', message: error instanceof Error ? error.message : '스트림 처리 오류' }); }
+  } catch (error) { scope.postMessage({ type: 'error', message: error instanceof Error ? error.message : '스트림 처리 오류',
+    ...(error instanceof InternalRiskError ? { internalScan: error.internalScan } : {}) }); }
 };

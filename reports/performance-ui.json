@@ -5,9 +5,14 @@
     "src/local/collect.ts": "70474f55531579eed1075779b21c1ebfb35f1554f721b615c560eafefc57d619",
     "src/local/ui.ts": "d420b0ab96e2d15aba7a962fd719fd583eb7b0539dc2bf9d51d2e0144c539f90"
   },
+  "adaptedBaselineSha256": {
+    "src/local/collect.ts": "70474f55531579eed1075779b21c1ebfb35f1554f721b615c560eafefc57d619",
+    "src/local/ui.ts": "1758665d0d846e85691ae8519bfcdedf07a8104b916ce2f83f67bdee48597c4b"
+  },
+  "baselineAdaptation": "The hash-checked 1.7.0 UI receives only the current internal-scan summary presentation in memory; historical row replacement and all full-text/focus/token/pending assertions remain unchanged.",
   "sourceSha256": {
     "src/local/collect.ts": "eb36555aa3441a421eafab00d1f449d09fd3d72aac5144a665894c95c00cce2a",
-    "src/local/ui.ts": "eb285bda72a2e5b96c578c15bcc62760ba8e595b0c9acd4afc60b653e00e01e2"
+    "src/local/ui.ts": "682a6ebddcca451564252191d4c83ecde6d1db71bde5bfef9aecd9a33bd0fea9"
   },
   "browser": "154.0.8037.57",
   "platform": "linux",
@@ -21,11 +26,11 @@
         "nonMediaTimings": 200
       },
       "baseline": {
-        "elapsedMs": 57.900000002235174,
+        "elapsedMs": 84.89999999850988,
         "fullDocumentScans": 40
       },
       "optimized": {
-        "elapsedMs": 1.699999999254942,
+        "elapsedMs": 2,
         "fullDocumentScans": 0
       }
     },
@@ -37,11 +42,11 @@
         "nonMediaTimings": 1000
       },
       "baseline": {
-        "elapsedMs": 10492.10000000149,
+        "elapsedMs": 10566.800000000745,
         "fullDocumentScans": 200
       },
       "optimized": {
-        "elapsedMs": 5.299999997019768,
+        "elapsedMs": 5.699999999254942,
         "fullDocumentScans": 0
       }
     },
@@ -53,12 +58,12 @@
         "polls": 100
       },
       "baseline": {
-        "elapsedMs": 749.5999999977648,
-        "createdElements": 240000,
+        "elapsedMs": 801.3000000007451,
+        "createdElements": 260000,
         "listNodeMutations": 80000
       },
       "optimized": {
-        "elapsedMs": 98.69999999925494,
+        "elapsedMs": 100.39999999850988,
         "createdElements": 0,
         "listNodeMutations": 0
       }
@@ -71,13 +76,13 @@
         "polls": 100
       },
       "baseline": {
-        "elapsedMs": 761.3999999985099,
-        "createdElements": 240000,
+        "elapsedMs": 871.6000000014901,
+        "createdElements": 260000,
         "listNodeMutations": 80000
       },
       "optimized": {
-        "elapsedMs": 83.69999999925494,
-        "createdElements": 600,
+        "elapsedMs": 86.80000000074506,
+        "createdElements": 700,
         "listNodeMutations": 200
       }
     }

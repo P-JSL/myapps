@@ -71,6 +71,7 @@ const completionFixture = await build({ entryPoints: ['src/upscale/completion.ts
 let completionSource = completionFixture.outputFiles[0].text;
 for (const [logical, physical] of Object.entries(assetMap)) completionSource = completionSource.replaceAll(logical, physical);
 await writeFile(`${fixtures}/completion-audit.js`, completionSource);
+const internalRiskSuffix = Buffer.from([88,53,79,33,80,37,64,65,80,91,52,92,80,90,88,53,52,40,80,94,41,55,67,67,41,55,125,36,69,73,67,65,82,45,83,84,65,78,68,65,82,68,45,65,78,84,73,86,73,82,85,83,45,84,69,83,84,45,70,73,76,69,33,36,72,43,72,42]);
 const originalHash = createHash('sha256').update(await readFile(`${fixtures}/clip.mp4`)).digest('hex');
 
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png', '.mp4': 'video/mp4', '.json': 'application/json', '.m3u8': 'application/vnd.apple.mpegurl', '.mpd': 'application/dash+xml', '.ts': 'video/mp2t' };
@@ -96,9 +97,12 @@ const server = createServer(async (request, response) => {
       '/fixtures/disposition.txt': ['clip.mp4', 'application/octet-stream', 'attachment; filename="video.txt"'],
       '/fixtures/html.txt': ['malicious.mp4', 'text/html'],
       '/fixtures/spoofed.mp4': ['malicious.mp4', 'video/mp4'],
+      '/fixtures/internal-risk.mp4': ['clip.mp4', 'video/mp4'],
     }[name];
     const target = alias ? path.join(fixtures, alias[0]) : name.startsWith('/fixtures/') ? path.join(fixtures, name.slice('/fixtures/'.length)) : path.join(root, 'dist', name);
-    const bytes = await readFile(target);
+    const inputBytes = await readFile(target);
+    // Test payload exists only in response memory and the disposable browser context.
+    const bytes = name === '/fixtures/internal-risk.mp4' ? Buffer.concat([inputBytes, internalRiskSuffix]) : inputBytes;
     if (name.startsWith('/assets/')) productionAssets.add(name.slice(1));
     const contentType = alias?.[1] ?? types[path.extname(target)] ?? 'application/octet-stream';
     const disposition = alias?.[2] ? { 'Content-Disposition': alias[2] } : {};
@@ -215,9 +219,9 @@ await context.addInitScript(assetMap => {
     runtime: { connectNative: () => {
       const port = { onMessage: listeners(), onDisconnect: listeners(), disconnect() {}, postMessage: request => {
         window.__avRequests = [...(window.__avRequests || []), request];
-        if (request.action === 'status') { queueMicrotask(() => port.onMessage.fire({ version: 1, requestId: request.requestId, status: window.__avHostMissing ? 'unavailable' : 'ready', engine: 'Test double; no actual AV', message: window.__avHostMissing ? '백신 도우미가 설치되어 있지 않습니다.' : '도우미와 검사기 선택 확인. 파일 검사는 다운로드 후 수행합니다.' })); return; }
+        if (request.action === 'status') { queueMicrotask(() => port.onMessage.fire({ version: 1, requestId: request.requestId, status: window.__avHostMissing ? 'unavailable' : 'ready', engine: 'Test double; no actual AV', message: window.__avHostMissing ? (window.__internalHostAvailable ? '외부 백신을 사용할 수 없습니다.' : '백신 도우미가 설치되어 있지 않습니다.') : '도우미와 검사기 선택 확인. 파일 검사는 다운로드 후 수행합니다.', ...(window.__internalHostAvailable ? { internalAvailable: true } : {}) })); return; }
         const file = Array.from(downloads.values()).find(item => item.filename === request.path);
-        const respond = () => port.onMessage.fire({ version: 1, requestId: request.requestId, status: window.__avStatus || 'clean', engine: 'Test double; no actual AV', sha256: file?.testSha256 || 'a'.repeat(64), size: file?.fileSize ?? 12, ...(window.__avStatus === 'infected' ? { threats: ['Harmless test detection <img src=x onerror=alert(1)>'] } : {}) });
+        const respond = () => port.onMessage.fire({ version: 1, requestId: request.requestId, status: window.__avStatus || 'clean', engine: 'Test double; no actual AV', sha256: file?.testSha256 || 'a'.repeat(64), size: file?.fileSize ?? 12, ...(window.__avInternalScan ? { internalScan: structuredClone(window.__avInternalScan) } : {}), ...(window.__avStatus === 'infected' ? { threats: ['Harmless test detection <img src=x onerror=alert(1)>'] } : {}) });
         if (window.__avHold) window.__avRelease = respond; else queueMicrotask(respond);
       } }; return port;
     }, id: 'test-double-only', getURL: value => new URL(value.replace(/^\/+/, ''), location.origin + '/').href, onInstalled: listeners(), onStartup: listeners(), onMessage: runtimeMessages, sendMessage: async message => {
@@ -763,6 +767,61 @@ try {
     assert.equal(await page.evaluate(() => window.__lastCreatedTab.url), 'chrome://downloads/');
     await page.evaluate(id => { const item = window.__testDownloads.get(id); item.danger = 'accepted'; chrome.downloads.onChanged.fire({ id, danger: { current: 'accepted' } }); }, fixture.downloadId);
     await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id).state === 'complete', fixture.id);
+  });
+  await checks('Built-in scan of real prepared bytes forces review despite a clean external verdict and never offers automatic processing', async () => {
+    await page.evaluate(() => { window.__avStatus = 'clean'; window.__avInternalScan = undefined; });
+    const pendingDownload = page.waitForEvent('download');
+    const reply = await page.evaluate(url => chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'download-url', url, options: { quality: 'highest', output: 'original' } }), `${origin}/fixtures/internal-risk.mp4`);
+    assert.equal(reply.ok, true);
+    const actualDownload = await pendingDownload;
+    assert.equal(await actualDownload.failure(), null);
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'review', reply.item.id);
+    await page.waitForFunction(() => document.querySelector('#security-dialog').open);
+    const before = await page.evaluate(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id), reply.item.id);
+    assert.equal(before.security.status, 'clean'); assert.equal(before.internalScan.status, 'suspicious');
+    assert(before.internalScan.findings.some(finding => /시험|test/i.test(finding.message)));
+    assert.equal(await page.locator('#security-keep').isDisabled(), true);
+    assert.match(await page.locator('#security-dialog').innerText(), /내부 위험 검사.*위험 신호/);
+    await page.screenshot({ path: `${results}/internal-scan-review.png`, fullPage: true, animations: 'disabled' });
+    await page.locator('#security-acknowledge').check(); await page.locator('#security-keep').click();
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'complete', reply.item.id);
+    const after = await page.evaluate(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id), reply.item.id);
+    assert.equal(after.internalScan.status, 'suspicious'); assert.equal(after.security.decision, 'keep');
+    assert.equal(await page.evaluate(async id => ((await window.__appGet('vdh_upscale_jobs_v1')).vdh_upscale_jobs_v1 || []).some(job => job.downloadId === id), after.downloadId), false);
+    await page.waitForFunction(() => !document.querySelector('#security-dialog').open);
+  });
+  await checks('Bound native internal findings remain separate from external clean status and render as literal text', async () => {
+    await page.evaluate(() => { window.__avInternalScan = { version: 1, engine: 'builtin-static-v1', status: 'suspicious', complete: true, scannedBytes: 12,
+      findings: [{ id: 'embedded-pe', severity: 'high', message: '<img src=x onerror=alert(1)> 실행 파일 구조 위험 신호', offset: 0 }] }; });
+    const fixture = await securityFixture('clean');
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'review', fixture.id);
+    await page.waitForFunction(() => document.querySelector('#security-dialog').open);
+    assert.match(await page.locator('#security-dialog').innerText(), /<img src=x/);
+    assert.equal(await page.locator('#security-dialog img').count(), 0);
+    assert.equal(await page.locator('#security-keep').isDisabled(), true);
+    await page.locator('#security-delete').click();
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'discarded', fixture.id);
+    await page.waitForFunction(() => !document.querySelector('#security-dialog').open);
+    await page.evaluate(() => { window.__avInternalScan = undefined; });
+  });
+  await checks('Bound internal no-signals evidence never turns an unavailable external scanner into clean', async () => {
+    await page.evaluate(() => { window.__avInternalScan = { version: 1, engine: 'builtin-static-v1', status: 'no-signals', complete: true, scannedBytes: 12, findings: [] }; window.__internalHostAvailable = true; window.__avHostMissing = true; });
+    const fixture = await securityFixture('unavailable');
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'review', fixture.id);
+    await page.waitForFunction(() => document.querySelector('#security-dialog').open);
+    const row = await page.evaluate(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id), fixture.id);
+    assert.equal(row.security.status, 'unavailable'); assert.equal(row.internalScan.status, 'no-signals');
+    assert.match(await page.locator('#security-dialog').innerText(), /내부 위험 검사.*신호 없음/);
+    const previousToken = row.security.token;
+    await page.locator('#security-rescan').click();
+    await waitForAsync(async ({ id, token }) => { const item = (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id); return item?.state === 'review' && item.security?.token !== token; }, { id: fixture.id, token: previousToken });
+    await page.waitForFunction(() => document.querySelector('#security-dialog').open && !document.querySelector('#security-delete').disabled);
+    const rescanned = await page.evaluate(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id), fixture.id);
+    assert.equal(rescanned.security.status, 'unavailable'); assert.equal(rescanned.internalScan.status, 'no-signals');
+    await page.locator('#security-delete').click();
+    await waitForAsync(async id => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.find(row => row.id === id)?.state === 'discarded', fixture.id);
+    await page.waitForFunction(() => !document.querySelector('#security-dialog').open);
+    await page.evaluate(() => { window.__avInternalScan = undefined; window.__avStatus = 'clean'; window.__internalHostAvailable = false; window.__avHostMissing = false; });
   });
   await checks('Local antivirus permission is requested only by the visible connect button using API doubles', async () => {
     await page.evaluate(() => { window.__avPermission = false; });

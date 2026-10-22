@@ -1,23 +1,25 @@
 {
   "status": "passed",
-  "release": "1.11.0",
+  "release": "1.12.0",
   "sourceSha256": {
-    "native/antivirus_host.py": "0dd9eb96d3afd10127a90d2e25c96acaa0057e3ef9c57db5c035c7677d258d7b",
-    "native/install.py": "8a6cf94fac00ddd83f3181eb4af813cb69b5172afa02684109650e0e68948530",
-    "native/test_antivirus_host.py": "372d36f87325337c21ad57334bcf311d091daece9707e23ecc8fca15326e2abd",
-    "native/test_antivirus_status.py": "793cb2d3c66aeefa1e15057cac0bdf899f451b61d34b829f8c3ac78e46d14b39",
-    "native/test_clamav_integration.py": "44f843b49d9a51140d16b4691d43640edbddb225b5c9641132bd94ef5ed8c127",
+    "native/antivirus_host.py": "5c555bf12109fdf7fef83de4d1be95613777cc1b5cc95f1700961894ccd6c17c",
+    "native/install.py": "29fb91151ace9eafe0fb04508cffb33b4fa28fa31176ffb5fa65f9b6eb0b3c6e",
+    "native/internal_scan.py": "7ea25bb21ff73c0055beba1d85f351389d737f02587189c91f84129754c7d6f7",
+    "native/test_antivirus_host.py": "c5c92942a638c831dcee78fb1fe70b9f9ede870273cc844cdfe076a2f258cfb0",
+    "native/test_antivirus_status.py": "0468c19f8dca636046ed7424326e2158f84d2e8a2778863b05d67044a1485c4f",
+    "native/test_clamav_integration.py": "0d0d6989790a6a75eeb8a7ffae5a2c625ecaa1f1fa13837c835664f200edf29a",
+    "native/test_internal_scan.py": "1f6bf1e60fe50fc4f00ae3dc2a0cb1c6037122e41a170c8ac70284511c2ee4b9",
     "native/test_windows_antivirus.py": "bd64dfa7b0f374602374eefd46b655779bcbdea46d5187e75ff38aaef8ec84fb",
     "native/windows_antivirus.py": "d31d257a74e3f4f676f82ad7f5b2f0d4a04172d72af52fe8cb40999b83c30c88",
-    "package-lock.json": "f0160936a7041e5c10350254c179549106324fb032ebe5ae6ee1ccc4105daa0d",
-    "package.json": "ca2200c59088937340f5981a37127b60eaf6acb8ea1a2f24986dc68573c7c9cf",
+    "package-lock.json": "6a26bea76d1dac6abadfd204aa0715ad504fde600657760e543724dab9af4eef",
+    "package.json": "c2cace8b155dad84303e61fb03cfe6ed267ac0b8f1ec66e76fd201692d2e0df5",
     "scripts/archive.py": "c76b270e46bb2b72d5627d4b34c07690e59103945c9020ac5dd952b5a2938905",
     "scripts/audit-dependencies.mjs": "986733aa350a0ab382270e16cf992375193554cf32c9073fee3e36cb8c7a376c",
     "scripts/audit-source.mjs": "f8535f3516ed20a88cf35c8421591507c839503c90df613e683775fcd15b267d",
     "scripts/benchmark-native.py": "91da1493e146253925494991f952e76eaa2daa7b6a4eb37819e2be9b822dccef",
     "scripts/benchmark-security.mjs": "7b8f2ed9740502bf2c4ac27d27a8827fcebacd44a425a6fb5316fc047e7c1d54",
     "scripts/benchmark.mjs": "9953ff872a0cc2139864c98a2655fb4b46c741cd0e810dbf5990946be01efa3c",
-    "scripts/build-local.mjs": "43944b475933b5097fa748bef38de3ddcdadf907140837d12f82bc2320c54279",
+    "scripts/build-local.mjs": "7d639e1ea6014fa386e3e9db5c752c55fddc297522a7c5e87837be564ec786c8",
     "scripts/build.mjs": "6fc094bb2411a4eb531fb602ab55587d5d1849d6cb76e94e9bd80cc2b8b4a460",
     "scripts/encrypt-source.mjs": "c85c9d89423c0c4d7d4bf896e4d5b37311b1d9879ae33c858becaa2fcc4ac666",
     "scripts/lib/artifacts.mjs": "125dbdffb509a78672bae186b25dee20b83fa50fc3fa7336f558b168c762111d",
@@ -25,29 +27,31 @@
     "scripts/lib/encryption.mjs": "3dc8529b82a50378e6a02ca54ecf79de2157ec9e662388e4dee819f88aa1da43",
     "scripts/lib/engine-cipher.mjs": "f7d98fdbe955ce67c7ba4b5c490018de46ed79c560eadc3928188cb5dca72eaa",
     "scripts/lib/protect-build.mjs": "48623cc9fec568e7dfb53a4817376f916cdbb0719cd477d95353473ece00248f",
-    "scripts/package.mjs": "5f8b2506c1aedf7999f36b94ecb365efd195ba633e028ca080a3140c7577f53b",
-    "scripts/project.mjs": "1442c6a3252cdc7c5926ebc8cd12dcf355b6df5b9d113a911fa1aef1061d9be4",
-    "scripts/test-native.mjs": "20c593968ebd64b040b30b221ca31c1cd7e1a474a1b1255458169d429442fa17",
+    "scripts/lib/release-safety.mjs": "f2aa593317defaf3cb8d3a12f3014e6725c948a9b86a62d351236d82fd79870c",
+    "scripts/package.mjs": "10459ac865b2f64d476e1d5af554e846089fced65f8ec0acd40d97091ffe68cf",
+    "scripts/project.mjs": "1325c5606675c2bded9775df10f37e4ab40267dbbcb2226f318284a28f268f74",
+    "scripts/test-native.mjs": "df51aab957aec7d02e8f577783a8c94d356e1ccebca8cb2dda093504a72e3282",
     "src/data/database.ts": "d6f0d3ffbbc47808ce96228f4fd7f4440b63c972874bec14c41f7a34af247b73",
-    "src/local/antivirus.ts": "23a9add2c10821322709a66e9e6241f5d9705450623e575bc6eb6d658eb3bcee",
+    "src/local/antivirus.ts": "94224383e070061e39d42163940d3ab3501726558450cf6ba6c21f40dccc83c9",
     "src/local/assets.ts": "01157770847abd7e2c25eec2ba25f3993fd06578041c45de0f87a36306728e1a",
-    "src/local/background.ts": "24421046306032201a696b1451fccbf4b81eb5014851b99eb280d17c6cfc9be7",
+    "src/local/background.ts": "82b5c68571380b450795e951acff1a3d0bb8a76308d9930d434829fa1d0df504",
     "src/local/byte-assembly.ts": "e606342bc7097df6da427e10fa404a357f5d992931f01ee2f6f257a95077425c",
     "src/local/collect.ts": "eb36555aa3441a421eafab00d1f449d09fd3d72aac5144a665894c95c00cce2a",
     "src/local/dash.ts": "4740dd2ed9b89aa0196a9461ef6974ed4ffa4cd0e7d59e7b7437672dafc56e4e",
     "src/local/hls.ts": "52b0a5019cbaff4aeeea920e1b00b9bc8b23fd0aeff4d24c6c582ecf713b3a6a",
-    "src/local/labels.ts": "08630bed483f2de08be93c11563065979b5636d408a41baddb07032a0efc324e",
+    "src/local/labels.ts": "9058c7111fd6bfaff2ac46e4b33c9749e84213be03bfaec9053cbb5b97a8451b",
     "src/local/media-file.ts": "07f22b8c890fe2dcfcec53263190b9c6c571ce2e9358289a1ca14c70d36064d4",
-    "src/local/model.ts": "5005d9f9febbf577c37c8221b59366e84c9055614a28a0567350a89101be52ae",
+    "src/local/model.ts": "359a9b8a4f3cdcbd092d3beaee6fbb9d352e314d3bd485316bbe194d9061351d",
     "src/local/network.ts": "a23bbcd8fd452cb16377239c0bd71b87b2b7f0144c8977f48cd92c6476db50b9",
-    "src/local/offscreen.ts": "abd580335cfc9151cef3e41c10dbf7a7c2b114853d215439d272ada95575fb43",
-    "src/local/popup.ts": "3d5f630d18bfe3a587ce704dcdbde97fa8c9b83083dde37f0fa261d87d1008cc",
+    "src/local/offscreen.ts": "656869d3a5210a282b1bd0aa8bf39d501cb8a62733dc5ad2dadc36fdbf82d845",
+    "src/local/popup.ts": "85d034acda13f0b7d0af62fc2ee445b60ddce61213cd50b63cea045ac13c3303",
     "src/local/preferences.ts": "f2cb22149e84490d22a2a2106f7d87dfa48aa4902e09c72b6d4665814aeb82a1",
     "src/local/queue.ts": "70e7d979c58b9ff25031798d76a72e03e97d1d18917b1dad62a92be48b495def",
-    "src/local/stream-worker.ts": "5049b157ec0a65d2f415c749c2266b2885174b561283e6435bf5b86900cc9590",
+    "src/local/stream-worker.ts": "2bd6d888a08c126a3b71e2942ae7f615ce274e47b3a7cc60247ae05fe6d3fc44",
     "src/local/transport.ts": "8ffac2103d76a6e6d7425478bf95c7f9ddb013f236f283a176e1164124e4ea76",
-    "src/local/ui.ts": "eb285bda72a2e5b96c578c15bcc62760ba8e595b0c9acd4afc60b653e00e01e2",
+    "src/local/ui.ts": "682a6ebddcca451564252191d4c83ecde6d1db71bde5bfef9aecd9a33bd0fea9",
     "src/security/decoder-policy.ts": "d22a0691c9dd496591cc7e8af410139d395f507620405ce25c93e1f138d429fb",
+    "src/security/internal-scan.ts": "525e925be98cbd1ad4a921fad1e7d9a529ec0cb729ce5ff30604f827e57ee288",
     "src/security/transfer.ts": "ac6bd1b7157b9888dffd863d187637cd23ac2a02f87f43e1c536205c3baeff2d",
     "src/security/validation.ts": "112f0340ff3acd23c236e8477d900d18302b398ba65e0d77409d04f25440c7d2",
     "src/shared/filename.ts": "e5edb2a4021105a4aa37e0cb5f23e72f3a1097948d75aeb861ca381369921887",
@@ -58,7 +62,7 @@
     "src/upscale/probe.ts": "5251b046b918e850d7074988f98d8c9d3a4045c1f91f0e131b4460f00010b069",
     "src/upscale/processing.ts": "ead14d9cca4a644295e4979c50c5dbe3f29bee710a1fd63cf528ac4e3e523634",
     "src/upscale/storage.ts": "175656146985b54efa761d343de283b0e93ef2f55a27711f231f71d9297ed977",
-    "src/upscale/worker.ts": "889480a67ee811189b9ac625005d691a6663f29fa3080f55b903cd4884e40f37",
+    "src/upscale/worker.ts": "6f2aac0436df6c063d5d5a60a92799c6256cb916287524f09e96c89ec9044b7a",
     "src/vendor.d.ts": "a8a73a5e9133e1c50837b1a0a57d90153673ae0e36f700f377f2ba0c96cc9736",
     "tests/algorithm-state.test.ts": "e8dbea0e0fa1c0384f580ac8f9ee22699a86b5ae47dbecdaf3a26a4b8dd396fe",
     "tests/antivirus-lifecycle.test.ts": "2cc94de489f2c3893d0d3ba0c1c220c18ad242818859444ea9d30a9269b595fc",
@@ -68,8 +72,8 @@
     "tests/bench-media.mjs": "4b3dc488e149d5a124de96daeaf4b6e7e18215901683b378fd8dced35dfbf734",
     "tests/bench-state.mjs": "d14dd9143603c6c0ed5ae4a0956634134ac4058a50156be11a73f7c0d6752c00",
     "tests/bench-transfer.mjs": "a7fd9a9dc65a2de8940662e9dafc474cb410014c2c39590a6d2bac5d8d1ee91f",
-    "tests/bench-ui.mjs": "c1a39ce1941e98ec2dfdd61a921794dd0ec8d824744542472fcdd5347cbbbd2d",
-    "tests/browser.mjs": "7d1aa9b8c3825c7692fcbe425ce58eeea2a3a1e1aa771809efa3b9d20d0ed9f4",
+    "tests/bench-ui.mjs": "5ef9d4d629269ab03d397e61f5e6650ec6d4d5cd3b6c5032eda9a6bca358a41a",
+    "tests/browser.mjs": "9689a872edd90cb8b0a29d9bdb6f1ad8f84f09a24b6a5d4d06906a1ee9a58f5c",
     "tests/build-paths.mjs": "222e378f52649667a78299a0218311ab456fd2253d7a7746303690e80e165d83",
     "tests/completion.test.ts": "0f6d7865fc7e2766645ea32a0936d297b92541bff939168dbfcb4057c7676fc5",
     "tests/dash-audit.mjs": "cf0f3d7da5877b271c511c147df1aafaa148796591b6c5e0e2357fe85769c4a3",
@@ -82,6 +86,10 @@
     "tests/features.test.ts": "df875e43caf4b869ae65feba293278e3932a069768c90f90e7411bd2b65cacc0",
     "tests/http3-server.py": "37c42deb235b8040d48d3ed7ab0320dd85ddb173d2f2c6dbc66a33d85fdd5fca",
     "tests/http3.mjs": "4da23f762ab23f5d6a0995e9a4458a98da14f589d52995187118cda6f0007f2e",
+    "tests/internal-download.test.ts": "fa2f061c6d54ad40363339c2f9cb5c3300f76f84ccafbbbe1550b9871820a4ab",
+    "tests/internal-media-gate.test.ts": "7c9e4f639ca7b869421953db3920a97567abe8698042f8e4d5aacee130d34a54",
+    "tests/internal-scan-ui.test.ts": "852a05bab0a5e2ef850fdf71e00f38cb80c8cfacf2c9e9fe6ad415a057d2d1f6",
+    "tests/internal-scan.test.ts": "c40147116bd0ba898e21dc7a9831899b0787a9415e050d6c58568115eba16e0a",
     "tests/local.test.ts": "15713bdc0f6094014ec36588a25520b0fe1fb01027e45150bcd2c4a629dedf52",
     "tests/media-file.test.ts": "14001d56f3be27bb079d72e0981787083a37d1d4812010dfd34c5cb343592a9d",
     "tests/media-optimization.test.ts": "dfe60418deffa16ebafe96698817ad10f90281ba5d4da991d6fd19c6dbbc948c",
@@ -89,9 +97,10 @@
     "tests/metadata.test.ts": "299533bdb70296183b8cb7498cd8013664184d93a3c6d18b41bb9e1986ae9eed",
     "tests/package.test.ts": "14073eec77ce04baacd80c1644816254c03348615185c59911e93bd636f9d853",
     "tests/policy.test.ts": "64389249434841cdc3a1b565a2524b9fd3c1cd78afd38e7100b988c3f4896021",
-    "tests/popup-audit.mjs": "bdf4bf6fd7a98a6560565843dfd34d249902a9763f7a1fce151fb6b16f913b3d",
+    "tests/popup-audit.mjs": "db18007138fc2dacadd97ae6f59f38db6bf632a1998ba03ebff623bda4075723",
     "tests/protect-build.test.mjs": "0fc0396bcde767b4f28285739575b9e873eb7b53b6f78ea3aaa40e469de55072",
     "tests/queue-privacy.test.ts": "067fd865093d6da4bd27fde290e9236096885485f83cf1a01f8c6d3562ac732d",
+    "tests/release-safety.test.mjs": "1709938412c9b0670a376ea2863db1bf06bcb166771a1c6715b7244863bc510e",
     "tests/security-runtime.test.ts": "2e7f8f25706c3c3b9bbe1742842ea00a5eda7f94c427b0d451087b6811e5fc70",
     "tests/tooling.test.mjs": "d51c2ba0a2aa0f3956d00cd6b8ef7656e74f32ad47f6b17d4b607738573234f8",
     "tests/transfer.test.ts": "0ec03cafdd950d6f8e3a73695eea02a5edd3ee04d358a24254884671caf451c7",
@@ -100,7 +109,7 @@
     "tests/worker-input-audit.mjs": "12645b4ae989474b2a8edabdb5ea3fe960586e14efcf9e850299f2cb8429a148",
     "tsconfig.json": "a447c838b1d18d1c8500c2dc125198660e6a600dde1bceed697a58c186758529"
   },
-  "moduleCount": 31,
+  "moduleCount": 32,
   "entryCount": 8,
   "edges": [
     {
@@ -204,6 +213,10 @@
       "to": "src/local/preferences.ts"
     },
     {
+      "from": "src/local/labels.ts",
+      "to": "src/local/antivirus.ts"
+    },
+    {
       "from": "src/local/media-file.ts",
       "to": "src/local/model.ts"
     },
@@ -214,6 +227,10 @@
     {
       "from": "src/local/media-file.ts",
       "to": "src/shared/media.ts"
+    },
+    {
+      "from": "src/local/model.ts",
+      "to": "src/local/antivirus.ts"
     },
     {
       "from": "src/local/model.ts",
@@ -234,6 +251,10 @@
     {
       "from": "src/local/network.ts",
       "to": "src/local/transport.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
+      "to": "src/local/antivirus.ts"
     },
     {
       "from": "src/local/offscreen.ts",
@@ -269,6 +290,10 @@
     },
     {
       "from": "src/local/offscreen.ts",
+      "to": "src/security/internal-scan.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
       "to": "src/security/validation.ts"
     },
     {
@@ -278,6 +303,10 @@
     {
       "from": "src/local/popup.ts",
       "to": "src/data/database.ts"
+    },
+    {
+      "from": "src/local/popup.ts",
+      "to": "src/local/labels.ts"
     },
     {
       "from": "src/local/popup.ts",
@@ -314,6 +343,10 @@
     {
       "from": "src/local/stream-worker.ts",
       "to": "src/security/decoder-policy.ts"
+    },
+    {
+      "from": "src/local/stream-worker.ts",
+      "to": "src/security/internal-scan.ts"
     },
     {
       "from": "src/local/stream-worker.ts",
@@ -422,6 +455,10 @@
     {
       "from": "src/upscale/worker.ts",
       "to": "src/security/decoder-policy.ts"
+    },
+    {
+      "from": "src/upscale/worker.ts",
+      "to": "src/security/internal-scan.ts"
     },
     {
       "from": "src/upscale/worker.ts",

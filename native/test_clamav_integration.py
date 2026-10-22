@@ -54,6 +54,7 @@ def main() -> None:
         host_directory.mkdir(mode=0o700)
         installed_host = host_directory / "antivirus_host.py"
         shutil.copyfile(Path(__file__).with_name("antivirus_host.py"), installed_host)
+        shutil.copyfile(Path(__file__).with_name("internal_scan.py"), host_directory / "internal_scan.py")
         # This adapter supplies only a private test database to the actual engine.
         # Production scanner discovery/arguments and verdict parsing are unchanged.
         wrapper = root / "clamscan"
@@ -70,9 +71,10 @@ def main() -> None:
             response = json.loads(result.stdout[4:])
             if response.get("status") != expected:
                 raise AssertionError(f"{name}: expected {expected}, got {response.get('status')}: {response.get('message', '')}")
-            if expected in ("clean", "infected"):
-                if response.get("sha256") != hashlib.sha256(path.read_bytes()).hexdigest() or response.get("size") != path.stat().st_size:
-                    raise AssertionError("Incorrect scanned-byte identity.")
+            if response.get("sha256") != hashlib.sha256(path.read_bytes()).hexdigest() or response.get("size") != path.stat().st_size:
+                raise AssertionError("Incorrect scanned-byte identity.")
+            if response.get("internalScan", {}).get("engine") != "builtin-static-v1":
+                raise AssertionError("The built-in scan was not included alongside the external verdict.")
             outcomes.append({"name": name, "status": "passed", "verdict": expected, "engine": response.get("engine")})
             print("PASS " + name)
             return response
@@ -85,6 +87,8 @@ def main() -> None:
         readiness = json.loads(probe.stdout[4:])
         if readiness.get("status") != "ready" or readiness.get("engine") != "ClamAV" or readiness.get("requestId") != "integration-readiness":
             raise AssertionError("Actual ClamAV readiness was not confirmed by the native host.")
+        if readiness.get("internalAvailable") is not True:
+            raise AssertionError("The installed built-in scan companion was not reported available.")
         outcomes.append({"name": "Native readiness request contacts real ClamAV without scanning a user file", "status": "passed", "verdict": "ready", "engine": "ClamAV"})
         print("PASS " + outcomes[-1]["name"])
         scan(video, "clean", "Complete native messaging scan of clean MP4 with real ClamAV")
@@ -101,7 +105,8 @@ def main() -> None:
         scan(video, "error", "Real ClamAV invalid-database error never becomes a clean verdict")
     report = {"version": 1, "engineVersion": version, "signatureScope": "Private test-only local hash database; official signature database freshness/coverage not tested",
               "nativeHost": "com.myvideoapp.antivirus", "fileUpload": False, "officialDatabaseVerified": False,
-              "sourceSha256": hashlib.sha256(Path(__file__).with_name("antivirus_host.py").read_bytes()).hexdigest(), "outcomes": outcomes}
+              "sourceSha256": hashlib.sha256(Path(__file__).with_name("antivirus_host.py").read_bytes()).hexdigest(),
+              "internalScanSourceSha256": hashlib.sha256(Path(__file__).with_name("internal_scan.py").read_bytes()).hexdigest(), "outcomes": outcomes}
     if options.report:
         Path(options.report).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"{len(outcomes)} real ClamAV native messaging checks passed ({version}); test-only signatures.")

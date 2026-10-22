@@ -1,5 +1,5 @@
 {
-  "buildSha256": "a663d628c1dcc2aaf63742efd54e5fd78af2094d00f9d45775f981c1aab91bcc",
+  "buildSha256": "8db3950c25255ae454763b23b90977a7053ff5ad9e3a5aecfbe29bec6af27fe9",
   "browser": "154.0.8037.57",
   "engine": "independent-local",
   "mode": "localhost harness: protected production assets; real browser/Wasm/OPFS; Chrome extension APIs mocked",
@@ -261,6 +261,18 @@
       "status": "passed"
     },
     {
+      "name": "Built-in scan of real prepared bytes forces review despite a clean external verdict and never offers automatic processing",
+      "status": "passed"
+    },
+    {
+      "name": "Bound native internal findings remain separate from external clean status and render as literal text",
+      "status": "passed"
+    },
+    {
+      "name": "Bound internal no-signals evidence never turns an unavailable external scanner into clean",
+      "status": "passed"
+    },
+    {
       "name": "Local antivirus permission is requested only by the visible connect button using API doubles",
       "status": "passed"
     },
@@ -318,24 +330,24 @@
     }
   ],
   "productionAssets": [
-    "assets/0900c82d06bd62393adb89977d51cf8f.js",
-    "assets/13ef3007fd072b2b697e741c3b74582f.js",
-    "assets/1c13a3f688bf95d18374479923e4a058.png",
-    "assets/22ffb9a7849b129d47c7a71e277b4a37.js",
-    "assets/25fe7208c8875fcbb804f4082eb91cc8.js",
-    "assets/27719b3a57292fe16d0c951255d61bbc.css",
-    "assets/3fb91e5b916c1347b665ebb967e2a3e2.js",
-    "assets/458cb2bef6f11fae2da60dbc404085cd.css",
-    "assets/5b1d09e3f8b741085ca952606b9f8c80.css",
-    "assets/60a51567035bd32e4bd2968b1b9f607a.bin",
-    "assets/8770561b34097a4a73f156a64bade85b.js",
-    "assets/a5fe846deca65a58fd48cf227dee7c95.js",
-    "assets/a60bcbbd82d394b3ca797c56834a9973.js",
-    "assets/ac77461541014587dd0f04eba38571bc.html",
-    "assets/b68839387a73d3e9a74fffb47fdd4ec8.js",
-    "assets/d42e9aa34a49b8827b7e8f6b6239bc4a.html",
-    "assets/fa5874613975c522a8357793c57a3fa4.js",
-    "assets/fb2bee187a145442061184f05b50acea.html"
+    "assets/06825dd5275bd6e97b6e0f5e1f4bcb96.html",
+    "assets/08ce7216ebf8ed3c2d0def6820b8a2f1.css",
+    "assets/21d0a03f1f5bab778f039c9f477e71f6.css",
+    "assets/220cb93488f3247a0dffdf2f658d2e2b.css",
+    "assets/2dc8c7edd71a5e6094a7e40ea5d0c478.bin",
+    "assets/3eb7e14be70bca84760ce184e4a39dcb.js",
+    "assets/40acb935267161d0ff32104b415848d9.js",
+    "assets/613df597facef9e0cc29e30e2738c2e2.html",
+    "assets/69efeefd04758b9e7c3d49da5c27f883.js",
+    "assets/7321a3b5f8e490465db02c30c047dff1.js",
+    "assets/8aec142403c876c127cdbf4fa238fdad.js",
+    "assets/c4447be935dc98676d7abcb46aef24e3.png",
+    "assets/ca6b4212e0273f4be414cdd4ba7a3e8d.js",
+    "assets/d0db28dcdb5a8b84fd65e0bcd434648b.html",
+    "assets/d5fe41fae941540955563502adf83e02.js",
+    "assets/d94bd4145028d6d28471e8ad2e010d8d.js",
+    "assets/f863e9f658cf0b44efd738ce2ebfd84f.js",
+    "assets/fcf3f50e7f5d07cb42fee9f27fbd0760.js"
   ],
   "legacyRuntimeRequests": [],
   "directFixtureSha256": "a8536eaaa80e192769a341d98dc6c62e5fa489b81df82b06455feecb12fe3efe",

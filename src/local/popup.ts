@@ -2,6 +2,7 @@ import { appStorage, DOWNLOAD_OPTIONS_KEY } from '../data/database.ts';
 import { record } from '../security/validation.ts';
 import { SCOPE, isActiveHistoryState, isHistory, type HistoryItem, type MediaItem } from './model.ts';
 import { downloadOptions } from './preferences.ts';
+import { internalScanPresentation } from './labels.ts';
 
 function node<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -101,7 +102,8 @@ function renderMedia() {
   node('waiting').hidden = retained.size > 0; node('media-view').hidden = retained.size === 0; node('media-count').textContent = retained.size + '개';
   const reviews = currentHistory.filter(entry => entry.state === 'review').length;
   const summary = node<HTMLButtonElement>('review-summary'); summary.hidden = reviews === 0;
-  summary.textContent = '확인이 필요한 다운로드 ' + reviews + '개 · 기록에서 검토';
+  const internalRisks = currentHistory.filter(entry => entry.state === 'review' && internalScanPresentation(entry.internalScan).tone === 'danger').length;
+  summary.textContent = '확인이 필요한 다운로드 ' + reviews + '개' + (internalRisks ? ' · 내부 위험 신호 ' + internalRisks + '개' : '') + ' · 기록에서 검토';
 }
 function applyResult(result: Record<string, unknown>) {
   currentItems = Array.isArray(result.items) ? result.items.filter(isMedia) : [];
@@ -155,7 +157,7 @@ function showInfo(report: boolean) {
   node('info-title').textContent = report ? '미디어 감지 신고' : '미디어 감지 도움말';
   node('info-description').textContent = report
     ? '감지되지 않는 페이지 주소와 재현 방법을 메모할 수 있습니다. 메모는 이 팝업에서만 유지되며 자동으로 전송하거나 저장하지 않습니다.'
-    : '영상이 있는 페이지에서 영상을 재생한 뒤 강제 감지를 눌러 주세요.\nHTTP 미디어와 암호화되지 않은 HLS·DASH VOD를 지원합니다. DRM과 라이브 녹화는 지원하지 않습니다.\n설정에서 화질·저장 형식을 선택하고, 기록에서 진행 상황과 검토가 필요한 파일을 확인할 수 있습니다.';
+    : '영상이 있는 페이지에서 영상을 재생한 뒤 강제 감지를 눌러 주세요.\nHTTP 미디어와 암호화되지 않은 HLS·DASH VOD를 지원합니다. DRM과 라이브 녹화는 지원하지 않습니다.\n설정에서 화질·저장 형식을 선택하고, 기록에서 진행 상황과 검토가 필요한 파일을 확인할 수 있습니다.\n앱 내부에서 파일 위장과 위험 신호를 보조 검사하며 파일을 외부로 전송하지 않습니다. 전체 악성코드 DB 검사는 아니며, 신호 없음이 안전을 보장하지 않습니다.';
   node('report-label').hidden = !report; node('report-notes').hidden = !report; dialog.showModal();
 }
 node('help').addEventListener('click', () => showInfo(false));

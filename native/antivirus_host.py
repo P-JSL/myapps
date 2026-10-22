@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import inspect
 import json
 import os
 from pathlib import Path
@@ -24,6 +25,7 @@ MAX_FILE = 2 * 1024 * 1024 * 1024 - 1
 SCAN_TIMEOUT = 120
 REQUEST_ID = re.compile(r"[A-Za-z0-9._:-]{1,128}\Z")
 CONFIG_PATH = Path(__file__).with_name("config.json")
+INTERNAL_ENGINE = "builtin-static-v1"
 
 
 def reply(request_id: str, status: str, engine: str = "none", **details: object) -> dict:
@@ -219,6 +221,38 @@ def windows_adapter():
     return module
 
 
+def internal_scanner():
+    # Isolated Python (-I) does not put this directory on sys.path. Load only
+    # our fixed companion module, copied by the per-user installer.
+    path = Path(__file__).with_name("internal_scan.py")
+    try:
+        spec = importlib.util.spec_from_file_location("my_video_app_internal_scan", path)
+        if spec is None or spec.loader is None:
+            raise ValueError("Missing companion module loader.")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        scan = getattr(module, "scan_file", None)
+        if getattr(module, "ENGINE", None) != INTERNAL_ENGINE or not callable(scan):
+            raise ValueError("Invalid companion module contract.")
+        # Check the actual call contract without scanning or opening user data.
+        inspect.signature(scan).bind(Path("download.bin"), max_bytes=MAX_FILE)
+        return scan
+    except Exception as error:
+        raise RuntimeError("The built-in static scanner is unavailable.") from error
+
+
+def internal_available() -> bool:
+    try:
+        internal_scanner()
+        return True
+    except RuntimeError:
+        return False
+
+
+def scan_internal(snapshot: Path) -> dict:
+    return internal_scanner()(snapshot, max_bytes=MAX_FILE)
+
+
 def scan_windows_amsi(snapshot: Path, products: str) -> dict:
     adapter = Path(__file__).with_name("windows_antivirus.py")
     code, output = run_tool([sys.executable, "-I", str(adapter), "--amsi-scan", str(snapshot), products])
@@ -333,16 +367,19 @@ def status_request(request: object) -> dict:
             or type(request.get("version")) is not int or request["version"] != 1
             or request.get("action") != "status" or not request_id):
         return reply(request_id, "error", message="Unsupported or invalid antivirus status request.")
+    # This capability is independent of the selected external antivirus. An
+    # absent/broken external engine must not prevent a built-in-only rescan.
+    availability = {"internalAvailable": True} if internal_available() else {}
     try:
         config = load_config()
         scanner = select_scanner(config)
         if scanner is None:
-            return reply(request_id, **missing_scanner(config))
-        return reply(request_id, **scanner.readiness())
+            return reply(request_id, **missing_scanner(config), **availability)
+        return reply(request_id, **scanner.readiness(), **availability)
     except subprocess.TimeoutExpired:
-        return reply(request_id, "error", message="로컬 백신의 연결 상태 확인이 제한 시간을 초과했습니다.")
+        return reply(request_id, "error", message="로컬 백신의 연결 상태 확인이 제한 시간을 초과했습니다.", **availability)
     except (OSError, ValueError, RuntimeError, KeyError) as error:
-        return reply(request_id, "error", message=clean_text(str(error)) or "로컬 백신의 연결 상태를 확인하지 못했습니다.")
+        return reply(request_id, "error", message=clean_text(str(error)) or "로컬 백신의 연결 상태를 확인하지 못했습니다.", **availability)
 
 
 def scan_request(request: object) -> dict:
@@ -355,10 +392,6 @@ def scan_request(request: object) -> dict:
         return reply(request_id, "error", message="Unsupported or invalid scan request.")
     try:
         source = validate_file(request["path"])
-        config = load_config()
-        scanner = select_scanner(config)
-        if scanner is None:
-            return reply(request_id, **missing_scanner(config))
         flags = (os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
                  | getattr(os, "O_NONBLOCK", 0))
         descriptor = os.open(source, flags)
@@ -384,20 +417,33 @@ def scan_request(request: object) -> dict:
                     destination.write(chunk)
             if copied != before.st_size or identity(before) != identity(os.fstat(original.fileno())):
                 raise ValueError("The file changed while preparing the local scan.")
-            result = scanner(snapshot)
+            internal = scan_internal(snapshot)
+            # The internal pass runs even if no external antivirus is installed
+            # or its configuration/probe/scan fails. Its no-signals result never
+            # replaces an external unavailable/error status with a clean verdict.
+            try:
+                config = load_config()
+                scanner = select_scanner(config)
+                result = scanner(snapshot) if scanner is not None else missing_scanner(config)
+            except subprocess.TimeoutExpired:
+                result = {"status": "error", "message": "The local antivirus scan timed out; the file has not been marked clean.", "engine": "none"}
+            except (OSError, ValueError, RuntimeError, KeyError) as error:
+                result = {"status": "error", "engine": "none", "message": clean_text(str(error)) or "The local scan failed."}
             # Check the actual current path, not only the original open descriptor.
             validate_file(str(source))
             if identity(before) != identity(source.lstat()):
                 raise ValueError("The downloaded file changed during scanning; scan it again.")
-            if result["status"] in ("clean", "infected"):
-                original.seek(0)
-                current = hashlib.file_digest(original, "sha256").hexdigest()
-                if current != digest.hexdigest() or identity(before) != identity(os.fstat(original.fileno())):
-                    raise ValueError("The downloaded bytes changed during scanning; scan them again.")
-                validate_file(str(source))
-                if identity(before) != identity(source.lstat()):
-                    raise ValueError("The downloaded path changed during verification; scan it again.")
-                result.update(sha256=current, size=copied)
+            # Bind the built-in result to verified current bytes for every
+            # external status, including unavailable/error. A changed path or
+            # file never receives either a hash or an internal scan assertion.
+            original.seek(0)
+            current = hashlib.file_digest(original, "sha256").hexdigest()
+            if current != digest.hexdigest() or identity(before) != identity(os.fstat(original.fileno())):
+                raise ValueError("The downloaded bytes changed during scanning; scan them again.")
+            validate_file(str(source))
+            if identity(before) != identity(source.lstat()):
+                raise ValueError("The downloaded path changed during verification; scan it again.")
+            result.update(sha256=current, size=copied, internalScan=internal)
             return reply(request_id, **result)
     except subprocess.TimeoutExpired:
         return reply(request_id, "error", message="The local antivirus scan timed out; the file has not been marked clean.")

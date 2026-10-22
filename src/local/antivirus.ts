@@ -1,18 +1,57 @@
 import { boundedData, record } from '../security/validation.ts';
+import type { InternalScanResult, InternalFinding } from '../security/internal-scan.ts';
 
 export const ANTIVIRUS_HOST = 'com.myvideoapp.antivirus';
 export type ScanStatus = 'clean' | 'infected' | 'unavailable' | 'error';
 export interface ScanResult {
   status: ScanStatus; engine?: string; threats?: string[]; message?: string;
-  sha256?: string; size?: number; checkedAt?: number;
+  sha256?: string; size?: number; checkedAt?: number; internalScan?: InternalScanResult;
 }
 export interface AntivirusReadiness {
   status: 'ready' | 'unavailable' | 'error'; engine?: string; message?: string;
-  products?: string[]; checkedAt: number;
+  products?: string[]; internalAvailable?: boolean; checkedAt: number;
 }
 export interface FileSecurity extends Omit<ScanResult, 'status'> {
   status: ScanStatus | 'scanning' | 'chrome-warning'; token: string;
   danger?: string; decision?: 'keep' | 'delete';
+}
+/** Parse bounded app/native metadata; findings never contain raw file contents. */
+export function internalScanResponse(value: unknown, size?: number): InternalScanResult {
+  if (!record(value) || !boundedData(value, 16 * 1024) || value.version !== 1 || value.engine !== 'builtin-static-v1'
+    || !['no-signals', 'suspicious', 'incomplete'].includes(String(value.status)) || typeof value.complete !== 'boolean'
+    || !Number.isSafeInteger(value.scannedBytes) || Number(value.scannedBytes) < 0 || Number(value.scannedBytes) > 2 * 1024 * 1024 * 1024 - 1
+    || !Array.isArray(value.findings) || value.findings.length > 16) throw new Error('내부 위험 검사 결과를 확인할 수 없습니다.');
+  const findings: InternalFinding[] = value.findings.map((finding: unknown) => {
+    if (!record(finding) || typeof finding.id !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(finding.id)
+      || !['high', 'warning'].includes(String(finding.severity)) || typeof finding.message !== 'string'
+      || !finding.message.trim() || finding.message.length > 500
+      || (finding.offset !== undefined && (!Number.isSafeInteger(finding.offset) || Number(finding.offset) < 0 || Number(finding.offset) >= Number(value.scannedBytes)))) throw new Error('내부 위험 신호 정보가 올바르지 않습니다.');
+    return { id: finding.id, severity: finding.severity as InternalFinding['severity'], message: finding.message,
+      ...(finding.offset === undefined ? {} : { offset: Number(finding.offset) }) };
+  });
+  const hasRiskFinding = findings.some(finding => !['analysis-limit', 'empty-input', 'unsupported-format', 'partial-input'].includes(finding.id));
+  if ((value.status === 'no-signals' && (!value.complete || findings.length > 0))
+    || (value.status === 'incomplete' && (value.complete || hasRiskFinding)) || (value.status === 'suspicious' && !hasRiskFinding)
+    || (value.status !== 'suspicious' && findings.some(finding => finding.severity === 'high'))
+    || (size !== undefined && (!Number.isSafeInteger(size) || size < 0 || Number(value.scannedBytes) > size || (value.complete && Number(value.scannedBytes) !== size)))) throw new Error('내부 검사 범위가 파일과 일치하지 않습니다.');
+  return { version: 1, engine: 'builtin-static-v1', status: value.status as InternalScanResult['status'],
+    scannedBytes: Number(value.scannedBytes), complete: value.complete, findings };
+}
+export function incompleteInternalScan(message = '브라우저가 저장된 파일 전체를 읽지 못했습니다. 로컬 백신 검사 결과도 확인하세요.'): InternalScanResult {
+  return { version: 1, engine: 'builtin-static-v1', status: 'incomplete', scannedBytes: 0, complete: false,
+    findings: [{ id: 'analysis-limit', severity: 'warning', message }] };
+}
+/** Native clean verdicts cannot erase observed app risk signals for the same file. */
+export function combineInternalScans(previous: InternalScanResult | undefined, actual: InternalScanResult | undefined): InternalScanResult {
+  if (!previous) return actual ?? incompleteInternalScan();
+  if (!actual) return previous;
+  const suspicious = [previous, actual].filter(result => result.status === 'suspicious');
+  if (suspicious.length) {
+    const findings = [...new Map(suspicious.flatMap(result => result.findings).map(finding => [`${finding.id}:${finding.offset ?? ''}`, finding])).values()].slice(0, 16);
+    return { version: 1, engine: 'builtin-static-v1', status: 'suspicious',
+      scannedBytes: Math.max(previous.scannedBytes, actual.scannedBytes), complete: previous.complete || actual.complete, findings };
+  }
+  return actual.complete ? actual : previous.complete ? previous : actual;
 }
 export function chromeWarning(danger: unknown): string | undefined {
   if (typeof danger !== 'string' || !danger) return undefined;
@@ -28,6 +67,10 @@ export function scanResponse(value: unknown, requestId: string): ScanResult {
   if (typeof value.sha256 === 'string' && /^[a-f0-9]{64}$/.test(value.sha256)) result.sha256 = value.sha256;
   if (typeof value.size === 'number' && Number.isSafeInteger(value.size) && value.size >= 0) result.size = value.size;
   if (['clean', 'infected'].includes(result.status) && (!result.engine || !result.sha256 || result.size === undefined)) throw new Error('백신이 검사한 파일 정보를 확인할 수 없습니다.');
+  if (value.internalScan !== undefined) {
+    if (!result.sha256 || result.size === undefined) throw new Error('내부 검사가 실제 파일과 연결되지 않았습니다.');
+    result.internalScan = internalScanResponse(value.internalScan, result.size);
+  }
   return result;
 }
 export function readinessResponse(value: unknown, requestId: string): AntivirusReadiness {
@@ -45,6 +88,10 @@ export function readinessResponse(value: unknown, requestId: string): AntivirusR
   if (value.products !== undefined) {
     if (!Array.isArray(value.products) || value.products.length > 32 || !value.products.every(name => typeof name === 'string' && name.trim() && name.length <= 500)) throw new Error('백신 제품 응답이 올바르지 않습니다.');
     result.products = value.products as string[];
+  }
+  if (value.internalAvailable !== undefined) {
+    if (typeof value.internalAvailable !== 'boolean') throw new Error('내부 검사 도우미의 준비 상태가 올바르지 않습니다.');
+    result.internalAvailable = value.internalAvailable;
   }
   if (result.status === 'ready' && !result.engine) throw new Error('연결할 백신 엔진을 확인하지 못했습니다.');
   return result;

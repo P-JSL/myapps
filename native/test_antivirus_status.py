@@ -6,6 +6,7 @@ from pathlib import Path
 import struct
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
@@ -33,16 +34,70 @@ class AntivirusStatusTests(unittest.TestCase):
         self.assertEqual(result["status"], "ready")
         self.assertEqual(result["requestId"], self.request["requestId"])
         self.assertEqual(result["products"], ["Test product"])
+        self.assertIs(result["internalAvailable"], True)
         self.assertNotIn("sha256", result)
         scan.assert_not_called()
 
     def test_status_rejects_paths_commands_bool_versions_and_extra_fields(self):
         invalid = [{**self.request, "path": "/private/video.mp4"}, {**self.request, "command": "anything"},
                    {**self.request, "version": True}, {**self.request, "requestId": "bad id"}, None, []]
-        with patch.object(HOST, "select_scanner") as select:
+        with patch.object(HOST, "select_scanner") as select, patch.object(HOST, "internal_scanner") as builtin:
             for request in invalid:
-                self.assertEqual(HOST.status_request(request)["status"], "error")
+                result = HOST.status_request(request)
+                self.assertEqual(result["status"], "error")
+                self.assertNotIn("internalAvailable", result)
             select.assert_not_called()
+            builtin.assert_not_called()
+
+    def test_builtin_capability_preserves_external_status_and_selected_engine(self):
+        for status in ("ready", "unavailable", "error"):
+            external = {"status": status, "engine": "Selected external engine", "message": "External result"}
+            scanner = HOST.Scanner(Mock(), lambda: dict(external), ["Selected product"])
+            with self.subTest(status=status), patch.object(HOST, "load_config", return_value={}), \
+                    patch.object(HOST, "select_scanner", return_value=scanner):
+                result = HOST.status_request(self.request)
+            self.assertIs(result.pop("internalAvailable"), True)
+            self.assertEqual(result, {"version": 1, "requestId": self.request["requestId"],
+                                      **external, "products": ["Selected product"]})
+
+    def test_builtin_capability_survives_missing_external_engine_config_error_and_timeout(self):
+        scenarios = [("missing", None, None, "unavailable"),
+                     ("config", ValueError("Invalid native host configuration."), None, "error"),
+                     ("timeout", None, subprocess.TimeoutExpired(["status"], 15), "error")]
+        for name, config_error, selection_error, expected in scenarios:
+            with self.subTest(name=name), patch.object(HOST, "load_config", return_value={}, side_effect=config_error), \
+                    patch.object(HOST, "select_scanner", return_value=None, side_effect=selection_error):
+                result = HOST.status_request(self.request)
+            self.assertEqual(result["status"], expected)
+            self.assertIs(result["internalAvailable"], True)
+            self.assertNotIn("sha256", result)
+
+    def test_builtin_capability_requires_loadable_expected_companion_and_valid_scan_contract(self):
+        fixtures = [("missing", None), ("syntax", "def broken(\n"),
+                    ("import", "raise ImportError('unavailable dependency')\n"),
+                    ("engine", "ENGINE='other-engine'\ndef scan_file(path, *, max_bytes): pass\n"),
+                    ("missing function", "ENGINE='builtin-static-v1'\n"),
+                    ("noncallable", "ENGINE='builtin-static-v1'\nscan_file=True\n"),
+                    ("signature", "ENGINE='builtin-static-v1'\ndef scan_file(): pass\n")]
+        scanner = HOST.Scanner(Mock(), lambda: {"status": "ready", "engine": "External ready"})
+        for name, content in fixtures:
+            with self.subTest(name=name), tempfile.TemporaryDirectory(prefix="mva-status-companion-") as directory:
+                companion = Path(directory) / "internal_scan.py"
+                if content is not None:
+                    companion.write_text(content, encoding="utf-8")
+                with patch.object(HOST, "__file__", str(Path(directory) / "antivirus_host.py")), \
+                        patch.object(HOST, "load_config", return_value={}), patch.object(HOST, "select_scanner", return_value=scanner):
+                    result = HOST.status_request(self.request)
+                self.assertEqual(result["status"], "ready")
+                self.assertEqual(result["engine"], "External ready")
+                self.assertNotIn("internalAvailable", result)
+        with tempfile.TemporaryDirectory(prefix="mva-status-companion-") as directory:
+            (Path(directory) / "internal_scan.py").write_text(
+                "ENGINE='builtin-static-v1'\ndef scan_file(path, *, max_bytes):\n"
+                "    raise AssertionError('Readiness must not scan user data')\n", encoding="utf-8")
+            with patch.object(HOST, "__file__", str(Path(directory) / "antivirus_host.py")), \
+                    patch.object(HOST, "load_config", return_value={}), patch.object(HOST, "select_scanner", return_value=scanner):
+                self.assertIs(HOST.status_request(self.request)["internalAvailable"], True)
 
     def test_missing_engine_and_timeout_cannot_claim_readiness(self):
         with patch.object(HOST, "load_config", return_value={}), patch.object(HOST, "select_scanner", return_value=None):
@@ -74,6 +129,7 @@ class AntivirusStatusTests(unittest.TestCase):
         self.assertEqual(response["requestId"], self.request["requestId"])
         self.assertEqual(response["version"], 1)
         self.assertIn(response["status"], {"ready", "unavailable", "error"})
+        self.assertIs(response["internalAvailable"], True)
         self.assertNotIn("sha256", response)
 
     def test_defender_status_checks_active_normal_mode_without_invoking_scan(self):

@@ -5,19 +5,22 @@ import assert from 'node:assert/strict';
 import { hash, sourceIdentity, treeIdentity } from './lib/artifacts.mjs';
 import { algorithmSuites } from './project.mjs';
 import { validateDependencyAudit } from './lib/dependency-policy.mjs';
+import { assertNoTestMarker } from './lib/release-safety.mjs';
+import { files } from './lib/artifacts.mjs';
 process.chdir(fileURLToPath(new URL('../', import.meta.url)));
 await access('dist/manifest.json');
 validateDependencyAudit(JSON.parse(await readFile('reports/dependency-audit.json', 'utf8')), hash(await readFile('package-lock.json')));
 const report = JSON.parse(await readFile('reports/browser.json', 'utf8'));
-assert(report.outcomes.length >= 77 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
+assert(report.outcomes.length >= 80 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
 const http3 = JSON.parse(await readFile('reports/http3.json', 'utf8'));
 assert(http3.transport === 'h3' && http3.outcomes.length >= 4 && http3.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real HTTP/3 results required');
 const antivirus = JSON.parse(await readFile('reports/antivirus.json', 'utf8'));
 assert(antivirus.outcomes.length >= 6 && antivirus.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real antivirus integration results required');
 assert.equal(hash(await readFile('native/antivirus_host.py')), antivirus.sourceSha256, 'Native host changed since real antivirus validation');
+assert.equal(hash(await readFile('native/internal_scan.py')), antivirus.internalScanSourceSha256, 'Internal scanner changed since real antivirus integration validation');
 const native = JSON.parse(await readFile('reports/native-tests.json', 'utf8'));
-assert(native.status === 'passed' && native.count >= 48, 'Successful native unit results required');
-for (const name of ['native/antivirus_host.py', 'native/windows_antivirus.py', 'native/install.py']) assert.equal(hash(await readFile(name)), native.sourceSha256[name], `Native source changed since verification: ${name}`);
+assert(native.status === 'passed' && native.count >= 69, 'Successful native unit results required');
+for (const name of ['native/antivirus_host.py', 'native/windows_antivirus.py', 'native/internal_scan.py', 'native/install.py']) assert.equal(hash(await readFile(name)), native.sourceSha256[name], `Native source changed since verification: ${name}`);
 assert.equal(JSON.parse(await readFile('reports/build.json', 'utf8')).engine, 'independent-local');
 const performance = JSON.parse(await readFile('reports/performance.json', 'utf8'));
 assert(performance.status === 'passed' && performance.outcomes.length === 5 && performance.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current algorithm benchmarks required');
@@ -37,6 +40,9 @@ const popup = JSON.parse(await readFile('reports/popup.json', 'utf8'));
 assert(popup.outcomes.length >= 6 && popup.outcomes.every(outcome => outcome.status === 'passed'), 'Successful popup validation required');
 assert.equal(identity, popup.buildSha256, 'Popup validation belongs to another build');
 
+for (const directory of ['dist', 'native', 'src', 'scripts', 'tests', 'reports']) {
+  for (const name of await files(directory, { skipDirectories: ['__pycache__'] })) assertNoTestMarker(await readFile(`${directory}/${name}`), `${directory}/${name}`);
+}
 const python = process.env.PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3');
 const result = spawnSync(python, ['-B', fileURLToPath(new URL('./archive.py', import.meta.url))], { encoding: 'utf8' });
 process.stdout.write(result.stdout ?? '');

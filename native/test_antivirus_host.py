@@ -112,11 +112,14 @@ class AntivirusHostTests(unittest.TestCase):
         with self.assertRaises(subprocess.TimeoutExpired):
             HOST.run_tool([sys.executable, "-c", "import time; time.sleep(5)"], timeout=0.05)
 
-    def test_unavailable_is_explicit_and_has_no_hash(self):
+    def test_unavailable_keeps_external_status_and_binds_internal_scan(self):
         with patch.object(HOST, "select_scanner", return_value=None):
             result = HOST.scan_request(self.request)
         self.assertEqual(result["status"], "unavailable")
-        self.assertNotIn("sha256", result)
+        self.assertEqual(result["sha256"], hashlib.sha256(self.payload).hexdigest())
+        self.assertEqual(result["size"], len(self.payload))
+        self.assertEqual(result["internalScan"]["engine"], "builtin-static-v1")
+        self.assertEqual(result["internalScan"]["status"], "incomplete")
 
     def test_file_mutation_during_scan_rejects_clean_verdict(self):
         def scanner(snapshot):

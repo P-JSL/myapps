@@ -1,4 +1,6 @@
 import { record } from '../security/validation.ts';
+import { scanBytes, type InternalScanResult } from '../security/internal-scan.ts';
+import { internalScanResponse, incompleteInternalScan } from './antivirus.ts';
 import { MAX_INPUT_BYTES } from '../upscale/policy.ts';
 import { OFFSCREEN_SCOPE, PREPARE_TIMEOUT_MS, SCOPE, mediaURL } from './model.ts';
 import { fetchBytes, fetchManifestResource } from './network.ts';
@@ -9,6 +11,9 @@ import { downloadOptions } from './preferences.ts';
 import { PreparationQueue } from './queue.ts';
 import { transport, type Transport } from './transport.ts';
 
+class PreparedInspectionError extends Error {
+  constructor(message: string, readonly internalScan: InternalScanResult, readonly invalidMedia = false) { super(message); }
+}
 const prepared = new Map<string, { url: string; filename: string }>();
 interface ActiveTask { id: string; controller: AbortController; worker?: Worker; reject?: (error: Error) => void; }
 const queue = new PreparationQueue();
@@ -71,13 +76,29 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
             if (Array.isArray(event.data.protocols)) for (const value of event.data.protocols) { const actual = transport(value); if (actual) protocols.add(actual); }
             resolve(new Uint8Array(event.data.bytes));
           }
-          else if (event.data.type === 'error') reject(new Error(typeof event.data.message === 'string' ? event.data.message : '스트림 처리 오류'));
+          else if (event.data.type === 'error') {
+            const message = typeof event.data.message === 'string' ? event.data.message : '스트림 처리 오류';
+            if (event.data.internalScan !== undefined) {
+              try {
+                const result = internalScanResponse(event.data.internalScan);
+                reject(new PreparedInspectionError(message, { ...result, complete: false }));
+              } catch { reject(new PreparedInspectionError('스트림 내부 검사 결과를 확인할 수 없습니다.', incompleteInternalScan('스트림 입력 검사 결과가 올바르지 않아 처리를 중단했습니다.'))); }
+            } else reject(new Error(message));
+          }
         });
         worker.postMessage({ plan, options });
       });
     }
     if (task.controller.signal.aborted) throw new Error('작업을 취소했습니다.');
-    const actual = inspectMediaFile(data);
+    let internalScan: InternalScanResult;
+    try { internalScan = internalScanResponse(scanBytes(data, { complete: true, expectedMedia: true }), data.byteLength); }
+    catch { throw new PreparedInspectionError('앱 내부 위험 검사를 완료하지 못해 파일 준비를 중단했습니다.', incompleteInternalScan('앱 내부 검사 오류로 파일을 저장하지 않았습니다.')); }
+    let actual: ReturnType<typeof inspectMediaFile>;
+    try { actual = inspectMediaFile(data); }
+    catch (error) { throw new PreparedInspectionError(error instanceof Error ? error.message : '미디어 형식을 확인할 수 없습니다.', internalScan, error instanceof InvalidMediaFileError); }
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    const internalScanSha256 = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    task.controller.signal.throwIfAborted();
     report({ stage: 'saving', progress: 1 }, true);
     const root = await navigator.storage.getDirectory();
     const filename = `local-${id}.media`;
@@ -87,7 +108,7 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
     signal.throwIfAborted();
     const file = await handle.getFile();
     const blob = URL.createObjectURL(new Blob([file], { type: actual.mime })); prepared.set(id, { url: blob, filename });
-    return { ok: true, url: blob, filename, ...actual, protocols: [...protocols] };
+    return { ok: true, url: blob, filename, ...actual, protocols: [...protocols], internalScan, internalScanSha256, internalScanSize: data.byteLength };
   } catch (error) { await disposeLocal(id).catch(() => {}); throw error; }
   finally { clearTimeout(timeout); signal.removeEventListener('abort', abort); task.worker?.terminate(); }
 }
@@ -101,6 +122,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, reply) => {
   if (message.type !== 'prepare' || !['file', 'hls', 'dash'].includes(String(message.kind))) return false;
   let url: string;
   try { url = mediaURL(message.url).href; } catch { reply({ ok: false, error: '미디어 주소가 올바르지 않습니다.' }); return false; }
-  void prepareLocal(id, url, String(message.kind), message.options).then(reply).catch((error: unknown) => { reply({ ok: false, error: error instanceof Error ? error.message : '파일 준비 오류', invalidMedia: error instanceof InvalidMediaFileError }); });
+  void prepareLocal(id, url, String(message.kind), message.options).then(reply).catch((error: unknown) => { reply({ ok: false, error: error instanceof Error ? error.message : '파일 준비 오류', invalidMedia: error instanceof InvalidMediaFileError || (error instanceof PreparedInspectionError && error.invalidMedia),
+    ...(error instanceof PreparedInspectionError ? { internalRisk: true, internalScan: error.internalScan } : {}) }); });
   return true;
 });

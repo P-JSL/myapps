@@ -23,6 +23,7 @@ export async function verifyPopupAudit(browser, origin, buildPaths) {
     window.__popupState = { items: q.has('media') ? [media] : [], history: q.has('review') ? [{
       id: '22222222-2222-4222-8222-222222222222', url: media.url, filename: 'clip.mp4', kind: 'file',
       state: 'review', createdAt: Date.now(), incognito: false, options: { quality: '720', output: 'mp3' },
+      internalScan: { version: 1, engine: 'builtin-static-v1', status: 'suspicious', complete: true, scannedBytes: 12, findings: [{ id: 'embedded-pe', severity: 'high', message: '실행 파일 구조 위험 신호', offset: 0 }] },
     }] : [] };
     window.__popupMessages = []; window.__popupTabs = []; window.__popupFolders = 0;
     window.__popupOpens = 0; window.__popupPreferenceReads = 0;
@@ -109,6 +110,7 @@ export async function verifyPopupAudit(browser, origin, buildPaths) {
         assert.equal(await p.locator('.media-marker svg').count(), 1);
         assert.equal(await p.locator('[data-action=download]').getAttribute('aria-label'), '<img src=x onerror=alert(1)> 안전한 제목 처리 중');
         await p.locator('#review-summary').waitFor(); assert(await p.locator('[data-action=download]').isDisabled());
+        assert.match(await p.locator('#review-summary').innerText(), /내부.*위험.*1/);
         await p.screenshot({ path: 'test-results/popup-media.png' }); await p.locator('#review-summary').click();
         assert.equal(await p.evaluate(() => window.__popupTabs.at(-1).url), buildPaths.url(origin, 'local/index.html?view=history'));
         await p.locator('#clear-history').click();

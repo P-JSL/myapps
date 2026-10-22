@@ -2,12 +2,24 @@ import createFFmpegCore from '../vendor/ffmpeg/ffmpeg-core.js';
 import { record } from '../security/validation.ts';
 import { ownedTransferBuffer } from '../security/transfer.ts';
 import { hardenMediaCore } from '../security/decoder-policy.ts';
+import { scanBytes, type InternalScanResult } from '../security/internal-scan.ts';
 import { MAX_INPUT_BYTES, MAX_RUNTIME_MS, outputDimensions, type MediaInfo } from './policy.ts';
 import { probeTrack } from './probe.ts';
 import { convertedDimensions, processingArguments, processingOptions, resultFormat, sniffInput, validateTrack, type TrackInfo } from './processing.ts';
 
 const scope = globalThis as unknown as { onmessage: ((event: MessageEvent<unknown>) => void) | null; postMessage(data: unknown, transfer?: Transferable[]): void };
 let busy = false;
+class InternalRiskError extends Error {
+  readonly internalScan: InternalScanResult;
+  constructor(scan: InternalScanResult) {
+    super(`내부 위험 검사에서 신호가 발견되어 미디어 처리를 중단했습니다. ${scan.findings.slice(0, 3).map(finding => finding.message).join(' ')}`);
+    this.internalScan = scan;
+  }
+}
+function inspectInput(bytes: Uint8Array) {
+  const scan = scanBytes(bytes, { expectedMedia: true });
+  if (scan.status === 'suspicious') throw new InternalRiskError(scan);
+}
 async function checkFile(file: unknown): Promise<TrackInfo['kind']> {
   if (!(file instanceof File) || !file.size || file.size > MAX_INPUT_BYTES) throw new Error('파일은 0바이트보다 크고 256MiB 이하여야 합니다.');
   const kind = sniffInput(new Uint8Array(await file.slice(0, 16).arrayBuffer()));
@@ -27,16 +39,21 @@ scope.onmessage = async event => {
       await checkFile(data.audio); secondary = data.audio as File;
       if (file.size + secondary.size > MAX_INPUT_BYTES) throw new Error('병합할 두 파일의 합계는 256MiB 이하여야 합니다.');
     }
+    scope.postMessage({ type: 'status', message: '파일의 내부 위험 신호를 확인하고 있습니다…' });
+    const inputBytes = new Uint8Array(await file.arrayBuffer());
+    inspectInput(inputBytes);
+    const audioBytes = secondary ? new Uint8Array(await secondary.arrayBuffer()) : undefined;
+    if (audioBytes) inspectInput(audioBytes);
     scope.postMessage({ type: 'status', message: '브라우저 내부 처리 엔진을 준비하고 있습니다…' });
     const core = await createFFmpegCore();
     let lastLog = ''; hardenMediaCore(core, ({ message }) => { lastLog = message.slice(0, 500); });
     // These fresh File buffers have no other consumer; MEMFS can retain them.
-    core.FS.writeFile('input.media', new Uint8Array(await file.arrayBuffer()), { canOwn: true });
+    core.FS.writeFile('input.media', inputBytes, { canOwn: true });
     const info = probeTrack(core, 'input.media', kind);
     if (options.mode === 'upscale' && !info.video) throw new Error('업스케일링할 영상 또는 이미지 트랙이 없습니다.');
     validateTrack(info, options);
-    if (secondary) {
-      core.FS.writeFile('audio.media', new Uint8Array(await secondary.arrayBuffer()), { canOwn: true });
+    if (audioBytes) {
+      core.FS.writeFile('audio.media', audioBytes, { canOwn: true });
       const audio = probeTrack(core, 'audio.media', 'audio'); validateTrack(audio, { mode: 'audio', format: 'm4a' });
     }
     const dimensions = options.mode === 'upscale' ? outputDimensions(info as MediaInfo, options.factor)
@@ -55,5 +72,6 @@ scope.onmessage = async event => {
     if (!(output instanceof Uint8Array) || !output.length || output.length >= MAX_INPUT_BYTES - 1024 * 1024) throw new Error('결과가 비어 있거나 안전한 출력 용량 한도에 도달했습니다.');
     const bytes = ownedTransferBuffer(output);
     scope.postMessage({ type: 'done', info, output: dimensions, format, bytes }, [bytes]);
-  } catch (error) { scope.postMessage({ type: 'error', message: error instanceof Error ? error.message : '처리 중 오류가 발생했습니다.' }); }
+  } catch (error) { scope.postMessage({ type: 'error', message: error instanceof Error ? error.message : '처리 중 오류가 발생했습니다.',
+    ...(error instanceof InternalRiskError ? { internalScan: error.internalScan } : {}) }); }
 };

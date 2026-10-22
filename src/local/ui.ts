@@ -3,7 +3,7 @@ import { appStorage, DOWNLOAD_OPTIONS_KEY } from '../data/database.ts';
 import { SCOPE, isHistory, type MediaItem, type HistoryItem } from './model.ts';
 import { downloadOptions } from './preferences.ts';
 import { transport, transportLabel } from './transport.ts';
-import { HISTORY_STATE_LABELS, PREPARATION_STAGE_LABELS, SECURITY_STATUS_LABELS } from './labels.ts';
+import { HISTORY_STATE_LABELS, PREPARATION_STAGE_LABELS, SECURITY_STATUS_LABELS, internalScanPresentation } from './labels.ts';
 
 function node<T extends HTMLElement>(id: string): T { const element = document.getElementById(id); if (!element) throw new Error(`Missing ${id}`); return element as T; }
 const status = node('status');
@@ -138,10 +138,14 @@ function openReview(item: HistoryItem) {
   closeReview(); activeReview = item;
   const security = item.security;
   const chromeWarning = security.status === 'chrome-warning';
+  const internal = internalScanPresentation(item.internalScan);
+  const internalRisk = internal.tone === 'danger';
   node('security-filename').textContent = item.filename;
-  node('security-result').textContent = SECURITY_STATUS_LABELS[security.status];
+  node('security-result').textContent = internalRisk && !chromeWarning && security.status !== 'infected'
+    ? internal.label : SECURITY_STATUS_LABELS[security.status];
   node('security-explanation').textContent = chromeWarning
     ? 'Chrome이 다운로드에 위험을 표시했습니다. Chrome 다운로드 화면에서 경고를 확인하세요. 이 앱은 Chrome의 경고를 자동으로 해제하지 않으며, 확인 전에는 완료 처리나 업스케일링을 진행하지 않습니다.'
+    : internalRisk ? '내부 검사에서 위험 신호를 확인했습니다. 파일은 이미 디스크에 저장되어 있으며 확인 전에는 완료 처리나 자동 업스케일링을 진행하지 않습니다. 외부 백신의 미탐지와 별개로 삭제하거나 다시 검사하세요. 내부 신호는 악성코드 확정 판정이 아닙니다.'
     : '파일은 이미 디스크에 저장되어 있습니다. 확인 전에는 앱에서 완료 처리나 업스케일링을 진행하지 않습니다. 위협을 탐지했거나 검사를 완료하지 못한 파일은 삭제를 권장합니다. 미탐지 결과도 파일의 안전을 보장하지 않습니다.';
   const details = node('security-details');
   details.replaceChildren();
@@ -149,6 +153,17 @@ function openReview(item: HistoryItem) {
     if (!value) return;
     const line = document.createElement('p'); line.textContent = `${label}: ${value}`; details.append(line);
   };
+  detail('로컬 백신·Chrome 결과', SECURITY_STATUS_LABELS[security.status]);
+  const internalResult = document.createElement('p');
+  internalResult.className = 'internal-scan-summary'; internalResult.dataset.tone = internal.tone; internalResult.textContent = internal.label; details.append(internalResult);
+  detail('내부 검사 범위', internal.scope);
+  detail('내부 검사 안내', internal.explanation);
+  if (internal.findings.length) {
+    const findings = document.createElement('ul'); findings.className = 'internal-findings'; findings.dataset.tone = internal.tone;
+    findings.setAttribute('aria-label', internal.tone === 'danger' ? '내부 검사 위험 신호' : '내부 검사 범위 안내');
+    for (const message of internal.findings) { const line = document.createElement('li'); line.textContent = message; findings.append(line); }
+    details.append(findings);
+  }
   detail('검사 엔진', security.engine);
   detail('검사 안내', security.message);
   detail('Chrome 경고', security.danger);
@@ -197,6 +212,10 @@ function historyRow(item: HistoryItem) {
   if (item.security?.decision === 'keep') security.textContent += ' · 위험 안내 확인 후 사용자가 유지함';
   if (item.security?.decision === 'delete') security.textContent += ' · 사용자가 파일 삭제를 선택함';
   row.append(security);
+  const internal = internalScanPresentation(item.internalScan);
+  const internalSummary = document.createElement('p'); internalSummary.className = 'internal-scan-summary'; internalSummary.dataset.tone = internal.tone;
+  internalSummary.textContent = internal.label + (internal.scope ? ` · ${internal.scope}` : ''); internalSummary.title = internal.explanation;
+  row.append(internalSummary);
   const protocols = (Array.isArray(item.transferProtocols) ? item.transferProtocols : []).map(transport).filter(value => value !== undefined);
   if (protocols.length) { const connection = document.createElement('p'); connection.textContent = `준비 연결 ${protocols.map(transportLabel).join(', ')}`; row.append(connection); }
   if (item.error) { const message = document.createElement('p'); message.textContent = item.error; row.append(message); }
@@ -247,15 +266,21 @@ node('security-later').addEventListener('click', () => { if (!reviewBusy) closeR
 securityDialog.addEventListener('cancel', event => { event.preventDefault(); if (!reviewBusy) closeReview(true); });
 node('extension-id').textContent = chrome.runtime.id || '설치한 확장 프로그램의 ID를 chrome://extensions에서 확인하세요.';
 function showAntivirusStatus(value: unknown) {
-  if (!record(value) || !['ready', 'unavailable', 'error'].includes(String(value.status))) throw new Error('백신 도우미의 준비 상태를 확인할 수 없습니다. 최신 도우미 설치 상태를 확인하세요.');
-  const parts = [value.status === 'ready' ? '도우미 연결됨 · 검사기 선택 확인' : value.status === 'unavailable' ? '백신 연결을 사용할 수 없습니다' : '백신 연결 확인에 실패했습니다'];
+  if (!record(value) || !['ready', 'unavailable', 'error'].includes(String(value.status))
+    || (value.internalAvailable !== undefined && typeof value.internalAvailable !== 'boolean')) throw new Error('백신 도우미의 준비 상태를 확인할 수 없습니다. 최신 도우미 설치 상태를 확인하세요.');
+  const parts = [value.status === 'ready' ? '도우미 연결됨 · 검사기 선택 확인'
+    : value.internalAvailable === true ? '도우미 연결됨 · 내부 위험 검사 사용 가능'
+    : value.status === 'unavailable' ? '백신 연결을 사용할 수 없습니다' : '백신 연결 확인에 실패했습니다'];
+  if (value.internalAvailable === true && value.status !== 'ready') parts.push(value.status === 'unavailable' ? '로컬 백신: 연결되지 않음' : '로컬 백신: 준비 상태 확인 실패');
   if (typeof value.engine === 'string' && value.engine) parts.push(`검사 엔진: ${value.engine.slice(0, 120)}`);
   if (Array.isArray(value.products)) {
     const products = value.products.filter((item): item is string => typeof item === 'string').slice(0, 16).map(item => item.slice(0, 160));
     if (products.length) parts.push(`활성 보호 제품: ${products.join(', ')}`);
   }
   if (typeof value.message === 'string' && value.message) parts.push(value.message.slice(0, 1000));
-  parts.push(value.status === 'ready' ? '파일 검사는 다운로드가 끝난 뒤 별도로 수행하며 결과는 기록 탭에서 확인하세요.' : '도우미·백신 설치와 활성 상태를 확인하세요. 미검사 파일은 기록에서 확인 대기 상태로 유지합니다.');
+  parts.push(value.status === 'ready' ? '파일 검사는 다운로드가 끝난 뒤 별도로 수행하며 결과는 기록 탭에서 확인하세요.'
+    : value.internalAvailable === true ? '내부 검사와 별개로 로컬 백신 검사 결과는 확인되지 않았습니다. 파일은 기록에서 확인 대기 상태로 유지합니다.'
+    : '도우미·백신 설치와 활성 상태를 확인하세요. 미검사 파일은 기록에서 확인 대기 상태로 유지합니다.');
   node('security-connection-status').textContent = parts.join(' · ');
 }
 node('security-connect').addEventListener('click', () => {

@@ -2,7 +2,8 @@ import { record } from '../security/validation.ts';
 import { safeBasename } from '../shared/filename.ts';
 import type { DownloadOptions } from './preferences.ts';
 import type { Transport } from './transport.ts';
-import type { FileSecurity } from './antivirus.ts';
+import { internalScanResponse, type FileSecurity } from './antivirus.ts';
+import type { InternalScanResult } from '../security/internal-scan.ts';
 
 export const SCOPE = 'my-video-app/local';
 export const OFFSCREEN_SCOPE = 'my-video-app/offscreen';
@@ -64,6 +65,7 @@ export interface HistoryItem {
   preparation?: { stage: 'queued' | 'fetching' | 'processing' | 'saving'; progress?: number; loaded?: number; total?: number };
   transferProtocols?: Transport[]; receivedBytes?: number; totalBytes?: number;
   security?: FileSecurity;
+  internalScan?: InternalScanResult; internalScanSha256?: string; internalScanSize?: number;
 }
 /** Keep unresolved work visible even when newer completed records reach the cap. */
 export function retainHistory(rows: HistoryItem[]): HistoryItem[] {
@@ -96,6 +98,13 @@ export function filenameFor(media: Pick<MediaItem, 'url' | 'title' | 'mime' | 'k
   return `${base || 'media'}.${ext}`;
 }
 export function isHistory(value: unknown): value is HistoryItem {
+  if (record(value) && (value.internalScan !== undefined || value.internalScanSha256 !== undefined || value.internalScanSize !== undefined)) {
+    try {
+      if (value.internalScan !== undefined) internalScanResponse(value.internalScan, typeof value.internalScanSize === 'number' ? value.internalScanSize : undefined);
+      if (value.internalScanSha256 !== undefined && (typeof value.internalScanSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(value.internalScanSha256))) return false;
+      if (value.internalScanSize !== undefined && (!Number.isSafeInteger(value.internalScanSize) || Number(value.internalScanSize) < 0)) return false;
+    } catch { return false; }
+  }
   return record(value) && typeof value.id === 'string' && /^[a-f0-9-]{36}$/.test(value.id)
     && typeof value.url === 'string' && typeof value.filename === 'string'
     && ['file', 'hls', 'dash'].includes(String(value.kind))

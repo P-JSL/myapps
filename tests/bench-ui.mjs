@@ -1,7 +1,9 @@
 /** Actual Chromium comparison; extension APIs and collector debounce clock are
  * explicit test doubles. This is not an installed-extension integration test.
  * Frozen, hash-checked historical sources are test-only fixtures so this also
- * runs from a source ZIP without Git. They are never bundled in the extension.
+ * runs from a source ZIP without Git. An explicit presentation-only adaptation
+ * keeps the UI comparison equivalent as new fields are added. These sources
+ * are never bundled in the extension.
  */
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -15,13 +17,30 @@ const baselineRef = '6983b535ba089e7737e10583481ecd6ef35e7cc3';
 const expectedBaselines = { 'collect.ts': '70474f55531579eed1075779b21c1ebfb35f1554f721b615c560eafefc57d619', 'ui.ts': 'd420b0ab96e2d15aba7a962fd719fd583eb7b0539dc2bf9d51d2e0144c539f90' };
 const files = ['src/local/collect.ts', 'src/local/ui.ts'];
 const hash = value => createHash('sha256').update(value).digest('hex');
-const sourceSha256 = {}, baselineSha256 = {}, bundles = {};
+const sourceSha256 = {}, baselineSha256 = {}, adaptedBaselineSha256 = {}, bundles = {};
+function baselinePresentation(file, source) {
+  if (file !== 'src/local/ui.ts') return source;
+  // Retain the frozen row-replacement algorithm while rendering the same new
+  // internal-scan summary. Full output text equality remains an assertion.
+  const anchor = '  row.append(security);\n';
+  assert.equal(source.split(anchor).length, 2, 'Historical UI summary insertion must be unique');
+  const summary = [
+    '  const internal = internalScanPresentation(item.internalScan);',
+    "  const internalSummary = document.createElement('p'); internalSummary.className = 'internal-scan-summary'; internalSummary.dataset.tone = internal.tone;",
+    "  internalSummary.textContent = internal.label + (internal.scope ? ` · ${internal.scope}` : ''); internalSummary.title = internal.explanation;",
+    '  row.append(internalSummary);',
+    '',
+  ].join('\n');
+  return "import { internalScanPresentation } from './labels.ts';\n" + source.replace(anchor, anchor + summary);
+}
 for (const file of files) {
   const old = await readFile(`tests/baselines/${path.basename(file, '.ts')}-1.7.0.txt`, 'utf8');
   assert.equal(hash(old), expectedBaselines[path.basename(file)], 'Historical benchmark source must match release 1.7.0');
   const current = await readFile(file, 'utf8');
   sourceSha256[file] = hash(current); baselineSha256[file] = hash(old);
-  for (const [variant, contents] of [['baseline', old], ['optimized', current]]) {
+  const baseline = baselinePresentation(file, old);
+  adaptedBaselineSha256[file] = hash(baseline);
+  for (const [variant, contents] of [['baseline', baseline], ['optimized', current]]) {
     bundles[`${variant}/${path.basename(file, '.ts')}.js`] = (await build({ stdin: { contents, resolveDir: path.resolve(path.dirname(file)), sourcefile: path.basename(file), loader: 'ts' }, bundle: true, platform: 'browser', target: 'chrome120', format: 'iife', write: false, logLevel: 'silent' })).outputFiles[0].contents;
   }
 }
@@ -200,7 +219,9 @@ try {
   }
   assert.deepEqual(await uiRegression('optimized'), await uiRegression('baseline'));
   regressions.push('UI: unchanged/changed focus, ordering/removal, duplicate IDs, new security tokens/actions, and retained pending disabled button');
-  process.stdout.write(JSON.stringify({ suite: 'ui-collector', baselineRef, baselineSha256, sourceSha256, browser: browser.version(), platform: process.platform, mode: 'real Chromium DOM and IndexedDB; Chrome APIs/resource timing/debounce clock are test doubles; no network latency benchmark', scenarios, regressions, status: 'passed' }) + '\n');
+  process.stdout.write(JSON.stringify({ suite: 'ui-collector', baselineRef, baselineSha256, adaptedBaselineSha256,
+    baselineAdaptation: 'The hash-checked 1.7.0 UI receives only the current internal-scan summary presentation in memory; historical row replacement and all full-text/focus/token/pending assertions remain unchanged.',
+    sourceSha256, browser: browser.version(), platform: process.platform, mode: 'real Chromium DOM and IndexedDB; Chrome APIs/resource timing/debounce clock are test doubles; no network latency benchmark', scenarios, regressions, status: 'passed' }) + '\n');
 } finally {
   await context.close(); await browser.close(); await new Promise(resolve => server.close(resolve));
 }

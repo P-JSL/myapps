@@ -1,8 +1,8 @@
 {
   "engine": "independent-local",
   "productName": "My Video App",
-  "version": "1.11.0",
-  "buildSha256": "a663d628c1dcc2aaf63742efd54e5fd78af2094d00f9d45775f981c1aab91bcc",
+  "version": "1.12.0",
+  "buildSha256": "8db3950c25255ae454763b23b90977a7053ff5ad9e3a5aecfbe29bec6af27fe9",
   "originalRuntimeIncluded": false,
   "accountActivationIncluded": false,
   "capabilities": [
@@ -37,28 +37,32 @@
     "toolbar-media-popup",
     "authenticated-rescan",
     "media-signature-validation",
-    "canonical-media-filenames"
+    "canonical-media-filenames",
+    "builtin-static-risk-screening",
+    "predecode-risk-check",
+    "hash-bound-risk-evidence",
+    "sticky-risk-review"
   ],
   "assetMap": {
-    "bitmaps/logo-128-color.png": "assets/1c13a3f688bf95d18374479923e4a058.png",
-    "bitmaps/logo-128-nooutline.png": "assets/8b92e3e899b51ecd058d56e17ebc803b.png",
-    "hardening/upscale-worker.js": "assets/8770561b34097a4a73f156a64bade85b.js",
-    "local/background.js": "assets/13ef3007fd072b2b697e741c3b74582f.js",
-    "local/collect.js": "assets/b68839387a73d3e9a74fffb47fdd4ec8.js",
-    "local/index.html": "assets/ac77461541014587dd0f04eba38571bc.html",
-    "local/offscreen.html": "assets/b5cbc0395a9d769ad6493edcc5397cf4.html",
-    "local/offscreen.js": "assets/22ffb9a7849b129d47c7a71e277b4a37.js",
-    "local/popup.css": "assets/27719b3a57292fe16d0c951255d61bbc.css",
-    "local/popup.html": "assets/fb2bee187a145442061184f05b50acea.html",
-    "local/popup.js": "assets/a5fe846deca65a58fd48cf227dee7c95.js",
-    "local/stream-worker.js": "assets/3fb91e5b916c1347b665ebb967e2a3e2.js",
-    "local/style.css": "assets/5b1d09e3f8b741085ca952606b9f8c80.css",
-    "local/ui.js": "assets/fa5874613975c522a8357793c57a3fa4.js",
-    "upscale/app.js": "assets/25fe7208c8875fcbb804f4082eb91cc8.js",
-    "upscale/index.html": "assets/d42e9aa34a49b8827b7e8f6b6239bc4a.html",
-    "upscale/style.css": "assets/458cb2bef6f11fae2da60dbc404085cd.css",
-    "vendor/ffmpeg/ffmpeg-core.js": "assets/0900c82d06bd62393adb89977d51cf8f.js",
-    "vendor/ffmpeg/ffmpeg-core.wasm": "assets/60a51567035bd32e4bd2968b1b9f607a.bin"
+    "bitmaps/logo-128-color.png": "assets/c4447be935dc98676d7abcb46aef24e3.png",
+    "bitmaps/logo-128-nooutline.png": "assets/5625133a4474f4c311f0b3a8e7e67c9b.png",
+    "hardening/upscale-worker.js": "assets/40acb935267161d0ff32104b415848d9.js",
+    "local/background.js": "assets/f863e9f658cf0b44efd738ce2ebfd84f.js",
+    "local/collect.js": "assets/ca6b4212e0273f4be414cdd4ba7a3e8d.js",
+    "local/index.html": "assets/613df597facef9e0cc29e30e2738c2e2.html",
+    "local/offscreen.html": "assets/d05c6ace0edd982bea2c520f90f71e2e.html",
+    "local/offscreen.js": "assets/7321a3b5f8e490465db02c30c047dff1.js",
+    "local/popup.css": "assets/220cb93488f3247a0dffdf2f658d2e2b.css",
+    "local/popup.html": "assets/d0db28dcdb5a8b84fd65e0bcd434648b.html",
+    "local/popup.js": "assets/69efeefd04758b9e7c3d49da5c27f883.js",
+    "local/stream-worker.js": "assets/fcf3f50e7f5d07cb42fee9f27fbd0760.js",
+    "local/style.css": "assets/08ce7216ebf8ed3c2d0def6820b8a2f1.css",
+    "local/ui.js": "assets/8aec142403c876c127cdbf4fa238fdad.js",
+    "upscale/app.js": "assets/d94bd4145028d6d28471e8ad2e010d8d.js",
+    "upscale/index.html": "assets/06825dd5275bd6e97b6e0f5e1f4bcb96.html",
+    "upscale/style.css": "assets/21d0a03f1f5bab778f039c9f477e71f6.css",
+    "vendor/ffmpeg/ffmpeg-core.js": "assets/d5fe41fae941540955563502adf83e02.js",
+    "vendor/ffmpeg/ffmpeg-core.wasm": "assets/2dc8c7edd71a5e6094a7e40ea5d0c478.bin"
   },
   "protection": {
     "version": 2,
@@ -75,9 +79,9 @@
       "format": "my-video-engine-v1",
       "algorithm": "AES-256-GCM",
       "compression": "gzip",
-      "cipherPath": "assets/60a51567035bd32e4bd2968b1b9f607a.bin",
-      "coreModulePath": "assets/a60bcbbd82d394b3ca797c56834a9973.js",
-      "iv": "hzMUTgRbrtroHOJn",
+      "cipherPath": "assets/2dc8c7edd71a5e6094a7e40ea5d0c478.bin",
+      "coreModulePath": "assets/3eb7e14be70bca84760ce184e4a39dcb.js",
+      "iv": "8fSta/+OcCzH8+yB",
       "tagBits": 128,
       "plaintextBytes": 32232419,
       "compressedBytes": 10257774,
@@ -89,7 +93,7 @@
   "entries": [
     {
       "input": "src/local/background.ts",
-      "output": "assets/13ef3007fd072b2b697e741c3b74582f.js",
+      "output": "assets/f863e9f658cf0b44efd738ce2ebfd84f.js",
       "format": "esm",
       "inputs": [
         "src/data/database.ts",
@@ -106,14 +110,15 @@
         "src/upscale/policy.ts",
         "src/upscale/storage.ts"
       ],
-      "bytes": 57191,
+      "bytes": 62631,
       "logicalOutput": "local/background.js"
     },
     {
       "input": "src/local/collect.ts",
-      "output": "assets/b68839387a73d3e9a74fffb47fdd4ec8.js",
+      "output": "assets/ca6b4212e0273f4be414cdd4ba7a3e8d.js",
       "format": "iife",
       "inputs": [
+        "src/local/antivirus.ts",
         "src/local/collect.ts",
         "src/local/model.ts",
         "src/local/transport.ts",
@@ -125,9 +130,10 @@
     },
     {
       "input": "src/local/offscreen.ts",
-      "output": "assets/22ffb9a7849b129d47c7a71e277b4a37.js",
+      "output": "assets/7321a3b5f8e490465db02c30c047dff1.js",
       "format": "esm",
       "inputs": [
+        "src/local/antivirus.ts",
         "src/local/byte-assembly.ts",
         "src/local/dash.ts",
         "src/local/hls.ts",
@@ -138,20 +144,22 @@
         "src/local/preferences.ts",
         "src/local/queue.ts",
         "src/local/transport.ts",
+        "src/security/internal-scan.ts",
         "src/security/validation.ts",
         "src/shared/filename.ts",
         "src/shared/media.ts",
         "src/upscale/policy.ts"
       ],
-      "bytes": 26541,
+      "bytes": 39188,
       "logicalOutput": "local/offscreen.js"
     },
     {
       "input": "src/local/ui.ts",
-      "output": "assets/fa5874613975c522a8357793c57a3fa4.js",
+      "output": "assets/8aec142403c876c127cdbf4fa238fdad.js",
       "format": "esm",
       "inputs": [
         "src/data/database.ts",
+        "src/local/antivirus.ts",
         "src/local/labels.ts",
         "src/local/model.ts",
         "src/local/preferences.ts",
@@ -162,15 +170,17 @@
         "src/shared/media.ts",
         "src/upscale/policy.ts"
       ],
-      "bytes": 30120,
+      "bytes": 37584,
       "logicalOutput": "local/ui.js"
     },
     {
       "input": "src/local/popup.ts",
-      "output": "assets/a5fe846deca65a58fd48cf227dee7c95.js",
+      "output": "assets/69efeefd04758b9e7c3d49da5c27f883.js",
       "format": "esm",
       "inputs": [
         "src/data/database.ts",
+        "src/local/antivirus.ts",
+        "src/local/labels.ts",
         "src/local/model.ts",
         "src/local/popup.ts",
         "src/local/preferences.ts",
@@ -179,17 +189,18 @@
         "src/shared/media.ts",
         "src/upscale/policy.ts"
       ],
-      "bytes": 20070,
+      "bytes": 26712,
       "logicalOutput": "local/popup.js"
     },
     {
       "input": "src/local/stream-worker.ts",
-      "output": "assets/3fb91e5b916c1347b665ebb967e2a3e2.js",
+      "output": "assets/fcf3f50e7f5d07cb42fee9f27fbd0760.js",
       "format": "esm",
       "external": [
         "../vendor/ffmpeg/ffmpeg-core.js"
       ],
       "inputs": [
+        "src/local/antivirus.ts",
         "src/local/assets.ts",
         "src/local/byte-assembly.ts",
         "src/local/model.ts",
@@ -198,23 +209,25 @@
         "src/local/stream-worker.ts",
         "src/local/transport.ts",
         "src/security/decoder-policy.ts",
+        "src/security/internal-scan.ts",
         "src/security/transfer.ts",
         "src/security/validation.ts",
         "src/shared/filename.ts",
         "src/shared/media.ts"
       ],
-      "bytes": 12942,
+      "bytes": 21815,
       "logicalOutput": "local/stream-worker.js"
     },
     {
       "input": "src/upscale/worker.ts",
-      "output": "assets/8770561b34097a4a73f156a64bade85b.js",
+      "output": "assets/40acb935267161d0ff32104b415848d9.js",
       "format": "esm",
       "external": [
         "../vendor/ffmpeg/ffmpeg-core.js"
       ],
       "inputs": [
         "src/security/decoder-policy.ts",
+        "src/security/internal-scan.ts",
         "src/security/transfer.ts",
         "src/security/validation.ts",
         "src/shared/filename.ts",
@@ -224,15 +237,16 @@
         "src/upscale/processing.ts",
         "src/upscale/worker.ts"
       ],
-      "bytes": 11495,
+      "bytes": 20563,
       "logicalOutput": "hardening/upscale-worker.js"
     },
     {
       "input": "src/ui/app.ts",
-      "output": "assets/25fe7208c8875fcbb804f4082eb91cc8.js",
+      "output": "assets/d94bd4145028d6d28471e8ad2e010d8d.js",
       "format": "esm",
       "inputs": [
         "src/data/database.ts",
+        "src/local/antivirus.ts",
         "src/local/model.ts",
         "src/local/preferences.ts",
         "src/security/validation.ts",
@@ -243,17 +257,17 @@
         "src/upscale/processing.ts",
         "src/upscale/storage.ts"
       ],
-      "bytes": 23003,
+      "bytes": 25875,
       "logicalOutput": "upscale/app.js"
     }
   ],
-  "appJavaScriptBytes": 184883,
+  "appJavaScriptBytes": 237889,
   "ffmpeg": {
     "package": "@ffmpeg/core",
     "version": "0.12.10",
     "wasmSha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7",
     "bytes": 32232419
   },
-  "distFiles": 28,
-  "distBytes": 10634965
+  "distFiles": 29,
+  "distBytes": 10695897
 }
