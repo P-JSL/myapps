@@ -1,5 +1,5 @@
 {
-  "buildSha256": "9363fb3c3cbcf5b26fceb510efd7fd3a1fdc2340b7caf841611436eef927ac62",
+  "buildSha256": "6058da0c8f1233dbfdd3ada1bbe9793fccf199c3bd1b81a41330df2c696fbe56",
   "browser": "154.0.8037.57",
   "transport": "h3",
   "tlsVerification": "enabled; untrusted CA rejected before isolated test-profile trust was configured",
@@ -12,11 +12,11 @@
     "h3": 15
   },
   "productionAssets": [
-    "assets/ac2532a1ed7738461dd0fdb9e3856c44.js",
-    "assets/ed76fbf0066cd7551cc24435eae34e3b.js",
-    "assets/8c0543598b7f5833281e730cd851ef89.js",
-    "assets/951550e1bc15f636881254f9565ca33d.js",
-    "assets/b728b6da3396eb7bc78f89236a44fad5.bin"
+    "assets/e07afae34555f14bfcdd40f355e49cb0.js",
+    "assets/5c24ec3db94d40e5ed3e9c87bdd4edd0.js",
+    "assets/52819271b9ca09a31841a3e7b08e2fdb.js",
+    "assets/dc8983bd87603e93eddbca1de70061ab.js",
+    "assets/121326e3300f7022c3acc6550131e3fe.bin"
   ],
   "inputSha256": "a8536eaaa80e192769a341d98dc6c62e5fa489b81df82b06455feecb12fe3efe",
   "outcomes": [
@@ -33,7 +33,7 @@
       "status": "passed"
     },
     {
-      "name": "Real HTTP/3 HLS segments and local Wasm remux preserve decodable video and audio",
+      "name": "Real HTTP/3 HLS segments and disk-backed Wasm remux preserve decodable video and audio",
       "status": "passed"
     }
   ]

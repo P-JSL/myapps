@@ -3,30 +3,30 @@
   "baselineCommit": "6983b53",
   "node": "v24.19.0",
   "platform": "linux/x64",
-  "modelSha256": "cf56195dd9af7500d470c60e2d56e59a50087bf59bce43450b6ba2b35d398b15",
+  "modelSha256": "09836dd1807ed1178acf69ac536aa28af3ac44eb1ab20baa6db140545c1b7267",
   "unit": "microseconds per operation",
   "cases": [
     {
       "tabCount": 1,
       "retainedItems": 200,
       "lookup": {
-        "beforeMedianUs": 3.6319499999999985,
-        "afterMedianUs": 0.016282500000007378,
-        "speedup": 223.05849838773855,
+        "beforeMedianUs": 3.7563825000000035,
+        "afterMedianUs": 0.015039166666663087,
+        "speedup": 249.77331412429086,
         "iterationsPerRound": 1200,
         "rounds": 7
       },
       "construction": {
-        "beforeMedianUs": 11.988999999999805,
-        "afterMedianUs": 21.1327,
-        "speedup": 0.5673198408154095,
+        "beforeMedianUs": 12.199679999999944,
+        "afterMedianUs": 22.27699999999999,
+        "speedup": 0.5476356780535956,
         "iterationsPerRound": 50,
         "rounds": 5
       },
       "constructionAndRemovalOfOneFullTab": {
-        "beforeMedianUs": 9.442820000000012,
-        "afterMedianUs": 23.376220000000032,
-        "speedup": 0.4039498259342186,
+        "beforeMedianUs": 9.956479999999885,
+        "afterMedianUs": 24.370345000000096,
+        "speedup": 0.4085489967417304,
         "iterationsPerRound": 200,
         "rounds": 5
       },
@@ -36,23 +36,23 @@
       "tabCount": 10,
       "retainedItems": 2000,
       "lookup": {
-        "beforeMedianUs": 35.44175749999999,
-        "afterMedianUs": 0.01818583333331958,
-        "speedup": 1948.8662878629038,
+        "beforeMedianUs": 37.65503916666669,
+        "afterMedianUs": 0.02043000000000461,
+        "speedup": 1843.124775656299,
         "iterationsPerRound": 1200,
         "rounds": 7
       },
       "construction": {
-        "beforeMedianUs": 112.05420000000004,
-        "afterMedianUs": 271.3149999999928,
-        "speedup": 0.41300407275676987,
+        "beforeMedianUs": 117.63439999999719,
+        "afterMedianUs": 260.92519999999695,
+        "speedup": 0.4508357184357761,
         "iterationsPerRound": 5,
         "rounds": 5
       },
       "constructionAndRemovalOfOneFullTab": {
-        "beforeMedianUs": 9.440515000000005,
-        "afterMedianUs": 22.455789999999926,
-        "speedup": 0.42040449256071755,
+        "beforeMedianUs": 9.476460000000202,
+        "afterMedianUs": 22.911154999999894,
+        "speedup": 0.41361773337050206,
         "iterationsPerRound": 200,
         "rounds": 5
       },
@@ -62,30 +62,30 @@
       "tabCount": 50,
       "retainedItems": 10000,
       "lookup": {
-        "beforeMedianUs": 153.99240666666668,
-        "afterMedianUs": 0.0157566666666753,
-        "speedup": 9773.1588745451,
+        "beforeMedianUs": 156.9889525,
+        "afterMedianUs": 0.015039166666686773,
+        "speedup": 10438.673629952244,
         "iterationsPerRound": 1200,
         "rounds": 7
       },
       "construction": {
-        "beforeMedianUs": 727.9565000000048,
-        "afterMedianUs": 1875.9679999999435,
-        "speedup": 0.3880431329319193,
+        "beforeMedianUs": 702.8139999999894,
+        "afterMedianUs": 1879.8189999999977,
+        "speedup": 0.37387322928430355,
         "iterationsPerRound": 2,
         "rounds": 5
       },
       "constructionAndRemovalOfOneFullTab": {
-        "beforeMedianUs": 9.721130000000358,
-        "afterMedianUs": 24.16223000000059,
-        "speedup": 0.40232751695518665,
+        "beforeMedianUs": 9.91000999999983,
+        "afterMedianUs": 24.41951500000073,
+        "speedup": 0.40582337527995677,
         "iterationsPerRound": 200,
         "rounds": 5
       },
       "extraIndexEntries": 10000
     }
   ],
-  "historyRetentionAt200MeanUs": 20.2659443,
+  "historyRetentionAt200MeanUs": 21.2253342,
   "complexity": {
     "selectBefore": "O(N) time and O(N) intermediate references across all retained tabs",
     "selectAfter": "Map lookup expected O(1), no full-catalog intermediate array",

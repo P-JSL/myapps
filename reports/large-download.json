@@ -1,0 +1,182 @@
+{
+  "buildSha256": "6058da0c8f1233dbfdd3ada1bbe9793fccf199c3bd1b81a41330df2c696fbe56",
+  "browser": "154.0.8037.57",
+  "status": "passed",
+  "storageQuotaFixture": {
+    "scope": "Disposable regular disk-backed Chromium profile and localhost test origin only. This HTTP harness lacks the extension manifest existing unlimitedStorage exemption; no product permission, OS setting or user profile is changed. Actual installed-extension permission behavior remains unverified.",
+    "method": "CDP Storage.overrideQuotaForOrigin",
+    "requestedQuotaBytes": 8589934592,
+    "estimateBefore": {
+      "quota": 10740513549,
+      "usage": 3095309,
+      "usageDetails": {
+        "fileSystem": 174,
+        "indexedDB": 3095135
+      }
+    },
+    "estimateDuring": {
+      "quota": 10740513549,
+      "usage": 3095309,
+      "usageDetails": {
+        "fileSystem": 174,
+        "indexedDB": 3095135
+      }
+    },
+    "estimateAfterRestore": {
+      "quota": 10740513549,
+      "usage": 3095309,
+      "usageDetails": {
+        "fileSystem": 174,
+        "indexedDB": 3095135
+      }
+    },
+    "overrideRestored": true,
+    "protocolBefore": {
+      "usage": 3095309,
+      "quota": 10723128114,
+      "overrideActive": false,
+      "usageBreakdown": [
+        {
+          "storageType": "file_systems",
+          "usage": 174
+        },
+        {
+          "storageType": "indexeddb",
+          "usage": 3095135
+        },
+        {
+          "storageType": "cache_storage",
+          "usage": 0
+        },
+        {
+          "storageType": "service_workers",
+          "usage": 0
+        }
+      ]
+    },
+    "protocolDuring": {
+      "usage": 3095309,
+      "quota": 8589934592,
+      "overrideActive": true,
+      "usageBreakdown": [
+        {
+          "storageType": "file_systems",
+          "usage": 174
+        },
+        {
+          "storageType": "indexeddb",
+          "usage": 3095135
+        },
+        {
+          "storageType": "cache_storage",
+          "usage": 0
+        },
+        {
+          "storageType": "service_workers",
+          "usage": 0
+        }
+      ]
+    },
+    "protocolAfterRestore": {
+      "usage": 3095309,
+      "quota": 10723128114,
+      "overrideActive": false,
+      "usageBreakdown": [
+        {
+          "storageType": "file_systems",
+          "usage": 174
+        },
+        {
+          "storageType": "indexeddb",
+          "usage": 3095135
+        },
+        {
+          "storageType": "cache_storage",
+          "usage": 0
+        },
+        {
+          "storageType": "service_workers",
+          "usage": 0
+        }
+      ]
+    },
+    "estimateScope": "navigator.storage.estimate may report a privacy-rounded quota; CDP values above verify the actual isolated override and its removal."
+  },
+  "mode": "Protected production offscreen; real Chromium fetch, OPFS and browser disk download. Chrome extension APIs doubled; no installed-extension integration claim.",
+  "memoryScope": "Page-scope Blob.arrayBuffer calls are guarded at8MiB in both successful large scenarios; workers use the production disk filesystem and are not instrumented by this page guard. Server/host hashing uses bounded chunks. This is not a complete browser heap/RSS measurement.",
+  "fixtureScope": "Owned one-second H264/AAC MP4 with a2GiB free box and relocated chunk offsets; a separate two-frame H264 source spans14402seconds. Virtual giant HTTP bytes and resulting large files are not retained in the repository.",
+  "outcomes": [
+    {
+      "name": "parallel-over-2-gib",
+      "status": "passed",
+      "size": 2147506265,
+      "sha256": "8849960b8a49bc64462ce159d436eeaa28cc978aad4045336ab2b3b35d1655de",
+      "maximumBlobRead": 4194304,
+      "traffic": {
+        "requests": 513,
+        "rangeRequests": 513,
+        "maximumActive": 4,
+        "active": 0,
+        "bytesSent": 2147506265,
+        "aborted": 0
+      },
+      "codecs": [
+        "h264",
+        "aac"
+      ],
+      "durationSeconds": 1
+    },
+    {
+      "name": "cancel-and-cleanup",
+      "status": "passed",
+      "traffic": {
+        "requests": 5,
+        "rangeRequests": 5,
+        "maximumActive": 4,
+        "active": 0,
+        "bytesSent": 1376256,
+        "aborted": 4
+      }
+    },
+    {
+      "name": "injected-quota-and-cleanup",
+      "status": "passed",
+      "injectedFailure": true,
+      "traffic": {
+        "requests": 5,
+        "rangeRequests": 5,
+        "maximumActive": 3,
+        "active": 0,
+        "bytesSent": 16842752,
+        "aborted": 0
+      }
+    },
+    {
+      "name": "disk-stream-remux-over-2-gib",
+      "status": "passed",
+      "inputBytes": 2147506265,
+      "outputBytes": 22618,
+      "maximumPageBlobRead": 22618,
+      "videoPayloadSha256": "6fe6563f28d0b880da909d31ec9e0f9f02def6deec91d0ec56bb18b26d2964f0",
+      "frames": 12,
+      "durationSeconds": 1,
+      "traffic": {
+        "requests": 1,
+        "rangeRequests": 0,
+        "maximumActive": 1,
+        "active": 0,
+        "bytesSent": 2147506265,
+        "aborted": 0
+      }
+    },
+    {
+      "name": "long-duration-disk-stream",
+      "status": "passed",
+      "sourceFrames": 2,
+      "outputFrames": 2,
+      "durationSeconds": 14402,
+      "videoPayloadSha256": "982ecc009674b13c8311a5f0a8fef44861b057e0c7a669736c6ceb954bdd247e",
+      "fixtureScope": "Two low-frame-rate frames spanning four hours; verifies real media timestamps and frame preservation, not hours of continuous recording throughput."
+    }
+  ]
+}

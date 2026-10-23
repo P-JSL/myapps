@@ -1,4 +1,4 @@
-import { MAX_SEGMENTS, mediaURL } from './model.ts';
+import { MAX_SEGMENTS, MAX_DISK_SEGMENTS, MAX_DISK_MANIFEST_BYTES, mediaURL } from './model.ts';
 import { validRange, type ByteRange, type ManifestResource } from './network.ts';
 import { chooseQuality, downloadOptions, type DownloadOptions } from './preferences.ts';
 
@@ -11,8 +11,8 @@ export function attributes(value: string): Record<string, string> {
   for (const match of value.matchAll(pattern)) result[match[1]!] = match[2] ?? match[3] ?? '';
   return result;
 }
-function check(text: string): string[] {
-  if (text.length > 2 * 1024 * 1024 || !text.trimStart().startsWith('#EXTM3U')) throw new Error('올바른 HLS 목록이 아닙니다.');
+function check(text: string, disk: boolean): string[] {
+  if (text.length > (disk ? MAX_DISK_MANIFEST_BYTES : 2 * 1024 * 1024) || !text.trimStart().startsWith('#EXTM3U')) throw new Error('올바른 HLS 목록이 아닙니다.');
   const lines = text.trim().split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   for (const line of lines) {
     if (/^#EXT-X-(?:SESSION-)?KEY:/.test(line) && attributes(line.slice(line.indexOf(':') + 1)).METHOD !== 'NONE') throw new Error('암호화·DRM 스트림은 지원하지 않습니다.');
@@ -25,7 +25,7 @@ export function parseByteRange(value: string, offset = 0): ByteRange {
   const range = { length: Number(match[1]), offset: match[2] === undefined ? offset : Number(match[2]) };
   validRange(range); return range;
 }
-export async function planHls(url: string, load: (url: string) => Promise<string | ManifestResource>, options: DownloadOptions = downloadOptions()): Promise<StreamPlan> {
+export async function planHls(url: string, load: (url: string) => Promise<string | ManifestResource>, options: DownloadOptions = downloadOptions(), disk = false): Promise<StreamPlan> {
   const assets: RemoteAsset[] = [];
   const inputs: StreamInput[] = [];
   async function playlist(address: string, depth: number, ancestors: Set<string>, includeAudio: boolean): Promise<void> {
@@ -35,7 +35,7 @@ export async function planHls(url: string, load: (url: string) => Promise<string
     address = mediaURL(typeof resource === 'string' ? address : resource.url).href;
     if (ancestors.has(address)) throw new Error('HLS 목록이 순환하거나 너무 깊습니다.');
     const next = new Set(ancestors).add(requested).add(address);
-    const lines = check(typeof resource === 'string' ? resource : resource.text);
+    const lines = check(typeof resource === 'string' ? resource : resource.text, disk);
     const variants: Array<{ url: string; bandwidth: number; height: number; audio?: string }> = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!;
@@ -72,7 +72,7 @@ export async function planHls(url: string, load: (url: string) => Promise<string
     let pendingRange = '';
     let segments = 0;
     function asset(remote: string, bytes?: ByteRange): string {
-      if (assets.length >= MAX_SEGMENTS) throw new Error('미디어 조각 개수 한도를 초과했습니다.');
+      if (assets.length >= (disk ? MAX_DISK_SEGMENTS : MAX_SEGMENTS)) throw new Error('미디어 조각 목록의 분석 한도를 초과했습니다.');
       const item: RemoteAsset = { url: mediaURL(remote, address).href, filename: `asset-${assets.length.toString().padStart(5, '0')}.${/\.(mp4|m4s)(?:[?#]|$)/i.test(remote) ? 'm4s' : 'ts'}` };
       if (bytes) item.range = bytes;
       assets.push(item); return item.filename;

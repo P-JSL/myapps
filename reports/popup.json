@@ -1,5 +1,5 @@
 {
-  "buildSha256": "9363fb3c3cbcf5b26fceb510efd7fd3a1fdc2340b7caf841611436eef927ac62",
+  "buildSha256": "6058da0c8f1233dbfdd3ada1bbe9793fccf199c3bd1b81a41330df2c696fbe56",
   "browser": "154.0.8037.57",
   "mode": "Protected production popup and collector; real DOM and IndexedDB; Chrome APIs are doubles",
   "outcomes": [
@@ -29,11 +29,11 @@
     }
   ],
   "productionAssets": [
-    "assets/22d26bf26ba5be2a29593df98a7e540a.js",
-    "assets/64db9ff89fd6c7592230fdcc16a77331.png",
-    "assets/64f789f192175132fbf3c1c80c58038f.js",
-    "assets/7083b37b7e15088b29798ed5cc718950.html",
-    "assets/a299a5f4d7bfc534668b36c1ff11e44e.css"
+    "assets/4223dbad773bf321228867a3f935a8f2.js",
+    "assets/c5aca525a4d142a61d08fc6927cd9401.png",
+    "assets/cca5593d42dc3c332af011f43e5b5e04.css",
+    "assets/edebd1985f5fee8d574ca18069ecd133.js",
+    "assets/fe6358789afeb463c162846b608a2214.html"
   ],
   "outboundRequests": [],
   "pageErrors": []

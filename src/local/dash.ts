@@ -1,4 +1,4 @@
-import { MAX_SEGMENTS, mediaURL } from './model.ts';
+import { MAX_SEGMENTS, MAX_DISK_SEGMENTS, MAX_DISK_MANIFEST_BYTES, mediaURL } from './model.ts';
 import { validRange, type ByteRange } from './network.ts';
 import type { RemoteAsset, StreamPlan } from './hls.ts';
 import { chooseQuality, downloadOptions, type DownloadOptions } from './preferences.ts';
@@ -15,8 +15,9 @@ function range(text: string | null): ByteRange | undefined {
   if (!match) throw new Error('DASH 바이트 범위가 올바르지 않습니다.');
   const result = { offset: Number(match[1]), length: Number(match[2]) - Number(match[1]) + 1 }; validRange(result); return result;
 }
-export function planDash(text: string, address: string, options: DownloadOptions = downloadOptions()): StreamPlan {
-  if (text.length > 2 * 1024 * 1024 || /<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error('지원하지 않는 DASH 문서입니다.');
+export function planDash(text: string, address: string, options: DownloadOptions = downloadOptions(), disk = false): StreamPlan {
+  const maximum = disk ? MAX_DISK_SEGMENTS : MAX_SEGMENTS;
+  if (text.length > (disk ? MAX_DISK_MANIFEST_BYTES : 2 * 1024 * 1024) || /<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error('지원하지 않는 DASH 문서입니다.');
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   const root = doc.documentElement;
   if (root.localName !== 'MPD' || doc.getElementsByTagName('parsererror').length) throw new Error('올바른 DASH 목록이 아닙니다.');
@@ -47,7 +48,7 @@ export function planDash(text: string, address: string, options: DownloadOptions
     for (const node of chain) { const value = child(node, 'BaseURL')?.textContent?.trim(); if (value) base = mediaURL(value, base).href; }
     const parts: string[] = [];
     function add(url: string, bytes?: ByteRange) {
-      if (plan.assets.length >= MAX_SEGMENTS) throw new Error('미디어 조각 개수 한도를 초과했습니다.');
+      if (plan.assets.length >= maximum) throw new Error('미디어 조각 목록의 분석 한도를 초과했습니다.');
       const asset: RemoteAsset = { url: mediaURL(url, base).href, filename: `dash-${plan.assets.length}.m4s` };
       if (bytes) asset.range = bytes;
       plan.assets.push(asset); parts.push(asset.filename);
@@ -102,14 +103,14 @@ export function planDash(text: string, address: string, options: DownloadOptions
               || !Number.isFinite(end) || end > Number.MAX_SAFE_INTEGER || end <= time) throw new Error('끝이 없는 DASH 타임라인은 지원하지 않습니다.');
             repeat = Math.ceil((end - time) / d) - 1;
           }
-          if (repeat >= MAX_SEGMENTS) throw new Error('DASH 조각 개수 한도를 초과했습니다.');
+          if (repeat >= maximum) throw new Error('DASH 조각 목록의 분석 한도를 초과했습니다.');
           if (!Number.isSafeInteger(time + (repeat + 1) * d) || !Number.isSafeInteger(number + repeat)) throw new Error('DASH 타임라인이 올바르지 않습니다.');
           for (let i = 0; i <= repeat; i++) { add(expand(format, time)); time += d; number++; }
         }
       } else {
         const step = Number(templateAttribute('duration'));
         const count = Math.ceil(seconds * timescale / step);
-        if (!Number.isFinite(count) || count < 1 || count > MAX_SEGMENTS) throw new Error('DASH 길이 또는 조각 개수가 허용 범위를 초과했습니다.');
+        if (!Number.isFinite(count) || count < 1 || count > maximum) throw new Error('DASH 조각 목록의 분석 한도를 초과했습니다.');
         for (let i = 0; i < count; i++) { add(expand(format, i * step)); number++; }
       }
     } else {

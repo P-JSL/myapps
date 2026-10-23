@@ -3,7 +3,7 @@ import { appStorage, DOWNLOAD_OPTIONS_KEY } from '../data/database.ts';
 import { SCOPE, isHistory, type MediaItem, type HistoryItem } from './model.ts';
 import { downloadOptions } from './preferences.ts';
 import { transport, transportLabel } from './transport.ts';
-import { HISTORY_STATE_LABELS, PREPARATION_STAGE_LABELS, SECURITY_STATUS_LABELS, internalScanPresentation } from './labels.ts';
+import { HISTORY_STATE_LABELS, PREPARATION_STAGE_LABELS, SECURITY_STATUS_LABELS, internalScanPresentation, formatBytes } from './labels.ts';
 
 function node<T extends HTMLElement>(id: string): T { const element = document.getElementById(id); if (!element) throw new Error(`Missing ${id}`); return element as T; }
 const status = node('status');
@@ -162,7 +162,7 @@ function mediaRow(item: MediaItem) {
   const row = document.createElement('li'); row.dataset.rowId = item.id;
   const kind = document.createElement('span'); kind.className = 'kind'; kind.textContent = item.kind === 'file' ? 'MEDIA FILE' : `${item.kind.toUpperCase()} · VOD`;
   const title = document.createElement('h3'); title.textContent = item.title || new URL(item.url).pathname.split('/').at(-1) || '미디어';
-  const source = document.createElement('p'); source.textContent = new URL(item.url).hostname + (item.size ? ` · ${(item.size / 1024 / 1024).toFixed(1)} MiB` : '');
+  const source = document.createElement('p'); source.textContent = new URL(item.url).hostname + (item.size ? ` · ${formatBytes(item.size)}` : '');
   const observed = transport(item.observedTransport); if (observed) source.textContent += ` · 페이지 연결 ${transportLabel(observed)}`;
   const controls = document.createElement('div'); controls.className = 'actions';
   controls.append(button('다운로드', async () => { await preferencesReady; await request('download', { id: item.id, options: options() }); status.textContent = '파일을 준비하고 있습니다. 기록 탭에서 진행 상태를 확인하세요.'; }, false, 'download'));
@@ -250,10 +250,14 @@ function historyRow(item: HistoryItem) {
     const label = PREPARATION_STAGE_LABELS[item.preparation.stage];
     if (label) info.textContent += ` · ${label}`;
     if (typeof item.preparation.progress === 'number' && Number.isFinite(item.preparation.progress)) info.textContent += ` ${Math.round(Math.max(0, Math.min(1, item.preparation.progress)) * 100)}%`;
+    if (typeof item.preparation.loaded === 'number' && item.preparation.loaded >= 0) {
+      info.textContent += ` · ${formatBytes(item.preparation.loaded)}`;
+      if (typeof item.preparation.total === 'number' && item.preparation.total > 0) info.textContent += ` / ${formatBytes(item.preparation.total)}`;
+    }
   }
   if (item.state === 'downloading' && typeof item.receivedBytes === 'number' && item.receivedBytes >= 0) {
-    info.textContent += ` · ${(item.receivedBytes / 1024 / 1024).toFixed(1)} MiB`;
-    if (typeof item.totalBytes === 'number' && item.totalBytes > 0) info.textContent += ` / ${(item.totalBytes / 1024 / 1024).toFixed(1)} MiB`;
+    info.textContent += ` · ${formatBytes(item.receivedBytes)}`;
+    if (typeof item.totalBytes === 'number' && item.totalBytes > 0) info.textContent += ` / ${formatBytes(item.totalBytes)}`;
   }
   row.append(title, info);
   const security = document.createElement('p'); security.className = 'security-summary';

@@ -100,10 +100,12 @@ db.commit(); db.close()
       onMessage: { addListener(fn) { handlers.push(fn); } }, sendMessage: async () => ({ ok: true }) } }, configurable: true });
   });
   const productionRequests = [];
+  const legacyRequests = [];
   const productionPaths = new Set([...Object.values(buildPaths.assetMap), buildPaths.buildInfo.protection?.engine?.coreModulePath].filter(Boolean));
   context.on('request', request => {
     const name = new URL(request.url()).pathname.slice(1);
     if (productionPaths.has(name)) productionRequests.push(name);
+    if (Object.hasOwn(buildPaths.assetMap, name)) legacyRequests.push(name);
   });
   const stream = await page.evaluate(async ({ offscreenPath, backgroundPath }) => {
     const namespace = await import(offscreenPath);
@@ -116,9 +118,11 @@ db.commit(); db.close()
       return { protocols: result.protocols, bytes: [...new Uint8Array(await file.arrayBuffer())] };
     } finally { await send({ type: 'dispose' }); }
   }, { offscreenPath: '/' + buildPaths.resolve('local/offscreen.js'), backgroundPath: buildPaths.resolve('local/background.js') });
-  for (const logical of ['local/offscreen.js', 'local/stream-worker.js', 'vendor/ffmpeg/ffmpeg-core.js', 'vendor/ffmpeg/ffmpeg-core.wasm']) {
+  for (const logical of ['local/offscreen.js', 'local/large-stream-worker.js', 'vendor/ffmpeg/ffmpeg-core.js', 'vendor/ffmpeg/ffmpeg-core.wasm']) {
     assert(productionRequests.includes(buildPaths.resolve(logical)), `HTTP/3 must execute the built ${logical}`);
   }
+  assert(!productionRequests.includes(buildPaths.resolve('local/stream-worker.js')), 'Original HTTP/3 downloads must use the production disk-backed worker');
+  assert.deepEqual(legacyRequests, [], 'HTTP/3 processing must use protected production asset paths');
   const engineModule = buildPaths.buildInfo.protection?.engine?.coreModulePath;
   if (engineModule) assert(productionRequests.includes(engineModule), 'HTTP/3 must execute the production engine module');
   assert.deepEqual(stream.protocols, ['h3']);
@@ -127,7 +131,7 @@ db.commit(); db.close()
   const video = probe.streams.find(stream => stream.codec_type === 'video'); const audio = probe.streams.find(stream => stream.codec_type === 'audio');
   assert.equal(video.codec_name, 'h264'); assert.equal(Number(video.nb_frames), 12); assert.equal(audio.codec_name, 'aac');
   command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', 'test-results/http3-hls.mp4', '-f', 'null', '-']);
-  passed('Real HTTP/3 HLS segments and local Wasm remux preserve decodable video and audio');
+  passed('Real HTTP/3 HLS segments and disk-backed Wasm remux preserve decodable video and audio');
   const stats = JSON.parse(await readFile(`${temporary}/stats.json`, 'utf8')); assert(stats.h3 >= 6);
   const buildReport = buildPaths.buildInfo;
   await writeFile('reports/http3.json', JSON.stringify({ buildSha256: buildReport.buildSha256, browser: context.browser()?.version() ?? 'Chromium', transport: 'h3', tlsVerification: 'enabled; untrusted CA rejected before isolated test-profile trust was configured', mode: 'real loopback HTTP/3; deterministic QUIC origin selected only in test; Chrome runtime API doubled for offscreen processing', profileTrust: 'generated short-lived test CA in disposable Chromium profile; no OS or user profile changes', productionTransport: 'normal Chrome negotiation; no forced transport flags', server: { aioquic: '1.3.0', ...stats }, productionAssets: [...new Set(productionRequests)], inputSha256: identity, outcomes }, null, 2) + '\n');

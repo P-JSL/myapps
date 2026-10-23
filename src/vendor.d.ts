@@ -5,6 +5,12 @@ declare module '*ffmpeg-core.js' {
       readFile(name: string, options?: { encoding: 'utf8' }): Uint8Array | string;
       stat(name: string): { size: number };
       unlink(name: string): void;
+      mkdir(path: string): void;
+      chdir(path: string): void;
+      mount(type: object, options: object, path: string): unknown;
+      unmount(path: string): void;
+      createNode(parent: unknown, name: string, mode: number, device: number): unknown;
+      ErrnoError: new (errno: number) => Error;
     };
     exec(...args: string[]): number;
     ffprobe(...args: string[]): number;

@@ -1,5 +1,5 @@
 {
-  "buildSha256": "9363fb3c3cbcf5b26fceb510efd7fd3a1fdc2340b7caf841611436eef927ac62",
+  "buildSha256": "6058da0c8f1233dbfdd3ada1bbe9793fccf199c3bd1b81a41330df2c696fbe56",
   "browser": "154.0.8037.57",
   "engine": "independent-local",
   "mode": "localhost harness: protected production assets; real browser/Wasm/OPFS; Chrome extension APIs mocked",
@@ -113,7 +113,7 @@
       "status": "passed"
     },
     {
-      "name": "Parallel segment downloads multiplex up to three requests and preserve the complete decoded video",
+      "name": "Parallel stream segments download concurrently and preserve the complete decoded video",
       "status": "passed"
     },
     {
@@ -341,29 +341,50 @@
       "status": "passed"
     },
     {
+      "name": "A real video exceeding 2 GiB downloads in parallel to OPFS and saves as one byte-identical playable MP4",
+      "status": "passed"
+    },
+    {
+      "name": "Cancelling a multi-gigabyte preparation aborts parallel bodies and removes partial disk data",
+      "status": "passed"
+    },
+    {
+      "name": "An injected disk quota error aborts preparation and removes the partial OPFS video",
+      "status": "passed"
+    },
+    {
+      "name": "A DASH source exceeding 2 GiB remuxes through real OPFS-backed FFmpeg into one intact MP4",
+      "status": "passed"
+    },
+    {
+      "name": "A four-hour finite video downloads through DASH without a media-duration cap and preserves both frames",
+      "status": "passed"
+    },
+    {
       "name": "No outbound requests or page exceptions in new processing workflow",
       "status": "passed"
     }
   ],
   "productionAssets": [
-    "assets/0318efeb24d519d97dae0fb373a8f612.js",
-    "assets/0c85b3a8370708358e9fe2066c5f70cd.html",
-    "assets/22d26bf26ba5be2a29593df98a7e540a.js",
-    "assets/5ceb5f820378a7d0c046b7a1b5e459b1.js",
-    "assets/64db9ff89fd6c7592230fdcc16a77331.png",
-    "assets/64f789f192175132fbf3c1c80c58038f.js",
-    "assets/7083b37b7e15088b29798ed5cc718950.html",
-    "assets/8c0543598b7f5833281e730cd851ef89.js",
-    "assets/8d98987bb95f35c12da2312323bbbe2e.css",
-    "assets/8f128fd4ba8687a8308d40bac34fcb26.html",
-    "assets/951550e1bc15f636881254f9565ca33d.js",
-    "assets/a299a5f4d7bfc534668b36c1ff11e44e.css",
-    "assets/ac2532a1ed7738461dd0fdb9e3856c44.js",
-    "assets/b728b6da3396eb7bc78f89236a44fad5.bin",
-    "assets/bcc97125587bcf958807020e71475baf.css",
-    "assets/c33f51c7498a63667157adb1e64b587d.js",
-    "assets/ed76fbf0066cd7551cc24435eae34e3b.js",
-    "assets/f9ce625e3daafd1065ec71c536ac5364.js"
+    "assets/121326e3300f7022c3acc6550131e3fe.bin",
+    "assets/13ddc121dad9af219feb5bc7099dab5d.css",
+    "assets/331f12242d40fc6bd9af9e09b2698c09.js",
+    "assets/3414df33316da9f8f614fba7310d7cae.js",
+    "assets/415f08b93538dfadd9258ec09f0044e1.js",
+    "assets/4223dbad773bf321228867a3f935a8f2.js",
+    "assets/52819271b9ca09a31841a3e7b08e2fdb.js",
+    "assets/542909605d90084a48b27494c97af49f.html",
+    "assets/5c24ec3db94d40e5ed3e9c87bdd4edd0.js",
+    "assets/91ffdc403e36bb29e2dd003f97b9e2ea.js",
+    "assets/c5aca525a4d142a61d08fc6927cd9401.png",
+    "assets/c8b7697d554a3f40e64c112ab05a844b.css",
+    "assets/cca5593d42dc3c332af011f43e5b5e04.css",
+    "assets/d14dd98d134f6746b431c9097e34aab9.js",
+    "assets/dc8983bd87603e93eddbca1de70061ab.js",
+    "assets/e07afae34555f14bfcdd40f355e49cb0.js",
+    "assets/edebd1985f5fee8d574ca18069ecd133.js",
+    "assets/fe6358789afeb463c162846b608a2214.html",
+    "assets/ff5ba3257aa3ab667bf0dbef0de77c04.html"
   ],
   "legacyRuntimeRequests": [],
   "directFixtureSha256": "a8536eaaa80e192769a341d98dc6c62e5fa489b81df82b06455feecb12fe3efe",

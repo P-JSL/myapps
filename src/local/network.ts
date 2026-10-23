@@ -113,8 +113,8 @@ export async function fetchBytes(url: string, maximum: number, signal: AbortSign
 }
 export interface ManifestResource { text: string; url: string; }
 /** Relative manifest references use the URL of the successful response, after redirects. */
-export async function fetchManifestResource(url: string, signal: AbortSignal): Promise<ManifestResource> {
+export async function fetchManifestResource(url: string, signal: AbortSignal, maximum = 2 * 1024 * 1024): Promise<ManifestResource> {
   let address = mediaURL(url).href;
-  const bytes = await fetchBytes(address, 2 * 1024 * 1024, signal, undefined, { finalURL: value => { address = value; } });
+  const bytes = await fetchBytes(address, maximum, signal, undefined, { finalURL: value => { address = value; } });
   return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), url: address };
 }

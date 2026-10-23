@@ -1,6 +1,10 @@
 import { internalScanResponse, type FileSecurity } from './antivirus.ts';
 import type { DownloadState, HistoryItem } from './model.ts';
 
+export function formatBytes(value: number): string {
+  return value >= 1024 ** 3 ? `${(value / 1024 ** 3).toFixed(2)} GiB` : `${(value / 1024 ** 2).toFixed(1)} MiB`;
+}
+
 export const HISTORY_STATE_LABELS = Object.freeze({
   preparing: '파일 준비 중', downloading: '다운로드 중', scanning: '로컬 백신 검사 중', review: '보안 검사 확인 필요',
   discarded: '파일 삭제됨', complete: '완료', cancelled: '취소됨', error: '실패',

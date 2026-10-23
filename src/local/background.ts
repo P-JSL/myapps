@@ -2,7 +2,6 @@ import { boundedData, record } from '../security/validation.ts';
 import { appStorage } from '../data/database.ts';
 import { offerUpscale, revokeDownloadOffers, authorizeDownloadOffers } from '../upscale/completion.ts';
 import { jobs } from '../upscale/storage.ts';
-import { MAX_INPUT_BYTES } from '../upscale/policy.ts';
 import { SCOPE, OFFSCREEN_SCOPE, HISTORY_KEY, isActiveHistoryState, MediaCatalog, retainHistory, filenameFor, isHistory, mediaKind, mediaURL, trustedCapture, trustedUI, type MediaItem, type HistoryItem } from './model.ts';
 import { downloadOptions, type DownloadOptions } from './preferences.ts';
 import { transport, type Transport } from './transport.ts';
@@ -302,7 +301,7 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
       let transferProtocols: Transport[] = [];
       const directOriginal = options.output === 'original' && item.kind === 'file';
       // Type ordinary originals regardless of private mode or upscale preferences.
-      if (!directOriginal || !item.size || item.size <= MAX_INPUT_BYTES) {
+      {
         let result: unknown;
         try {
           await ensureOffscreen();
@@ -412,7 +411,7 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
       if (item) {
         const preparation: NonNullable<HistoryItem['preparation']> = { stage: value.stage as NonNullable<HistoryItem['preparation']>['stage'] };
         if (typeof value.progress === 'number' && Number.isFinite(value.progress)) preparation.progress = Math.max(0, Math.min(1, value.progress));
-        for (const key of ['loaded', 'total'] as const) if (typeof value[key] === 'number' && Number.isSafeInteger(value[key]) && value[key] >= 0 && value[key] <= MAX_INPUT_BYTES) preparation[key] = value[key];
+        for (const key of ['loaded', 'total'] as const) if (typeof value[key] === 'number' && Number.isSafeInteger(value[key]) && value[key] >= 0) preparation[key] = value[key];
         await update({ ...item, preparation }, true);
       }
     }
@@ -565,9 +564,9 @@ async function setup(restarted = false) {
   // Recovered legacy records can refer to otherwise unindexed temporary inputs.
   // Automatic orphan deletion must wait; explicit safety decisions remain available.
   if (!chrome.extension.inIncognitoContext && (await appStorage.status()).recoveryCount > 0) return;
-  const keep = new Set((await history()).filter(item => isActiveHistoryState(item.state)).map(item => `local-${item.id}.media`));
+  const keep = new Set((await history()).filter(item => isActiveHistoryState(item.state)).flatMap(item => [`local-${item.id}.media`, `local-${item.id}.assets`]));
   const root = await navigator.storage.getDirectory() as FileSystemDirectoryHandle & { keys(): AsyncIterableIterator<string> };
-  for await (const name of root.keys()) if (/^local-[0-9a-f-]{36}\.media$/.test(name) && !keep.has(name)) await root.removeEntry(name).catch(() => {});
+  for await (const name of root.keys()) if (/^local-[0-9a-f-]{36}\.(media|assets)$/.test(name) && !keep.has(name)) await root.removeEntry(name).catch(() => {});
 }
 chrome.runtime.onInstalled.addListener(() => { void setup(true).catch(() => {}); });
 chrome.runtime.onStartup.addListener(() => { void setup(true).catch(() => {}); });

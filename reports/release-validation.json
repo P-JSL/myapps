@@ -1,34 +1,34 @@
 {
-  "release": "1.12.1",
-  "buildSha256": "9363fb3c3cbcf5b26fceb510efd7fd3a1fdc2340b7caf841611436eef927ac62",
-  "recordedAtUtc": "2026-10-22T23:25:33.828274Z",
-  "unitTests": 257,
+  "release": "1.13.0",
+  "buildSha256": "6058da0c8f1233dbfdd3ada1bbe9793fccf199c3bd1b81a41330df2c696fbe56",
+  "recordedAtUtc": "2026-10-23T04:27:28.349952+00:00",
+  "unitTests": 292,
   "nativeTests": 69,
-  "browserScenarios": 84,
+  "browserScenarios": 89,
   "embeddedDatabaseSubchecks": 19,
   "popupCollectorSubchecks": 6,
   "http3Checks": 4,
   "algorithmSuites": 5,
   "realClamAvChecks": 6,
-  "unitAndBrowserLogSha256": "b0543a9392e179c9dad476af7343bcbae11e231a67ab06812309bd6c34d022c6",
-  "http3LogSha256": "7e13f087bde1b14b544e14904515ac952b4b97eed9409700e818ba9118fb52c1",
-  "benchmarkLogSha256": "23e22af8cba11564073268123d0a204660a4941f80388855ba8436cf24e4e9fc",
+  "unitAndBrowserLogSha256": "7d2e6bb39db96b425e26b655d9e399df69f30a2e95663b77ac6c92d6d5ad1d6b",
+  "http3LogSha256": "e1155be8eaf4a07f568ad180f733ef3f7f0bd3c5d592dcc6c306c294083827b5",
+  "benchmarkLogSha256": "92e714d29dcff66f99af0a66df34db255af2a89e3743b606fe291dc618c08f76",
   "independentReview": {
-    "agent": "/root/toggle_final_review",
-    "status": "approved",
-    "scope": "Default-on persistent/isolated settings, trusted messages and strict boolean, disabled native boundary, queued/active transport cancellation, final-await generation races, bound AV/internal positive retention beneath Chrome, permission activation/UI errors, unchanged protection limits; lifecycle fixture waits observable posted request without weakening deadline/reentrancy checks. Current source/dist/browser/native identities independently recomputed."
+    "agent": "/root/large_code_review",
+    "status": "source-and-runtime-approved",
+    "scope": "Parallel range validation, bounded streaming blocks, same-resource strong validators, extent-backed FFmpeg filesystem, incremental SHA-256, honest partial static evidence, serialized writes, cancellation and cleanup, unchanged security gates, actual large browser evidence, copied documentation and current source/dist identities. Final archive contents reviewed separately before publication."
   },
   "sourceArchitecture": {
     "status": "passed",
-    "moduleCount": 33,
-    "entryCount": 8,
-    "sourceFiles": 109,
-    "reportSha256": "dfdacb1705f9eb4a9ca7ffdcffce42b3a4884f0a41a89193b98f686238357ccd"
+    "moduleCount": 38,
+    "entryCount": 9,
+    "sourceFiles": 119,
+    "reportSha256": "a790047c57d9763d6e8da2e90690354c86ef7ee1b0a3ce02b613ea47643e18b4"
   },
   "securityReview": {
     "report": "reports/SECURITY_REVIEW_2026-10-21.ko.md",
     "reportSha256": "cf9f6576e57014aef08a76af7487014007e47daf187f92ee6ce136ae7af9a221",
-    "dependencyAuditSha256": "a260990e5435543b917bdd0e91e4a682d98380e32df1cc72ea66f0ca391024b0",
+    "dependencyAuditSha256": "4834273e7b74dc19910398c1ab6db0745e7516bdc1d330c59e83a531b8786fe0",
     "npmKnownAdvisories": 0,
     "npmAuditScope": "npm dependency advisories only; bundled native/Wasm components and browser/OS vulnerabilities require separate review",
     "engineVersion": "FFmpeg 5.1.4",
@@ -52,9 +52,9 @@
       "format": "my-video-engine-v1",
       "algorithm": "AES-256-GCM",
       "compression": "gzip",
-      "cipherPath": "assets/b728b6da3396eb7bc78f89236a44fad5.bin",
-      "coreModulePath": "assets/951550e1bc15f636881254f9565ca33d.js",
-      "iv": "CkJhBYts6zDfIFh7",
+      "cipherPath": "assets/121326e3300f7022c3acc6550131e3fe.bin",
+      "coreModulePath": "assets/dc8983bd87603e93eddbca1de70061ab.js",
+      "iv": "LW4ZHra5Wio/h0ja",
       "tagBits": 128,
       "plaintextBytes": 32232419,
       "compressedBytes": 10257774,
@@ -62,19 +62,19 @@
       "clientKeyEmbedded": true
     },
     "limitation": "Client decryption keys are embedded and recoverable; packaging is not a secrecy boundary. The manifest and license notices remain readable.",
-    "mappedAssets": 19,
-    "runtimeAssets": 20,
+    "mappedAssets": 20,
+    "runtimeAssets": 21,
     "legacyRuntimeRequests": [],
     "comparison": {
-      "baselineCommit": "6a9121f276dde2f196cb366a7042c22f08fcfa0e",
-      "beforeAppJavaScriptBytes": 237889,
-      "afterAppJavaScriptBytes": 246677,
-      "beforeDistBytes": 10695897,
-      "afterDistBytes": 10709340,
-      "scope": "Application JS excludes vendor engine/loader. Preference controls, cancellation/evidence guards and documentation increase bytes; no runtime speed or overall ZIP reduction claim."
+      "baselineCommit": "b00a547ff5b1ca50f918b737cdd159dffdcfef62",
+      "beforeAppJavaScriptBytes": 246677,
+      "afterAppJavaScriptBytes": 288971,
+      "beforeDistBytes": 10709340,
+      "afterDistBytes": 10763869,
+      "scope": "Application JS excludes vendor engine/loader. Disk filesystem, parallel transfer, hashing and documentation increase bytes; no end-to-end speedup or ZIP reduction claim."
     }
   },
-  "antivirusEvidence": "Native69 rerun for1.12.1. Python production sources unchanged from1.12.0; matching-module-hash realClamAV1.4.6 integration6 evidence retained, not newly rerun. Private test-only signatures; official database freshness/coverage and actual Windows APIs not validated.",
+  "antivirusEvidence": "Native69 rerun for1.13.0. Python production sources unchanged from1.12.0; matching-module-hash realClamAV1.4.6 integration6 evidence retained, not newly rerun. Private test-only signatures; official database freshness/coverage and actual Windows APIs not validated.",
   "userTxtSample": {
     "sha256": "704a5e15ae1068e4df52a8bcff04270efdad595cf685e0eccff86ab335471a46",
     "actualMime": "audio/mp4",
@@ -93,16 +93,21 @@
     "SANM blocked by name policy; no real SANM fixture executed",
     "Native fallback signature probe and actual download are separate requests; large ID3 may be rejected",
     "Static no-signals does not mean safe or replace Defender/other AV/Chrome protection; unknown malware and crafted media may be missed",
-    "Browser scan bounded to 256MiB, native to 2GiB minus 1; bounded structural analysis reports incomplete on scope limits; marker spanning distinct HLS chunks is not guaranteed detected",
     "Browser cannot inspect arbitrary files written by Chrome downloads; updated native helper required for direct-disk full-file internal evidence; risk review can occur after the file is already saved",
     "AV integration OFF disconnects app helper ports, not OS real-time protection or already-started OS scans; helper-dependent actual-disk internal scan unavailable while OFF",
     "Incognito AV preference lives only in the current isolated worker execution memory; a new execution defaults ON",
-    "Actual extension optional-permission user gesture integration is unverified under administrator installation block; real Chromium UI tests verify active/expired activation behavior with Chrome API doubles"
+    "Actual extension optional-permission user gesture integration is unverified under administrator installation block; real Chromium UI tests verify active/expired activation behavior with Chrome API doubles",
+    "Original downloads have no application media byte/duration/overall preparation timer cap, but server behavior, safe-integer lengths, disk/browser quota and finite metadata budgets still bound success; this is not unlimited capacity.",
+    "Disk original HLS/DASH planning is bounded to100000 assets and8MiB playlists; live, DRM and unsupported variants remain rejected. Same-resource distinct byte ranges require a consistent strong ETag; sequential fallback applies to ordinary files.",
+    "Audio conversion, local conversion/merge and upscaling retain separate existing resource/time bounds; cross-restart partial-download resume is not implemented.",
+    "Prepared final files at most256MiB retain full browser static scan; larger prepared files receive only8MiB static-prefix analysis marked incomplete, with SHA256 over all bytes. Native scan limit2GiB minus1 and AMSI128MiB remain; exceeding these is never classified as a completed clean scan.",
+    "Large audit uses disposable regular disk-backed Chromium and test-origin CDP8GiB quota override, restored afterward; no product/OS/user settings changed. Installed-extension unlimitedStorage behavior remains unverified.",
+    "2GiB audit inserts a large free box in owned one-second MP4. Long-duration audit has2 frames spanning14402seconds, not four hours of continuous media throughput. Page Blob reads are bounded; full browser/worker RSS was not measured."
   ],
   "builtinRiskScreening": {
     "engine": "builtin-static-v1",
     "report": "reports/INTERNAL_SCAN.ko.md",
-    "reportSha256": "8b4f9268ceaddc3962c98078b8823471398236d39e17a54ef83c10304b2d1499",
+    "reportSha256": "e2a505b311db98831084bd6d547db86956ba42ed0813860a9efb86626bbe18cc",
     "browserScannerSha256": "525e925be98cbd1ad4a921fad1e7d9a529ec0cb729ce5ff30604f827e57ee288",
     "nativeScannerSha256": "7ea25bb21ff73c0055beba1d85f351389d737f02587189c91f84129754c7d6f7",
     "scope": "Offline bounded static risk signals; never a complete malware verdict. Predecode checks, prepared/final-byte scan, native private snapshot scan, separate external AV status, SHA-256/size-bound evidence and sticky risk review. No file execution/unpacking/upload. Direct disk scans require updated helper.",
@@ -111,12 +116,19 @@
     "nativeReadChunkBytes": 65536,
     "maxFindings": 16,
     "releaseGuard": "Build and packaging reject a contiguous standard harmless antivirus test marker in distributable sources/resources/reports; tests construct it only at runtime. Test media/signatures/databases excluded from ZIPs.",
-    "benchmarkScope": "Five existing algorithm domains rerun against current source. UI baseline receives presentation-only in-memory adaptation with original/adapted hashes, full text equality and focus/token/pending checks retained. Not a whole-scanner throughput benchmark."
+    "benchmarkScope": "Five existing algorithm domains rerun against current source. UI baseline receives presentation-only in-memory adaptation with original/adapted hashes, full text equality and focus/token/pending checks retained. Not a whole-scanner throughput benchmark.",
+    "largePreparedFiles": {
+      "thresholdBytes": 268435456,
+      "staticPrefixBytes": 8388608,
+      "staticStatus": "incomplete unless suspicious signals found",
+      "fullFileDigest": "incremental SHA-256,4MiB blocks",
+      "predecodeScope": "Disk stream assets scanned in overlapping bounded blocks; no complete malware verdict."
+    }
   },
   "verificationLogs": {
-    "unitAndBrowser": "test-results/antivirus-toggle-verify.log",
-    "http3": "test-results/antivirus-toggle-http3.log",
-    "benchmark": "test-results/antivirus-toggle-benchmarks.log"
+    "unitAndBrowser": "test-results/large-verify.log",
+    "http3": "test-results/large-http3.log",
+    "benchmark": "test-results/large-benchmarks.log"
   },
   "antivirusIntegration": {
     "preferenceKey": "my_video_app_antivirus_enabled_v1",
@@ -134,10 +146,206 @@
   },
   "readmeChangelog": {
     "path": "README.md",
-    "versions": 15,
+    "versions": 16,
     "first": "1.0.0",
-    "latest": "1.12.1",
-    "sha256": "014a9e5ae60c7d6b528b746d784b858a54f78971ceda52e864ae76f12b49b270",
+    "latest": "1.13.0",
+    "sha256": "f5380eb30ead82605b1152588078630a395af34ed849e1f570b65870ceab9696",
     "format": "Newest-first GFM table with version, changes and related document columns; historical project versions distinct from original extension10.6.1.2"
+  },
+  "largeDownloads": {
+    "report": "reports/large-download.json",
+    "reportSha256": "bd0ad37a56794c32903b2ab72f6dd1f215fab370cdc46a8d45b39ce425a86370",
+    "status": "passed",
+    "checksIncludedInBrowserTotal": 5,
+    "parallelWorkers": 4,
+    "ordinaryRangeChunkBytes": 4194304,
+    "diskAssetBlockBytes": 1048576,
+    "diskFilesystemHandles": 2,
+    "metadataAssets": 100000,
+    "metadataBytes": 8388608,
+    "wholeFileDigestChunkBytes": 4194304,
+    "originalMediaByteCap": null,
+    "originalMediaDurationCap": null,
+    "originalPreparationTimeout": null,
+    "outcomes": [
+      {
+        "name": "parallel-over-2-gib",
+        "status": "passed",
+        "size": 2147506265,
+        "sha256": "8849960b8a49bc64462ce159d436eeaa28cc978aad4045336ab2b3b35d1655de",
+        "maximumBlobRead": 4194304,
+        "traffic": {
+          "requests": 513,
+          "rangeRequests": 513,
+          "maximumActive": 4,
+          "active": 0,
+          "bytesSent": 2147506265,
+          "aborted": 0
+        },
+        "codecs": [
+          "h264",
+          "aac"
+        ],
+        "durationSeconds": 1
+      },
+      {
+        "name": "cancel-and-cleanup",
+        "status": "passed",
+        "traffic": {
+          "requests": 5,
+          "rangeRequests": 5,
+          "maximumActive": 4,
+          "active": 0,
+          "bytesSent": 1376256,
+          "aborted": 4
+        }
+      },
+      {
+        "name": "injected-quota-and-cleanup",
+        "status": "passed",
+        "injectedFailure": true,
+        "traffic": {
+          "requests": 5,
+          "rangeRequests": 5,
+          "maximumActive": 3,
+          "active": 0,
+          "bytesSent": 16842752,
+          "aborted": 0
+        }
+      },
+      {
+        "name": "disk-stream-remux-over-2-gib",
+        "status": "passed",
+        "inputBytes": 2147506265,
+        "outputBytes": 22618,
+        "maximumPageBlobRead": 22618,
+        "videoPayloadSha256": "6fe6563f28d0b880da909d31ec9e0f9f02def6deec91d0ec56bb18b26d2964f0",
+        "frames": 12,
+        "durationSeconds": 1,
+        "traffic": {
+          "requests": 1,
+          "rangeRequests": 0,
+          "maximumActive": 1,
+          "active": 0,
+          "bytesSent": 2147506265,
+          "aborted": 0
+        }
+      },
+      {
+        "name": "long-duration-disk-stream",
+        "status": "passed",
+        "sourceFrames": 2,
+        "outputFrames": 2,
+        "durationSeconds": 14402,
+        "videoPayloadSha256": "982ecc009674b13c8311a5f0a8fef44861b057e0c7a669736c6ceb954bdd247e",
+        "fixtureScope": "Two low-frame-rate frames spanning four hours; verifies real media timestamps and frame preservation, not hours of continuous recording throughput."
+      }
+    ],
+    "storageQuotaFixture": {
+      "scope": "Disposable regular disk-backed Chromium profile and localhost test origin only. This HTTP harness lacks the extension manifest existing unlimitedStorage exemption; no product permission, OS setting or user profile is changed. Actual installed-extension permission behavior remains unverified.",
+      "method": "CDP Storage.overrideQuotaForOrigin",
+      "requestedQuotaBytes": 8589934592,
+      "estimateBefore": {
+        "quota": 10740513549,
+        "usage": 3095309,
+        "usageDetails": {
+          "fileSystem": 174,
+          "indexedDB": 3095135
+        }
+      },
+      "estimateDuring": {
+        "quota": 10740513549,
+        "usage": 3095309,
+        "usageDetails": {
+          "fileSystem": 174,
+          "indexedDB": 3095135
+        }
+      },
+      "estimateAfterRestore": {
+        "quota": 10740513549,
+        "usage": 3095309,
+        "usageDetails": {
+          "fileSystem": 174,
+          "indexedDB": 3095135
+        }
+      },
+      "overrideRestored": true,
+      "protocolBefore": {
+        "usage": 3095309,
+        "quota": 10723128114,
+        "overrideActive": false,
+        "usageBreakdown": [
+          {
+            "storageType": "file_systems",
+            "usage": 174
+          },
+          {
+            "storageType": "indexeddb",
+            "usage": 3095135
+          },
+          {
+            "storageType": "cache_storage",
+            "usage": 0
+          },
+          {
+            "storageType": "service_workers",
+            "usage": 0
+          }
+        ]
+      },
+      "protocolDuring": {
+        "usage": 3095309,
+        "quota": 8589934592,
+        "overrideActive": true,
+        "usageBreakdown": [
+          {
+            "storageType": "file_systems",
+            "usage": 174
+          },
+          {
+            "storageType": "indexeddb",
+            "usage": 3095135
+          },
+          {
+            "storageType": "cache_storage",
+            "usage": 0
+          },
+          {
+            "storageType": "service_workers",
+            "usage": 0
+          }
+        ]
+      },
+      "protocolAfterRestore": {
+        "usage": 3095309,
+        "quota": 10723128114,
+        "overrideActive": false,
+        "usageBreakdown": [
+          {
+            "storageType": "file_systems",
+            "usage": 174
+          },
+          {
+            "storageType": "indexeddb",
+            "usage": 3095135
+          },
+          {
+            "storageType": "cache_storage",
+            "usage": 0
+          },
+          {
+            "storageType": "service_workers",
+            "usage": 0
+          }
+        ]
+      },
+      "estimateScope": "navigator.storage.estimate may report a privacy-rounded quota; CDP values above verify the actual isolated override and its removal."
+    },
+    "memoryScope": "Page-scope Blob.arrayBuffer calls are guarded at8MiB in both successful large scenarios; workers use the production disk filesystem and are not instrumented by this page guard. Server/host hashing uses bounded chunks. This is not a complete browser heap/RSS measurement.",
+    "fixtureScope": "Owned one-second H264/AAC MP4 with a2GiB free box and relocated chunk offsets; a separate two-frame H264 source spans14402seconds. Virtual giant HTTP bytes and resulting large files are not retained in the repository.",
+    "networkIdleMilliseconds": {
+      "ordinaryFile": 30000,
+      "streamAsset": 60000
+    }
   }
 }

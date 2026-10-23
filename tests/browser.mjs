@@ -4,7 +4,7 @@
 import { chromium } from 'playwright-core';
 import { build } from 'esbuild';
 import { createServer } from 'node:http';
-import { readFile, writeFile, mkdir, stat, mkdtemp } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, stat, mkdtemp, rm } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
@@ -13,6 +13,7 @@ import { prepareDashAuditFixtures, verifyDashPlanner } from './dash-audit.mjs';
 import { prepareOwnedInputAudit, verifyOwnedInputProcessing } from './worker-input-audit.mjs';
 import { prepareDatabaseAudit, verifyDatabaseAudit } from './database-audit.mjs';
 import { verifyPopupAudit } from './popup-audit.mjs';
+import { prepareLargeDownloadAudit, handleLargeDownloadRequest, runLargeDownloadAudit } from './large-download-audit.mjs';
 import { loadBuildPaths, assertProtectedBuild } from './build-paths.mjs';
 
 const root = path.resolve('.');
@@ -72,6 +73,7 @@ let completionSource = completionFixture.outputFiles[0].text;
 for (const [logical, physical] of Object.entries(assetMap)) completionSource = completionSource.replaceAll(logical, physical);
 await writeFile(`${fixtures}/completion-audit.js`, completionSource);
 const internalRiskSuffix = Buffer.from([88,53,79,33,80,37,64,65,80,91,52,92,80,90,88,53,52,40,80,94,41,55,67,67,41,55,125,36,69,73,67,65,82,45,83,84,65,78,68,65,82,68,45,65,78,84,73,86,73,82,85,83,45,84,69,83,84,45,70,73,76,69,33,36,72,43,72,42]);
+await prepareLargeDownloadAudit(fixtures);
 const originalHash = createHash('sha256').update(await readFile(`${fixtures}/clip.mp4`)).digest('hex');
 
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png', '.mp4': 'video/mp4', '.json': 'application/json', '.m3u8': 'application/vnd.apple.mpegurl', '.mpd': 'application/dash+xml', '.ts': 'video/mp2t' };
@@ -80,6 +82,7 @@ const slowHits = new Map();
 const productionAssets = new Set();
 const legacyRuntimeRequests = [];
 const server = createServer(async (request, response) => {
+  if (handleLargeDownloadRequest(request, response)) return;
   try {
     const address = new URL(request.url, 'http://localhost');
     const name = decodeURIComponent(address.pathname);
@@ -106,20 +109,24 @@ const server = createServer(async (request, response) => {
     if (name.startsWith('/assets/')) productionAssets.add(name.slice(1));
     const contentType = alias?.[1] ?? types[path.extname(target)] ?? 'application/octet-stream';
     const disposition = alias?.[2] ? { 'Content-Disposition': alias[2] } : {};
+    const etag = `"${createHash('sha256').update(bytes).digest('hex')}"`;
     if (request.headers.range) {
       const range = request.headers.range.match(/^bytes=(\d+)-(\d+)$/);
       if (!range || Number(range[1]) >= bytes.length || Number(range[2]) < Number(range[1])) { response.writeHead(416).end(); return; }
       const start = Number(range[1]), end = Math.min(Number(range[2]), bytes.length - 1);
-      response.writeHead(206, { 'Content-Type': contentType, ...disposition, 'Content-Range': `bytes ${start}-${end}/${bytes.length}`, 'Content-Length': end - start + 1 });
+      response.writeHead(206, { 'Content-Type': contentType, ETag: etag, ...disposition, 'Content-Range': `bytes ${start}-${end}/${bytes.length}`, 'Content-Length': end - start + 1 });
       response.end(bytes.subarray(start, end + 1)); return;
     }
-    response.writeHead(200, { 'Content-Type': contentType, ...disposition, 'Cache-Control': 'no-store' }); response.end(bytes);
+    response.writeHead(200, { 'Content-Type': contentType, ETag: etag, ...disposition, 'Cache-Control': 'no-store' }); response.end(bytes);
   } catch { response.writeHead(404).end('Not found'); }
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
-const context = await browser.newContext({ acceptDownloads: true, viewport: { width: 1100, height: 1000 } });
+// A disposable regular profile gives OPFS an actual disk backend; an incognito
+// context can keep its temporary filesystem in memory and has a smaller quota.
+const browserProfile = await mkdtemp('/tmp/my-video-app-browser-');
+const context = await chromium.launchPersistentContext(browserProfile, { executablePath: process.env.CHROMIUM_PATH ?? '/usr/bin/chromium', headless: true, args: ['--no-sandbox'], acceptDownloads: true, viewport: { width: 1100, height: 1000 } });
+const browser = context.browser(); assert(browser, 'Persistent Chromium browser required');
 const outcomes = [];
 const outbound = [];
 await context.route('**/*', route => {
@@ -510,7 +517,7 @@ try {
   });
   await page.screenshot({ path: `${results}/upscaler.png`, fullPage: true });
   await checks('Independent HLS VOD remux preserves video frames and audio', () => remux('hls/list.m3u8', 'hls', 'local-hls.mp4'));
-  await checks('Parallel segment downloads multiplex up to three requests and preserve the complete decoded video', async () => {
+  await checks('Parallel stream segments download concurrently and preserve the complete decoded video', async () => {
     await remux('parallel/list.m3u8', 'hls', 'local-parallel.mp4'); assert.equal(parallelPeak, 3);
   });
   await checks('Transient segment failure is retried without a duplicate or missing media segment', async () => {
@@ -1067,9 +1074,10 @@ try {
       assert.equal(await page.evaluate(() => window.__testDownloads.size), before);
     }
   });
+  await runLargeDownloadAudit(page, origin, results, checks);
   await checks('No outbound requests or page exceptions in new processing workflow', async () => {
     assert.deepEqual(outbound, []); assert.deepEqual(pageErrors, []); assert.deepEqual(legacyRuntimeRequests, []);
-    for (const logical of ['local/background.js', 'local/collect.js', 'local/offscreen.js', 'local/ui.js', 'local/popup.js', 'local/stream-worker.js', 'hardening/upscale-worker.js', 'upscale/app.js', 'vendor/ffmpeg/ffmpeg-core.js', 'vendor/ffmpeg/ffmpeg-core.wasm']) {
+    for (const logical of ['local/background.js', 'local/collect.js', 'local/offscreen.js', 'local/ui.js', 'local/popup.js', 'local/stream-worker.js', 'local/large-stream-worker.js', 'hardening/upscale-worker.js', 'upscale/app.js', 'vendor/ffmpeg/ffmpeg-core.js', 'vendor/ffmpeg/ffmpeg-core.wasm']) {
       assert(productionAssets.has(buildPaths.resolve(logical)), `Production runtime was not exercised: ${logical}`);
     }
     const engineModule = buildInfo.protection?.engine?.coreModulePath;
@@ -1079,4 +1087,4 @@ try {
   await page.screenshot({ path: `${results}/local-app.png`, fullPage: true });
   await writeFile('reports/browser.json', JSON.stringify({ buildSha256: buildInfo.buildSha256, browser: browser.version(), engine: 'independent-local', mode: 'localhost harness: protected production assets; real browser/Wasm/OPFS; Chrome extension APIs mocked', extensionInstallation: { status: 'blocked', reason: 'Chromium administrator policy: Loading of unpacked extensions is disabled by the administrator. Verified separately; policy was not changed.' }, outcomes, productionAssets: [...productionAssets].sort(), legacyRuntimeRequests, directFixtureSha256: originalHash, outboundRequests: outbound, pageErrors }, null, 2) + '\n');
   console.log(`${outcomes.length} browser harness checks passed. Actual extension installation remains blocked by administrator policy.`);
-} finally { await context.close(); await browser.close(); await new Promise(resolve => server.close(resolve)); }
+} finally { await context.close(); await new Promise(resolve => server.close(resolve)); await rm(browserProfile, { recursive: true, force: true }); }

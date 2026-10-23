@@ -1,7 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { inspectMediaFile, mediaFilename, probeMediaFile, InvalidMediaFileError } from '../src/local/media-file.ts';
+import { inspectMediaFile, inspectMediaBlob, mediaFilename, probeMediaFile, InvalidMediaFileError } from '../src/local/media-file.ts';
 const text = (value: string) => new TextEncoder().encode(value);
+test('disk-backed media inspection seeks past large ID3 artwork without reading the whole file', async () => {
+  const metadata = 70_000;
+  const header = new Uint8Array([73, 68, 51, 4, 0, 0, (metadata >> 21) & 127, (metadata >> 14) & 127, (metadata >> 7) & 127, metadata & 127]);
+  const file = new Blob([header, new Uint8Array(metadata), new Uint8Array([0xff, 0xfb, 0x90, 0x64])]);
+  Object.defineProperty(file, 'arrayBuffer', { value: () => assert.fail('Whole file reads are forbidden') });
+  assert.deepEqual(await inspectMediaBlob(file, new AbortController().signal), { mime: 'audio/mpeg', extension: 'mp3' });
+  await assert.rejects(inspectMediaBlob(new Blob([header]), new AbortController().signal), InvalidMediaFileError);
+  const cancelled = new AbortController(); cancelled.abort();
+  await assert.rejects(inspectMediaBlob(file, cancelled.signal), { name: 'AbortError' });
+});
 function iso(brand = 'isom', compatible = 'mp42') {
   const bytes = new Uint8Array(20); new DataView(bytes.buffer).setUint32(0, 20);
   bytes.set(text('ftyp'), 4); bytes.set(text(brand), 8); bytes.set(text(compatible), 16); return bytes;

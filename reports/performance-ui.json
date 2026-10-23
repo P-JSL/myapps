@@ -12,7 +12,7 @@
   "baselineAdaptation": "The hash-checked 1.7.0 UI receives only the current internal-scan summary presentation in memory; historical row replacement and all full-text/focus/token/pending assertions remain unchanged.",
   "sourceSha256": {
     "src/local/collect.ts": "eb36555aa3441a421eafab00d1f449d09fd3d72aac5144a665894c95c00cce2a",
-    "src/local/ui.ts": "7451af2a5c33d03f776349e3181ba3c0f0830cb908987082cff0707bdace3f4f"
+    "src/local/ui.ts": "cca27fbcf007398b5028f997deef8baed262c91d6ca74b1083c9d9f4771fb1c5"
   },
   "browser": "154.0.8037.57",
   "platform": "linux",
@@ -26,11 +26,11 @@
         "nonMediaTimings": 200
       },
       "baseline": {
-        "elapsedMs": 50.29999999701977,
+        "elapsedMs": 50.8999999910593,
         "fullDocumentScans": 40
       },
       "optimized": {
-        "elapsedMs": 2.5999999940395355,
+        "elapsedMs": 4.799999997019768,
         "fullDocumentScans": 0
       }
     },
@@ -42,11 +42,11 @@
         "nonMediaTimings": 1000
       },
       "baseline": {
-        "elapsedMs": 10641.59999999404,
+        "elapsedMs": 10567.70000000298,
         "fullDocumentScans": 200
       },
       "optimized": {
-        "elapsedMs": 5.100000008940697,
+        "elapsedMs": 5.4000000059604645,
         "fullDocumentScans": 0
       }
     },
@@ -58,12 +58,12 @@
         "polls": 100
       },
       "baseline": {
-        "elapsedMs": 833,
+        "elapsedMs": 825.7000000029802,
         "createdElements": 260000,
         "listNodeMutations": 80000
       },
       "optimized": {
-        "elapsedMs": 83,
+        "elapsedMs": 87.59999999403954,
         "createdElements": 0,
         "listNodeMutations": 0
       }
@@ -76,12 +76,12 @@
         "polls": 100
       },
       "baseline": {
-        "elapsedMs": 835.6999999880791,
+        "elapsedMs": 807.2999999970198,
         "createdElements": 260000,
         "listNodeMutations": 80000
       },
       "optimized": {
-        "elapsedMs": 92.19999998807907,
+        "elapsedMs": 94.20000000298023,
         "createdElements": 700,
         "listNodeMutations": 200
       }

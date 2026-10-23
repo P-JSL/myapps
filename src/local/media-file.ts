@@ -109,6 +109,24 @@ export function mediaFilename(old: string, actual: MediaFileFormat): string {
   if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(base)) base = `_${base}`;
   return `${base.slice(0, 174)}.${actual.extension}`;
 }
+/** Inspect a disk-backed file without allocating its entire contents. */
+export async function inspectMediaBlob(file: Blob, signal: AbortSignal): Promise<MediaFileFormat> {
+  signal.throwIfAborted();
+  const head = new Uint8Array(await file.slice(0, 65_536).arrayBuffer());
+  signal.throwIfAborted();
+  try { return inspectMediaFile(head); }
+  catch (error) {
+    if (head.length < 10 || ascii(head, 0, 3) !== 'ID3' || ![2, 3, 4].includes(head[3]!)
+      || head[4] === 0xff || head.subarray(6, 10).some(value => value >= 128)) throw error;
+    let offset = 10 + head[6]! * 2 ** 21 + head[7]! * 2 ** 14 + head[8]! * 128 + head[9]!;
+    if (head[3] === 4 && (head[5]! & 0x10)) offset += 10;
+    if (offset + 4 > file.size) throw new InvalidMediaFileError();
+    const frame = new Uint8Array(await file.slice(offset, offset + 4).arrayBuffer());
+    signal.throwIfAborted();
+    if (!mp3Header(frame, 0)) throw new InvalidMediaFileError();
+    return format('mp3');
+  }
+}
 export interface MediaProbeOptions { fetch?: typeof globalThis.fetch; timeoutMs?: number; }
 function abortable<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
   return new Promise<T>((resolve, reject) => {

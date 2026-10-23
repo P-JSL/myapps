@@ -12,6 +12,9 @@ export const MAX_HISTORY = 200;
 export const MAX_MEDIA_PER_TAB = 200;
 export const MAX_STREAM_BYTES = 128 * 1024 * 1024;
 export const MAX_SEGMENTS = 4096;
+// Metadata budgets remain finite; original video bytes use disk, not MEMFS.
+export const MAX_DISK_SEGMENTS = 100_000;
+export const MAX_DISK_MANIFEST_BYTES = 8 * 1024 * 1024;
 export const PREPARE_TIMEOUT_MS = 300_000;
 export const DOWNLOAD_STATES = ['preparing', 'downloading', 'scanning', 'review', 'discarded', 'complete', 'cancelled', 'error'] as const;
 export type DownloadState = typeof DOWNLOAD_STATES[number];

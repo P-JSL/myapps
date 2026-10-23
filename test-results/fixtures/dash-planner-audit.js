@@ -6,6 +6,8 @@ function record(value) {
 // src/local/model.ts
 var MAX_STREAM_BYTES = 128 * 1024 * 1024;
 var MAX_SEGMENTS = 4096;
+var MAX_DISK_SEGMENTS = 1e5;
+var MAX_DISK_MANIFEST_BYTES = 8 * 1024 * 1024;
 function mediaURL(value, base) {
   if (typeof value !== "string" || !value || value.length > 8192) throw new Error("\uBBF8\uB514\uC5B4 \uC8FC\uC18C\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
   const url = new URL(value, base);
@@ -116,8 +118,9 @@ function range(text) {
   validRange(result);
   return result;
 }
-function planDash(text, address, options = downloadOptions()) {
-  if (text.length > 2 * 1024 * 1024 || /<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error("\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 DASH \uBB38\uC11C\uC785\uB2C8\uB2E4.");
+function planDash(text, address, options = downloadOptions(), disk = false) {
+  const maximum = disk ? MAX_DISK_SEGMENTS : MAX_SEGMENTS;
+  if (text.length > (disk ? MAX_DISK_MANIFEST_BYTES : 2 * 1024 * 1024) || /<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error("\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 DASH \uBB38\uC11C\uC785\uB2C8\uB2E4.");
   const doc = new DOMParser().parseFromString(text, "application/xml");
   const root = doc.documentElement;
   if (root.localName !== "MPD" || doc.getElementsByTagName("parsererror").length) throw new Error("\uC62C\uBC14\uB978 DASH \uBAA9\uB85D\uC774 \uC544\uB2D9\uB2C8\uB2E4.");
@@ -151,7 +154,7 @@ function planDash(text, address, options = downloadOptions()) {
   const plan = { assets: [], inputs: [] };
   for (const item of picked) {
     let add2 = function(url, bytes) {
-      if (plan.assets.length >= MAX_SEGMENTS) throw new Error("\uBBF8\uB514\uC5B4 \uC870\uAC01 \uAC1C\uC218 \uD55C\uB3C4\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
+      if (plan.assets.length >= maximum) throw new Error("\uBBF8\uB514\uC5B4 \uC870\uAC01 \uBAA9\uB85D\uC758 \uBD84\uC11D \uD55C\uB3C4\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
       const asset = { url: mediaURL(url, base).href, filename: `dash-${plan.assets.length}.m4s` };
       if (bytes) asset.range = bytes;
       plan.assets.push(asset);
@@ -207,7 +210,7 @@ function planDash(text, address, options = downloadOptions()) {
             if (next && (!next.hasAttribute("t") || !Number.isSafeInteger(end)) || !next && seconds <= 0 || !Number.isFinite(end) || end > Number.MAX_SAFE_INTEGER || end <= time) throw new Error("\uB05D\uC774 \uC5C6\uB294 DASH \uD0C0\uC784\uB77C\uC778\uC740 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
             repeat = Math.ceil((end - time) / d) - 1;
           }
-          if (repeat >= MAX_SEGMENTS) throw new Error("DASH \uC870\uAC01 \uAC1C\uC218 \uD55C\uB3C4\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
+          if (repeat >= maximum) throw new Error("DASH \uC870\uAC01 \uBAA9\uB85D\uC758 \uBD84\uC11D \uD55C\uB3C4\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
           if (!Number.isSafeInteger(time + (repeat + 1) * d) || !Number.isSafeInteger(number + repeat)) throw new Error("DASH \uD0C0\uC784\uB77C\uC778\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
           for (let i = 0; i <= repeat; i++) {
             add2(expand(format, time));
@@ -218,7 +221,7 @@ function planDash(text, address, options = downloadOptions()) {
       } else {
         const step = Number(templateAttribute("duration"));
         const count = Math.ceil(seconds * timescale / step);
-        if (!Number.isFinite(count) || count < 1 || count > MAX_SEGMENTS) throw new Error("DASH \uAE38\uC774 \uB610\uB294 \uC870\uAC01 \uAC1C\uC218\uAC00 \uD5C8\uC6A9 \uBC94\uC704\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
+        if (!Number.isFinite(count) || count < 1 || count > maximum) throw new Error("DASH \uC870\uAC01 \uBAA9\uB85D\uC758 \uBD84\uC11D \uD55C\uB3C4\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4.");
         for (let i = 0; i < count; i++) {
           add2(expand(format, i * step));
           number++;
