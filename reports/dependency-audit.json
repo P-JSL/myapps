@@ -1,9 +1,9 @@
 {
   "version": 1,
   "status": "passed",
-  "checkedAtUtc": "2026-10-23T04:18:45.506Z",
+  "checkedAtUtc": "2026-10-23T12:43:40.789Z",
   "registry": "https://registry.npmjs.org",
-  "packageLockSha256": "99572cdbfebe88a5173b1fbf65e182bfa466771a9251b213cdfd96a9509ac0a7",
+  "packageLockSha256": "c6773ab05c79a9481182e6dcc8f964a12534f502bc8d86a32b45077bbfd9ca17",
   "audit": {
     "auditReportVersion": 2,
     "vulnerabilities": {},
@@ -18,11 +18,11 @@
       },
       "dependencies": {
         "prod": 1,
-        "dev": 36,
+        "dev": 37,
         "optional": 26,
         "peer": 0,
         "peerOptional": 0,
-        "total": 36
+        "total": 37
       }
     }
   },

@@ -1,0 +1,212 @@
+{
+  "status": "passed",
+  "release": "1.14.0",
+  "recordedAtUtc": "2026-10-23T12:46:09.342315+00:00",
+  "scope": "Pre-release compression experiment and actual offline decoder browser trial. Final protected build identity and end-to-end application tests are recorded separately.",
+  "environment": {
+    "node": "v24.19.0",
+    "browser": "154.0.8037.57",
+    "platform": "Linux x86_64"
+  },
+  "input": {
+    "file": "node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm",
+    "bytes": 32232419,
+    "sha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7"
+  },
+  "compressionMeasurements": [
+    {
+      "method": "Node gzip",
+      "options": {
+        "level": 9
+      },
+      "bytes": 10257774,
+      "milliseconds": 890.240668
+    },
+    {
+      "method": "Node gzip",
+      "options": {
+        "level": 9,
+        "memLevel": 7
+      },
+      "bytes": 10233508,
+      "milliseconds": 897.2650090000002
+    },
+    {
+      "method": "Node gzip",
+      "options": {
+        "level": 9,
+        "memLevel": 6
+      },
+      "bytes": 10232109,
+      "milliseconds": 924.6280900000002
+    },
+    {
+      "method": "Python zopfli0.2.3.post1 gzip",
+      "options": {
+        "numiterations": 1
+      },
+      "bytes": 9815717,
+      "milliseconds": 34585.380828997586,
+      "sha256": "329ebe56f1d1102eb7502b56c85c2ac12dc5e6d2ca8fca1bc4f811448302dbf1",
+      "roundtrip": "Python gzip.decompress exact bytes"
+    },
+    {
+      "method": "Python zopfli0.2.3.post1 gzip",
+      "options": {
+        "numiterations": 5
+      },
+      "bytes": 9802424,
+      "milliseconds": 48802.96104197623,
+      "sha256": "6befa1564d859bc71a3d3241872a06f430ce60f18bf402c69d1bd1d6c90d70f7",
+      "roundtrip": "Python gzip.decompress exact bytes"
+    },
+    {
+      "method": "Node Brotli",
+      "options": {
+        "quality": 11,
+        "sizeHintBytes": 32232419,
+        "windowBits": "Node default22"
+      },
+      "bytes": 7280521,
+      "milliseconds": 68394.18527300001,
+      "sha256": "e1e5d031e6da490aa1a471d708bbeff3f3ab851687a51b66dcfc20a747c46940",
+      "roundtrip": "Exact pinned FFmpeg SHA-256 verified in Node and Chromium"
+    }
+  ],
+  "decision": {
+    "compression": "brotli",
+    "productionOptions": {
+      "quality": 11,
+      "windowBits": 22,
+      "sizeHintBytes": 32232419
+    },
+    "decoderPackage": "brotli-dec-wasm",
+    "decoderVersion": "2.3.2",
+    "license": "MIT for wrapper/support crates; bundled Dropbox BSD notices retained in licenses/brotli-dec-wasm-MIT.txt",
+    "decoderWasmBytes": 208439,
+    "decoderWasmSha256": "79b29cb1790560f0a0f32b4a31d935e2782875e4a367fde23c81d986b327ec3f",
+    "testBundledWrapperBytes": 9372,
+    "encryptionTagBytes": 16,
+    "rawCompressedPayloadReductionPercent": 29.024357526301515,
+    "note": "New decoder bytes must be counted against engine savings. Final installation ZIP reduction is measured separately after shared-module and image deduplication changes.",
+    "sourceGitHead": "04947d5b2cbcf0487435d26d6598ea624a6b191b",
+    "sourceCargoLockSha256": "6dc833ba79a912ad3cd563c79afb58e5b5ac959292387246ebd77bd203a11efb",
+    "runtimeDependencyLicenses": [
+      {
+        "name": "alloc-no-stdlib",
+        "version": "2.0.4",
+        "crateSha256": "cc7bb162ec39d46ab1ca8c77bf72e890535becd1751bb45f64c597edb4c8c6b3",
+        "url": "https://static.crates.io/crates/alloc-no-stdlib/alloc-no-stdlib-2.0.4.crate",
+        "manifestLicense": "BSD-3-Clause"
+      },
+      {
+        "name": "alloc-stdlib",
+        "version": "0.2.2",
+        "crateSha256": "94fb8275041c72129eb51b7d0322c29b8387a0386127718b096429201a5d6ece",
+        "url": "https://static.crates.io/crates/alloc-stdlib/alloc-stdlib-0.2.2.crate",
+        "manifestLicense": "BSD-3-Clause"
+      },
+      {
+        "name": "brotli-decompressor",
+        "version": "5.0.0",
+        "crateSha256": "874bb8112abecc98cbd6d81ea4fa7e94fb9449648c93cc89aa40c81c24d7de03",
+        "url": "https://static.crates.io/crates/brotli-decompressor/brotli-decompressor-5.0.0.crate",
+        "manifestLicense": "BSD-3-Clause/MIT"
+      },
+      {
+        "name": "cfg-if",
+        "version": "1.0.4",
+        "crateSha256": "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801",
+        "url": "https://static.crates.io/crates/cfg-if/cfg-if-1.0.4.crate",
+        "manifestLicense": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "console_error_panic_hook",
+        "version": "0.1.7",
+        "crateSha256": "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc",
+        "url": "https://static.crates.io/crates/console_error_panic_hook/console_error_panic_hook-0.1.7.crate",
+        "manifestLicense": "Apache-2.0/MIT"
+      },
+      {
+        "name": "once_cell",
+        "version": "1.21.4",
+        "crateSha256": "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50",
+        "url": "https://static.crates.io/crates/once_cell/once_cell-1.21.4.crate",
+        "manifestLicense": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "wasm-bindgen",
+        "version": "0.2.114",
+        "crateSha256": "6532f9a5c1ece3798cb1c2cfdba640b9b3ba884f5db45973a6f442510a87d38e",
+        "url": "https://static.crates.io/crates/wasm-bindgen/wasm-bindgen-0.2.114.crate",
+        "manifestLicense": "MIT OR Apache-2.0"
+      },
+      {
+        "name": "wasm-bindgen-shared",
+        "version": "0.2.114",
+        "crateSha256": "75a326b8c223ee17883a4251907455a2431acc2791c98c26279376490c378c16",
+        "url": "https://static.crates.io/crates/wasm-bindgen-shared/wasm-bindgen-shared-0.2.114.crate",
+        "manifestLicense": "MIT OR Apache-2.0"
+      }
+    ]
+  },
+  "browserWrapperCheck": {
+    "status": "passed",
+    "target": "chrome120",
+    "executedBrowser": "154.0.8037.57",
+    "moduleExports": [
+      "default"
+    ],
+    "externalImports": [],
+    "outputBytes": 32232419,
+    "outputSha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7",
+    "milliseconds": 265.59999999403954,
+    "checks": [
+      "exact-full-engine-SHA256",
+      "truncated-input-rejected",
+      "output-overrun-rejected",
+      "incomplete-output-rejected",
+      "mid-stream-abort-rejected"
+    ],
+    "sourceSha256": {
+      "scripts/lib/browser-brotli.mjs": "717bed4a4d2b5352ff663b4f3abec771f6fbd99d9a875f602c9efec01a54890c",
+      "scripts/lib/engine-cipher.mjs": "86d5ecd6bbe240cbebf869144d5609944162053fb725f64dac0b91a802071906"
+    },
+    "pageErrors": [],
+    "requests": [
+      "/",
+      "/browser.js",
+      "/decoder.js",
+      "/decoder.wasm",
+      "/favicon.ico",
+      "/engine.br"
+    ],
+    "csp": "Existing extension_pages policy applied to localhost HTTP response; no eval or CSP relaxation",
+    "scope": "Actual bundled decoder and real Chromium WebAssembly/crypto, localhost fixture only. Not an installed-extension integration test and not full FFmpeg execution."
+  },
+  "directVendoredApiMemoryTrial": {
+    "decoderLinearMemoryBytes": 8323072,
+    "inputBlockBytes": 65536,
+    "outputBlockBytes": 65536,
+    "scope": "Earlier direct BrotliDecStream full-engine trial. Final output32,232,419B and compressed input7,280,521B are separate allocations. This is not browser/worker peak heap or RSS."
+  },
+  "compatibility": {
+    "nativeBrotliDecompressionStream": "Unsupported in actual Chromium154; bundled decoder is required",
+    "minimumBrowser": "Chrome120 retained; direct Chrome120 binary not executed",
+    "decoderWasmTargetFeatures": [
+      "mutable-globals",
+      "nontrapping-fptoint",
+      "bulk-memory",
+      "sign-ext",
+      "reference-types",
+      "multivalue"
+    ],
+    "runtimeNetwork": "Packaged decoder and authenticated payload only; no third-party server required"
+  },
+  "methodology": "Single representative compression/decoder samples; development work may share CPU. No timing threshold or end-to-end speedup claim. Sizes are exact for measured outputs; timing is descriptive. Zopfli was installed only under/tmp and is not a project or runtime dependency. Build compression is slower than gzip; engine functionality and bytes are preserved.",
+  "remainingLimits": [
+    "Client keys remain recoverable; encrypted packaging does not provide secrecy.",
+    "Added Rust/Wasm decoder is not covered completely by npm advisory checks.",
+    "The current FFmpeg5.1.4 engine itself is unchanged."
+  ]
+}

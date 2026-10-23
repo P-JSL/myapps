@@ -43,8 +43,25 @@ export async function assertProtectedBuild(root, buildPaths) {
   }
   const engineModule = buildPaths.buildInfo.protection?.engine?.coreModulePath;
   if (engineModule) { assert.match(engineModule, opaqueAsset); assert(engineModule.endsWith('.js')); }
+  const decoderModule = buildPaths.buildInfo.protection?.engine?.decoder?.modulePath;
+  if (decoderModule) { assert.match(decoderModule, opaqueAsset); assert(decoderModule.endsWith('.js')); }
   assert.deepEqual(new Set(runtime), new Set([...Object.values(assetMap), ...(engineModule ? [engineModule] : [])]), 'Every shipped runtime asset must be in the production map or the declared engine module');
   const logicalPaths = Object.keys(assetMap);
+  const sharedChunks = buildPaths.buildInfo.sharedChunks ?? [];
+  const shared = new Map();
+  for (const chunk of sharedChunks) {
+    assert(/^shared\/[A-Z0-9]{8}\.js$/.test(chunk.logicalOutput) && assetMap[chunk.logicalOutput] === chunk.output
+      && !shared.has(chunk.output), 'Shared module must match its explicitly generated build record');
+    assert(Array.isArray(chunk.exports) && chunk.exports.length && new Set(chunk.exports).size === chunk.exports.length
+      && chunk.exports.every(name => typeof name === 'string' && /^[A-Za-z_$][A-Za-z0-9_$]{0,2}$/.test(name)), 'Shared module exports must use generated minified names');
+    shared.set(chunk.output, chunk);
+  }
+  assert.deepEqual(new Set(logicalPaths.filter(name => name.startsWith('shared/'))), new Set(sharedChunks.map(chunk => chunk.logicalOutput)), 'Uncatalogued shared module');
+  assert.equal(buildPaths.buildInfo.protection?.exportSurface?.sharedInternalModules ?? 0, shared.size);
+  assert.equal(buildPaths.buildInfo.protection?.exportSurface?.sharedInternalNamedExports ?? 0, sharedChunks.reduce((sum, chunk) => sum + chunk.exports.length, 0));
+  const applicationModules = [...(buildPaths.buildInfo.entries ?? []), ...sharedChunks];
+  const generatedImports = new Map(applicationModules.map(item => [item.output, item.imports]));
+  for (const item of applicationModules) assert(assetMap[item.logicalOutput] === item.output, 'Generated module must retain its logical mapping');
   for (const physical of runtime.filter(name => /\.(?:js|mjs|html|css)$/.test(name))) {
     const text = await readFile(path.join(dist, physical), 'utf8');
     const rejectLogicalPath = literal => {
@@ -64,12 +81,33 @@ export async function assertProtectedBuild(root, buildPaths) {
         else if (statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)) exported.push(statement.modifiers.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword) ? 'default' : statement.name?.text ?? '<declaration>');
       }
       const engine = physical === assetMap['vendor/ffmpeg/ffmpeg-core.js'] || physical === engineModule;
-      assert.deepEqual(exported, engine ? ['default'] : [], `Unexpected public production API in ${physical}`);
+      const decoder = physical === decoderModule;
+      assert.deepEqual(exported.sort(), engine || decoder ? ['default'] : [...(shared.get(physical)?.exports ?? [])].sort(), `Unexpected public production API in ${physical}`);
+      const actualImports = [];
+      const inspectImport = reference => {
+        assert(typeof reference === 'string' && /^\.{1,2}\//.test(reference) && !/[\\?#]/.test(reference), `Nonlocal production module import in ${physical}`);
+        const target = path.posix.normalize(path.posix.join(path.posix.dirname(physical), reference));
+        assert(target.startsWith('assets/') && runtime.includes(target) && /\.m?js$/.test(target), `Missing or escaping production module import ${reference} in ${physical}`);
+        actualImports.push(target);
+      };
       const visit = node => {
+        if (ts.isImportDeclaration(node)) {
+          assert(ts.isStringLiteralLike(node.moduleSpecifier), `Nonliteral production module import in ${physical}`);
+          inspectImport(node.moduleSpecifier.text);
+        } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+          assert(node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0]), `Nonliteral dynamic production module import in ${physical}`);
+          inspectImport(node.arguments[0].text);
+        }
         if (ts.isStringLiteralLike(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) rejectLogicalPath(node.text);
         ts.forEachChild(node, visit);
       };
       visit(source);
+      if (generatedImports.has(physical)) {
+        const declared = generatedImports.get(physical);
+        assert(Array.isArray(declared) && declared.every(item => item && typeof item.path === 'string' && assetMap[item.logicalPath] === item.path
+          && ['import-statement', 'dynamic-import'].includes(item.kind) && typeof item.external === 'boolean'), `Invalid generated import graph for ${physical}`);
+        assert.deepEqual(actualImports.sort(), declared.map(item => item.path).sort(), `Generated import graph differs from shipped imports in ${physical}`);
+      }
     } else {
       const logicalFile = logicalPaths.find(logical => assetMap[logical] === physical);
       const references = physical.endsWith('.html') ? text.matchAll(/\b(?:src|href)\s*=\s*["']([^"']*)["']/gi) : text.matchAll(/url\(\s*["']?([^"')\s]+)["']?\s*\)/gi);

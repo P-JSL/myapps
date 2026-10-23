@@ -1,0 +1,131 @@
+{
+  "reviewDate": "2026-10-23",
+  "scope": "Official Git HEAD references observed on2026-10-23 and pinned README/LICENSE/source inspection. Functional documentation comparison only; competitor binaries were not installed or benchmarked. HEAD is not claimed to be the latest stable release. No competitor implementation copied or added as a dependency.",
+  "sources": [
+    {
+      "repository": "yt-dlp/yt-dlp",
+      "revision": "9b58cb33d0cd3e823c8d8732f6adce8faa1f37e3",
+      "readmeUrl": "https://github.com/yt-dlp/yt-dlp/blob/9b58cb33d0cd3e823c8d8732f6adce8faa1f37e3/README.md",
+      "readmeSha256": "6adba80a892aee34940550ee8d7085041afca6140b7ac56d6414f1e6eb484bfe",
+      "license": "Unlicense (source; release distributions contain additional licenses)",
+      "licenseUrl": "https://github.com/yt-dlp/yt-dlp/blob/9b58cb33d0cd3e823c8d8732f6adce8faa1f37e3/LICENSE",
+      "licenseSha256": "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c",
+      "observedAtDate": "2026-10-23"
+    },
+    {
+      "repository": "amir1376/ab-download-manager",
+      "revision": "e329495b6630b18e4b41d7682da33318b0f9ea18",
+      "readmeUrl": "https://github.com/amir1376/ab-download-manager/blob/e329495b6630b18e4b41d7682da33318b0f9ea18/README.md",
+      "readmeSha256": "3064b6585dc49445a8e731b1157b3ee013b903d89e2b8a116e3fba7f20e0e138",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://github.com/amir1376/ab-download-manager/blob/e329495b6630b18e4b41d7682da33318b0f9ea18/LICENSE",
+      "licenseSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "observedAtDate": "2026-10-23"
+    },
+    {
+      "repository": "puemos/hls-downloader",
+      "revision": "c6392f2ff2a52762faaac9542dcf7c9ff20f0cf6",
+      "readmeUrl": "https://github.com/puemos/hls-downloader/blob/c6392f2ff2a52762faaac9542dcf7c9ff20f0cf6/README.md",
+      "readmeSha256": "db4bf20e1b454c368c860e0a90616431ace8a9b4e787c8cc230a433a76b2fcad",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/puemos/hls-downloader/blob/c6392f2ff2a52762faaac9542dcf7c9ff20f0cf6/LICENSE",
+      "licenseSha256": "ed408fb4b93575738c8b146437cc13ae868d6f633cec34e565467ae67c3796da",
+      "observedAtDate": "2026-10-23"
+    },
+    {
+      "repository": "xifangczy/cat-catch",
+      "revision": "05526c4ff90ce8db738812ab274ee4a11ef4f9e7",
+      "readmeUrl": "https://github.com/xifangczy/cat-catch/blob/05526c4ff90ce8db738812ab274ee4a11ef4f9e7/README.md",
+      "readmeSha256": "c3d67d97de3c985aaa825e90e3fc1e856151aa46a158c8ad5ab2939e2f72745f",
+      "license": "GPL-3.0",
+      "licenseUrl": "https://github.com/xifangczy/cat-catch/blob/05526c4ff90ce8db738812ab274ee4a11ef4f9e7/LICENSE",
+      "licenseSha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "observedAtDate": "2026-10-23",
+      "featureSources": [
+        {
+          "path": "js/popup.js",
+          "url": "https://github.com/xifangczy/cat-catch/blob/05526c4ff90ce8db738812ab274ee4a11ef4f9e7/js/popup.js#L253",
+          "lineStart": 253,
+          "lineEnd": 258,
+          "sha256": "5a1ea594c697d55cea4ef1021b2b006989f5508d513b0c4e64108d9d14c28492"
+        },
+        {
+          "path": "popup.html",
+          "url": "https://github.com/xifangczy/cat-catch/blob/05526c4ff90ce8db738812ab274ee4a11ef4f9e7/popup.html#L93",
+          "lineStart": 93,
+          "lineEnd": 99,
+          "sha256": "b9a921be9f9154f9c81c8c745b06a006edb29eb502468226424533f6c4f65f6d"
+        },
+        {
+          "path": "js/popup-utils.js",
+          "url": "https://github.com/xifangczy/cat-catch/blob/05526c4ff90ce8db738812ab274ee4a11ef4f9e7/js/popup-utils.js#L1",
+          "lineStart": 1,
+          "lineEnd": 11,
+          "sha256": "dc8957ce4cf1004a0df84aac9ff7eecadba46a0e96810b855413ce03e689edad"
+        }
+      ]
+    },
+    {
+      "repository": "imputnet/cobalt",
+      "revision": "a636575b09de1fc55d9b8cd98cac88f5f2f16b42",
+      "readmeUrl": "https://github.com/imputnet/cobalt/blob/a636575b09de1fc55d9b8cd98cac88f5f2f16b42/README.md",
+      "readmeSha256": "c9a8b5059c77ebe27a502c45970442a1522f770ee9a6b2c27ed15b847da352e8",
+      "license": "AGPL-3.0 default; API/web subtrees have further notices",
+      "licenseUrl": "https://github.com/imputnet/cobalt/blob/a636575b09de1fc55d9b8cd98cac88f5f2f16b42/LICENSE",
+      "licenseSha256": "ebe435fddb16699248ec09087bfb121517701aac63b679315aec33eb05e4f404",
+      "observedAtDate": "2026-10-23"
+    }
+  ],
+  "recommendedFeatures": [
+    {
+      "feature": "User-initiated copy of one detected media URL",
+      "basis": "Cat Catch popup.js lines253-258 implements per-item URL copy; popup-utils.js lines1-11 derives link; Baseline My Video App1.13.0 popup/ui expose no clipboard action.",
+      "benefit": "Reuse discovered direct/HLS/DASH URL in a separately selected downloader or local player without starting a download; URL may expire or require original session.",
+      "constraints": "Own small implementation; validate HTTP(S) mediaURL; synchronous click triggers writeText before awaits; never clipboard.read or automatic copying; no new permissions/dependencies/backend; report unavailable or denied clipboard honestly; raw detected URL may include signed tokens so copy only on explicit action.",
+      "risk": "Session-bound URLs can expire; copying does not turn page URLs into extractor support or transfer login cookies.",
+      "decision": "Selected for1.14.0 independent implementation in popup and full app; click-only copy with manual fallback on browser denial or unavailable clipboard."
+    },
+    {
+      "feature": "Local keyword/type filter for detected media",
+      "basis": "Cat Catch popup.html93-99 has resource filter controls; popup.js27-30/442-465 filters extension types.",
+      "benefit": "Navigate many detected media candidates without extra requests.",
+      "constraints": "Use simple bounded string search and existing file/hls/dash/audio metadata; no regex engine; no dependencies/network/storage needed; preserve refresh state and keyboard focus.",
+      "risk": "UI/search tests and empty-state distinctions required.",
+      "decision": "Deferred; retain as a small future candidate without enlarging this release scope."
+    }
+  ],
+  "deferredFeatures": [
+    {
+      "feature": "Persistent cross-restart partial resume",
+      "basis": "yt-dlp README682-688 documents continue and part files.",
+      "reason": "Valuable for multi-GB downloads but requires durable partial-file ownership, validators, quotas, authenticated retry and recovery migration; not a safe tiny UI addition."
+    },
+    {
+      "feature": "Schedulers, download-rate control and new native manager",
+      "basis": "AB README23-30 queues/schedulers/browser extensions; yt-dlp rate/retry options.",
+      "reason": "Current app already bounded queue/retry/concurrency; scheduling requires new background lifecycle and rate controls need transfer-wide fairness; keep scope and bytes small."
+    },
+    {
+      "feature": "Language-specific track selection and MKV stream outputs",
+      "basis": "HLS Downloader README38-42 quality/audio language/bitrate, disk-backed MP4/MKV.",
+      "reason": "Current quality/disk merge already exist; additional track selection/output format expands parser/validation/UI scope rather than directly reducing build."
+    },
+    {
+      "feature": "Remote extraction/proxy API",
+      "basis": "cobalt README monorepo/API/proxy workflow.",
+      "reason": "Would add backend/network/privacy/deployment dependency inconsistent with current offline local processing."
+    }
+  ],
+  "release": "1.14.0",
+  "baselineRelease": "1.13.0",
+  "baselineCommit": "709a40f83542717b6b625641440a5caebb1cfa7b",
+  "implementationPolicy": {
+    "newRuntimeDependencies": false,
+    "newPermissions": false,
+    "clipboardRead": false,
+    "automaticClipboardWrite": false,
+    "remoteBackend": false,
+    "codeReuse": "No competitor source copied; feature independently implemented using existing URL validation and browser clipboard API.",
+    "measurementScope": "Build size is measured separately against baseline1.13.0; no competitor binary size or speed claims."
+  }
+}

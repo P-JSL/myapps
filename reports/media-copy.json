@@ -1,0 +1,36 @@
+{
+  "buildSha256": "0eceb19f2a1bffed7f405686226a97cadd51538e3b93402f687bb1c25725054f",
+  "mode": "Real Chromium Clipboard writes on trusted click with fresh default-permission contexts before any grant; only afterward test read permission inspects the known URL. Additional click/keyboard/denial cases use test read/write grants or explicit denial/unavailability doubles. Chrome extension APIs are doubles. Product never reads clipboard.",
+  "outcomes": [
+    {
+      "name": "Popup and app copy on trusted click with default permissions before any test read grant",
+      "status": "passed"
+    },
+    {
+      "name": "popup: explicit click and keyboard copy exact URL with real Clipboard API",
+      "status": "passed"
+    },
+    {
+      "name": "popup: denied and unavailable writes offer selected literal manual copy and restore focus",
+      "status": "passed"
+    },
+    {
+      "name": "app: explicit click and keyboard copy exact URL with real Clipboard API",
+      "status": "passed"
+    },
+    {
+      "name": "app: denied and unavailable writes offer selected literal manual copy and restore focus",
+      "status": "passed"
+    },
+    {
+      "name": "Popup retained copy controls use current URL and reject unsafe schemes without clipboard writes",
+      "status": "passed"
+    },
+    {
+      "name": "Popup active URL index respects selected quality, output and terminal history states",
+      "status": "passed"
+    }
+  ],
+  "pageErrors": [],
+  "outboundRequests": []
+}

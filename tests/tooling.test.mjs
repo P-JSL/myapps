@@ -47,6 +47,22 @@ throw new Error('Browser source must never execute during an audit');
   return { root, catalog };
 }
 
+async function vendorFixture(t) {
+  const fixture = await sourceFixture(t);
+  const { root, catalog } = fixture;
+  const dependency = { version: '2.3.2', resolved: 'https://registry.npmjs.org/brotli-dec-wasm/-/brotli-dec-wasm-2.3.2.tgz',
+    integrity: 'sha512-5H+k8eVLIJY6B4olN2HP9QzJAxcplf0jV7mWnkpxvOSeUE9Npg3dQ2pgLn30a9MUFHNro1iSmtdu6VNdlb+TIw==' };
+  const packageJson = { name: 'audit-fixture', version: '1.2.3', devDependencies: { 'brotli-dec-wasm': '2.3.2' } };
+  const lock = { lockfileVersion: 3, packages: { 'node_modules/brotli-dec-wasm': dependency } };
+  const wrapper = "import init, { BrotliDecStream } from 'brotli-dec-wasm/web'; export default async function decode() { throw new Error('Audit must not execute vendor code'); }\n";
+  await put(root, 'package.json', JSON.stringify(packageJson));
+  await put(root, 'package-lock.json', JSON.stringify(lock));
+  await put(root, 'scripts/lib/browser-brotli.mjs', wrapper);
+  catalog.vendorEntries = [{ input: 'scripts/lib/browser-brotli.mjs', output: 'vendor/brotli/decoder.js', format: 'esm' }];
+  catalog.staticFiles.push({ input: 'node_modules/brotli-dec-wasm/pkg/brotli_dec_wasm_bg.wasm', output: 'vendor/brotli/brotli_dec_wasm_bg.wasm' });
+  return { ...fixture, dependency, packageJson, lock, wrapper };
+}
+
 test('tree hashes preserve the original sorted name-NUL-content SHA format', async t => {
   const root = await temporary(t);
   await put(root, 'nested/z.bin', Buffer.from([0, 1, 255]));
@@ -128,10 +144,64 @@ test('source audit follows runtime imports without executing browser modules', a
   assert.equal(report.release, '1.2.3');
   assert.equal(report.moduleCount, 3);
   assert.equal(report.entryCount, 2);
+  assert.equal(report.vendorEntryCount, 0);
   assert.deepEqual(report.edges, [{ from: 'src/main.ts', to: 'src/shared.ts' }]);
   assert.deepEqual(report.orphanModules, []);
   assert.deepEqual(report.runtimeCycles, []);
   assert.deepEqual(report.sourceSha256, await sourceIdentity(root));
+});
+
+test('source audit separately accounts for the exact pinned vendor wrapper without executing it', async t => {
+  const { root, catalog, dependency } = await vendorFixture(t);
+  const report = await auditSource(root, catalog);
+  assert.equal(report.moduleCount, 3); assert.equal(report.entryCount, 2);
+  assert.equal(report.vendorEntryCount, 1);
+  assert.deepEqual(report.vendorEntries, [{ input: 'scripts/lib/browser-brotli.mjs', output: 'vendor/brotli/decoder.js', format: 'esm',
+    dependency: { package: 'brotli-dec-wasm', specifier: 'brotli-dec-wasm/web', version: dependency.version, integrity: dependency.integrity } }]);
+  assert.deepEqual(report.sourceSha256, await sourceIdentity(root));
+});
+
+test('vendor catalog rejects output collisions, escaping paths, unsupported formats and absent decoder resources', async t => {
+  const { root, catalog } = await vendorFixture(t);
+  const vendor = catalog.vendorEntries[0];
+  vendor.output = 'main.js'; await assert.rejects(auditSource(root, catalog), /Duplicate build output/);
+  vendor.output = '../decoder.js'; await assert.rejects(auditSource(root, catalog), /escapes its root/);
+  vendor.output = 'vendor/brotli/decoder.js'; vendor.format = 'iife';
+  await assert.rejects(auditSource(root, catalog), /Uncatalogued vendor wrapper/);
+  vendor.format = 'esm'; catalog.staticFiles.push({ input: 'duplicate.js', output: vendor.output });
+  await assert.rejects(auditSource(root, catalog), /Duplicate build output/);
+  catalog.staticFiles.pop(); catalog.staticFiles.pop();
+  await assert.rejects(auditSource(root, catalog), /Wasm must be included/);
+  catalog.vendorEntries = [];
+  await assert.rejects(auditSource(root, catalog), /requires its one audited vendor wrapper/);
+});
+
+test('vendor imports, exports and npm lock drift fail closed without widening application import permissions', async t => {
+  const { root, catalog, packageJson, lock, dependency, wrapper } = await vendorFixture(t);
+  packageJson.devDependencies['brotli-dec-wasm'] = '^2.3.2';
+  await put(root, 'package.json', JSON.stringify(packageJson));
+  await assert.rejects(auditSource(root, catalog), /exact approved version/);
+  packageJson.devDependencies['brotli-dec-wasm'] = '2.3.2'; await put(root, 'package.json', JSON.stringify(packageJson));
+  for (const key of ['version', 'resolved', 'integrity']) {
+    lock.packages['node_modules/brotli-dec-wasm'] = { ...dependency, [key]: 'drift' };
+    await put(root, 'package-lock.json', JSON.stringify(lock));
+    await assert.rejects(auditSource(root, catalog), /lock identity/);
+  }
+  lock.packages['node_modules/brotli-dec-wasm'] = dependency; await put(root, 'package-lock.json', JSON.stringify(lock));
+  for (const [source, message] of [
+    [wrapper.replace('brotli-dec-wasm/web', 'another-package'), /Unapproved vendor import/],
+    [wrapper + "void import(location.hash);", /Dynamic vendor imports/],
+    [wrapper + "void require('brotli-dec-wasm/web');", /Dynamic vendor imports/],
+    [wrapper + 'export const extra = true;', /only default/],
+    [wrapper + "export * from 'brotli-dec-wasm/web';", /Vendor re-exports/],
+    [wrapper.replace('export default ', ''), /required default export/],
+  ]) {
+    await put(root, 'scripts/lib/browser-brotli.mjs', source);
+    await assert.rejects(auditSource(root, catalog), message);
+  }
+  await put(root, 'scripts/lib/browser-brotli.mjs', wrapper);
+  await put(root, 'src/worker.ts', "import decoder from 'brotli-dec-wasm/web'; console.log(decoder);\n");
+  await assert.rejects(auditSource(root, catalog), /Uncatalogued package import/);
 });
 
 test('source audit rejects orphan runtime modules but accepts type-only modules', async t => {

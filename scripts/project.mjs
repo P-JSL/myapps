@@ -57,6 +57,10 @@ export const browserEntries = freeze([
     "format": "esm"
   }
 ]);
+// Vendor wrappers are bundled separately and retain only their required default export.
+export const vendorEntries = freeze([
+  { "input": "scripts/lib/browser-brotli.mjs", "output": "vendor/brotli/decoder.js", "format": "esm" }
+]);
 export const staticFiles = freeze([
   {
     "input": "src/local/index.html",
@@ -99,6 +103,10 @@ export const staticFiles = freeze([
     "output": "licenses/ffmpeg-GPL-2.0.txt"
   },
   {
+    "input": "licenses/brotli-dec-wasm-MIT.txt",
+    "output": "licenses/brotli-dec-wasm-MIT.txt"
+  },
+  {
     "input": "reports/LOCAL_MODE.ko.md",
     "output": "LOCAL_MODE.ko.md"
   },
@@ -133,6 +141,10 @@ export const staticFiles = freeze([
   {
     "input": "node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm",
     "output": "vendor/ffmpeg/ffmpeg-core.wasm"
+  },
+  {
+    "input": "node_modules/brotli-dec-wasm/pkg/brotli_dec_wasm_bg.wasm",
+    "output": "vendor/brotli/brotli_dec_wasm_bg.wasm"
   }
 ]);
 export const directoryCopies = freeze([{ input: 'assets/bitmaps', output: 'bitmaps' }]);
@@ -176,6 +188,7 @@ export const capabilities = freeze([
   "antivirus-integration-toggle",
   "parallel-range-download",
   "disk-backed-stream-remux",
-  "incremental-large-file-hash"
+  "incremental-large-file-hash",
+  "offline-brotli-engine-packaging"
 ]);
 export const algorithmSuites = freeze([['state','tests/bench-state.mjs'],['media','tests/bench-media.mjs'],['transfer','tests/bench-transfer.mjs'],['ui','tests/bench-ui.mjs'],['security','scripts/benchmark-security.mjs']]);

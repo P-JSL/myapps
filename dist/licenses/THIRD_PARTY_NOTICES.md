@@ -19,6 +19,18 @@ https://github.com/ffmpegwasm/ffmpeg.wasm/tree/v0.12.10 (including `build/` and
 `Dockerfile`). Preserve the notices and corresponding sources required for the
 exact binaries when redistributing them.
 
+The offline compressed-engine bootstrap includes **brotli-dec-wasm 2.3.2** from
+https://github.com/ustclug-dev/brotli-dec-wasm. We distribute it under its offered
+**MIT** license, reproduced in `licenses/brotli-dec-wasm-MIT.txt`. Its pinned Wasm
+decoder and bundled JavaScript wrapper only decompress the authenticated local
+engine payload; they do not download code or media from a third-party service.
+The decoder is an extension runtime component, unlike the build/test tools below.
+The same license file includes the bundled Rust dependency notices, including
+Dropbox BSD notices for brotli-decompressor/alloc and selected MIT notices for the
+runtime support crates. Versions are bound to the npm release's source commit
+`04947d5b2cbcf0487435d26d6598ea624a6b191b` and its Cargo.lock, rather than the
+upstream development branch.
+
 Build/test dependencies: TypeScript (Apache-2.0), esbuild (MIT), Playwright
 (Apache-2.0), DefinitelyTyped declarations (MIT). Pinned versions and npm integrity
 hashes are in `package-lock.json`. These build tools are not extension runtime code.

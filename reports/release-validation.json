@@ -1,80 +1,101 @@
 {
-  "release": "1.13.0",
-  "buildSha256": "6058da0c8f1233dbfdd3ada1bbe9793fccf199c3bd1b81a41330df2c696fbe56",
-  "recordedAtUtc": "2026-10-23T04:27:28.349952+00:00",
-  "unitTests": 292,
+  "release": "1.14.0",
+  "buildSha256": "0eceb19f2a1bffed7f405686226a97cadd51538e3b93402f687bb1c25725054f",
+  "recordedAtUtc": "2026-10-23T13:02:33.691201+00:00",
+  "unitTests": 308,
   "nativeTests": 69,
-  "browserScenarios": 89,
+  "browserScenarios": 90,
   "embeddedDatabaseSubchecks": 19,
   "popupCollectorSubchecks": 6,
   "http3Checks": 4,
   "algorithmSuites": 5,
   "realClamAvChecks": 6,
-  "unitAndBrowserLogSha256": "7d2e6bb39db96b425e26b655d9e399df69f30a2e95663b77ac6c92d6d5ad1d6b",
-  "http3LogSha256": "e1155be8eaf4a07f568ad180f733ef3f7f0bd3c5d592dcc6c306c294083827b5",
-  "benchmarkLogSha256": "92e714d29dcff66f99af0a66df34db255af2a89e3743b606fe291dc618c08f76",
+  "unitAndBrowserLogSha256": "cd67acb879858570b9f5e471649de84638e9c9a8f6b83a85c23052fecb1998bb",
+  "http3LogSha256": "3613830a6d78ebbabfc442184865cc23220b11f3145afd64e39c3cb9776b1746",
+  "benchmarkLogSha256": "637bd6e642654d00e4e6cb24f096953cb7e6e38f4d7ac2c2ed32dde5ecda3bbd",
   "independentReview": {
-    "agent": "/root/large_code_review",
-    "status": "source-and-runtime-approved",
-    "scope": "Parallel range validation, bounded streaming blocks, same-resource strong validators, extent-backed FFmpeg filesystem, incremental SHA-256, honest partial static evidence, serialized writes, cancellation and cleanup, unchanged security gates, actual large browser evidence, copied documentation and current source/dist identities. Final archive contents reviewed separately before publication."
+    "agent": "/root/light_final_review",
+    "status": "source-approved",
+    "scope": "Shared ESM generated module/export/import allowlists, zero entry exports, UTF8 semantics, exact PNG dedup, whole-app byte accounting, authenticated bounded offline Brotli decoder and vendor identity, exact FFmpeg bytes, trusted copy/manual fallback/linear popup index, pinned vendor architecture guard, actual raw ZIP DEFLATE9 regression and download test selectors. Separate child peers approved copy, shared build, vendor guard and archive red/green checks.",
+    "archiveGate": "Independent final archive SHA256/CRC/content/exclusion review required before publication; no source changes after that review."
   },
   "sourceArchitecture": {
     "status": "passed",
-    "moduleCount": 38,
+    "moduleCount": 39,
     "entryCount": 9,
-    "sourceFiles": 119,
-    "reportSha256": "a790047c57d9763d6e8da2e90690354c86ef7ee1b0a3ce02b613ea47643e18b4"
+    "vendorEntryCount": 1,
+    "sourceFiles": 123,
+    "reportSha256": "0033fa8bd1b38d72b5ab20a999699cb8fd4a79b0e6b530031f0bfeaad13d8df6"
   },
   "securityReview": {
     "report": "reports/SECURITY_REVIEW_2026-10-21.ko.md",
     "reportSha256": "cf9f6576e57014aef08a76af7487014007e47daf187f92ee6ce136ae7af9a221",
-    "dependencyAuditSha256": "4834273e7b74dc19910398c1ab6db0745e7516bdc1d330c59e83a531b8786fe0",
+    "dependencyAuditSha256": "a49753f6a86d8789686c6a449123e0afcce3573b7d236b07c6b7978d0d924f72",
     "npmKnownAdvisories": 0,
     "npmAuditScope": "npm dependency advisories only; bundled native/Wasm components and browser/OS vulnerabilities require separate review",
     "engineVersion": "FFmpeg 5.1.4",
     "enginePatched": false,
     "decoderMitigation": "Dynamically bounded per-input whitelist excludes JPEG2000/PNM/MagicYUV/EXR/SANM families before FFprobe/FFmpeg decoding. Targeted exposure reduction, not an engine update.",
     "nativeHostRevalidated": true,
-    "priorReportRelease": "1.11.0"
+    "priorReportRelease": "1.11.0",
+    "offlineDecoder": {
+      "package": "brotli-dec-wasm",
+      "version": "2.3.2",
+      "scope": "Exact npm lock/integrity and source wrapper audited; decoder Wasm size/SHA256 validated before initialization. npm advisory audit is not a complete Rust/Wasm vulnerability review."
+    }
   },
   "buildProtection": {
     "version": 2,
     "exportSurface": {
       "application": 0,
       "removedApplicationSymbols": 4,
-      "engineModules": "default-only"
+      "engineModules": "default-only",
+      "sharedInternalModules": 15,
+      "sharedInternalNamedExports": 97,
+      "decoderModule": "default-only"
     },
     "minified": true,
+    "charset": "utf8",
     "opaqueFilenames": true,
     "sourceMaps": false,
     "dynamicEvaluation": false,
     "engine": {
-      "format": "my-video-engine-v1",
+      "format": "my-video-engine-v2",
       "algorithm": "AES-256-GCM",
-      "compression": "gzip",
-      "cipherPath": "assets/121326e3300f7022c3acc6550131e3fe.bin",
-      "coreModulePath": "assets/dc8983bd87603e93eddbca1de70061ab.js",
-      "iv": "LW4ZHra5Wio/h0ja",
+      "compression": "brotli",
+      "cipherPath": "assets/e721d550f11cd738c512fd7fc83298a7.bin",
+      "coreModulePath": "assets/c80dead0bc94f476a894e5f72e7513e6.js",
+      "iv": "BcfmkOdGzz2NH5rJ",
       "tagBits": 128,
       "plaintextBytes": 32232419,
-      "compressedBytes": 10257774,
-      "ciphertextBytes": 10257790,
-      "clientKeyEmbedded": true
+      "compressedBytes": 7280521,
+      "ciphertextBytes": 7280537,
+      "clientKeyEmbedded": true,
+      "compressionOptions": {
+        "quality": 11,
+        "windowBits": 22
+      },
+      "decoder": {
+        "modulePath": "assets/d47838d694ff01f312a7c7ca43460d74.js",
+        "wasmPath": "assets/84f2c0fd26ebf4fe5d0466b5f9130a3a.bin",
+        "wasmBytes": 208439,
+        "wasmSha256": "79b29cb1790560f0a0f32b4a31d935e2782875e4a367fde23c81d986b327ec3f"
+      }
     },
     "limitation": "Client decryption keys are embedded and recoverable; packaging is not a secrecy boundary. The manifest and license notices remain readable.",
-    "mappedAssets": 20,
-    "runtimeAssets": 21,
+    "mappedAssets": 37,
+    "runtimeAssets": 37,
     "legacyRuntimeRequests": [],
     "comparison": {
-      "baselineCommit": "b00a547ff5b1ca50f918b737cdd159dffdcfef62",
-      "beforeAppJavaScriptBytes": 246677,
-      "afterAppJavaScriptBytes": 288971,
-      "beforeDistBytes": 10709340,
-      "afterDistBytes": 10763869,
-      "scope": "Application JS excludes vendor engine/loader. Disk filesystem, parallel transfer, hashing and documentation increase bytes; no end-to-end speedup or ZIP reduction claim."
+      "baselineCommit": "709a40f83542717b6b625641440a5caebb1cfa7b",
+      "beforeAppJavaScriptBytes": 288971,
+      "afterAppJavaScriptBytes": 171634,
+      "beforeDistBytes": 10763869,
+      "afterDistBytes": 7883294,
+      "scope": "Application count includes entries and shared chunks exactly once; vendor bytes included separately in dist/ZIP. Existing feature and FFmpeg bytes preserved; no end-to-end speedup or runtime-memory-reduction claim."
     }
   },
-  "antivirusEvidence": "Native69 rerun for1.13.0. Python production sources unchanged from1.12.0; matching-module-hash realClamAV1.4.6 integration6 evidence retained, not newly rerun. Private test-only signatures; official database freshness/coverage and actual Windows APIs not validated.",
+  "antivirusEvidence": "Native69 rerun for1.14.0. Python production sources unchanged from1.12.0; matching-module-hash realClamAV1.4.6 integration6 evidence retained, not newly rerun. Private test-only signatures; official database freshness/coverage and actual Windows APIs not validated. Helper ZIP compression changes its archive hash without changing production files.",
   "userTxtSample": {
     "sha256": "704a5e15ae1068e4df52a8bcff04270efdad595cf685e0eccff86ab335471a46",
     "actualMime": "audio/mp4",
@@ -102,7 +123,8 @@
     "Audio conversion, local conversion/merge and upscaling retain separate existing resource/time bounds; cross-restart partial-download resume is not implemented.",
     "Prepared final files at most256MiB retain full browser static scan; larger prepared files receive only8MiB static-prefix analysis marked incomplete, with SHA256 over all bytes. Native scan limit2GiB minus1 and AMSI128MiB remain; exceeding these is never classified as a completed clean scan.",
     "Large audit uses disposable regular disk-backed Chromium and test-origin CDP8GiB quota override, restored afterward; no product/OS/user settings changed. Installed-extension unlimitedStorage behavior remains unverified.",
-    "2GiB audit inserts a large free box in owned one-second MP4. Long-duration audit has2 frames spanning14402seconds, not four hours of continuous media throughput. Page Blob reads are bounded; full browser/worker RSS was not measured."
+    "2GiB audit inserts a large free box in owned one-second MP4. Long-duration audit has2 frames spanning14402seconds, not four hours of continuous media throughput. Page Blob reads are bounded; full browser/worker RSS was not measured.",
+    "Brotli packaging uses an additional pinned offline Rust/Wasm decoder, build CPU time and temporary memory; engine memory and all codecs remain unchanged. Direct Chrome120 binary was not executed; actual browser verification isChromium154."
   ],
   "builtinRiskScreening": {
     "engine": "builtin-static-v1",
@@ -116,7 +138,7 @@
     "nativeReadChunkBytes": 65536,
     "maxFindings": 16,
     "releaseGuard": "Build and packaging reject a contiguous standard harmless antivirus test marker in distributable sources/resources/reports; tests construct it only at runtime. Test media/signatures/databases excluded from ZIPs.",
-    "benchmarkScope": "Five existing algorithm domains rerun against current source. UI baseline receives presentation-only in-memory adaptation with original/adapted hashes, full text equality and focus/token/pending checks retained. Not a whole-scanner throughput benchmark.",
+    "benchmarkScope": "Five existing algorithm domains rerun against final source. Frozen UI baseline uses explicit in-memory presentation adaptation for internal summary and copy control; original/adapted hashes, full text equality and focus/token/pending assertions retained. Not a whole-scanner throughput or download benchmark.",
     "largePreparedFiles": {
       "thresholdBytes": 268435456,
       "staticPrefixBytes": 8388608,
@@ -126,9 +148,11 @@
     }
   },
   "verificationLogs": {
-    "unitAndBrowser": "test-results/large-verify.log",
-    "http3": "test-results/large-http3.log",
-    "benchmark": "test-results/large-benchmarks.log"
+    "unitAndBrowser": "test-results/lightweight-verify.log",
+    "unitFinal": "test-results/lightweight-unit-final.log",
+    "sourceFinal": "test-results/lightweight-source.log",
+    "http3": "test-results/lightweight-http3.log",
+    "benchmark": "test-results/lightweight-benchmarks.log"
   },
   "antivirusIntegration": {
     "preferenceKey": "my_video_app_antivirus_enabled_v1",
@@ -146,15 +170,15 @@
   },
   "readmeChangelog": {
     "path": "README.md",
-    "versions": 16,
+    "versions": 17,
     "first": "1.0.0",
-    "latest": "1.13.0",
-    "sha256": "f5380eb30ead82605b1152588078630a395af34ed849e1f570b65870ceab9696",
+    "latest": "1.14.0",
+    "sha256": "b607f5f2afecda2e7b3ed62ac86ae73a878b7a94758de7d69f46c1a2061a3046",
     "format": "Newest-first GFM table with version, changes and related document columns; historical project versions distinct from original extension10.6.1.2"
   },
   "largeDownloads": {
     "report": "reports/large-download.json",
-    "reportSha256": "bd0ad37a56794c32903b2ab72f6dd1f215fab370cdc46a8d45b39ce425a86370",
+    "reportSha256": "1e6fed6ebf1017cb38428691180b7a9dfb47d20f8e13708b1a060e5e571494a2",
     "status": "passed",
     "checksIncludedInBrowserTotal": 5,
     "parallelWorkers": 4,
@@ -196,7 +220,7 @@
           "rangeRequests": 5,
           "maximumActive": 4,
           "active": 0,
-          "bytesSent": 1376256,
+          "bytesSent": 1245184,
           "aborted": 4
         }
       },
@@ -207,7 +231,7 @@
         "traffic": {
           "requests": 5,
           "rangeRequests": 5,
-          "maximumActive": 3,
+          "maximumActive": 4,
           "active": 0,
           "bytesSent": 16842752,
           "aborted": 0
@@ -246,32 +270,32 @@
       "method": "CDP Storage.overrideQuotaForOrigin",
       "requestedQuotaBytes": 8589934592,
       "estimateBefore": {
-        "quota": 10740513549,
-        "usage": 3095309,
+        "quota": 10740482243,
+        "usage": 3064003,
         "usageDetails": {
           "fileSystem": 174,
-          "indexedDB": 3095135
+          "indexedDB": 3063829
         }
       },
       "estimateDuring": {
-        "quota": 10740513549,
-        "usage": 3095309,
+        "quota": 10740482243,
+        "usage": 3064003,
         "usageDetails": {
           "fileSystem": 174,
-          "indexedDB": 3095135
+          "indexedDB": 3063829
         }
       },
       "estimateAfterRestore": {
-        "quota": 10740513549,
-        "usage": 3095309,
+        "quota": 10740482243,
+        "usage": 3064003,
         "usageDetails": {
           "fileSystem": 174,
-          "indexedDB": 3095135
+          "indexedDB": 3063829
         }
       },
       "overrideRestored": true,
       "protocolBefore": {
-        "usage": 3095309,
+        "usage": 3064003,
         "quota": 10723128114,
         "overrideActive": false,
         "usageBreakdown": [
@@ -281,7 +305,7 @@
           },
           {
             "storageType": "indexeddb",
-            "usage": 3095135
+            "usage": 3063829
           },
           {
             "storageType": "cache_storage",
@@ -294,7 +318,7 @@
         ]
       },
       "protocolDuring": {
-        "usage": 3095309,
+        "usage": 3064003,
         "quota": 8589934592,
         "overrideActive": true,
         "usageBreakdown": [
@@ -304,7 +328,7 @@
           },
           {
             "storageType": "indexeddb",
-            "usage": 3095135
+            "usage": 3063829
           },
           {
             "storageType": "cache_storage",
@@ -317,7 +341,7 @@
         ]
       },
       "protocolAfterRestore": {
-        "usage": 3095309,
+        "usage": 3064003,
         "quota": 10723128114,
         "overrideActive": false,
         "usageBreakdown": [
@@ -327,7 +351,7 @@
           },
           {
             "storageType": "indexeddb",
-            "usage": 3095135
+            "usage": 3063829
           },
           {
             "storageType": "cache_storage",
@@ -347,5 +371,55 @@
       "ordinaryFile": 30000,
       "streamAsset": 60000
     }
+  },
+  "integrationUnitTests": 307,
+  "mediaCopySubchecks": 7,
+  "unitFinalLogSha256": "9b73a0a45c849aea99ab9c6d5543e0a4e4fc67d7fb36e50bc046c226ee7cbced",
+  "supplementalValidation": "After successful307unit/69native/90browser integration and realHTTP3, packaging-only per-entry DEFLATE9 fix added one regression. All308unit tests, source audit and5algorithm suites rerun on final source. Runtime/production bundle unchanged; build-bound browser andHTTP3 results retained.",
+  "mediaUrlCopy": {
+    "report": "reports/media-copy.json",
+    "reportSha256": "a43d3d7532f26eaf04bd0be37c0449ab9e11fa39c58741b6acb24232b1b7b2b8",
+    "subchecksIncludedInBrowserTotal": 7,
+    "extraProductPermissions": [],
+    "clipboardReads": false,
+    "automaticCopy": false,
+    "mode": "Real Chromium Clipboard writes on trusted click with fresh default-permission contexts before any grant; only afterward test read permission inspects the known URL. Additional click/keyboard/denial cases use test read/write grants or explicit denial/unavailability doubles. Chrome extension APIs are doubles. Product never reads clipboard."
+  },
+  "lightweightBuild": {
+    "report": "reports/lightweight-build.json",
+    "reportSha256": "176f337b99c2c00b24a60b7472bb6bb4bad02085e1c077ff3d619713b7a8520d",
+    "measurements": {
+      "applicationJavaScript": {
+        "beforeBytes": 288971,
+        "afterBytes": 171634,
+        "savedBytes": 117337,
+        "reductionPercent": 40.605113
+      },
+      "allDistResources": {
+        "beforeBytes": 10763869,
+        "afterBytes": 7883294,
+        "savedBytes": 2880575,
+        "reductionPercent": 26.76152
+      },
+      "extensionZip": {
+        "beforeBytes": 10460511,
+        "afterBytes": 7550564,
+        "savedBytes": 2909947,
+        "reductionPercent": 27.818402
+      }
+    },
+    "expectedExtensionZipSha256": "c19b674f62989904749855082fab22e3d7059d243ff204f8d239f6545dd2eb94",
+    "engineInputSha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7",
+    "engineCompressionReportSha256": "22f521acb0c3b13b81d61d06c16e5a0caf2cd057334f793eed29e7f52142b0be",
+    "archiveDeflateLevel": 9
+  },
+  "competitorResearch": {
+    "report": "reports/COMPETITOR_RESEARCH.ko.md",
+    "reportSha256": "bbf5bd3e2a97193a4b68fc61fbf00c4f519786f4706ee968e93764851a5815e4",
+    "evidence": "reports/competitor-research.json",
+    "evidenceSha256": "8caab692cf177c8094b05384a74d818191ed535567d35eaf642029fa88ea0768",
+    "officialRepositories": 5,
+    "addedFeature": "Explicit per-media URL copy, independently implemented; no competitor code copied.",
+    "scope": "Pinned repository documentation/source comparison, not installed competitor benchmarks or latest stable release claims."
   }
 }

@@ -11,7 +11,7 @@ process.chdir(fileURLToPath(new URL('../', import.meta.url)));
 await access('dist/manifest.json');
 validateDependencyAudit(JSON.parse(await readFile('reports/dependency-audit.json', 'utf8')), hash(await readFile('package-lock.json')));
 const report = JSON.parse(await readFile('reports/browser.json', 'utf8'));
-assert(report.outcomes.length >= 89 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
+assert(report.outcomes.length >= 90 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
 const large = JSON.parse(await readFile('reports/large-download.json', 'utf8'));
 assert(large.status === 'passed' && large.outcomes.length === 5 && large.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real large-file, disk-remux, long-video, cancellation and quota checks required');
 assert.deepEqual(large.outcomes.map(outcome => outcome.name), ['parallel-over-2-gib', 'cancel-and-cleanup', 'injected-quota-and-cleanup', 'disk-stream-remux-over-2-gib', 'long-duration-disk-stream']);
@@ -44,6 +44,11 @@ assert.equal(identity, JSON.parse(await readFile('reports/build.json', 'utf8')).
 const popup = JSON.parse(await readFile('reports/popup.json', 'utf8'));
 assert(popup.outcomes.length >= 6 && popup.outcomes.every(outcome => outcome.status === 'passed'), 'Successful popup validation required');
 assert.equal(identity, popup.buildSha256, 'Popup validation belongs to another build');
+const copy = JSON.parse(await readFile('reports/media-copy.json', 'utf8'));
+assert(copy.outcomes.length >= 7 && copy.outcomes.every(outcome => outcome.status === 'passed'), 'Successful explicit media URL copy and manual fallback checks required');
+assert.deepEqual(copy.pageErrors, []);
+assert.deepEqual(copy.outboundRequests, []);
+assert.equal(identity, copy.buildSha256, 'Media URL copy validation belongs to another build');
 
 for (const directory of ['dist', 'native', 'src', 'scripts', 'tests', 'reports']) {
   for (const name of await files(directory, { skipDirectories: ['__pycache__'] })) assertNoTestMarker(await readFile(`${directory}/${name}`), `${directory}/${name}`);

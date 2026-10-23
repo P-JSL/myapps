@@ -3,6 +3,7 @@ import { record } from '../security/validation.ts';
 import { SCOPE, isActiveHistoryState, isHistory, type HistoryItem, type MediaItem } from './model.ts';
 import { downloadOptions } from './preferences.ts';
 import { internalScanPresentation } from './labels.ts';
+import { mediaCopyButton } from './media-copy.ts';
 
 function node<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -24,6 +25,7 @@ interface MediaRow {
   detail: HTMLParagraphElement;
   download: HTMLButtonElement;
   downloadLabel: HTMLSpanElement;
+  copyURL: HTMLButtonElement;
 }
 function message(text: string, tone: 'info' | 'warning' | 'error' = 'info') { status.textContent = text; status.dataset.tone = tone; status.hidden = !text; }
 function showError(error: unknown) { message(error instanceof Error ? error.message : '요청 중 오류가 발생했습니다.', 'error'); }
@@ -44,12 +46,12 @@ const preferencesReady = (async () => {
   } catch { message('저장된 다운로드 설정을 불러오지 못했습니다. 최고 화질·원본 형식으로 다운로드합니다.', 'warning'); }
   finally { preferencesLoaded = true; renderMedia(); }
 })();
-function activeDownload(item: MediaItem): boolean {
-  return currentHistory.some(entry => entry.url === item.url
-    && isActiveHistoryState(entry.state)
+function matchingDownload(entry: HistoryItem): boolean {
+  return isActiveHistoryState(entry.state)
     && (entry.options?.quality ?? 'highest') === selectedOptions.quality
-    && (entry.options?.output ?? 'original') === selectedOptions.output);
+    && (entry.options?.output ?? 'original') === selectedOptions.output;
 }
+function activeDownload(item: MediaItem): boolean { return currentHistory.some(entry => entry.url === item.url && matchingDownload(entry)); }
 function mediaDetail(item: MediaItem): string {
   let host = '';
   try { host = new URL(item.url).hostname; } catch {}
@@ -73,8 +75,9 @@ function createRow(item: MediaItem): MediaRow {
   const download = document.createElement('button'); download.className = 'download-button'; download.dataset.action = 'download';
   const downloadLabel = document.createElement('span');
   download.append(icon('M12 4v11m-4-4 4 4 4-4M5 16v4h14v-4'), downloadLabel);
-  copy.append(title, detail); row.append(marker, copy, download);
-  const entry = { item, row, title, detail, download, downloadLabel };
+  const entry: MediaRow = { item, row, title, detail, download, downloadLabel, copyURL: undefined! };
+  entry.copyURL = mediaCopyButton(() => entry.item, message); entry.copyURL.className = 'download-button copy-url-button';
+  copy.append(title, detail); row.append(marker, copy, entry.copyURL, download);
   download.addEventListener('click', () => { void startDownload(entry.item); });
   return entry;
 }
@@ -83,6 +86,7 @@ function renderMedia() {
   const focused = document.activeElement;
   const focusedButton = focused instanceof HTMLButtonElement && list.contains(focused) ? focused : undefined;
   const retained = new Set<string>();
+  const activeURLs = new Set(currentHistory.filter(matchingDownload).map(entry => entry.url));
   let cursor = list.firstElementChild;
   for (const item of currentItems) {
     if (retained.has(item.id)) continue;
@@ -90,7 +94,8 @@ function renderMedia() {
     const entry = rows.get(item.id) ?? createRow(item); rows.set(item.id, entry); entry.item = item;
     entry.title.textContent = item.title || '제목 없는 미디어'; entry.title.title = item.title || '제목 없는 미디어';
     entry.detail.textContent = mediaDetail(item);
-    const busy = pendingDownloads.has(item.id) || activeDownload(item);
+    entry.copyURL.setAttribute('aria-label', (item.title || '미디어') + ' 주소 복사');
+    const busy = pendingDownloads.has(item.id) || activeURLs.has(item.url);
     entry.downloadLabel.textContent = busy ? '처리 중' : '다운로드'; entry.download.disabled = busy || !preferencesLoaded;
     entry.download.setAttribute('aria-label', (item.title || '제목 없는 미디어') + (busy ? ' 처리 중' : ' 다운로드'));
     entry.download.setAttribute('aria-busy', String(busy));

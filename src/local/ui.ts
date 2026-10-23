@@ -4,6 +4,7 @@ import { SCOPE, isHistory, type MediaItem, type HistoryItem } from './model.ts';
 import { downloadOptions } from './preferences.ts';
 import { transport, transportLabel } from './transport.ts';
 import { HISTORY_STATE_LABELS, PREPARATION_STAGE_LABELS, SECURITY_STATUS_LABELS, internalScanPresentation, formatBytes } from './labels.ts';
+import { mediaCopyButton } from './media-copy.ts';
 
 function node<T extends HTMLElement>(id: string): T { const element = document.getElementById(id); if (!element) throw new Error(`Missing ${id}`); return element as T; }
 const status = node('status');
@@ -166,6 +167,7 @@ function mediaRow(item: MediaItem) {
   const observed = transport(item.observedTransport); if (observed) source.textContent += ` · 페이지 연결 ${transportLabel(observed)}`;
   const controls = document.createElement('div'); controls.className = 'actions';
   controls.append(button('다운로드', async () => { await preferencesReady; await request('download', { id: item.id, options: options() }); status.textContent = '파일을 준비하고 있습니다. 기록 탭에서 진행 상태를 확인하세요.'; }, false, 'download'));
+  const copy = mediaCopyButton(() => item, message => { status.textContent = message; }); copy.className = 'secondary'; controls.append(copy);
   row.append(kind, title, source, controls); return row;
 }
 function closeReview(defer = false) {

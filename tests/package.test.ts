@@ -87,3 +87,61 @@ test('normal release creates all five valid archives and checksums while excludi
     assert.equal(createHash('sha256').update(await readFile(path.join(artifacts, match[2]))).digest('hex'), match[1]);
   }
 });
+
+test('release entries use maximum DEFLATE compression even with deterministic custom ZipInfo metadata', async t => {
+  const { source, artifacts } = await fixture(t);
+  // Mixed repeated records exercise the longer match search of level9. A tiny
+  // repeated string would compress identically at6 and9 and miss this regression.
+  const payload = Buffer.from(Array.from({ length: 5000 }, (_, index) => JSON.stringify({
+    id: index % 137, title: 'media asset ' + (index % 41), url: 'https://media.invalid/clip/' + (index % 67) + '.mp4',
+    payload: 'LOCAL_VIDEO_APP'.repeat(1 + index % 31), quality: [1080, 720, 480][index % 3],
+  })).join('\n'));
+  for (const directory of ['dist', 'src', 'native']) await writeFile(path.join(source, directory, 'level-fixture.txt'), payload);
+  const result = archive(source);
+  assert.equal(result.error, undefined); assert.equal(result.status, 0, result.stderr);
+  const oracle = spawnSync(python, ['-c', `
+from pathlib import Path
+from zipfile import ZipFile, ZIP_DEFLATED
+import json, struct, sys, zlib
+payload=Path(sys.argv[1]).read_bytes()
+def raw(level):
+    encoder=zlib.compressobj(level,zlib.DEFLATED,-zlib.MAX_WBITS)
+    return encoder.compress(payload)+encoder.flush()
+six,nine=raw(6),raw(9)
+results=[]
+for name,member in [
+    ('my-video-app-extension.zip','my-video-app/level-fixture.txt'),
+    ('my-video-app-source.zip','my-video-app-source/src/level-fixture.txt'),
+    ('my-video-app-antivirus-helper.zip','my-video-app-antivirus-helper/level-fixture.txt'),
+    ('vdh-typescript-upscale-extension.zip','my-video-app/level-fixture.txt'),
+    ('vdh-typescript-upscale-source.zip','my-video-app-source/src/level-fixture.txt'),
+]:
+    file=Path(sys.argv[2])/name
+    with ZipFile(file) as archive:
+        info=archive.getinfo(member)
+        with file.open('rb') as stream:
+            stream.seek(info.header_offset)
+            header=struct.unpack('<4s5H3I2H',stream.read(30))
+            assert header[0]==b'PK\\x03\\x04'
+            stream.seek(header[9]+header[10],1)
+            compressed=stream.read(info.compress_size)
+        results.append({'name':name,'maximumCompression':compressed==nine,
+            'decodedBytesMatch':archive.read(member)==payload,'corruptMember':archive.testzip(),
+            'deflated':info.compress_type==ZIP_DEFLATED,'dateTime':info.date_time,'mode':info.external_attr>>16})
+print(json.dumps({'sixBytes':len(six),'nineBytes':len(nine),'archives':results}))
+`, path.join(source, 'src', 'level-fixture.txt'), artifacts], { encoding: 'utf8' });
+  assert.equal(oracle.error, undefined); assert.equal(oracle.status, 0, oracle.stderr);
+  const evidence = JSON.parse(oracle.stdout) as { sixBytes: number; nineBytes: number; archives: Array<{
+    name: string; maximumCompression: boolean; decodedBytesMatch: boolean; corruptMember: string | null;
+    deflated: boolean; dateTime: number[]; mode: number;
+  }> };
+  assert(evidence.nineBytes < evidence.sixBytes, 'Fixture must distinguish the maximum compression from the default level');
+  assert.equal(evidence.archives.length, 5);
+  for (const file of evidence.archives) {
+    assert.equal(file.maximumCompression, true, file.name);
+    assert.equal(file.decodedBytesMatch, true, file.name); assert.equal(file.corruptMember, null, file.name);
+    assert.equal(file.deflated, true); assert.deepEqual(file.dateTime, [2026, 10, 18, 0, 0, 0]); assert.equal(file.mode, 0o100644);
+  }
+  assert.deepEqual(await readFile(path.join(artifacts, 'my-video-app-extension.zip')), await readFile(path.join(artifacts, 'vdh-typescript-upscale-extension.zip')));
+  assert.deepEqual(await readFile(path.join(artifacts, 'my-video-app-source.zip')), await readFile(path.join(artifacts, 'vdh-typescript-upscale-source.zip')));
+});

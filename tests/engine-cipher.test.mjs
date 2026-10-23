@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { webcrypto } from 'node:crypto';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { webcrypto, createHash } from 'node:crypto';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -10,12 +10,16 @@ import { encryptEngine } from '../scripts/lib/engine-cipher.mjs';
 
 const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
 const paths = { cipherPath: './encrypted.bin', coreModulePath: './core.mjs' };
+const decoderBytes = await readFile(new URL('../node_modules/brotli-dec-wasm/pkg/brotli_dec_wasm_bg.wasm', import.meta.url));
+const brotliPaths = { ...paths, decoderModulePath: './decoder.mjs', decoderWasmPath: './decoder.wasm',
+  decoderWasmBytes: decoderBytes.length, decoderWasmSha256: createHash('sha256').update(decoderBytes).digest('hex') };
 
 async function fixture(t, source) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'my-video-engine-cipher-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await writeFile(path.join(root, 'core.mjs'), 'export default options => globalThis.engineCipherTestCore(options);\n');
   await writeFile(path.join(root, 'loader.mjs'), source);
+  await writeFile(path.join(root, 'decoder.mjs'), `export { default } from ${JSON.stringify(new URL('../scripts/lib/browser-brotli.mjs', import.meta.url).href)};\n`);
   return { root, load: (await import(pathToFileURL(path.join(root, 'loader.mjs')).href)).default };
 }
 
@@ -185,5 +189,83 @@ test('encryptEngine validates engine size and relative packaged asset paths', ()
     for (const field of ['cipherPath', 'coreModulePath']) {
       assert.throws(() => encryptEngine(wasm, { ...paths, [field]: value }), /relative asset path/);
     }
+  }
+});
+
+test('Brotli engine bootstrap verifies the offline decoder and reproduces exact bytes without native Brotli support', async t => {
+  const encrypted = encryptEngine(wasm, brotliPaths);
+  const state = runtime(t, request => new Response(request.pathname.endsWith('decoder.wasm') ? decoderBytes : encrypted.ciphertext));
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'DecompressionStream');
+  Object.defineProperty(globalThis, 'DecompressionStream', { configurable: true, value: undefined });
+  t.after(() => Object.defineProperty(globalThis, 'DecompressionStream', original));
+  const { load } = await fixture(t, encrypted.loaderSource);
+  const printErr = () => {};
+  const result = await load({ printErr });
+  assert.deepEqual(result.wasmBinary, new Uint8Array(wasm)); assert.equal(result.printErr, printErr);
+  assert.equal(state.calls(), 1); assert.equal(state.requests.length, 2);
+  assert.equal(encrypted.metadataNoKey.compression, 'brotli');
+  assert.equal(encrypted.metadataNoKey.format, 'my-video-engine-v2');
+  assert.deepEqual(encrypted.metadataNoKey.decoder, {
+    modulePath: brotliPaths.decoderModulePath, wasmPath: brotliPaths.decoderWasmPath,
+    wasmBytes: decoderBytes.length, wasmSha256: brotliPaths.decoderWasmSha256,
+  });
+});
+
+test('Brotli authentication binds decoder identity and rejects before fetching or initializing decoder bytes', async t => {
+  const encrypted = encryptEngine(wasm, brotliPaths);
+  let bytes = Buffer.from(encrypted.ciphertext); bytes[0] ^= 1;
+  const state = runtime(t, () => new Response(bytes));
+  let fixtureState = await fixture(t, encrypted.loaderSource);
+  await assert.rejects(fixtureState.load(), { name: 'OperationError' });
+  bytes = encrypted.ciphertext;
+  const changed = encrypted.loaderSource.replace(/const additionalData = ([^\n]+);/, (_, value) => 'const additionalData = ' + value.replace('decoder.wasm', 'changed.wasm') + ';');
+  assert.notEqual(changed, encrypted.loaderSource);
+  fixtureState = await fixture(t, changed);
+  await assert.rejects(fixtureState.load(), { name: 'OperationError' });
+  assert.equal(state.calls(), 0);
+  assert.equal(state.requests.length, 2);
+  assert(state.requests.every(request => request.pathname.endsWith('encrypted.bin')));
+});
+
+test('Brotli decoder HTTP, exact size and SHA-256 identity errors fail before engine initialization', async t => {
+  const encrypted = encryptEngine(wasm, brotliPaths);
+  let decoderResponse;
+  const state = runtime(t, request => request.pathname.endsWith('decoder.wasm') ? decoderResponse : new Response(encrypted.ciphertext));
+  const { load } = await fixture(t, encrypted.loaderSource);
+  const changed = Buffer.from(decoderBytes); changed[changed.length - 1] ^= 1;
+  for (const response of [new Response(null, { status: 404 }), new Response(decoderBytes, { headers: { 'content-length': 'invalid' } }),
+    new Response(decoderBytes.subarray(1)), new Response(new Uint8Array(decoderBytes.length + 1)), new Response(changed)]) {
+    decoderResponse = response;
+    await assert.rejects(load(), /decoder (request failed|has an invalid size|identity mismatch)/);
+  }
+  assert.equal(state.calls(), 0);
+});
+
+test('Brotli exact plaintext bounds reject authenticated expansion or incomplete output', async t => {
+  const encrypted = encryptEngine(wasm, brotliPaths);
+  const state = runtime(t, request => new Response(request.pathname.endsWith('decoder.wasm') ? decoderBytes : encrypted.ciphertext));
+  for (const size of [wasm.length - 1, wasm.length + 1]) {
+    const source = encrypted.loaderSource.replace(/const plaintextBytes = \d+;/, `const plaintextBytes = ${size};`);
+    const { load } = await fixture(t, source);
+    await assert.rejects(load(), /invalid size/);
+  }
+  assert.equal(state.calls(), 0);
+});
+
+test('engine bootstrap cancellation interrupts a stalled response and rejects incomplete decoder declarations', async t => {
+  const encrypted = encryptEngine(wasm, brotliPaths);
+  let cancelled = false;
+  const state = runtime(t, () => new Response(new ReadableStream({ cancel() { cancelled = true; } })));
+  const { load } = await fixture(t, encrypted.loaderSource);
+  const pre = new AbortController(); pre.abort();
+  await assert.rejects(load({ signal: pre.signal }), { name: 'AbortError' });
+  assert.equal(state.requests.length, 0);
+  const active = new AbortController();
+  const timer = setTimeout(() => active.abort(), 5);
+  try { await assert.rejects(load({ signal: active.signal }), { name: 'AbortError' }); }
+  finally { clearTimeout(timer); }
+  assert.equal(cancelled, true); assert.equal(state.calls(), 0);
+  for (const change of [{ decoderWasmBytes: 0 }, { decoderWasmBytes: 1024 * 1024 + 1 }, { decoderWasmSha256: 'invalid' }, { decoderModulePath: undefined }]) {
+    assert.throws(() => encryptEngine(wasm, { ...brotliPaths, ...change }), /Decoder|relative asset path/);
   }
 });

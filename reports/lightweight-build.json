@@ -1,0 +1,91 @@
+{
+  "release": "1.14.0",
+  "status": "passed",
+  "recordedAtUtc": "2026-10-23T12:53:36.152585+00:00",
+  "baseline": {
+    "commit": "709a40f83542717b6b625641440a5caebb1cfa7b",
+    "release": "1.13.0",
+    "buildSha256": "6058da0c8f1233dbfdd3ada1bbe9793fccf199c3bd1b81a41330df2c696fbe56",
+    "extensionZipSha256": "12f18aadf886e70d6777987edf71be01c31d5b4b44f1101988b9e1a5892ce577"
+  },
+  "buildSha256": "0eceb19f2a1bffed7f405686226a97cadd51538e3b93402f687bb1c25725054f",
+  "measurements": {
+    "applicationJavaScript": {
+      "beforeBytes": 288971,
+      "afterBytes": 171634,
+      "savedBytes": 117337,
+      "reductionPercent": 40.605113
+    },
+    "allDistResources": {
+      "beforeBytes": 10763869,
+      "afterBytes": 7883294,
+      "savedBytes": 2880575,
+      "reductionPercent": 26.76152
+    },
+    "extensionZip": {
+      "beforeBytes": 10460511,
+      "afterBytes": 7550564,
+      "savedBytes": 2909947,
+      "reductionPercent": 27.818402
+    }
+  },
+  "extensionZipSha256": "c19b674f62989904749855082fab22e3d7059d243ff204f8d239f6545dd2eb94",
+  "archiveMethod": "Same prefix, fixed timestamp, per-entry explicit DEFLATE level9 and attributes as scripts/archive.py; final packaged bytes must match.",
+  "applicationByteScope": "Sum of every application entry and generated shared JavaScript module exactly once; excludes separately counted vendor modules, engine loader and core JS.",
+  "currentFiles": {
+    "dist": 48,
+    "applicationEntries": 9,
+    "sharedModules": 15,
+    "vendorEntries": 1,
+    "uniqueRuntimeAssets": 37
+  },
+  "engine": {
+    "plaintextBytes": 32232419,
+    "plaintextSha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7",
+    "compressedPayload": {
+      "beforeBytes": 10257774,
+      "afterBytes": 7280521,
+      "savedBytes": 2977253,
+      "reductionPercent": 29.024358
+    },
+    "ciphertextBytes": 7280537,
+    "compression": "brotli",
+    "decoderWasmBytes": 208439,
+    "decoderWrapperJavaScriptBytes": 9387,
+    "compressionExperimentReport": "reports/engine-compression.json",
+    "compressionExperimentReportSha256": "22f521acb0c3b13b81d61d06c16e5a0caf2cd057334f793eed29e7f52142b0be"
+  },
+  "methods": [
+    "shared-esm-bundling",
+    "utf8-literals",
+    "exact-png-byte-deduplication",
+    "authenticated-brotli-engine-packaging",
+    "linear-popup-active-download-index",
+    "explicit-per-entry-deflate9"
+  ],
+  "feature": "Explicit media URL copy in popup and app; independent implementation after five official repository comparisons.",
+  "functionality": "Original FFmpeg binary and codecs retained; no permissions/CSP expansion, external runtime server or removal of scanning/verification.",
+  "scopeLimits": [
+    "Byte savings are not end-to-end download or encoding speedups.",
+    "Brotli compression increases build CPU time and adds a small offline decoder and runtime memory.",
+    "The original FFmpeg runtime memory requirement and existing processing resource limits remain.",
+    "Actual installed-extension APIs, Windows AV and direct execution of Chrome120 are not verified here."
+  ],
+  "packagingCompression": {
+    "level": 9,
+    "priorBehavior": "ZipFile global level9 was not inherited by custom ZipInfo; effective default6 corrected. Regression compares actual member raw compressed bytes with independent zlib9 output."
+  },
+  "sourceAuditSha256": "0033fa8bd1b38d72b5ab20a999699cb8fd4a79b0e6b530031f0bfeaad13d8df6",
+  "performanceReportSha256": "83da5943db27dd6a64d5884eccb490a111d0ba9ce0c3bc29d713cfa41fefb1d7",
+  "verification": {
+    "unitTests": 308,
+    "integrationUnitTests": 307,
+    "nativeTests": 69,
+    "browserScenarios": 90,
+    "http3Checks": 4,
+    "algorithmSuites": 5,
+    "mediaCopySubchecksIncludedInBrowser": 7,
+    "largeDownloadChecksIncludedInBrowser": 5,
+    "note": "Final packaging-only compression correction received a new regression test and all308 unit tests plus architecture/algorithm verification. Runtime dist and its successful browser/HTTP3 build identity were unchanged."
+  }
+}

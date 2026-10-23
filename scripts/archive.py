@@ -17,7 +17,7 @@ for name,source,prefix in packages:
             info=ZipInfo(prefix+'/'+rel.as_posix(),date_time=(2026,10,18,0,0,0))
             info.compress_type=ZIP_DEFLATED
             info.external_attr=0o100644<<16
-            z.writestr(info,p.read_bytes())
+            z.writestr(info,p.read_bytes(),compresslevel=9)
     print(name,(out/name).stat().st_size,'bytes')
 aliases={'vdh-typescript-upscale-extension.zip':'my-video-app-extension.zip','vdh-typescript-upscale-source.zip':'my-video-app-source.zip'}
 for alias,name in aliases.items():

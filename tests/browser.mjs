@@ -13,6 +13,7 @@ import { prepareDashAuditFixtures, verifyDashPlanner } from './dash-audit.mjs';
 import { prepareOwnedInputAudit, verifyOwnedInputProcessing } from './worker-input-audit.mjs';
 import { prepareDatabaseAudit, verifyDatabaseAudit } from './database-audit.mjs';
 import { verifyPopupAudit } from './popup-audit.mjs';
+import { verifyMediaCopyAudit } from './media-copy-audit.mjs';
 import { prepareLargeDownloadAudit, handleLargeDownloadRequest, runLargeDownloadAudit } from './large-download-audit.mjs';
 import { loadBuildPaths, assertProtectedBuild } from './build-paths.mjs';
 
@@ -342,6 +343,7 @@ function toneFrequency(filename) {
 try {
   await checks('Embedded database creates, migrates and manages data atomically in real IndexedDB', () => verifyDatabaseAudit(context, origin));
   await checks('Toolbar popup and authenticated collector rescan work with real DOM and IndexedDB', () => verifyPopupAudit(browser, origin, buildPaths));
+  await checks('Explicit media URL copy and manual fallback work in popup and app without downloading', () => verifyMediaCopyAudit(browser, origin, buildPaths));
   await checks('Built UI loads with CSP; actual FFmpeg Worker assets available', async () => {
     await openTools(); assert.equal(await page.title(), '미디어 도구 · My Video App');
     assert.equal(await page.locator('#start').isDisabled(), true);
@@ -637,8 +639,8 @@ try {
     await page.evaluate(async origin => { await chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'capture', items: [{ url: `${origin}/fixtures/clip.mp4`, title: '로컬 테스트 영상', mime: 'video/mp4', fromElement: true }] }); }, origin);
     await page.locator('#refresh').click(); await page.waitForFunction(() => document.querySelectorAll('#media li').length === 1);
     await page.evaluate(() => { window.__duplicateCompletion = true; });
-    const pending = page.waitForEvent('download'); await page.locator('#media button').click();
-    const file = await pending; await file.saveAs(`${results}/local-direct.mp4`);
+    const [file] = await Promise.all([page.waitForEvent('download'), page.locator('#media [data-action=download]').click()]);
+    await file.saveAs(`${results}/local-direct.mp4`);
     assert.equal(createHash('sha256').update(await readFile(`${results}/local-direct.mp4`)).digest('hex'), originalHash);
     await waitForAsync(async () => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1?.[0]?.state === 'complete');
     await page.locator('#history-tab').click(); await page.waitForFunction(() => document.querySelector('#history li')?.textContent.includes('완료'));
@@ -648,7 +650,7 @@ try {
   });
   await checks('Polling reuses unchanged rows, restores focus on changed rows and leaves outside controls focused', async () => {
     await page.locator('#media-tab').click();
-    await page.locator('#media li button').first().focus();
+    await page.locator('#media [data-action=download]').first().focus();
     const expected = await page.evaluate(() => { window.__focusedMediaAction = document.activeElement; window.__previousListReads = window.__listReads; return document.activeElement.closest('li').dataset.rowId; });
     await page.waitForFunction(() => window.__listReads > window.__previousListReads);
     assert.equal(await page.evaluate(() => document.activeElement === window.__focusedMediaAction && window.__focusedMediaAction.isConnected), true);
@@ -665,7 +667,7 @@ try {
   await checks('Local download UI passes the chosen audio format through background and offscreen using API doubles', async () => {
     await page.locator('#media-tab').click();
     await page.locator('#download-output').selectOption('mp3'); await page.locator('#quality').selectOption('720');
-    const pending = page.waitForEvent('download'); await page.locator('#media li button').first().click();
+    const pending = page.waitForEvent('download'); await page.locator('#media [data-action=download]').first().click();
     const file = await pending; assert(file.suggestedFilename().endsWith('.mp3')); await file.saveAs(`${results}/local-ui-audio.mp3`);
     await waitForAsync(async () => (await window.__appGet('my_video_app_history_v1')).my_video_app_history_v1.some(row => row.filename.endsWith('.mp3') && row.state === 'complete'));
     assert(Math.abs(toneFrequency(`${results}/local-ui-audio.mp3`) - 440) < 10);
@@ -958,7 +960,7 @@ try {
       }, origin);
       if (kind === 'download') {
         await target.locator('#refresh').click(); await target.waitForFunction(() => document.querySelectorAll('#media li').length === 1);
-        await target.locator('#media li button').click();
+        await target.locator('#media [data-action=download]').click();
       } else {
         await target.locator('summary').filter({ hasText: '미디어 주소 직접 입력' }).click();
         await target.locator('#url').fill(`${origin}/fixtures/clip.mp4`);
@@ -1082,6 +1084,11 @@ try {
     }
     const engineModule = buildInfo.protection?.engine?.coreModulePath;
     if (engineModule) assert(productionAssets.has(engineModule), 'The production engine module must execute');
+    for (const chunk of buildInfo.sharedChunks ?? []) assert(productionAssets.has(chunk.output), `Shared production module was not exercised: ${chunk.logicalOutput}`);
+    for (const module of buildInfo.vendorModules ?? []) assert(productionAssets.has(module.output), `Pinned production vendor module was not exercised: ${module.logicalOutput}`);
+    if (buildInfo.protection?.engine?.compression === 'brotli') {
+      assert(productionAssets.has(buildPaths.resolve('vendor/brotli/brotli_dec_wasm_bg.wasm')), 'The packaged Brotli decoder must execute offline');
+    }
   });
   await page.locator('#media-tab').click();
   await page.screenshot({ path: `${results}/local-app.png`, fullPage: true });

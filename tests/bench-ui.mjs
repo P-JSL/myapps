@@ -21,7 +21,8 @@ const sourceSha256 = {}, baselineSha256 = {}, adaptedBaselineSha256 = {}, bundle
 function baselinePresentation(file, source) {
   if (file !== 'src/local/ui.ts') return source;
   // Retain the frozen row-replacement algorithm while rendering the same new
-  // internal-scan summary. Full output text equality remains an assertion.
+  // internal-scan summary and explicit copy control. Full output text equality
+  // remains an assertion; the historical row replacement algorithm is unchanged.
   const anchor = '  row.append(security);\n';
   assert.equal(source.split(anchor).length, 2, 'Historical UI summary insertion must be unique');
   const summary = [
@@ -31,7 +32,11 @@ function baselinePresentation(file, source) {
     '  row.append(internalSummary);',
     '',
   ].join('\n');
-  return "import { internalScanPresentation } from './labels.ts';\n" + source.replace(anchor, anchor + summary);
+  const controls = "  row.append(kind, title, source, controls); return row;";
+  assert.equal(source.split(controls).length, 2, 'Historical media control insertion must be unique');
+  const withCopy = source.replace(controls,
+    "  controls.append(mediaCopyButton(() => item, text => { status.textContent = text; }));\n" + controls);
+  return "import { internalScanPresentation } from './labels.ts';\nimport { mediaCopyButton } from './media-copy.ts';\n" + withCopy.replace(anchor, anchor + summary);
 }
 for (const file of files) {
   const old = await readFile(`tests/baselines/${path.basename(file, '.ts')}-1.7.0.txt`, 'utf8');
