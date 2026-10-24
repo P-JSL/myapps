@@ -26,11 +26,11 @@
         "nonMediaTimings": 200
       },
       "baseline": {
-        "elapsedMs": 49.30000001192093,
+        "elapsedMs": 50.400000005960464,
         "fullDocumentScans": 40
       },
       "optimized": {
-        "elapsedMs": 4.299999982118607,
+        "elapsedMs": 1.7999999821186066,
         "fullDocumentScans": 0
       }
     },
@@ -42,11 +42,11 @@
         "nonMediaTimings": 1000
       },
       "baseline": {
-        "elapsedMs": 10768.59999999404,
+        "elapsedMs": 10685.700000017881,
         "fullDocumentScans": 200
       },
       "optimized": {
-        "elapsedMs": 5.200000017881393,
+        "elapsedMs": 5,
         "fullDocumentScans": 0
       }
     },
@@ -58,7 +58,7 @@
         "polls": 100
       },
       "baseline": {
-        "elapsedMs": 1089.4000000059605,
+        "elapsedMs": 1059.7999999821186,
         "createdElements": 280000,
         "listNodeMutations": 80000
       },
@@ -76,12 +76,12 @@
         "polls": 100
       },
       "baseline": {
-        "elapsedMs": 1100.300000011921,
+        "elapsedMs": 981.1999999880791,
         "createdElements": 280000,
         "listNodeMutations": 80000
       },
       "optimized": {
-        "elapsedMs": 90.09999999403954,
+        "elapsedMs": 113.90000000596046,
         "createdElements": 700,
         "listNodeMutations": 200
       }

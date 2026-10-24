@@ -2,7 +2,7 @@ import { appStorage, DOWNLOAD_OPTIONS_KEY } from '../data/database.ts';
 import { record } from '../security/validation.ts';
 import { SCOPE, isActiveHistoryState, isHistory, type HistoryItem, type MediaItem } from './model.ts';
 import { downloadOptions } from './preferences.ts';
-import { internalScanPresentation } from './labels.ts';
+import { formatBytes, internalScanPresentation } from './labels.ts';
 import { mediaCopyButton } from './media-copy.ts';
 
 function node<T extends HTMLElement>(id: string): T {
@@ -56,7 +56,7 @@ function mediaDetail(item: MediaItem): string {
   let host = '';
   try { host = new URL(item.url).hostname; } catch {}
   const kind = item.kind === 'hls' ? 'HLS' : item.kind === 'dash' ? 'DASH' : item.mime.startsWith('audio/') ? '오디오' : '미디어';
-  const size = typeof item.size === 'number' && item.size > 0 ? ' · ' + (item.size / 1024 / 1024).toFixed(1) + ' MB' : '';
+  const size = typeof item.size === 'number' && item.size > 0 ? ' · ' + formatBytes(item.size) : '';
   return kind + (host ? ' · ' + host : '') + size;
 }
 function icon(pathData: string, viewBox = '0 0 24 24'): SVGSVGElement {
@@ -93,7 +93,7 @@ function renderMedia() {
     retained.add(item.id);
     const entry = rows.get(item.id) ?? createRow(item); rows.set(item.id, entry); entry.item = item;
     entry.title.textContent = item.title || '제목 없는 미디어'; entry.title.title = item.title || '제목 없는 미디어';
-    entry.detail.textContent = mediaDetail(item);
+    entry.detail.textContent = entry.detail.title = mediaDetail(item);
     entry.copyURL.setAttribute('aria-label', (item.title || '미디어') + ' 주소 복사');
     const busy = pendingDownloads.has(item.id) || activeURLs.has(item.url);
     entry.downloadLabel.textContent = busy ? '처리 중' : '다운로드'; entry.download.disabled = busy || !preferencesLoaded;

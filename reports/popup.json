@@ -1,5 +1,5 @@
 {
-  "buildSha256": "0eceb19f2a1bffed7f405686226a97cadd51538e3b93402f687bb1c25725054f",
+  "buildSha256": "302ef7e51cd5b312cc8633f3f8cc1c3a3029a2bb9446edaee6bedf41ffd98d13",
   "browser": "154.0.8037.57",
   "mode": "Protected production popup and collector; real DOM and IndexedDB; Chrome APIs are doubles",
   "outcomes": [
@@ -9,6 +9,14 @@
     },
     {
       "name": "Media titles remain literal text and review rows open history",
+      "status": "passed"
+    },
+    {
+      "name": "Compact media cards keep long titles and metadata accessible with more complete visible rows",
+      "status": "passed"
+    },
+    {
+      "name": "Compact popup retains usable controls and visible safety notices in constrained viewports",
       "status": "passed"
     },
     {
@@ -28,19 +36,101 @@
       "status": "passed"
     }
   ],
+  "compactLayout": {
+    "layouts": [
+      {
+        "width": 720,
+        "height": 600,
+        "bodyWidth": 720,
+        "bodyHeight": 600,
+        "viewHeight": 283.5,
+        "cardHeight": 53.359375,
+        "noHorizontalOverflow": true,
+        "fixedControlsVisible": true,
+        "firstActionsVisible": true,
+        "statusScrollable": true,
+        "fullStatus": "연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. "
+      },
+      {
+        "width": 640,
+        "height": 600,
+        "bodyWidth": 640,
+        "bodyHeight": 600,
+        "viewHeight": 283.5,
+        "cardHeight": 53.359375,
+        "noHorizontalOverflow": true,
+        "fixedControlsVisible": true,
+        "firstActionsVisible": true,
+        "statusScrollable": true,
+        "fullStatus": "연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. "
+      },
+      {
+        "width": 480,
+        "height": 500,
+        "bodyWidth": 480,
+        "bodyHeight": 500,
+        "viewHeight": 197.5,
+        "cardHeight": 53.359375,
+        "noHorizontalOverflow": true,
+        "fixedControlsVisible": true,
+        "firstActionsVisible": true,
+        "statusScrollable": true,
+        "fullStatus": "연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. "
+      },
+      {
+        "width": 400,
+        "height": 500,
+        "bodyWidth": 400,
+        "bodyHeight": 500,
+        "viewHeight": 197.5,
+        "cardHeight": 91.359375,
+        "noHorizontalOverflow": true,
+        "fixedControlsVisible": true,
+        "firstActionsVisible": true,
+        "statusScrollable": true,
+        "fullStatus": "연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. "
+      },
+      {
+        "width": 360,
+        "height": 500,
+        "bodyWidth": 360,
+        "bodyHeight": 500,
+        "viewHeight": 197.5,
+        "cardHeight": 91.359375,
+        "noHorizontalOverflow": true,
+        "fixedControlsVisible": true,
+        "firstActionsVisible": true,
+        "statusScrollable": true,
+        "fullStatus": "연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. 연결 오류: 설정을 확인하고 다시 시도하세요. "
+      }
+    ],
+    "default": {
+      "width": 720,
+      "rowHeight": 53.359375,
+      "visibleRows": 6,
+      "titleTruncated": true,
+      "titleText": "아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 0",
+      "titleTooltip": "아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 아주 긴 영상 제목 <img src=x onerror=alert(1)> 0",
+      "detailTruncated": true,
+      "detailText": "미디어 · long-media-origin.long-media-origin.long-media-origin.long-media-origin.long-media-origin.long-media-origin.long-media-origin.long-media-origin.long-media-origin.long-media-origin.example.invalid · 4.50 GiB",
+      "detailTooltip": "미디어 · long-media-origin.long-media-origin.long-media-origin.long-media-origin.long-media-origin.long-media-origin.long-media-origin.long-media-origin.long-media-origin.long-media-origin.example.invalid · 4.50 GiB",
+      "allActionTargets": true,
+      "horizontalOverflow": false
+    }
+  },
   "productionAssets": [
-    "assets/0b26bb85bf9fbde2fbbaf7653bd3eac2.png",
-    "assets/27758ba6f031482827bf60153d3dce7a.js",
-    "assets/33f18b18e92da48550b2a78328b8182b.js",
-    "assets/3c516abb66d45c058ab3499faa55c614.js",
-    "assets/3f49d8e0a82fd208c0a27662b6ac4c15.js",
-    "assets/5ee966e59e76c1939d755879b54d2dba.js",
-    "assets/8b8534a466ec38bbab0530aeaf5ce8d6.js",
-    "assets/b12f7f5ff2ff3722a72b3b8798d054b4.html",
-    "assets/cdb70aef242de8de036e37ce5d8559c8.js",
-    "assets/d19a154ed8c65df8368566f635badba1.js",
-    "assets/eb6524e56740d834ea555b35c20f0e7c.css",
-    "assets/f9ec6a1d39dd84f75fb84071e1f050f1.js"
+    "assets/1db982ec0a06958b093fe6a753fab913.html",
+    "assets/2d11038a2bafe4ddbcf038242fa4986d.png",
+    "assets/3b71dc3955c54ef2eed983794f428947.js",
+    "assets/474d4bee20064d5ef8c477503889b8d6.js",
+    "assets/68ecf1117324cbfc5deb3aa04ff2caa8.js",
+    "assets/87a6a2ea7ef07c15f4160dea535e1e24.js",
+    "assets/a16c1ce5427c2681439b0936104f9414.js",
+    "assets/c1f617f2aa1697814d4e8655e0d45dfe.css",
+    "assets/c7a871da259bd85f507d20b226bb896a.js",
+    "assets/d871d684b73244f3c83c9529dd001bdd.js",
+    "assets/ddc968380a4e7cd3970f309c32930f07.js",
+    "assets/ee1402d7d4c75956139b3f9cdec9bc30.js"
   ],
   "outboundRequests": [],
   "pageErrors": []

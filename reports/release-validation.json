@@ -1,23 +1,23 @@
 {
-  "release": "1.14.0",
-  "buildSha256": "0eceb19f2a1bffed7f405686226a97cadd51538e3b93402f687bb1c25725054f",
-  "recordedAtUtc": "2026-10-23T13:02:33.691201+00:00",
+  "release": "1.14.1",
+  "buildSha256": "302ef7e51cd5b312cc8633f3f8cc1c3a3029a2bb9446edaee6bedf41ffd98d13",
+  "recordedAtUtc": "2026-10-24T05:08:48.051344+00:00",
   "unitTests": 308,
   "nativeTests": 69,
   "browserScenarios": 90,
   "embeddedDatabaseSubchecks": 19,
-  "popupCollectorSubchecks": 6,
+  "popupCollectorSubchecks": 8,
   "http3Checks": 4,
   "algorithmSuites": 5,
   "realClamAvChecks": 6,
-  "unitAndBrowserLogSha256": "cd67acb879858570b9f5e471649de84638e9c9a8f6b83a85c23052fecb1998bb",
-  "http3LogSha256": "3613830a6d78ebbabfc442184865cc23220b11f3145afd64e39c3cb9776b1746",
-  "benchmarkLogSha256": "637bd6e642654d00e4e6cb24f096953cb7e6e38f4d7ac2c2ed32dde5ecda3bbd",
+  "unitAndBrowserLogSha256": "38bfb7963061e0bc7ccae7a857dcf3b7fe81305cd683603033c5d02ce6a34897",
+  "http3LogSha256": "fe3c9477e4a78e04eb07ab8a1a8a28e6afc79d1959bee7d86bae0e76435002db",
+  "benchmarkLogSha256": "b8fbd049aa2c85487442b0421e7a9414c80a40f5efa4fee8b9acf0f63787f408",
   "independentReview": {
-    "agent": "/root/light_final_review",
-    "status": "source-approved",
-    "scope": "Shared ESM generated module/export/import allowlists, zero entry exports, UTF8 semantics, exact PNG dedup, whole-app byte accounting, authenticated bounded offline Brotli decoder and vendor identity, exact FFmpeg bytes, trusted copy/manual fallback/linear popup index, pinned vendor architecture guard, actual raw ZIP DEFLATE9 regression and download test selectors. Separate child peers approved copy, shared build, vendor guard and archive red/green checks.",
-    "archiveGate": "Independent final archive SHA256/CRC/content/exclusion review required before publication; no source changes after that review."
+    "agent": "/root/popup_compact_review",
+    "status": "source-and-preview-approved",
+    "scope": "720x600 popup, actual53.359px normal rows and6 complete rows in20-item fixture; full title/metadata tooltip and accessible names; compact32px actions and footer targets;400/360px grid, safety-review/80px scrolling error/hint controls remain visible, no horizontal overflow. Source-preview8checks passed; protected production8checks and full regression results reviewed before archive publication.",
+    "archiveGate": "Independent final hash, CRC and content review before publication using an isolated source snapshot."
   },
   "sourceArchitecture": {
     "status": "passed",
@@ -25,12 +25,12 @@
     "entryCount": 9,
     "vendorEntryCount": 1,
     "sourceFiles": 123,
-    "reportSha256": "0033fa8bd1b38d72b5ab20a999699cb8fd4a79b0e6b530031f0bfeaad13d8df6"
+    "reportSha256": "0071eb29420cb9701788d7316bce7508465a8729a284535f243e3ad3f5130e8a"
   },
   "securityReview": {
     "report": "reports/SECURITY_REVIEW_2026-10-21.ko.md",
     "reportSha256": "cf9f6576e57014aef08a76af7487014007e47daf187f92ee6ce136ae7af9a221",
-    "dependencyAuditSha256": "a49753f6a86d8789686c6a449123e0afcce3573b7d236b07c6b7978d0d924f72",
+    "dependencyAuditSha256": "a599218624061a6a4d5f4631c7a4573180b187293150bc76607a793039d6f8cf",
     "npmKnownAdvisories": 0,
     "npmAuditScope": "npm dependency advisories only; bundled native/Wasm components and browser/OS vulnerabilities require separate review",
     "engineVersion": "FFmpeg 5.1.4",
@@ -63,9 +63,9 @@
       "format": "my-video-engine-v2",
       "algorithm": "AES-256-GCM",
       "compression": "brotli",
-      "cipherPath": "assets/e721d550f11cd738c512fd7fc83298a7.bin",
-      "coreModulePath": "assets/c80dead0bc94f476a894e5f72e7513e6.js",
-      "iv": "BcfmkOdGzz2NH5rJ",
+      "cipherPath": "assets/eb66d93cd9986810d5b4b5d21d88ee5b.bin",
+      "coreModulePath": "assets/6611d27a52bbf636122bb3d6a625710f.js",
+      "iv": "gB6uk/jfuvs14vfc",
       "tagBits": 128,
       "plaintextBytes": 32232419,
       "compressedBytes": 7280521,
@@ -76,8 +76,8 @@
         "windowBits": 22
       },
       "decoder": {
-        "modulePath": "assets/d47838d694ff01f312a7c7ca43460d74.js",
-        "wasmPath": "assets/84f2c0fd26ebf4fe5d0466b5f9130a3a.bin",
+        "modulePath": "assets/d04da753f866dec87f0fc9c258944fa7.js",
+        "wasmPath": "assets/a6786c493632cfa56959d6d13a9d90a5.bin",
         "wasmBytes": 208439,
         "wasmSha256": "79b29cb1790560f0a0f32b4a31d935e2782875e4a367fde23c81d986b327ec3f"
       }
@@ -87,15 +87,16 @@
     "runtimeAssets": 37,
     "legacyRuntimeRequests": [],
     "comparison": {
-      "baselineCommit": "709a40f83542717b6b625641440a5caebb1cfa7b",
-      "beforeAppJavaScriptBytes": 288971,
-      "afterAppJavaScriptBytes": 171634,
-      "beforeDistBytes": 10763869,
-      "afterDistBytes": 7883294,
-      "scope": "Application count includes entries and shared chunks exactly once; vendor bytes included separately in dist/ZIP. Existing feature and FFmpeg bytes preserved; no end-to-end speedup or runtime-memory-reduction claim."
+      "baselineCommit": "ffda245fd071b022232bdb6cdca7221e43df7c2e",
+      "baselineRelease": "1.14.0",
+      "beforeAppJavaScriptBytes": 171634,
+      "afterAppJavaScriptBytes": 171630,
+      "beforeDistBytes": 7883294,
+      "afterDistBytes": 7884687,
+      "scope": "Compact popup CSS/markup, shared formatter and tooltip only. Current overall lightweight comparison to1.13.0 remains separate inlightweight-build.json. No runtime-speed or memory-reduction claim."
     }
   },
-  "antivirusEvidence": "Native69 rerun for1.14.0. Python production sources unchanged from1.12.0; matching-module-hash realClamAV1.4.6 integration6 evidence retained, not newly rerun. Private test-only signatures; official database freshness/coverage and actual Windows APIs not validated. Helper ZIP compression changes its archive hash without changing production files.",
+  "antivirusEvidence": "Native69 rerun for1.14.1. Python production sources unchanged from1.12.0; matching-module-hash realClamAV1.4.6 integration6 evidence retained, not newly rerun. Private test-only signatures; official database freshness/coverage and actual Windows APIs not validated.",
   "userTxtSample": {
     "sha256": "704a5e15ae1068e4df52a8bcff04270efdad595cf685e0eccff86ab335471a46",
     "actualMime": "audio/mp4",
@@ -148,11 +149,9 @@
     }
   },
   "verificationLogs": {
-    "unitAndBrowser": "test-results/lightweight-verify.log",
-    "unitFinal": "test-results/lightweight-unit-final.log",
-    "sourceFinal": "test-results/lightweight-source.log",
-    "http3": "test-results/lightweight-http3.log",
-    "benchmark": "test-results/lightweight-benchmarks.log"
+    "unitAndBrowser": "test-results/popup-compact-verify.log",
+    "http3": "test-results/popup-compact-http3.log",
+    "benchmark": "test-results/popup-compact-benchmarks.log"
   },
   "antivirusIntegration": {
     "preferenceKey": "my_video_app_antivirus_enabled_v1",
@@ -170,15 +169,15 @@
   },
   "readmeChangelog": {
     "path": "README.md",
-    "versions": 17,
+    "versions": 18,
     "first": "1.0.0",
-    "latest": "1.14.0",
-    "sha256": "b607f5f2afecda2e7b3ed62ac86ae73a878b7a94758de7d69f46c1a2061a3046",
+    "latest": "1.14.1",
+    "sha256": "67bed2e23f0be4a7cfb17543703182f5bde9f2590503c693f3a4d43654a17fae",
     "format": "Newest-first GFM table with version, changes and related document columns; historical project versions distinct from original extension10.6.1.2"
   },
   "largeDownloads": {
     "report": "reports/large-download.json",
-    "reportSha256": "1e6fed6ebf1017cb38428691180b7a9dfb47d20f8e13708b1a060e5e571494a2",
+    "reportSha256": "70ae7fc27fa357cd90223a5e60134b3cc5c202d7d97485c655cc8bc044540901",
     "status": "passed",
     "checksIncludedInBrowserTotal": 5,
     "parallelWorkers": 4,
@@ -220,7 +219,7 @@
           "rangeRequests": 5,
           "maximumActive": 4,
           "active": 0,
-          "bytesSent": 1245184,
+          "bytesSent": 1769472,
           "aborted": 4
         }
       },
@@ -270,32 +269,32 @@
       "method": "CDP Storage.overrideQuotaForOrigin",
       "requestedQuotaBytes": 8589934592,
       "estimateBefore": {
-        "quota": 10740482243,
-        "usage": 3064003,
+        "quota": 10740483985,
+        "usage": 3065745,
         "usageDetails": {
           "fileSystem": 174,
-          "indexedDB": 3063829
+          "indexedDB": 3065571
         }
       },
       "estimateDuring": {
-        "quota": 10740482243,
-        "usage": 3064003,
+        "quota": 10740483985,
+        "usage": 3065745,
         "usageDetails": {
           "fileSystem": 174,
-          "indexedDB": 3063829
+          "indexedDB": 3065571
         }
       },
       "estimateAfterRestore": {
-        "quota": 10740482243,
-        "usage": 3064003,
+        "quota": 10740483985,
+        "usage": 3065745,
         "usageDetails": {
           "fileSystem": 174,
-          "indexedDB": 3063829
+          "indexedDB": 3065571
         }
       },
       "overrideRestored": true,
       "protocolBefore": {
-        "usage": 3064003,
+        "usage": 3065745,
         "quota": 10723128114,
         "overrideActive": false,
         "usageBreakdown": [
@@ -305,7 +304,7 @@
           },
           {
             "storageType": "indexeddb",
-            "usage": 3063829
+            "usage": 3065571
           },
           {
             "storageType": "cache_storage",
@@ -318,7 +317,7 @@
         ]
       },
       "protocolDuring": {
-        "usage": 3064003,
+        "usage": 3065745,
         "quota": 8589934592,
         "overrideActive": true,
         "usageBreakdown": [
@@ -328,7 +327,7 @@
           },
           {
             "storageType": "indexeddb",
-            "usage": 3063829
+            "usage": 3065571
           },
           {
             "storageType": "cache_storage",
@@ -341,7 +340,7 @@
         ]
       },
       "protocolAfterRestore": {
-        "usage": 3064003,
+        "usage": 3065745,
         "quota": 10723128114,
         "overrideActive": false,
         "usageBreakdown": [
@@ -351,7 +350,7 @@
           },
           {
             "storageType": "indexeddb",
-            "usage": 3063829
+            "usage": 3065571
           },
           {
             "storageType": "cache_storage",
@@ -372,13 +371,11 @@
       "streamAsset": 60000
     }
   },
-  "integrationUnitTests": 307,
+  "integrationUnitTests": 308,
   "mediaCopySubchecks": 7,
-  "unitFinalLogSha256": "9b73a0a45c849aea99ab9c6d5543e0a4e4fc67d7fb36e50bc046c226ee7cbced",
-  "supplementalValidation": "After successful307unit/69native/90browser integration and realHTTP3, packaging-only per-entry DEFLATE9 fix added one regression. All308unit tests, source audit and5algorithm suites rerun on final source. Runtime/production bundle unchanged; build-bound browser andHTTP3 results retained.",
   "mediaUrlCopy": {
     "report": "reports/media-copy.json",
-    "reportSha256": "a43d3d7532f26eaf04bd0be37c0449ab9e11fa39c58741b6acb24232b1b7b2b8",
+    "reportSha256": "adf92766908c719327dd1a41bd719742ad80b2c3255ba9d4541a597e6746ad1a",
     "subchecksIncludedInBrowserTotal": 7,
     "extraProductPermissions": [],
     "clipboardReads": false,
@@ -387,28 +384,28 @@
   },
   "lightweightBuild": {
     "report": "reports/lightweight-build.json",
-    "reportSha256": "176f337b99c2c00b24a60b7472bb6bb4bad02085e1c077ff3d619713b7a8520d",
+    "reportSha256": "04e59dec5a80a251c7eb56ea8a5f9f91952c35cf56c8d7d60a666e1775a5b867",
     "measurements": {
       "applicationJavaScript": {
         "beforeBytes": 288971,
-        "afterBytes": 171634,
-        "savedBytes": 117337,
-        "reductionPercent": 40.605113
+        "afterBytes": 171630,
+        "savedBytes": 117341,
+        "reductionPercent": 40.606497
       },
       "allDistResources": {
         "beforeBytes": 10763869,
-        "afterBytes": 7883294,
-        "savedBytes": 2880575,
-        "reductionPercent": 26.76152
+        "afterBytes": 7884687,
+        "savedBytes": 2879182,
+        "reductionPercent": 26.748579
       },
       "extensionZip": {
         "beforeBytes": 10460511,
-        "afterBytes": 7550564,
-        "savedBytes": 2909947,
-        "reductionPercent": 27.818402
+        "afterBytes": 7550915,
+        "savedBytes": 2909596,
+        "reductionPercent": 27.815047
       }
     },
-    "expectedExtensionZipSha256": "c19b674f62989904749855082fab22e3d7059d243ff204f8d239f6545dd2eb94",
+    "expectedExtensionZipSha256": "d058235bba08d3162c65daba12bec3848f6eee7e5a434099201edf8f7514dd37",
     "engineInputSha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7",
     "engineCompressionReportSha256": "22f521acb0c3b13b81d61d06c16e5a0caf2cd057334f793eed29e7f52142b0be",
     "archiveDeflateLevel": 9
@@ -421,5 +418,58 @@
     "officialRepositories": 5,
     "addedFeature": "Explicit per-media URL copy, independently implemented; no competitor code copied.",
     "scope": "Pinned repository documentation/source comparison, not installed competitor benchmarks or latest stable release claims."
+  },
+  "popupCompact": {
+    "report": "reports/POPUP_COMPACT.ko.md",
+    "reportSha256": "64ab0f60ad6e87e9bc34faa2b21d7f8d23cc3eca2896b9690f8761001826496e",
+    "browserReport": "reports/popup.json",
+    "browserReportSha256": "621a4edacecf09a2bf320799150a979dd81e20326368c9e34198fdc83f544ee1",
+    "baselineWidth": 640,
+    "width": 720,
+    "height": 600,
+    "baselineNormalCardHeight": 72,
+    "normalCardHeight": 53.359375,
+    "completeRowsIn20ItemFixture": 6,
+    "viewports": [
+      {
+        "width": 720,
+        "height": 600,
+        "cardHeight": 53.359375,
+        "horizontalOverflow": false,
+        "actionsVisible": true
+      },
+      {
+        "width": 640,
+        "height": 600,
+        "cardHeight": 53.359375,
+        "horizontalOverflow": false,
+        "actionsVisible": true
+      },
+      {
+        "width": 480,
+        "height": 500,
+        "cardHeight": 53.359375,
+        "horizontalOverflow": false,
+        "actionsVisible": true
+      },
+      {
+        "width": 400,
+        "height": 500,
+        "cardHeight": 91.359375,
+        "horizontalOverflow": false,
+        "actionsVisible": true
+      },
+      {
+        "width": 360,
+        "height": 500,
+        "cardHeight": 91.359375,
+        "horizontalOverflow": false,
+        "actionsVisible": true
+      }
+    ],
+    "screenshots": {
+      "test-results/popup-compact.png": "169c3f047ca433d09fdf965992367d52f2d332f2dcf23c679a083b6900c39328",
+      "test-results/popup-compact-narrow.png": "4dca861cbf9ac1ac9009a4bcbeb1d8f6237928eaf08a9a74032e0f7c35b47033"
+    }
   }
 }

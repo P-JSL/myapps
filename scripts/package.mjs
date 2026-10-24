@@ -42,7 +42,9 @@ assert.equal(identity, http3.buildSha256, 'dist changed since real HTTP/3 valida
 
 assert.equal(identity, JSON.parse(await readFile('reports/build.json', 'utf8')).buildSha256, 'Build inventory is stale');
 const popup = JSON.parse(await readFile('reports/popup.json', 'utf8'));
-assert(popup.outcomes.length >= 6 && popup.outcomes.every(outcome => outcome.status === 'passed'), 'Successful popup validation required');
+assert(popup.outcomes.length >= 8 && popup.outcomes.every(outcome => outcome.status === 'passed'), 'Successful compact popup validation required');
+assert(popup.compactLayout?.default?.width === 720 && popup.compactLayout.default.rowHeight <= 56
+  && popup.compactLayout.default.visibleRows >= 5, 'Compact popup geometry must be verified');
 assert.equal(identity, popup.buildSha256, 'Popup validation belongs to another build');
 const copy = JSON.parse(await readFile('reports/media-copy.json', 'utf8'));
 assert(copy.outcomes.length >= 7 && copy.outcomes.every(outcome => outcome.status === 'passed'), 'Successful explicit media URL copy and manual fallback checks required');

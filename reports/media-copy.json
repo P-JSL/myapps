@@ -1,5 +1,5 @@
 {
-  "buildSha256": "0eceb19f2a1bffed7f405686226a97cadd51538e3b93402f687bb1c25725054f",
+  "buildSha256": "302ef7e51cd5b312cc8633f3f8cc1c3a3029a2bb9446edaee6bedf41ffd98d13",
   "mode": "Real Chromium Clipboard writes on trusted click with fresh default-permission contexts before any grant; only afterward test read permission inspects the known URL. Additional click/keyboard/denial cases use test read/write grants or explicit denial/unavailability doubles. Chrome extension APIs are doubles. Product never reads clipboard.",
   "outcomes": [
     {

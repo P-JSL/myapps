@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "release": "1.14.0",
+  "release": "1.14.1",
   "baselineCommit": "6983b535ba089e7737e10583481ecd6ef35e7cc3",
-  "recordedAtUtc": "2026-10-23T13:00:03.300Z",
+  "recordedAtUtc": "2026-10-24T05:07:07.683Z",
   "status": "passed",
   "environment": {
     "node": "v24.19.0",
@@ -23,8 +23,8 @@
     "native/test_internal_scan.py": "1f6bf1e60fe50fc4f00ae3dc2a0cb1c6037122e41a170c8ac70284511c2ee4b9",
     "native/test_windows_antivirus.py": "bd64dfa7b0f374602374eefd46b655779bcbdea46d5187e75ff38aaef8ec84fb",
     "native/windows_antivirus.py": "d31d257a74e3f4f676f82ad7f5b2f0d4a04172d72af52fe8cb40999b83c30c88",
-    "package-lock.json": "c6773ab05c79a9481182e6dcc8f964a12534f502bc8d86a32b45077bbfd9ca17",
-    "package.json": "f2d636fa87cd536a3d5e27e7b0a9daa911858dee073c2137845d0351b4302493",
+    "package-lock.json": "ead29432ca3778942774f10c0763f24a96e7f4faf460530ae0ad3e7d8229efe7",
+    "package.json": "b1f456732ad3be95254c97ad008bb95c4577068eb532bc693601006f5c4a221b",
     "scripts/archive.py": "18e478e9180b3888d67df131ce89f1331cd201ad436965df4fce11c83aefb0e8",
     "scripts/audit-dependencies.mjs": "986733aa350a0ab382270e16cf992375193554cf32c9073fee3e36cb8c7a376c",
     "scripts/audit-source.mjs": "790b84d7be982dc1af0bf16149d25052f6b1c8e1a74c571f986d13f3852ae23f",
@@ -41,7 +41,7 @@
     "scripts/lib/engine-cipher.mjs": "86d5ecd6bbe240cbebf869144d5609944162053fb725f64dac0b91a802071906",
     "scripts/lib/protect-build.mjs": "f7ba19ec5edd1adcb821d744dee56cd8e7f5d77c711cc10c8814a0da1a49a5c5",
     "scripts/lib/release-safety.mjs": "f2aa593317defaf3cb8d3a12f3014e6725c948a9b86a62d351236d82fd79870c",
-    "scripts/package.mjs": "b3f84a871e5360db8438b0bd965483e35a1a09287340509b2ac99605a30842ba",
+    "scripts/package.mjs": "243b07fdc1dc1884dcc50895ae51e5075cbb44d5a2ade73847a68380cb5b6bbf",
     "scripts/project.mjs": "eba685b7486bd16b789ea1ce5c57c37f604d2eed1ff8f88905cf2ae589eaf66f",
     "scripts/test-native.mjs": "df51aab957aec7d02e8f577783a8c94d356e1ccebca8cb2dda093504a72e3282",
     "src/data/database.ts": "64a50ae6fbd3aee7d17d24fbe1402d3e56a5cefa6f099deedb8dfe68e8cbd052",
@@ -62,7 +62,7 @@
     "src/local/network.ts": "7eb4b18f94d619c6134c17edde49a8e5bbfd032bf5df5f90dab3d455fa793bc3",
     "src/local/offscreen.ts": "47fa867b6ff3a8ffe0cfde5a548238f05deeec8675837428521e5395228b77f1",
     "src/local/parallel-download.ts": "ca6d0c055a456508c267fbb2c3ad8ca0b837b85a123bf6edb6fdf76e2e1c57e4",
-    "src/local/popup.ts": "a51041229b388b08df5c20a1799121c1981697a4788637758e20be94a42a1a5f",
+    "src/local/popup.ts": "b3fa1e366241b7eb5e2647447851b0b3a66149f35e7cf41f9ad85c7842eac47f",
     "src/local/preferences.ts": "f2cb22149e84490d22a2a2106f7d87dfa48aa4902e09c72b6d4665814aeb82a1",
     "src/local/queue.ts": "70e7d979c58b9ff25031798d76a72e03e97d1d18917b1dad62a92be48b495def",
     "src/local/security-preferences.ts": "338bec94ac2fd74d9369fc00767073e99eca089e027a3ce82d34c20297b510f5",
@@ -126,7 +126,7 @@
     "tests/package.test.ts": "407e70fbb28d38acea5c54e5d9eb2d154d1a2f1148208c246623d00f3fb46cd1",
     "tests/parallel-download.test.ts": "fea54d1fadc5fb42dd4a024fa57266a3bf22bdbd3d93b5fb0ae9616ac96e0bbe",
     "tests/policy.test.ts": "64389249434841cdc3a1b565a2524b9fd3c1cd78afd38e7100b988c3f4896021",
-    "tests/popup-audit.mjs": "db18007138fc2dacadd97ae6f59f38db6bf632a1998ba03ebff623bda4075723",
+    "tests/popup-audit.mjs": "af07c05d8b05954a0eda62b0a9daa1c3436b8933fc416860e52a0438125095d9",
     "tests/protect-build.test.mjs": "b47c7a4f56e0047b76f3c7d49e11b237d75e22559107398f5ddf39572b47974a",
     "tests/queue-privacy.test.ts": "067fd865093d6da4bd27fde290e9236096885485f83cf1a01f8c6d3562ac732d",
     "tests/release-safety.test.mjs": "1709938412c9b0670a376ea2863db1bf06bcb166771a1c6715b7244863bc510e",
@@ -144,35 +144,35 @@
       "command": "node --experimental-strip-types tests/bench-state.mjs",
       "report": "reports/performance-state.json",
       "status": "passed",
-      "reportSha256": "e2d8de17c4edefa462276ab4c8a7d9fb0e4a69782fd5a5fa5259f4072f595c9d"
+      "reportSha256": "053bc7587b97fb1f16638fe9339888458e9d2cda6c0fddc5a4c1665b87950996"
     },
     {
       "name": "media",
       "command": "node --experimental-strip-types tests/bench-media.mjs",
       "report": "reports/performance-media.json",
       "status": "passed",
-      "reportSha256": "28accfd3714fbbbf8ffc364cdc48b016046f5036247d9b712db1d62a10042370"
+      "reportSha256": "641869795200e01a8a80cc8fc30006a91efce465d815f7d6e6785b0e4f306784"
     },
     {
       "name": "transfer",
       "command": "node --experimental-strip-types tests/bench-transfer.mjs",
       "report": "reports/performance-transfer.json",
       "status": "passed",
-      "reportSha256": "92a9cacd5d915228ff7af29f445514c69be48cfa9417b10e0fdb22473ae7ad32"
+      "reportSha256": "c618f6e84bbf4494ae1c1e75c85f822dc3cd5203add3e624fe9768b02c187bde"
     },
     {
       "name": "ui",
       "command": "node --experimental-strip-types tests/bench-ui.mjs",
       "report": "reports/performance-ui.json",
       "status": "passed",
-      "reportSha256": "5ef6fecdf635788552d02834a0f56373ea9335d38d82822a113c34baf1e2f2a4"
+      "reportSha256": "ce0a82baa4d96e1e8907495249aca2f5e3b406a84434354d8f3e8f750344c658"
     },
     {
       "name": "security",
       "command": "node --experimental-strip-types scripts/benchmark-security.mjs",
       "report": "reports/performance-security.json",
       "status": "passed",
-      "reportSha256": "b3a1712e5bdf7d421c2f9de2ccca09f0886b7f8540fa31aa4d645ea5a8525cc0"
+      "reportSha256": "171086b5db15b1ca919db18d31673a6d8694a083e2fc0500e538688712e56acd"
     }
   ]
 }

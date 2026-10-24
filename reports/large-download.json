@@ -1,5 +1,5 @@
 {
-  "buildSha256": "0eceb19f2a1bffed7f405686226a97cadd51538e3b93402f687bb1c25725054f",
+  "buildSha256": "302ef7e51cd5b312cc8633f3f8cc1c3a3029a2bb9446edaee6bedf41ffd98d13",
   "browser": "154.0.8037.57",
   "status": "passed",
   "storageQuotaFixture": {
@@ -7,32 +7,32 @@
     "method": "CDP Storage.overrideQuotaForOrigin",
     "requestedQuotaBytes": 8589934592,
     "estimateBefore": {
-      "quota": 10740482243,
-      "usage": 3064003,
+      "quota": 10740483985,
+      "usage": 3065745,
       "usageDetails": {
         "fileSystem": 174,
-        "indexedDB": 3063829
+        "indexedDB": 3065571
       }
     },
     "estimateDuring": {
-      "quota": 10740482243,
-      "usage": 3064003,
+      "quota": 10740483985,
+      "usage": 3065745,
       "usageDetails": {
         "fileSystem": 174,
-        "indexedDB": 3063829
+        "indexedDB": 3065571
       }
     },
     "estimateAfterRestore": {
-      "quota": 10740482243,
-      "usage": 3064003,
+      "quota": 10740483985,
+      "usage": 3065745,
       "usageDetails": {
         "fileSystem": 174,
-        "indexedDB": 3063829
+        "indexedDB": 3065571
       }
     },
     "overrideRestored": true,
     "protocolBefore": {
-      "usage": 3064003,
+      "usage": 3065745,
       "quota": 10723128114,
       "overrideActive": false,
       "usageBreakdown": [
@@ -42,7 +42,7 @@
         },
         {
           "storageType": "indexeddb",
-          "usage": 3063829
+          "usage": 3065571
         },
         {
           "storageType": "cache_storage",
@@ -55,7 +55,7 @@
       ]
     },
     "protocolDuring": {
-      "usage": 3064003,
+      "usage": 3065745,
       "quota": 8589934592,
       "overrideActive": true,
       "usageBreakdown": [
@@ -65,7 +65,7 @@
         },
         {
           "storageType": "indexeddb",
-          "usage": 3063829
+          "usage": 3065571
         },
         {
           "storageType": "cache_storage",
@@ -78,7 +78,7 @@
       ]
     },
     "protocolAfterRestore": {
-      "usage": 3064003,
+      "usage": 3065745,
       "quota": 10723128114,
       "overrideActive": false,
       "usageBreakdown": [
@@ -88,7 +88,7 @@
         },
         {
           "storageType": "indexeddb",
-          "usage": 3063829
+          "usage": 3065571
         },
         {
           "storageType": "cache_storage",
@@ -134,7 +134,7 @@
         "rangeRequests": 5,
         "maximumActive": 4,
         "active": 0,
-        "bytesSent": 1245184,
+        "bytesSent": 1769472,
         "aborted": 4
       }
     },

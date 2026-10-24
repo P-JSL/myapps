@@ -3,8 +3,9 @@ import { writeFile } from 'node:fs/promises';
 import { loadBuildPaths } from './build-paths.mjs';
 export async function verifyPopupAudit(browser, origin, buildPaths) {
   buildPaths ??= await loadBuildPaths();
-  const context = await browser.newContext({ viewport: { width: 640, height: 600 } });
+  const context = await browser.newContext({ viewport: { width: 720, height: 600 } });
   const outcomes = [], outboundRequests = [], pageErrors = [];
+  const compactLayout = { layouts: [] };
   const productionAssets = new Set();
   context.on('request', request => {
     const name = new URL(request.url()).pathname.slice(1);
@@ -47,7 +48,7 @@ export async function verifyPopupAudit(browser, origin, buildPaths) {
         id: 'popup-audit-extension', getURL: value => new URL(value.replace(/^\/+/, ''), location.origin + '/').href,
         sendMessage: async message => {
           window.__popupMessages.push(structuredClone(message));
-          if (window.__popupFail === message.type) return { ok: false, error: '검사 오류: 다시 시도하세요.' };
+          if (window.__popupFail === message.type) return { ok: false, error: window.__popupFailMessage ?? '검사 오류: 다시 시도하세요.' };
           if (message.type === 'list' || message.type === 'rescan') return { ok: true, ...structuredClone(window.__popupState) };
           if (message.type === 'clear-history') window.__popupState.history = [];
           return { ok: true };
@@ -75,7 +76,7 @@ export async function verifyPopupAudit(browser, origin, buildPaths) {
       try {
         await p.locator('#waiting').waitFor(); assert.match(await p.locator('#waiting').innerText(), /미디어 대기 중/);
         assert.deepEqual(await p.evaluate(() => [document.body.offsetWidth, document.body.offsetHeight,
-          getComputedStyle(document.documentElement).backgroundColor]), [640, 600, 'rgb(16, 20, 25)']);
+          getComputedStyle(document.documentElement).backgroundColor]), [720, 600, 'rgb(16, 20, 25)']);
         assert.equal(await p.locator('.brand-name').innerText(), 'My Video App');
         assert.equal(await p.locator('.tab-indicator').innerText(), '현재 탭');
         assert.deepEqual(await p.evaluate(() => [...document.querySelectorAll('footer button, #rescan, #report')].map(button => {
@@ -115,6 +116,87 @@ export async function verifyPopupAudit(browser, origin, buildPaths) {
         assert.equal(await p.evaluate(() => window.__popupTabs.at(-1).url), buildPaths.url(origin, 'local/index.html?view=history'));
         await p.locator('#clear-history').click();
         await p.waitForFunction(() => document.querySelector('#status').textContent.includes('저장한 파일'));
+      } finally { await p.close(); }
+    });
+    await check('Compact media cards keep long titles and metadata accessible with more complete visible rows', async () => {
+      const p = await pageFor('?media=1');
+      try {
+        await p.evaluate(() => {
+          const source = window.__popupState.items[0];
+          window.__popupState.items = Array.from({ length: 20 }, (_, index) => ({ ...source,
+            id: `11111111-1111-4111-8111-${String(index).padStart(12, '0')}`,
+            title: '아주 긴 영상 제목 <img src=x onerror=alert(1)> '.repeat(14) + index,
+            url: `https://${'long-media-origin.'.repeat(10)}example.invalid/clip-${index}.mp4`, size: 4.5 * 1024 ** 3,
+          }));
+        });
+        await p.waitForFunction(() => document.querySelectorAll('#media>li').length === 20);
+        const layout = await p.evaluate(() => {
+          const view = document.querySelector('#media-view').getBoundingClientRect();
+          const rows = [...document.querySelectorAll('#media>li')];
+          const title = rows[0].querySelector('.media-title'), detail = rows[0].querySelector('.media-detail');
+          return { width: document.body.offsetWidth, rowHeight: rows[0].getBoundingClientRect().height,
+            visibleRows: rows.filter(row => { const r = row.getBoundingClientRect(); return r.top >= view.top && r.bottom <= view.bottom; }).length,
+            titleTruncated: title.scrollWidth > title.clientWidth, titleText: title.textContent, titleTooltip: title.title,
+            detailTruncated: detail.scrollWidth > detail.clientWidth, detailText: detail.textContent, detailTooltip: detail.title,
+            allActionTargets: [...document.querySelectorAll('#media button')].every(button => button.getBoundingClientRect().height >= 32),
+            horizontalOverflow: document.documentElement.scrollWidth > innerWidth || document.querySelector('#media-view').scrollWidth > document.querySelector('#media-view').clientWidth,
+          };
+        });
+        assert.equal(layout.width, 720); assert(layout.rowHeight >= 50 && layout.rowHeight <= 56);
+        assert(layout.visibleRows >= 5); assert(layout.titleTruncated); assert(layout.detailTruncated);
+        assert.equal(layout.titleText, layout.titleTooltip); assert.equal(layout.detailText, layout.detailTooltip);
+        assert.match(layout.detailText, /4\.50 GiB/); assert(layout.allActionTargets); assert.equal(layout.horizontalOverflow, false);
+        assert.equal(await p.locator('.media-title img').count(), 0);
+        compactLayout.default = layout;
+        await p.screenshot({ path: 'test-results/popup-compact.png' });
+        await p.locator('#media>li').last().locator('[data-action=download]').scrollIntoViewIfNeeded();
+        assert(await p.locator('#media-view').evaluate(view => view.scrollTop > 0));
+        assert(await p.locator('#media>li').last().locator('[data-action=download]').evaluate(button => {
+          const r = button.getBoundingClientRect(), view = document.querySelector('#media-view').getBoundingClientRect();
+          return r.top >= view.top && r.bottom <= view.bottom;
+        }));
+      } finally { await p.close(); }
+    });
+    await check('Compact popup retains usable controls and visible safety notices in constrained viewports', async () => {
+      const p = await pageFor('?media=1&review=1');
+      try {
+        await p.evaluate(() => {
+          const source = window.__popupState.items[0];
+          window.__popupState.items = Array.from({ length: 12 }, (_, index) => ({ ...source,
+            id: `33333333-3333-4333-8333-${String(index).padStart(12, '0')}`,
+            title: '매우 긴 영상 제목과 파일 이름 '.repeat(15) + index,
+          }));
+          window.__popupState.history.forEach(item => { item.options = { quality: 'highest', output: 'original' }; });
+          window.__popupFail = 'rescan';
+          window.__popupFailMessage = '연결 오류: 설정을 확인하고 다시 시도하세요. '.repeat(25);
+        });
+        await p.waitForFunction(() => document.querySelectorAll('#media>li').length === 12);
+        await p.locator('#rescan').click();
+        await p.waitForFunction(() => !document.querySelector('#status').hidden && !document.querySelector('#rescan').disabled);
+        for (const viewport of [{ width: 720, height: 600 }, { width: 640, height: 600 }, { width: 480, height: 500 }, { width: 400, height: 500 }, { width: 360, height: 500 }]) {
+          await p.setViewportSize(viewport);
+          await p.locator('#media-view').evaluate(view => { view.scrollTop = 0; });
+          const result = await p.evaluate(() => {
+            const view = document.querySelector('#media-view'), r = view.getBoundingClientRect();
+            const withinViewport = element => { const x = element.getBoundingClientRect(); return x.left >= 0 && x.right <= innerWidth + 0.5 && x.top >= 0 && x.bottom <= innerHeight + 0.5; };
+            const first = document.querySelector('#media>li');
+            const buttons = first.querySelectorAll('button');
+            return { width: innerWidth, height: innerHeight, bodyWidth: document.body.offsetWidth, bodyHeight: document.body.offsetHeight,
+              viewHeight: r.height, cardHeight: first.getBoundingClientRect().height,
+              noHorizontalOverflow: document.documentElement.scrollWidth <= innerWidth && view.scrollWidth <= view.clientWidth,
+              fixedControlsVisible: [...document.querySelectorAll('footer button,#rescan,#report,#dismiss-hint,#review-summary')].every(withinViewport),
+              firstActionsVisible: [...buttons].every(button => { const x = button.getBoundingClientRect(); return withinViewport(button) && x.top >= r.top && x.bottom <= r.bottom; }),
+              statusScrollable: document.querySelector('#status').scrollHeight > document.querySelector('#status').clientHeight,
+              fullStatus: document.querySelector('#status').textContent,
+            };
+          });
+          assert.equal(result.bodyWidth, Math.min(720, viewport.width)); assert.equal(result.bodyHeight, Math.min(600, viewport.height));
+          assert(result.noHorizontalOverflow, JSON.stringify(result)); assert(result.fixedControlsVisible, JSON.stringify(result));
+          assert(result.firstActionsVisible, JSON.stringify(result)); assert(result.statusScrollable);
+          assert.match(result.fullStatus, /연결 오류/); assert(await p.locator('#review-summary').isVisible());
+          compactLayout.layouts.push(result);
+          if (viewport.width === 400) await p.screenshot({ path: 'test-results/popup-compact-narrow.png' });
+        }
       } finally { await p.close(); }
     });
     await check('Download waits for real IndexedDB saved preferences', async () => {
@@ -191,6 +273,6 @@ export async function verifyPopupAudit(browser, origin, buildPaths) {
   }
   const build = buildPaths.buildInfo;
   await writeFile('reports/popup.json', JSON.stringify({ buildSha256: build.buildSha256, browser: browser.version(),
-    mode: 'Protected production popup and collector; real DOM and IndexedDB; Chrome APIs are doubles', outcomes, productionAssets: [...productionAssets].sort(), outboundRequests, pageErrors }, null, 2) + '\n');
+    mode: 'Protected production popup and collector; real DOM and IndexedDB; Chrome APIs are doubles', outcomes, compactLayout, productionAssets: [...productionAssets].sort(), outboundRequests, pageErrors }, null, 2) + '\n');
   console.log(`PASS ${outcomes.length} popup/collector checks`); return outcomes;
 }
