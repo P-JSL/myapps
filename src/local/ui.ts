@@ -20,12 +20,62 @@ let antivirusSettingsBusy = false;
 let antivirusConnecting = false;
 let antivirusSettingsEpoch = 0;
 let antivirusSettingsPending: Promise<void> | undefined;
+let folderConfirmed: boolean | undefined;
+let folderSettingsBusy = false;
+let folderOpening = false;
+let folderSettingsEpoch = 0;
+let folderSettingsPending: Promise<void> | undefined;
 async function request(type: string, data: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
   const result: unknown = await chrome.runtime.sendMessage({ scope: SCOPE, type, ...data });
   if (!record(result) || result.ok !== true) throw new Error(record(result) && typeof result.error === 'string' ? result.error : '확장 프로그램을 다시 로드하고 페이지를 새로고침하세요.');
   return result;
 }
 function error(value: unknown) { hasError = true; status.textContent = value instanceof Error ? value.message : '요청 중 오류가 발생했습니다.'; }
+function folderControls() {
+  const confirmed = folderConfirmed === true;
+  const checkbox = node<HTMLInputElement>('download-folder-acknowledge');
+  checkbox.disabled = folderSettingsBusy || folderConfirmed === undefined;
+  node('download-folder-acknowledgement').hidden = confirmed;
+  node<HTMLButtonElement>('download-folder-confirm').hidden = confirmed;
+  node<HTMLButtonElement>('download-folder-confirm').disabled = folderSettingsBusy || folderConfirmed === undefined || !checkbox.checked;
+  node<HTMLButtonElement>('download-folder-change').disabled = folderOpening || folderSettingsBusy;
+  node('download-folder').setAttribute('aria-busy', String(folderSettingsBusy));
+}
+function folderStatus(text: string, tone = '') {
+  const hint = node('download-folder-status'); hint.textContent = text; hint.dataset.tone = tone;
+}
+function refreshFolderSettings(): Promise<void> {
+  if (folderSettingsBusy) return Promise.resolve();
+  if (folderSettingsPending) return folderSettingsPending;
+  const epoch = folderSettingsEpoch;
+  folderSettingsPending = (async () => {
+    try {
+      const result = await request('download-folder-settings');
+      if (typeof result.confirmed !== 'boolean') throw new Error('저장 폴더 설정 응답을 확인할 수 없습니다.');
+      if (epoch !== folderSettingsEpoch || folderSettingsBusy) return;
+      folderConfirmed = result.confirmed;
+      folderStatus(result.confirmed
+        ? `사용자의 최초 설정 확인을 ${chrome.extension.inIncognitoContext ? '시크릿 창 메모리에만 적용했습니다' : '이 브라우저에 저장했습니다'}. 실제 경로와 매번 묻기 상태는 Chrome 설정에서 확인하세요. 다운로드하려던 화면에서 다시 다운로드를 누르면 지정한 폴더로 저장합니다.`
+        : '아직 최초 설정을 완료하지 않았습니다. 위의 두 설정을 확인하고 체크한 뒤 최초 설정 완료를 누르세요. 다운로드는 그다음에 시작할 수 있습니다.', result.confirmed ? 'ready' : '');
+      node('download-folder-retry').hidden = true;
+    } catch (value) {
+      if (epoch !== folderSettingsEpoch || folderSettingsBusy) return;
+      folderConfirmed = undefined;
+      folderStatus(`저장 폴더의 최초 설정 여부를 확인하지 못했습니다. 설정을 다시 불러온 뒤 완료해 주세요.${value instanceof Error ? ` ${value.message}` : ''}`, 'error');
+      node('download-folder-retry').hidden = false;
+    }
+    folderControls();
+  })().finally(() => { folderSettingsPending = undefined; });
+  return folderSettingsPending;
+}
+function showFolderSetup(result: Record<string, unknown>): boolean {
+  if (result.setupRequired !== true) return false;
+  hasError = true;
+  status.textContent = '첫 다운로드 전에 저장 폴더 설정을 완료해 주세요. 완료한 뒤 다운로드를 다시 눌러 주세요.';
+  const section = node('download-folder'); section.scrollIntoView({ block: 'start' }); section.focus({ preventScroll: true });
+  void refreshFolderSettings();
+  return true;
+}
 function antivirusControls() {
   const toggle = node<HTMLInputElement>('antivirus-enabled');
   if (!antivirusSettingsBusy) toggle.checked = antivirusEnabled ?? true;
@@ -166,7 +216,12 @@ function mediaRow(item: MediaItem) {
   const source = document.createElement('p'); source.textContent = new URL(item.url).hostname + (item.size ? ` · ${formatBytes(item.size)}` : '');
   const observed = transport(item.observedTransport); if (observed) source.textContent += ` · 페이지 연결 ${transportLabel(observed)}`;
   const controls = document.createElement('div'); controls.className = 'actions';
-  controls.append(button('다운로드', async () => { await preferencesReady; await request('download', { id: item.id, options: options() }); status.textContent = '파일을 준비하고 있습니다. 기록 탭에서 진행 상태를 확인하세요.'; }, false, 'download'));
+  controls.append(button('다운로드', async () => {
+    await preferencesReady;
+    const result = await request('download', { id: item.id, options: options() });
+    if (showFolderSetup(result)) return;
+    status.textContent = '파일을 준비하고 있습니다. 기록 탭에서 진행 상태를 확인하세요.';
+  }, false, 'download'));
   const copy = mediaCopyButton(() => item, message => { status.textContent = message; }); copy.className = 'secondary'; controls.append(copy);
   row.append(kind, title, source, controls); return row;
 }
@@ -278,7 +333,7 @@ function historyRow(item: HistoryItem) {
   const controls = document.createElement('div'); controls.className = 'actions';
   if (item.state === 'review' && item.security) controls.append(button('검사 결과 확인', async () => { openReview(item); }, true, 'security-review'));
   if (item.state === 'complete') controls.append(button('저장 폴더', () => request('show-file', { id: item.id }), true, 'show-file'));
-  if (item.state === 'error' || item.state === 'cancelled') controls.append(button('다시 시도', () => request('retry', { id: item.id }), true, 'retry'));
+  if (item.state === 'error' || item.state === 'cancelled') controls.append(button('다시 시도', async () => { showFolderSetup(await request('retry', { id: item.id })); }, true, 'retry'));
   if (item.state === 'downloading' || item.state === 'preparing') controls.append(button('취소', () => request('cancel', { id: item.id }), true, 'cancel'));
   row.append(controls); return row;
 }
@@ -286,6 +341,7 @@ async function refresh() {
   if (refreshing) return; refreshing = true;
   try {
     void refreshAntivirusSettings();
+    void refreshFolderSettings();
     const result = await request('list');
     const media = Array.isArray(result.items) ? result.items.filter((item): item is MediaItem => record(item) && typeof item.id === 'string' && typeof item.url === 'string' && typeof item.title === 'string' && ['file', 'hls', 'dash'].includes(String(item.kind))) : [];
     const history = Array.isArray(result.history) ? result.history.filter(isHistory) : [];
@@ -392,13 +448,46 @@ node('antivirus-enabled').addEventListener('change', () => {
   }).finally(() => { antivirusSettingsBusy = false; antivirusControls(); });
 });
 node('antivirus-settings-retry').addEventListener('click', () => { void refreshAntivirusSettings(); });
+node('download-folder-acknowledge').addEventListener('change', folderControls);
+node('download-folder-retry').addEventListener('click', () => { void refreshFolderSettings(); });
+node('download-folder-change').addEventListener('click', () => {
+  if (folderOpening || folderSettingsBusy) return;
+  folderOpening = true; folderControls();
+  void request('open-download-folder-settings').then(() => {
+    folderStatus('Chrome 다운로드 설정을 열었습니다. 위치 → 변경에서 절대경로의 폴더를 선택하고, 다운로드 전에 각 파일의 저장 위치 확인을 OFF로 바꿔 주세요. 변경된 위치는 다음 다운로드부터 적용됩니다.');
+  }).catch(value => {
+    folderStatus(`Chrome 다운로드 설정을 열지 못했습니다. Chrome 설정 → 다운로드에서 직접 변경할 수 있습니다.${value instanceof Error ? ` ${value.message}` : ''}`, 'error');
+  }).finally(() => { folderOpening = false; folderControls(); });
+});
+node('download-folder-confirm').addEventListener('click', () => {
+  if (folderSettingsBusy || folderConfirmed === undefined || !node<HTMLInputElement>('download-folder-acknowledge').checked) return;
+  folderSettingsEpoch++; folderSettingsBusy = true; folderControls();
+  folderStatus('최초 설정 확인을 저장하고 있습니다…');
+  void request('confirm-download-folder', { confirmed: true }).then(result => {
+    if (result.confirmed !== true) throw new Error('최초 설정 확인의 저장 여부를 확인할 수 없습니다.');
+    folderConfirmed = true; hasError = false;
+    folderStatus(`사용자의 최초 설정 확인을 ${chrome.extension.inIncognitoContext ? '시크릿 창 메모리에만 적용했습니다' : '이 브라우저에 저장했습니다'}. 다운로드하려던 화면에서 다시 다운로드를 눌러 주세요. 저장 위치는 언제든 저장 폴더 변경에서 바꿀 수 있습니다.`, 'ready');
+    status.textContent = '저장 폴더의 최초 설정을 완료했습니다. 다운로드를 다시 눌러 주세요.';
+    node('download-folder-retry').hidden = true;
+  }).catch(value => {
+    folderConfirmed = undefined;
+    folderStatus(`최초 설정 확인의 저장 여부를 확인하지 못했습니다. 다시 불러와 확인해 주세요.${value instanceof Error ? ` ${value.message}` : ''}`, 'error');
+    node('download-folder-retry').hidden = false;
+  }).finally(() => { folderSettingsBusy = false; folderControls(); });
+});
 node('url-form').addEventListener('submit', event => {
   event.preventDefault();
   const url = node<HTMLInputElement>('url').value;
-  void preferencesReady.then(() => request('download-url', { url, options: options() })).then(() => { hasError = false; status.textContent = '파일을 준비하고 있습니다.'; show(true); }).catch(error);
+  void preferencesReady.then(() => request('download-url', { url, options: options() })).then(result => {
+    if (showFolderSetup(result)) return;
+    hasError = false; status.textContent = '파일을 준비하고 있습니다.'; show(true);
+  }).catch(error);
 });
 const timer = setInterval(() => { if (!document.hidden) void refresh().catch(error); }, 2000);
 addEventListener('pagehide', () => clearInterval(timer), { once: true });
 void refreshDatabaseStatus();
 if (new URL(location.href).searchParams.get('view') === 'history') show(true);
 else void refresh().catch(error);
+if (new URL(location.href).searchParams.get('setup') === 'downloads') {
+  const section = node('download-folder'); section.scrollIntoView({ block: 'start' }); section.focus({ preventScroll: true });
+}

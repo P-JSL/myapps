@@ -1,5 +1,5 @@
 {
-  "buildSha256": "302ef7e51cd5b312cc8633f3f8cc1c3a3029a2bb9446edaee6bedf41ffd98d13",
+  "buildSha256": "cab0254bfc35951799b83006afce2042ff1f5223fbf38e1d8744b5d4e6ac52e4",
   "browser": "154.0.8037.57",
   "mode": "Protected production popup and collector; real DOM and IndexedDB; Chrome APIs are doubles",
   "outcomes": [
@@ -119,18 +119,18 @@
     }
   },
   "productionAssets": [
-    "assets/1db982ec0a06958b093fe6a753fab913.html",
-    "assets/2d11038a2bafe4ddbcf038242fa4986d.png",
-    "assets/3b71dc3955c54ef2eed983794f428947.js",
-    "assets/474d4bee20064d5ef8c477503889b8d6.js",
-    "assets/68ecf1117324cbfc5deb3aa04ff2caa8.js",
-    "assets/87a6a2ea7ef07c15f4160dea535e1e24.js",
-    "assets/a16c1ce5427c2681439b0936104f9414.js",
-    "assets/c1f617f2aa1697814d4e8655e0d45dfe.css",
-    "assets/c7a871da259bd85f507d20b226bb896a.js",
-    "assets/d871d684b73244f3c83c9529dd001bdd.js",
-    "assets/ddc968380a4e7cd3970f309c32930f07.js",
-    "assets/ee1402d7d4c75956139b3f9cdec9bc30.js"
+    "assets/005d41aa5a87f2b364673034adf7e3dd.js",
+    "assets/39ee6f093b473a5bd2185786b47d9fe9.png",
+    "assets/4aeaf2a2fd045c248d62612640669f66.js",
+    "assets/54012e43b56809fa8b0e11eb76f22fdd.js",
+    "assets/615e4c24df758cc75792cf1c6eb2839b.js",
+    "assets/6cee11d0f75d0683752886dc36cb2edf.js",
+    "assets/76cf609f2d1054e947bc1ba4cdd83e81.js",
+    "assets/80458fdd9eca93d2e7a96197ef4d9ecf.js",
+    "assets/ac45377d3d9a7e1b48d10b64aebb2d4f.html",
+    "assets/ae088897b3986b12adfc92fd3de9a9f7.js",
+    "assets/b95c6dda6661ee86992fc151038d01ab.css",
+    "assets/f433fc96f2decce5fce31228c71e735d.js"
   ],
   "outboundRequests": [],
   "pageErrors": []

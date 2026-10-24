@@ -2,7 +2,7 @@
   "browser": "154.0.8037.57",
   "mode": "real Chromium IndexedDB in an isolated localhost browser context; Chrome legacy storage adapter mocked; abort/quota/open/version faults explicitly injected",
   "sourceSha256": {
-    "src/data/database.ts": "64a50ae6fbd3aee7d17d24fbe1402d3e56a5cefa6f099deedb8dfe68e8cbd052",
+    "src/data/database.ts": "9ad2a7536462d778885eecc1340fb649437fd4f3fe6791869dfd1e7b50a26cf5",
     "tests/database-audit.mjs": "1ee2ae1edd639a52882444f7f5b0786a2e6571ae0b4f6185cdb135691637527e"
   },
   "outcomes": [

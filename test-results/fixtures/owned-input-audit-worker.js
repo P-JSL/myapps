@@ -1,5 +1,5 @@
 // <stdin>
-import createFFmpegCore from "/assets/acbf7a369093b35e9feee46f493d1cc1.js";
+import createFFmpegCore from "/assets/28dca2a62034bdd03b326fc4e1e77b4c.js";
 
 // src/upscale/policy.ts
 var MAX_INPUT_BYTES = 256 * 1024 * 1024;

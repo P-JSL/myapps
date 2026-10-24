@@ -5,6 +5,7 @@ import { HISTORY_KEY, SCOPE, OFFSCREEN_SCOPE, isHistory, type HistoryItem } from
 import { internalScanResponse, scanResponse, combineInternalScans, readinessResponse } from '../src/local/antivirus.ts';
 import type { InternalScanResult } from '../src/security/internal-scan.ts';
 import { OFFER_KEY, JOBS_KEY } from '../src/upscale/policy.ts';
+import { DOWNLOAD_FOLDER_CONFIRMED_KEY } from '../src/local/download-folder.ts';
 
 const digest = 'a'.repeat(64);
 const noSignals = (): InternalScanResult => ({ version: 1, engine: 'builtin-static-v1', status: 'no-signals', scannedBytes: 16, complete: true, findings: [] });
@@ -66,7 +67,7 @@ interface State {
   permission: boolean; hostMissing: boolean; nativeActions: string[];
   download?: chrome.downloads.DownloadItem; downloads: number; sourceReads: number; notices: string[]; disposed: string[]; nativeCalls: number; lateDanger: boolean;
 }
-const fresh = (): State => ({ data: { [HISTORY_KEY]: [], [JOBS_KEY]: [], [OFFER_KEY]: true },
+const fresh = (): State => ({ data: { [HISTORY_KEY]: [], [JOBS_KEY]: [], [OFFER_KEY]: true, [DOWNLOAD_FOLDER_CONFIRMED_KEY]: true },
   prepared: { ok: true, url: 'blob:chrome-extension://builtin-test/prepared', extension: 'mp4', mime: 'video/mp4', internalScan: noSignals(), internalScanSha256: digest, internalScanSize: 16 },
   native: { status: 'clean', engine: 'AV test double', sha256: digest, size: 16, internalScan: noSignals() },
   readiness: { status: 'ready', engine: 'AV test double' }, permission: true, hostMissing: false, nativeActions: [],

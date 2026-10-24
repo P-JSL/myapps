@@ -14,6 +14,7 @@ import { prepareOwnedInputAudit, verifyOwnedInputProcessing } from './worker-inp
 import { prepareDatabaseAudit, verifyDatabaseAudit } from './database-audit.mjs';
 import { verifyPopupAudit } from './popup-audit.mjs';
 import { verifyMediaCopyAudit } from './media-copy-audit.mjs';
+import { verifyDownloadFolderAudit } from './download-folder-audit.mjs';
 import { prepareLargeDownloadAudit, handleLargeDownloadRequest, runLargeDownloadAudit } from './large-download-audit.mjs';
 import { loadBuildPaths, assertProtectedBuild } from './build-paths.mjs';
 
@@ -190,7 +191,9 @@ await context.addInitScript(assetMap => {
   URL.createObjectURL = blob => { const url = createObjectURL(blob); blobs.set(url, blob); return url; };
   URL.revokeObjectURL = url => { blobs.delete(url); revokeObjectURL(url); };
   const storageKey = 'VDH_TEST_CHROME_STORAGE';
-  const read = () => JSON.parse(localStorage.getItem(storageKey) ?? '{}');
+  // These existing media/security scenarios start after first-use folder setup.
+  // The separate folder audit exercises an unconfigured real IndexedDB context.
+  const read = () => JSON.parse(localStorage.getItem(storageKey) ?? '{"my_video_app_download_folder_confirmed_v1":true}');
   const downloads = new Map(); let sequence = 0; let hasOffscreen = false;
   window.__testDownloads = downloads;
   window.__appGet = async key => (await import('/fixtures/database-audit.js')).appStorage.get(key);
@@ -258,6 +261,7 @@ await context.addInitScript(assetMap => {
     offscreen: { Reason: { BLOBS: 'BLOBS', WORKERS: 'WORKERS', DOM_PARSER: 'DOM_PARSER' }, hasDocument: async () => hasOffscreen, createDocument: async () => { hasOffscreen = true; } },
     sidePanel: { setPanelBehavior: async () => {} }, action: { setPopup: async () => {} },
     downloads: { onChanged: listeners(), download: async options => {
+      if (options.saveAs !== false || options.conflictAction !== 'uniquify' || /^(?:[a-z]:|[\\/])/i.test(options.filename)) throw new Error('Expected automatic saving with a safe relative filename');
       const bytes = options.url.startsWith('blob:') ? await blobs.get(options.url).arrayBuffer() : await (await fetch(options.url)).arrayBuffer();
       const testSha256 = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('');
       const link = document.createElement('a'); link.href = options.url; link.download = options.filename; document.body.append(link); link.click(); link.remove();
@@ -342,6 +346,7 @@ function toneFrequency(filename) {
 }
 try {
   await checks('Embedded database creates, migrates and manages data atomically in real IndexedDB', () => verifyDatabaseAudit(context, origin));
+  await checks('Initial download folder setup gates every entry point and preserves automatic saving and private isolation', () => verifyDownloadFolderAudit(browser, origin, buildPaths));
   await checks('Toolbar popup and authenticated collector rescan work with real DOM and IndexedDB', () => verifyPopupAudit(browser, origin, buildPaths));
   await checks('Explicit media URL copy and manual fallback work in popup and app without downloading', () => verifyMediaCopyAudit(browser, origin, buildPaths));
   await checks('Built UI loads with CSP; actual FFmpeg Worker assets available', async () => {
@@ -488,6 +493,12 @@ try {
       await target.locator('#file').setInputFiles(`${fixtures}/image.png`);
       await target.locator('#factor').selectOption('2'); await target.locator('#start').click();
       await target.waitForFunction(() => !document.querySelector('#save').hidden);
+      // First output save must preserve the prepared result until private setup is acknowledged.
+      await target.locator('#save').click();
+      await target.waitForFunction(() => document.querySelector('#status').textContent.includes('첫 저장 전에'));
+      assert.equal(await target.locator('#save').isHidden(), false);
+      assert.equal(await target.evaluate(() => window.__testDownloads.size), 0);
+      assert.equal(await target.evaluate(async () => (await chrome.runtime.sendMessage({ scope: 'my-video-app/local', type: 'confirm-download-folder', confirmed: true })).confirmed), true);
       const pending = target.waitForEvent('download'); await target.locator('#save').click();
       const file = await pending; await file.saveAs(`${results}/private-manual-image.png`);
       const probe = JSON.parse(command('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', `${results}/private-manual-image.png`]));

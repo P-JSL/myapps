@@ -126,6 +126,10 @@ async function startDownload(item: MediaItem) {
   try {
     await preferencesReady; message('');
     const result = await request('download', { id: item.id, options: selectedOptions });
+    if (result.setupRequired === true) {
+      message('첫 다운로드 전에 열린 설정 화면에서 저장 폴더를 설정해 주세요. 완료한 뒤 다운로드를 다시 눌러 주세요.', 'warning');
+      return;
+    }
     const started = result.item;
     if (isHistory(started)) currentHistory = [started, ...currentHistory.filter(entry => entry.id !== started.id)];
     message('다운로드를 시작했습니다. 진행 상황은 기록에서 확인할 수 있습니다.');

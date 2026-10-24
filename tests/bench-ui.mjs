@@ -155,6 +155,7 @@ async function ui(variant) {
     window.chrome = { extension: { inIncognitoContext: false }, runtime: { id: 'benchmark-api-double', sendMessage: async message => {
       if (message.type === 'list') { window.__listReads++; return { ok: true, items: structuredClone(window.__media), history: structuredClone(window.__history) }; }
       if (message.type === 'antivirus-settings') return { ok: true, enabled: window.__antivirusEnabled !== false };
+      if (message.type === 'download-folder-settings') return { ok: true, confirmed: true };
       if (message.type === 'set-antivirus-enabled') { window.__antivirusEnabled = message.enabled; return { ok: true, enabled: message.enabled }; }
       window.__commands.push(message);
       if (message.type === 'download' && window.__holdDownload) await new Promise(resolve => { window.__releaseDownload = resolve; });

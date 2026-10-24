@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { appStorage } from '../src/data/database.ts';
 import { HISTORY_KEY, SCOPE, OFFSCREEN_SCOPE, type HistoryItem } from '../src/local/model.ts';
+import { DOWNLOAD_FOLDER_CONFIRMED_KEY } from '../src/local/download-folder.ts';
 
 class Events {
   addListener(_listener: (...args: never[]) => unknown) {}
@@ -25,7 +26,7 @@ interface State {
   nativeCalls: number;
 }
 let state: State;
-const fresh = (): State => ({ data: { [HISTORY_KEY]: [] }, cancelFails: false, failTrackingCommit: true, failScanningCommit: false, searchFailureAt: 0, searches: 0, persistentFailure: false,
+const fresh = (): State => ({ data: { [HISTORY_KEY]: [], [DOWNLOAD_FOLDER_CONFIRMED_KEY]: true }, cancelFails: false, failTrackingCommit: true, failScanningCommit: false, searchFailureAt: 0, searches: 0, persistentFailure: false,
   preparationFails: false, started: false, trackingWrites: 0, cancelCalls: [], notices: [], disposed: [], nativeCalls: 0 });
 const ui = { id: 'runtime-security', url: 'chrome-extension://runtime-security/local/index.html' };
 async function until(predicate: () => boolean) {

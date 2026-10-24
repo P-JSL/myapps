@@ -1,0 +1,5 @@
+
+> my-video-app@1.15.0 check:dependencies
+> node scripts/audit-dependencies.mjs
+
+Dependency audit passed: zero npm advisories for the exact lockfile (not a native/Wasm security guarantee).

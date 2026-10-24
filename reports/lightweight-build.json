@@ -1,35 +1,35 @@
 {
-  "release": "1.14.1",
+  "release": "1.15.0",
   "status": "passed",
-  "recordedAtUtc": "2026-10-24T05:07:44.783729+00:00",
+  "recordedAtUtc": "2026-10-24T09:13:48.980467+00:00",
   "baseline": {
     "commit": "709a40f83542717b6b625641440a5caebb1cfa7b",
     "release": "1.13.0",
     "buildSha256": "6058da0c8f1233dbfdd3ada1bbe9793fccf199c3bd1b81a41330df2c696fbe56",
     "extensionZipSha256": "12f18aadf886e70d6777987edf71be01c31d5b4b44f1101988b9e1a5892ce577"
   },
-  "buildSha256": "302ef7e51cd5b312cc8633f3f8cc1c3a3029a2bb9446edaee6bedf41ffd98d13",
+  "buildSha256": "cab0254bfc35951799b83006afce2042ff1f5223fbf38e1d8744b5d4e6ac52e4",
   "measurements": {
     "applicationJavaScript": {
       "beforeBytes": 288971,
-      "afterBytes": 171630,
-      "savedBytes": 117341,
-      "reductionPercent": 40.606497
+      "afterBytes": 177902,
+      "savedBytes": 111069,
+      "reductionPercent": 38.436037
     },
     "allDistResources": {
       "beforeBytes": 10763869,
-      "afterBytes": 7884687,
-      "savedBytes": 2879182,
-      "reductionPercent": 26.748579
+      "afterBytes": 7894513,
+      "savedBytes": 2869356,
+      "reductionPercent": 26.657292
     },
     "extensionZip": {
       "beforeBytes": 10460511,
-      "afterBytes": 7550915,
-      "savedBytes": 2909596,
-      "reductionPercent": 27.815047
+      "afterBytes": 7553359,
+      "savedBytes": 2907152,
+      "reductionPercent": 27.791682
     }
   },
-  "extensionZipSha256": "d058235bba08d3162c65daba12bec3848f6eee7e5a434099201edf8f7514dd37",
+  "extensionZipSha256": "06c2cf1d1474830ebd0e9d6bc65abf575bf85a9242185af60014b735d644f131",
   "archiveMethod": "Same prefix, fixed timestamp, per-entry explicit DEFLATE level9 and attributes as scripts/archive.py; final packaged bytes must match.",
   "applicationByteScope": "Sum of every application entry and generated shared JavaScript module exactly once; excludes separately counted vendor modules, engine loader and core JS.",
   "currentFiles": {
@@ -37,7 +37,7 @@
     "applicationEntries": 9,
     "sharedModules": 15,
     "vendorEntries": 1,
-    "uniqueRuntimeAssets": 37
+    "uniqueRuntimeAssets": 36
   },
   "engine": {
     "plaintextBytes": 32232419,
@@ -54,7 +54,7 @@
     "decoderWrapperJavaScriptBytes": 9387,
     "compressionExperimentReport": "reports/engine-compression.json",
     "compressionExperimentReportSha256": "22f521acb0c3b13b81d61d06c16e5a0caf2cd057334f793eed29e7f52142b0be",
-    "compressionEvidenceRetained": "The1.14.0 experiment is retained against unchanged engine/decoder source hashes; current protected runtime is exercised in1.14.1 browser/HTTP3 tests."
+    "compressionEvidenceRetained": "The 1.14.0 experiment is retained against unchanged engine/decoder source hashes; current protected runtime is exercised in 1.15.0 browser/HTTP3 tests."
   },
   "methods": [
     "shared-esm-bundling",
@@ -76,19 +76,20 @@
     "level": 9,
     "priorBehavior": "ZipFile global level9 was not inherited by custom ZipInfo; effective default6 corrected. Regression compares actual member raw compressed bytes with independent zlib9 output."
   },
-  "sourceAuditSha256": "0071eb29420cb9701788d7316bce7508465a8729a284535f243e3ad3f5130e8a",
-  "performanceReportSha256": "99548e883955638631dc32e7022e3632af4b2d729ca18607bf5267872d86060a",
+  "sourceAuditSha256": "9a9227dbc3bead195f4b283ffe8e1b48bcd054150761eb8a5daaa92f3288f421",
+  "performanceReportSha256": "81c22708ff898e5591d55828f2aee8e5729709171a2f3015cf316ff1d35f9349",
   "verification": {
-    "unitTests": 308,
-    "integrationUnitTests": 308,
+    "unitTests": 309,
+    "integrationUnitTests": 309,
     "nativeTests": 69,
-    "browserScenarios": 90,
+    "browserScenarios": 91,
     "http3Checks": 4,
     "algorithmSuites": 5,
     "mediaCopySubchecksIncludedInBrowser": 7,
     "largeDownloadChecksIncludedInBrowser": 5,
-    "note": "Current1.14.1 source receives full308unit/69native/90browser verification; popup8 and copy7/large5 are nested checks. All build-bound reports and ZIP must match one final dist.",
-    "popupCollectorSubchecksIncludedInBrowser": 8
+    "note": "Current runtime passed full309 unit/69 native/91 browser checks. Folder10, popup8, copy7 and large5 are nested. UI benchmark read-setting double was updated for the new read API afterward; all5 benchmark domains and architecture audit rerun against final test sources. Build-bound reports match one final dist.",
+    "popupCollectorSubchecksIncludedInBrowser": 8,
+    "downloadFolderSubchecksIncludedInBrowser": 10
   },
   "popupPatch": {
     "priorRelease": "1.14.0",
@@ -97,5 +98,12 @@
     "cardHeightPixels": 53.359375,
     "visibleCompleteRowsInFixture": 6,
     "changes": "Presentation-only compact popup; formatter and tooltip text only, no download/security behavior changes."
+  },
+  "downloadFolderPatch": {
+    "priorRelease": "1.14.1",
+    "baseCommit": "fce771fcc0204740f051fe5fe9e8a86c7ead65a7",
+    "applicationJavaScriptIncreaseBytes": 6272,
+    "installerIncreaseBytes": 2444,
+    "changes": "First-use Chrome folder acknowledgement and automatic saving for downloads and processed outputs; no native file writer or new permissions."
   }
 }

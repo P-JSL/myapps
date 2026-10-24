@@ -1,0 +1,12 @@
+
+> my-video-app@1.15.0 package
+> node scripts/package.mjs
+
+my-video-app-extension.zip 7553359 bytes
+my-video-app-source.zip 698255 bytes
+my-video-app-antivirus-helper.zip 26680 bytes
+06c2cf1d1474830ebd0e9d6bc65abf575bf85a9242185af60014b735d644f131  my-video-app-extension.zip
+d71862d6ac9f2272c72a6b8e4c9a26a97bd150bb7d3a2f9b9c1b8424bdea0751  my-video-app-source.zip
+88818c9cc0ea443be213ac0c2c20cbeebf3796444026824ac3f9306aef55c959  my-video-app-antivirus-helper.zip
+06c2cf1d1474830ebd0e9d6bc65abf575bf85a9242185af60014b735d644f131  vdh-typescript-upscale-extension.zip
+d71862d6ac9f2272c72a6b8e4c9a26a97bd150bb7d3a2f9b9c1b8424bdea0751  vdh-typescript-upscale-source.zip

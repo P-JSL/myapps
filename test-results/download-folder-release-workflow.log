@@ -1,0 +1,18 @@
+Validated final installer: version=1.15.0; bytes=7553359; sha256=06c2cf1d1474830ebd0e9d6bc65abf575bf85a9242185af60014b735d644f131
+Current workflow YAML/Python AST/publish shell syntax: passed
+13 workflow validation cases passed
+- new release creates outputs without API mutation
+- existing matching lightweight tag allows retry
+- matching annotated tag resolves to commit
+- different tag commit rejected
+- API authorization failure rejected
+- unresolved annotated tag rejected
+- release without verified tag rejected
+- bad checksum rejected
+- source version mismatch rejected
+- ZIP path traversal rejected
+- ZIP symlink rejected
+- ZIP duplicate member rejected
+- ZIP version mismatch rejected
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/zipfile/__init__.py:1625: UserWarning: Duplicate name: 'my-video-app/duplicate'
+  return self._open_to_write(zinfo, force_zip64=force_zip64)

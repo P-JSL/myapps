@@ -8,6 +8,7 @@ import { transport, type Transport } from './transport.ts';
 import { isMediaFileFormat, mediaFilename, probeMediaFile } from './media-file.ts';
 import { chromeWarning, scanFile, probeAntivirus, cancelAntivirusRequests, internalScanResponse, incompleteInternalScan, combineInternalScans, type ScanResult, type FileSecurity } from './antivirus.ts';
 import { ANTIVIRUS_ENABLED_KEY, antivirusEnabled } from './security-preferences.ts';
+import { DOWNLOAD_FOLDER_CONFIRMED_KEY, downloadFolderConfirmed } from './download-folder.ts';
 
 const media = new MediaCatalog();
 const discoveryEpochs = new Map<number, object>();
@@ -22,6 +23,30 @@ let lastTab: number | undefined;
 let creatingOffscreen: Promise<void> | undefined;
 let privateAntivirusEnabled = true;
 let antivirusPreferenceGeneration = 0;
+let privateDownloadFolderConfirmed = false;
+let openingDownloadFolderSetup: Promise<void> | undefined;
+
+async function isDownloadFolderConfirmed(): Promise<boolean> {
+  if (chrome.extension.inIncognitoContext) return privateDownloadFolderConfirmed;
+  return downloadFolderConfirmed((await appStorage.get(DOWNLOAD_FOLDER_CONFIRMED_KEY))[DOWNLOAD_FOLDER_CONFIRMED_KEY]);
+}
+async function confirmDownloadFolder(): Promise<void> {
+  if (chrome.extension.inIncognitoContext) privateDownloadFolderConfirmed = true;
+  else await appStorage.set({ [DOWNLOAD_FOLDER_CONFIRMED_KEY]: true });
+}
+async function openDownloadFolderSetup(): Promise<void> {
+  if (openingDownloadFolderSetup) return openingDownloadFolderSetup;
+  openingDownloadFolderSetup = chrome.tabs.create({ url: chrome.runtime.getURL('local/index.html?setup=downloads#download-folder') }).then(() => {});
+  try { await openingDownloadFolderSetup; } finally { openingDownloadFolderSetup = undefined; }
+}
+async function ensureDownloadFolder(): Promise<boolean> {
+  if (await isDownloadFolderConfirmed()) return true;
+  await openDownloadFolderSetup(); return false;
+}
+async function downloadReply(item: MediaItem, options: DownloadOptions) {
+  const started = await download(item, options);
+  return started ? { ok: true as const, item: started } : { ok: true as const, setupRequired: true as const };
+}
 
 function infectionObserved(security: FileSecurity | undefined): boolean {
   return security?.status === 'infected' || security?.infectionObserved === true;
@@ -286,6 +311,9 @@ async function securityDecision(id: string, token: string, action: 'keep' | 'del
 async function download(item: MediaItem, options: DownloadOptions = downloadOptions()) {
   const tab = item.tabId < 0 ? { incognito: chrome.extension.inIncognitoContext } : await chrome.tabs.get(item.tabId);
   if (!!tab.incognito !== chrome.extension.inIncognitoContext) throw new Error('다른 브라우징 모드의 미디어에는 접근할 수 없습니다.');
+  // Gate every entry point before creating history, preparing bytes or starting a transfer.
+  // Never pass an absolute path to downloads.download: Chrome only accepts relative names.
+  if (!await ensureDownloadFolder()) return;
   const filename = filenameFor(item);
   const entry: HistoryItem = { id: crypto.randomUUID(), url: item.url, filename: options.output === 'original' ? filename : filename.replace(/\.[^.]+$/, '') + '.' + options.output, kind: item.kind, state: 'preparing', createdAt: Date.now(), incognito: !!tab.incognito || chrome.extension.inIncognitoContext, options, internalScan: incompleteInternalScan('다운로드 파일 전체의 내부 검사는 아직 수행되지 않았습니다.') };
   await navigator.locks.request('my-video-app-start', async () => {
@@ -339,7 +367,7 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
       if (cancelled.has(entry.id)) throw new DOMException('작업을 취소했습니다.', 'AbortError');
       await update(entry, true);
       if (cancelled.has(entry.id)) throw new DOMException('작업을 취소했습니다.', 'AbortError');
-      const id = await chrome.downloads.download({ url: address, filename: entry.filename, saveAs: true, conflictAction: 'uniquify' });
+      const id = await chrome.downloads.download({ url: address, filename: entry.filename, saveAs: false, conflictAction: 'uniquify' });
       const downloading: HistoryItem = { ...entry, state: 'downloading', downloadId: id, transferProtocols };
       startedDownload = downloading;
       await update(downloading);
@@ -429,6 +457,19 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
     return { ok: true };
   }
   if (!trustedUI(sender, chrome.runtime.id, chrome.runtime.getURL(''))) throw new Error('확장 화면에서만 사용할 수 있습니다.');
+  if (['download-folder-settings', 'open-download-folder-settings', 'confirm-download-folder', 'prepare-output-save'].includes(value.type)) {
+    if (sender.tab?.incognito !== undefined && sender.tab.incognito !== chrome.extension.inIncognitoContext) throw new Error('다른 브라우징 모드의 다운로드 폴더 설정에는 접근할 수 없습니다.');
+    if (value.type === 'open-download-folder-settings') {
+      await chrome.tabs.create({ url: 'chrome://settings/downloads' });
+      return { ok: true };
+    }
+    if (value.type === 'prepare-output-save') return { ok: true, setupRequired: !await ensureDownloadFolder() };
+    if (value.type === 'confirm-download-folder') {
+      if (value.confirmed !== true) throw new Error('Chrome에서 저장 위치와 매번 저장 위치 묻기 설정을 확인하세요.');
+      await confirmDownloadFolder();
+    }
+    return { ok: true, confirmed: await isDownloadFolderConfirmed() };
+  }
   if (value.type === 'antivirus-settings' || value.type === 'set-antivirus-enabled') {
     if (sender.tab?.incognito !== undefined && sender.tab.incognito !== chrome.extension.inIncognitoContext) throw new Error('다른 브라우징 모드의 백신 설정에는 접근할 수 없습니다.');
     if (value.type === 'set-antivirus-enabled') {
@@ -462,16 +503,16 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
   if (value.type === 'download' && typeof value.id === 'string') {
     const item = media.find(value.id);
     if (!item) throw new Error('미디어가 만료되었습니다. 원래 페이지를 새로고침하세요.');
-    return { ok: true, item: await download(item, downloadOptions(value.options)) };
+    return downloadReply(item, downloadOptions(value.options));
   }
   if (value.type === 'download-url' && typeof value.url === 'string') {
     const url = mediaURL(value.url).href;
-    return { ok: true, item: await download({ id: crypto.randomUUID(), tabId: -1, url, title: '', mime: '', kind: mediaKind(url) ?? 'file', createdAt: Date.now() }, downloadOptions(value.options)) };
+    return downloadReply({ id: crypto.randomUUID(), tabId: -1, url, title: '', mime: '', kind: mediaKind(url) ?? 'file', createdAt: Date.now() }, downloadOptions(value.options));
   }
   if (value.type === 'retry' && typeof value.id === 'string') {
     const item = (await history()).find(row => row.id === value.id && ['error', 'cancelled'].includes(row.state));
     if (!item) throw new Error('다시 시도할 다운로드가 없습니다.');
-    return { ok: true, item: await download({ id: crypto.randomUUID(), tabId: -1, url: mediaURL(item.url).href, title: item.filename, mime: '', kind: item.kind, createdAt: Date.now() }, downloadOptions(item.options)) };
+    return downloadReply({ id: crypto.randomUUID(), tabId: -1, url: mediaURL(item.url).href, title: item.filename, mime: '', kind: item.kind, createdAt: Date.now() }, downloadOptions(item.options));
   }
   if (value.type === 'cancel' && typeof value.id === 'string') {
     const item = (await history()).find(row => row.id === value.id);

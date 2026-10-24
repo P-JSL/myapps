@@ -911,6 +911,7 @@ test('local antivirus and background safety decisions', async t => {
       try {
         assert.deepEqual(await list(), [], 'ordinary history is hidden in a private extension context');
         await assert.rejects(command('capture', { items: [] }, content), /브라우징 모드/);
+        await command('confirm-download-folder', { confirmed: true });
         await command('download-url', { url: 'https://media.test/private-clean.mp4' });
         await until(async () => (await list()).some(row => row.state === 'complete'));
         state.native = (request, port) => port.onMessage.emit(nativeResponse(request.requestId, 'infected'));

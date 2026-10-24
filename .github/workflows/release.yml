@@ -1,0 +1,133 @@
+name: Publish installation ZIP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - artifacts/my-video-app-extension.zip
+      - artifacts/SHA256SUMS
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: installation-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # Official actions/checkout v6; pin verified against its upstream Git tag.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Validate committed installation ZIP and release identity
+        id: validate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path, PurePosixPath
+          import re
+          import stat
+          from urllib.error import HTTPError
+          from urllib.request import Request, urlopen
+          from zipfile import ZipFile
+
+          version = json.loads(Path('package.json').read_text())['version']
+          if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+              raise SystemExit('A stable numeric release version is required.')
+          manifest = json.loads(Path('src/local/manifest.json').read_text())
+          if manifest['version'] != version:
+              raise SystemExit('Source manifest and package versions differ.')
+          asset = Path('artifacts/my-video-app-extension.zip')
+          expected = [line.split()[0] for line in Path('artifacts/SHA256SUMS').read_text().splitlines()
+                      if len(line.split()) == 2 and line.split()[1] == asset.name]
+          digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+          if expected != [digest]:
+              raise SystemExit('The committed installation ZIP checksum is invalid.')
+          with ZipFile(asset) as archive:
+              names = archive.namelist()
+              if not names or len(names) != len(set(names)):
+                  raise SystemExit('The installation ZIP is empty or contains duplicate names.')
+              for item in archive.infolist():
+                  name = PurePosixPath(item.filename)
+                  if (name.is_absolute() or '..' in name.parts or '\\' in item.filename
+                          or not item.filename.startswith('my-video-app/')
+                          or stat.S_ISLNK(item.external_attr >> 16) or item.flag_bits & 1):
+                      raise SystemExit('An unsafe or encrypted ZIP member was found.')
+              if archive.testzip() is not None:
+                  raise SystemExit('The installation ZIP failed its integrity check.')
+              if json.loads(archive.read('my-video-app/manifest.json'))['version'] != version:
+                  raise SystemExit('The installation ZIP belongs to another version.')
+          tag = 'v' + version
+          repository = os.environ['GITHUB_REPOSITORY']
+          commit = os.environ['GITHUB_SHA']
+          def api(path):
+              request = Request(os.environ['GITHUB_API_URL'] + '/repos/' + repository + path,
+                                headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                                         'Accept': 'application/vnd.github+json',
+                                         'X-GitHub-Api-Version': '2022-11-28'})
+              try:
+                  with urlopen(request, timeout=30) as response:
+                      return json.load(response)
+              except HTTPError as error:
+                  if error.code == 404:
+                      return None
+                  raise SystemExit('GitHub API identity check failed: HTTP ' + str(error.code))
+          reference = api('/git/ref/tags/' + tag)
+          if reference is not None:
+              target = reference['object']
+              for _ in range(8):
+                  if target['type'] != 'tag':
+                      break
+                  annotated = api('/git/tags/' + target['sha'])
+                  if annotated is None:
+                      raise SystemExit('An annotated release tag could not be resolved.')
+                  target = annotated['object']
+              if target['type'] != 'commit' or target['sha'] != commit:
+                  raise SystemExit('This release tag already points to a different commit; bump the version.')
+          release = api('/releases/tags/' + tag)
+          if release is not None and reference is None:
+              raise SystemExit('An existing release has no verified matching tag; inspect it manually.')
+          rows = [line for line in Path('README.md').read_text().splitlines()
+                  if line.startswith('|') and re.search(r'(?<![\d.])' + re.escape(version) + r'(?![\d.])', line)]
+          notes = ('설치 파일: **my-video-app-extension.zip**\n\n'
+                   'ZIP을 풀고 Chrome의 확장 프로그램 화면에서 개발자 모드를 켠 뒤 '
+                   '압축해제된 확장 프로그램을 로드하세요. 기존 설치는 설치 폴더를 갱신하고 새로고침하세요.\n\n'
+                   '버전별 변경 내역은 저장소 README.md에서 확인할 수 있습니다.\n\n'
+                   '**SHA-256**\n\n`' + digest + '`\n')
+          if rows:
+              changes = [line.strip('|').split('|')[1].strip() for line in rows
+                         if len(line.strip('|').split('|')) >= 2]
+              notes += '\n**이번 버전 변경 내역**\n\n' + '\n'.join('- ' + item for item in changes) + '\n'
+          Path(os.environ['RUNNER_TEMP'], 'release-notes.md').write_text(notes)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('tag=' + tag + '\n')
+              output.write('exists=' + str(release is not None).lower() + '\n')
+          print('Validated', tag, 'at', commit, '| ZIP SHA-256:', digest)
+          PY
+
+      - name: Publish release with installation ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.validate.outputs.tag }}
+          RELEASE_EXISTS: ${{ steps.validate.outputs.exists }}
+        run: |
+          if [ "$RELEASE_EXISTS" = true ]; then
+            gh release upload "$TAG" artifacts/my-video-app-extension.zip --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest --title "My Video App $TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+          else
+            gh release create "$TAG" artifacts/my-video-app-extension.zip --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest --title "My Video App $TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi

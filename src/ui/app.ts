@@ -3,6 +3,7 @@ import { OFFER_KEY, MAX_INPUT_BYTES, MAX_RUNTIME_MS, isJobId, type Job } from '.
 import { MIME, processedName, processingOptions, type TrackInfo } from '../upscale/processing.ts';
 import { record } from '../security/validation.ts';
 import { appStorage } from '../data/database.ts';
+import { SCOPE } from '../local/model.ts';
 
 function element<T extends HTMLElement>(id: string): T { const node = document.getElementById(id); if (!node) throw new Error(`Missing element: ${id}`); return node as T; }
 const fileInput = element<HTMLInputElement>('file');
@@ -129,8 +130,19 @@ start.addEventListener('click', () => {
   void refresh().catch(showError);
 });
 save.addEventListener('click', () => {
-  if (!output) return;
-  void chrome.downloads.download({ url: output.url, filename: output.filename, saveAs: true, conflictAction: 'uniquify' }).catch(showError);
+  if (!output || save.disabled) return;
+  const chosen = output;
+  save.disabled = true;
+  void (async () => {
+    const result: unknown = await chrome.runtime.sendMessage({ scope: SCOPE, type: 'prepare-output-save' });
+    if (!record(result) || result.ok !== true || typeof result.setupRequired !== 'boolean') throw new Error(record(result) && typeof result.error === 'string' ? result.error : '다운로드 저장 폴더 설정을 확인하지 못했습니다.');
+    if (output !== chosen) return;
+    if (result.setupRequired) {
+      status.textContent = '첫 저장 전에 열린 설정에서 저장 폴더를 설정해 주세요. 결과는 이 탭에 유지됩니다. 설정 완료 후 결과 저장을 다시 누르세요.';
+      return;
+    }
+    await chrome.downloads.download({ url: chosen.url, filename: chosen.filename, saveAs: false, conflictAction: 'uniquify' });
+  })().catch(showError).finally(() => { save.disabled = false; });
 });
 addEventListener('pagehide', () => { stop(); releaseOutput(); });
 void (async () => {
