@@ -1,0 +1,180 @@
+{
+  "buildSha256": "7875079ccfdadf334b3a19782aeb706f9f6b2b6b4f20494a1a39a25d372f4f4d",
+  "browser": "154.0.8037.57",
+  "mode": "Protected production background, offscreen, Workers, Wasm, IndexedDB and OPFS with real locally generated H264/AAC/VP9/Opus/AV1 media. Chrome APIs, native extraction and googlevideo responses are explicit doubles. Real YouTube access, signatures, PO-token handling and installed-extension behavior not validated.",
+  "sourceSha256": {
+    "src/local/youtube.ts": "4216ca0ca1edbde7b7e6fb3641b0006feddd9af09110aa3ca6e510e707c8d782",
+    "src/local/background.ts": "ca3e9feec895c6e3cff32757fb2f52f4794fb036c74a41f7096e04e70ddd18fc",
+    "src/local/offscreen.ts": "9aae98b60710bea9f33241dbfeb30ee35e4159d9398a453a0dcd6e2a31dfd0b2",
+    "src/local/large-stream-worker.ts": "344ac26a6ad8e4d29c5dadfd9719ed3b2dc0562acf9b55330b22fc7e93655aa3",
+    "src/local/stream-worker.ts": "6904097f61f8903330c32ec774e6361f96f3799db7dfa90d18bcd41219173aa9",
+    "tests/youtube-audit.mjs": "9ae4175c25d4d686e2b716edbb9f46c3f3117c095cb3dd93f5f67341421d5292"
+  },
+  "outcomes": [
+    {
+      "name": "Current YouTube page discovery and first-folder gate perform no extraction or media requests",
+      "status": "passed"
+    },
+    {
+      "name": "Permission denial and missing helper fail explicitly before any media transfer",
+      "status": "passed"
+    },
+    {
+      "name": "Separate H264 and AAC tracks remux to real MP4 and retain internal scan and automatic save",
+      "status": "passed"
+    },
+    {
+      "name": "VP9 and Opus tracks preserve their original codecs in a real WebM output",
+      "status": "passed"
+    },
+    {
+      "name": "Mixed MP4 and WebM tracks use Matroska without discarding the original audio or video",
+      "status": "passed"
+    },
+    {
+      "name": "AV1 and AAC tracks remux without silently converting the video to a lower format",
+      "status": "passed"
+    },
+    {
+      "name": "YouTube audio output creates playable MP3 and M4A from the selected audio track",
+      "status": "passed"
+    },
+    {
+      "name": "Promised audio missing from separate or combined tracks cannot silently produce a video-only download",
+      "status": "passed"
+    },
+    {
+      "name": "Source-mismatched native metadata and non-googlevideo URLs cannot reach the media downloader",
+      "status": "passed"
+    },
+    {
+      "name": "Cancelling an unresolved YouTube task disconnects its native port and ignores a late response",
+      "status": "passed"
+    },
+    {
+      "name": "Expired signed URLs fail clearly and retry resolves fresh URLs while history keeps only the canonical page",
+      "status": "passed"
+    },
+    {
+      "name": "YouTube settings and popup connect explicitly without enabling antivirus or auto-extracting",
+      "status": "passed"
+    },
+    {
+      "name": "Private YouTube discovery and helper readiness never open the normal IndexedDB",
+      "status": "passed"
+    }
+  ],
+  "mediaRequests": [
+    {
+      "track": "video-mp4",
+      "epoch": "1",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "audio-mp4",
+      "epoch": "1",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "video-webm",
+      "epoch": "2",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "audio-webm",
+      "epoch": "2",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "video-mp4",
+      "epoch": "3",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "audio-webm",
+      "epoch": "3",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "video-av1",
+      "epoch": "4",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "audio-mp4",
+      "epoch": "4",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "audio-mp4",
+      "epoch": "5",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "audio-mp4",
+      "epoch": "6",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "video-mp4",
+      "epoch": "7",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "video-mp4",
+      "epoch": "7",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "video-mp4",
+      "epoch": "8",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "video-mp4",
+      "epoch": "12",
+      "expired": true,
+      "range": null
+    },
+    {
+      "track": "audio-mp4",
+      "epoch": "12",
+      "expired": true,
+      "range": null
+    },
+    {
+      "track": "video-mp4",
+      "epoch": "13",
+      "expired": false,
+      "range": null
+    },
+    {
+      "track": "audio-mp4",
+      "epoch": "13",
+      "expired": false,
+      "range": null
+    }
+  ],
+  "fixtureSha256": {
+    "video-mp4": "d8dd1935bb204cf41a9de3cb9a58eab606aeeec85a19dc7c82ad9fd78058ce12",
+    "audio-mp4": "035233c84728231c98ad3cec57e1e4129e5d91305b789f861ad52c0ebc6c5c09",
+    "video-webm": "e277c4ae359e7ae4fd394bdbc03a24e4e44101227afa3aa15a74c60fc7317393",
+    "audio-webm": "414ca3e81c8f710aa5cdf34467ad63f01a53a20b763068136f28c6b5f15bcb8b",
+    "video-av1": "a976e644833aeea69199c39fd1db0c6d09549121726fa65ff26530cc4afe7b1c"
+  },
+  "pageErrors": [],
+  "outboundRequests": []
+}

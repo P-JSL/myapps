@@ -1,0 +1,9 @@
+
+> my-video-app@1.16.0 test:http3
+> node tests/http3.mjs
+
+PASS Untrusted test CA is rejected by normal Chromium TLS verification
+PASS Application fetchBytes downloads the exact MP4 over real HTTP/3 with verified TLS
+PASS HTTP/3 byte-range request preserves exactly the requested media bytes
+PASS Real HTTP/3 HLS segments and disk-backed Wasm remux preserve decodable video and audio
+4 real HTTP/3 checks passed.

@@ -22,7 +22,7 @@ export const ACTIVE_HISTORY_STATES = ['preparing', 'downloading', 'scanning', 'r
 export function isActiveHistoryState(state: DownloadState): boolean {
   return (ACTIVE_HISTORY_STATES as readonly DownloadState[]).includes(state);
 }
-export type MediaKind = 'file' | 'hls' | 'dash';
+export type MediaKind = 'file' | 'hls' | 'dash' | 'youtube';
 export interface MediaItem {
   id: string; tabId: number; url: string; title: string; mime: string;
   kind: MediaKind; createdAt: number; size?: number; observedTransport?: Transport;
@@ -60,6 +60,14 @@ export class MediaCatalog {
     if (!tab) return;
     for (const item of tab.values()) this.byId.delete(item.id);
     this.byTab.delete(tabId);
+  }
+  delete(id: string): void {
+    const item = this.byId.get(id);
+    if (!item) return;
+    this.byId.delete(id);
+    const tab = this.byTab.get(item.tabId)!;
+    tab.delete(item.url);
+    if (!tab.size) this.byTab.delete(item.tabId);
   }
 }
 export interface HistoryItem {
@@ -111,7 +119,7 @@ export function isHistory(value: unknown): value is HistoryItem {
   }
   return record(value) && typeof value.id === 'string' && /^[a-f0-9-]{36}$/.test(value.id)
     && typeof value.url === 'string' && typeof value.filename === 'string'
-    && ['file', 'hls', 'dash'].includes(String(value.kind))
+    && ['file', 'hls', 'dash', 'youtube'].includes(String(value.kind))
     && (DOWNLOAD_STATES as readonly string[]).includes(String(value.state))
     && typeof value.createdAt === 'number' && Number.isFinite(value.createdAt) && typeof value.incognito === 'boolean';
 }

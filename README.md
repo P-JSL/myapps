@@ -2,7 +2,7 @@
 
 **영상을 내려받고, 오디오를 추출하고, 로컬에서 변환·확대하는 개인용 Chrome 확장 프로그램입니다.**
 
-현재 버전 **1.15.0** · 앱 계정·구독 불필요 · 독립 TypeScript 확장 · 파일 처리와 기록 저장은 로컬에서 수행
+현재 버전 **1.16.0** · 앱 계정·구독 불필요 · 독립 TypeScript 확장 · 파일 처리와 기록 저장은 로컬에서 수행
 
 [설치하기](#빠른-시작) · [사용법](#기능-안내) · [백신 설정](#백신-연동과-안전-확인) · [지원 범위](#지원-범위와-처리-한도) · [패치 내역](#버전별-패치-내역)
 
@@ -11,6 +11,7 @@
 | 필요한 파일 | 다운로드 | 용도 |
 | --- | --- | --- |
 | **확장 프로그램** | **[Release 설치 ZIP](https://github.com/P-JSL/myapps/releases/latest)** · [저장소 ZIP](artifacts/my-video-app-extension.zip) | Release의 **Assets → my-video-app-extension.zip**을 내려받아 압축 해제 후 설치 |
+| **YouTube 도우미** | **[YouTube 도우미 ZIP](artifacts/my-video-app-youtube-helper.zip)** | **YouTube 영상 다운로드에 필요.** 별도 Deno와 함께 한 번 설치한 뒤 앱 설정에서 연결 |
 | 백신 도우미 | [도우미 ZIP](artifacts/my-video-app-antivirus-helper.zip) | 다운로드한 실제 파일을 설치된 백신으로 검사 |
 | 전체 소스 | [소스 ZIP](artifacts/my-video-app-source.zip) | 코드 확인·직접 빌드·개발 |
 
@@ -38,6 +39,18 @@
 소스에서 직접 빌드한 경우에는 `dist` 폴더를 선택합니다. 기존 원본 확장에서 옮겨 오는 경우 공개 key를 공유하지 않으므로 확장 ID·저장소가 다르며 기록이 새로 시작됩니다.
 
 ## 기능 안내
+
+### YouTube 다운로드
+
+**YouTube는 확장 ZIP과 별도로 로컬 도우미를 한 번 설치해야 합니다.** [설치 안내](native/YOUTUBE.ko.md)에 따라 Python·Deno와 도우미를 준비하고 **설정 → YouTube 다운로드 → YouTube 도우미 연결**을 누릅니다. 백신 도우미와는 별도이며 백신 연동 OFF에서도 사용할 수 있습니다.
+
+1. YouTube의 공개된 영상·Shorts 페이지를 열고 확장 아이콘에서 **다운로드**를 누르거나, 전체 앱에 YouTube 영상 주소를 붙여 넣습니다.
+2. **스트림 화질**에서 최고·2160·1080·720·480을 선택합니다. 제공되는 실제 화질 중 선택하며, 최고 화질을 임의로 1080p에 제한하지 않습니다.
+3. 영상과 음성이 나뉘면 로컬에서 합쳐 **MP4·WebM·MKV** 중 트랙에 맞는 파일로 저장합니다. **저장 형식 → MP3/M4A**로 오디오만 저장할 수도 있습니다.
+
+기존 자동 저장 폴더·내부 위험 검사·선택적 백신 검사를 계속 적용합니다. 도우미는 주소만 추출하며 영상 파일을 저장하지 않습니다. 주소가 만료되면 **다시 시도**에서 새 주소를 추출합니다. 공개 단일 VOD를 대상으로 하며 라이브 녹화·재생목록 일괄 처리·로그인/유료 권한 우회는 지원하지 않습니다. YouTube의 형식 제공·추가 토큰 요구·네트워크 조건에 따라 일부 영상은 다운로드되지 않을 수 있습니다.
+
+제공된 Hitomi 저장소와의 비교, 버전·의존성 및 실제 검증 범위는 [YouTube 구현·분석](reports/YOUTUBE.ko.md)을 참고하세요.
 
 ### 영상 다운로드
 
@@ -111,9 +124,10 @@ HTTP/3·HTTP/2는 **Chrome이 서버와 자동 협상**합니다. 실제 관측�
 | 일반 파일 | HTTP(S) 미디어. 형식 확인: MP4/M4A/MOV/WebM/MKV/AVI/Ogg/WAV/FLAC/MP3/AAC. **모든 코덱의 Chrome 재생을 보장하지 않음** |
 | HLS VOD | 암호화되지 않은 완료형 스트림. 외부 오디오·초기화 조각·바이트 범위 지원 |
 | DASH VOD | 암호화되지 않은 정적 단일 Period. 일반적인 SegmentTemplate/SegmentTimeline/SegmentList/BaseURL 지원 |
+| YouTube | 별도 로컬 도우미로 공개 단일 VOD의 영상·음성 주소 추출, 최고 제공 화질·MP3/M4A·트랙 병합 지원 |
 | 스트림 저장 | 로컬 FFmpeg Wasm에서 코덱 복사 방식으로 MP4 병합 |
 
-> **지원하지 않는 기능:** DRM·암호화 스트림, 라이브 녹화, 사이트별 전용 추출기, YouTube 전용 서명 처리, 여러 Period DASH, 자막·첨부·모든 메타데이터 보존.
+> **지원하지 않는 기능:** DRM·암호화 스트림, 라이브 녹화, YouTube 재생목록 일괄 처리·로그인/유료 권한 우회, YouTube 외 사이트별 전용 추출기, 여러 Period DASH, 자막·첨부·모든 메타데이터 보존.
 
 기존 배포 엔진의 모든 사이트 동작을 복제한 제품은 아니며, 기존 유료 기능 활성화나 라이선스 검증 위조를 제공하지 않습니다. 보안상 JPEG2000·PNM·MagicYUV·OpenEXR·SANM 디코딩 경로는 제외하므로 해당 코덱은 처리되지 않을 수 있습니다.
 
@@ -206,7 +220,8 @@ npm run package
 
 | 버전 | 주요 변경 | 관련 문서 |
 | --- | --- | --- |
-| **1.15.0** | 최초 저장 전 폴더 설정 안내와 확인 저장, Chrome에서 선택한 절대경로로 저장 창 없는 다운로드, 설정에서 폴더 변경. 영상·오디오·변환·확대 결과 모두 적용하며 시크릿 확인은 메모리로 분리. GitHub Release에 설치 ZIP 자동 첨부 | [저장 폴더와 자동 저장](reports/DOWNLOAD_FOLDER.ko.md) · [Release 워크플로](.github/workflows/release.yml) |
+| **1.16.0** | YouTube 공개 단일 영상·Shorts의 최고 제공 화질·MP3/M4A 저장 추가. 별도 로컬 yt-dlp/Deno 도우미로 주소 추출 후 기존 브라우저에서 MP4/WebM/MKV 병합·자동 저장·보안 검사 수행. 취소·만료 주소 재추출·시크릿 분리와 별도 도우미 ZIP·Release 첨부 추가 | [YouTube 분석과 검증](reports/YOUTUBE.ko.md) · [도우미 설치](native/YOUTUBE.ko.md) |
+| 1.15.0 | 최초 저장 전 폴더 설정 안내와 확인 저장, Chrome에서 선택한 절대경로로 저장 창 없는 다운로드, 설정에서 폴더 변경. 영상·오디오·변환·확대 결과 모두 적용하며 시크릿 확인은 메모리로 분리. GitHub Release에 설치 ZIP 자동 첨부 | [저장 폴더와 자동 저장](reports/DOWNLOAD_FOLDER.ko.md) · [Release 워크플로](.github/workflows/release.yml) |
 | 1.14.1 | 아이콘 팝업 너비를 640→720px로 확대하고 미디어 카드·글씨·버튼·여백을 컴팩트하게 조정. 긴 제목·주소는 말줄임과 전체 툴팁 제공, 좁은 화면에서도 다운로드·주소 복사·보안 안내 유지 | [팝업 크기와 배치 개선](reports/POPUP_COMPACT.ko.md) |
 | 1.14.0 | 공통 ESM·UTF-8·동일 아이콘 정리와 오프라인 Brotli 엔진 포장으로 기능을 유지하며 배포 경량화. 공식 유사 도구 5개를 조사하고 팝업·전체 앱에 클릭 시 미디어 주소 복사를 독립 구현. 추가 권한·클립보드 읽기·자동 복사 없이 브라우저 복사 실패 시 직접 선택·복사 지원 | [경량화 측정](reports/LIGHTWEIGHT_BUILD.ko.md) · [도구 비교와 기능 선택](reports/COMPETITOR_RESEARCH.ko.md) |
 | 1.13.0 | 기가바이트 파일의 구간 병렬 전송과 디스크 병합, HLS/DASH 원본의 디스크 기반 MP4 저장, 전체 파일 증분 SHA-256 추가. 원본 다운로드의 고정 길이·전체 준비 시간·128MiB 한도를 제거하며 저장 공간·서버·목록 분석 예산은 적용 | [대용량·병렬 다운로드](reports/LARGE_DOWNLOADS.ko.md) |

@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "count": 69,
+  "count": 115,
   "platform": "linux",
   "windowsRuntimeVerified": false,
   "scope": "native unit and subprocess tests; Windows COM/AMSI interfaces use test doubles on non-Windows",
@@ -8,6 +8,9 @@
     "native/antivirus_host.py": "5c555bf12109fdf7fef83de4d1be95613777cc1b5cc95f1700961894ccd6c17c",
     "native/windows_antivirus.py": "d31d257a74e3f4f676f82ad7f5b2f0d4a04172d72af52fe8cb40999b83c30c88",
     "native/internal_scan.py": "7ea25bb21ff73c0055beba1d85f351389d737f02587189c91f84129754c7d6f7",
-    "native/install.py": "29fb91151ace9eafe0fb04508cffb33b4fa28fa31176ffb5fa65f9b6eb0b3c6e"
+    "native/install.py": "29fb91151ace9eafe0fb04508cffb33b4fa28fa31176ffb5fa65f9b6eb0b3c6e",
+    "native/youtube_host.py": "df078b86a473fd033d5c925ec2bd7d56ee263d52b80091603a33d164f8d18c2b",
+    "native/install_youtube.py": "9aeb8e48f69919e6f57eee97747930c313164ad8e148e205cae1afdfc0fb6d22",
+    "native/youtube-requirements.txt": "aa4d45e5bc75c6c6443e8036f5a11d12d0e9c4927d6edb10448c5f3937ebeda6"
   }
 }

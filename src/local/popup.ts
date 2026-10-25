@@ -37,7 +37,7 @@ async function request(type: string, data: Record<string, unknown> = {}): Promis
 function isMedia(value: unknown): value is MediaItem {
   return record(value) && typeof value.id === 'string' && typeof value.url === 'string'
     && typeof value.title === 'string' && typeof value.mime === 'string'
-    && ['file', 'hls', 'dash'].includes(String(value.kind))
+    && ['file', 'hls', 'dash', 'youtube'].includes(String(value.kind))
     && typeof value.tabId === 'number' && typeof value.createdAt === 'number';
 }
 const preferencesReady = (async () => {
@@ -55,7 +55,7 @@ function activeDownload(item: MediaItem): boolean { return currentHistory.some(e
 function mediaDetail(item: MediaItem): string {
   let host = '';
   try { host = new URL(item.url).hostname; } catch {}
-  const kind = item.kind === 'hls' ? 'HLS' : item.kind === 'dash' ? 'DASH' : item.mime.startsWith('audio/') ? '오디오' : '미디어';
+  const kind = item.kind === 'youtube' ? 'YouTube · 로컬 추출' : item.kind === 'hls' ? 'HLS' : item.kind === 'dash' ? 'DASH' : item.mime.startsWith('audio/') ? '오디오' : '미디어';
   const size = typeof item.size === 'number' && item.size > 0 ? ' · ' + formatBytes(item.size) : '';
   return kind + (host ? ' · ' + host : '') + size;
 }
@@ -124,6 +124,8 @@ async function startDownload(item: MediaItem) {
   if (pendingDownloads.has(item.id) || activeDownload(item)) return;
   pendingDownloads.add(item.id); renderMedia();
   try {
+    // Request directly on the click, before asynchronous preference reads.
+    if (item.kind === 'youtube' && !await chrome.permissions.request({ permissions: ['nativeMessaging'] })) throw new Error('YouTube 추출 도우미 연결 권한을 허용하지 않았습니다. 설정의 YouTube 다운로드에서 다시 연결하세요.');
     await preferencesReady; message('');
     const result = await request('download', { id: item.id, options: selectedOptions });
     if (result.setupRequired === true) {
@@ -166,7 +168,7 @@ function showInfo(report: boolean) {
   node('info-title').textContent = report ? '미디어 감지 신고' : '미디어 감지 도움말';
   node('info-description').textContent = report
     ? '감지되지 않는 페이지 주소와 재현 방법을 메모할 수 있습니다. 메모는 이 팝업에서만 유지되며 자동으로 전송하거나 저장하지 않습니다.'
-    : '영상이 있는 페이지에서 영상을 재생한 뒤 강제 감지를 눌러 주세요.\nHTTP 미디어와 암호화되지 않은 HLS·DASH VOD를 지원합니다. DRM과 라이브 녹화는 지원하지 않습니다.\n설정에서 화질·저장 형식을 선택하고, 기록에서 진행 상황과 검토가 필요한 파일을 확인할 수 있습니다.\n앱 내부에서 파일 위장과 위험 신호를 보조 검사하며 파일을 외부로 전송하지 않습니다. 전체 악성코드 DB 검사는 아니며, 신호 없음이 안전을 보장하지 않습니다.';
+    : '영상이 있는 페이지에서 영상을 재생한 뒤 강제 감지를 눌러 주세요.\nHTTP 미디어와 암호화되지 않은 HLS·DASH VOD를 지원합니다. YouTube는 별도 로컬 추출 도우미를 설치한 뒤 단일 공개 영상을 다운로드할 수 있습니다. DRM과 라이브 녹화는 지원하지 않습니다.\n설정에서 화질·저장 형식과 YouTube 도우미 연결을 선택하고, 기록에서 진행 상황과 검토가 필요한 파일을 확인할 수 있습니다.\n앱 내부에서 파일 위장과 위험 신호를 보조 검사하며 파일을 외부로 전송하지 않습니다. 전체 악성코드 DB 검사는 아니며, 신호 없음이 안전을 보장하지 않습니다.';
   node('report-label').hidden = !report; node('report-notes').hidden = !report; dialog.showModal();
 }
 node('help').addEventListener('click', () => showInfo(false));

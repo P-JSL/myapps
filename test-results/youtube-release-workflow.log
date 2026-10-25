@@ -1,0 +1,28 @@
+▶ release workflow validates both assets and refuses unsafe or mismatched helper releases
+  ✔ new release with two validated ZIPs (74.146517ms)
+  ✔ same-commit release retry (89.031786ms)
+  ✔ annotated tag resolves to exact commit (71.549618ms)
+  ✔ tag cannot move to another commit (73.030358ms)
+  ✔ API failure cannot count as missing tag (75.05292ms)
+  ✔ release without matching tag is rejected (71.4834ms)
+  ✔ incorrect helper checksum (87.422643ms)
+  ✔ extra private helper member (70.885913ms)
+  ✔ missing required helper member (70.006865ms)
+  ✔ stale helper source bytes (75.053822ms)
+  ✔ helper traversal (69.810245ms)
+  ✔ helper absolute path (77.792102ms)
+  ✔ helper duplicate member (68.443912ms)
+  ✔ helper symbolic link (66.306373ms)
+  ✔ helper CRC corruption despite recomputed SHA (72.602968ms)
+  ✔ helper encrypted flag (67.443013ms)
+  ✔ extension ZIP wrong version (67.071125ms)
+✔ release workflow validates both assets and refuses unsafe or mismatched helper releases (1268.142805ms)
+✔ release workflow publishes both validated assets with pinned checkout and exact tag target (0.349434ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1317.613489

@@ -50,6 +50,11 @@ scope.onmessage = async event => {
     const message = event.data;
     if (!record(message) || typeof message.id !== 'string' || !/^[0-9a-f-]{36}$/.test(message.id)) throw new Error('잘못된 대용량 작업 ID입니다.');
     const plan = validatePlan(message.plan);
+    const outputFormat = message.outputFormat ?? 'mp4';
+    if (typeof outputFormat !== 'string' || !['mp4', 'webm', 'mkv'].includes(outputFormat)) throw new Error('잘못된 스트림 저장 형식입니다.');
+    if (message.requireVideo !== undefined && typeof message.requireVideo !== 'boolean') throw new Error('잘못된 영상 트랙 설정입니다.');
+    if (message.requireAudio !== undefined && typeof message.requireAudio !== 'boolean') throw new Error('잘못된 음성 트랙 설정입니다.');
+    const outputFilename = `output.${outputFormat}`;
     assetsName = `local-${message.id}.assets`; outputName = `local-${message.id}.media`;
     root = await navigator.storage.getDirectory();
     assets = await (await root.getFileHandle(assetsName, { create: true }) as SyncFile).createSyncAccessHandle(); assets.truncate(0);
@@ -87,14 +92,16 @@ scope.onmessage = async event => {
     let log = '';
     hardenMediaCore(core, ({ message }) => { log = message.slice(0, 300); });
     core.setProgress(({ progress }) => { if (Number.isFinite(progress)) scope.postMessage({ type: 'progress', stage: 'processing', value: 0.8 + Math.max(0, Math.min(1, progress)) * 0.2 }); });
-    mounted = mountDiskFiles(core.FS, assets, output, inputs, 'output.mp4'); core.FS.chdir('/disk');
+    mounted = mountDiskFiles(core.FS, assets, output, inputs, outputFilename); core.FS.chdir('/disk');
     const args = ['-hide_banner', '-nostdin', '-max_alloc', '67108864'];
     for (const input of plan.inputs) args.push('-protocol_whitelist', 'file,pipe', ...(input.playlist ? ['-allowed_extensions', 'ALL'] : []), '-i', input.filename);
-    args.push('-map', '0:v:0?', '-map', plan.inputs.length === 2 ? '1:a:0?' : '0:a:0?', '-c', 'copy', '-movflags', '+faststart', '-y', 'output.mp4');
+    args.push('-map', message.requireVideo === true ? '0:v:0' : '0:v:0?', '-map',
+      `${plan.inputs.length === 2 ? '1' : '0'}:a:0${message.requireAudio === true ? '' : '?'}`, '-c', 'copy',
+      ...(outputFormat === 'mp4' ? ['-movflags', '+faststart'] : []), '-y', outputFilename);
     // A valid long recording is not rejected by a fixed media-duration/runtime cap.
     // The parent can terminate this worker for an explicit cancellation.
     core.setTimeout(-1);
-    if (core.exec(...args) !== 0) throw new Error(`스트림을 MP4로 합칠 수 없습니다. ${log}`);
+    if (core.exec(...args) !== 0) throw new Error(`스트림을 ${outputFormat.toUpperCase()}로 합칠 수 없습니다. ${log}`);
     if (!mounted.outputSize()) throw new Error('처리 결과가 비어 있습니다.');
     mounted.flush(); core.FS.chdir('/'); mounted.unmount(); mounted = undefined;
     output.close(); output = undefined; assets.close(); assets = undefined;

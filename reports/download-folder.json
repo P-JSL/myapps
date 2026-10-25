@@ -1,13 +1,13 @@
 {
-  "buildSha256": "cab0254bfc35951799b83006afce2042ff1f5223fbf38e1d8744b5d4e6ac52e4",
+  "buildSha256": "7875079ccfdadf334b3a19782aeb706f9f6b2b6b4f20494a1a39a25d372f4f4d",
   "browser": "154.0.8037.57",
   "mode": "protected production background/UI and real Chromium IndexedDB; Chrome extension APIs and media preparation are explicit doubles; no actual browser preference or filesystem destination changed",
   "sourceSha256": {
-    "src/local/background.ts": "8ad4b2213f145fd61044967520223560030ed7af2ce1eeaf36cbbbcf48c3d097",
+    "src/local/background.ts": "ca3e9feec895c6e3cff32757fb2f52f4794fb036c74a41f7096e04e70ddd18fc",
     "src/local/download-folder.ts": "235b25a28365daaf87240ac5b2489e8628be689e2bf01337f03164b21a6869ba",
     "src/data/database.ts": "9ad2a7536462d778885eecc1340fb649437fd4f3fe6791869dfd1e7b50a26cf5",
-    "src/local/ui.ts": "37df522eaeb6be4a108219e133eed321c424a1525b0b38b5b44f03bbe009d026",
-    "src/local/popup.ts": "ee104985d2f8ad45d2fc0f30bd9948728a3a37dbd011f2b768f79a207530bee4",
+    "src/local/ui.ts": "9f5ecfb98034fb659a96437d184c66ca9fe3c6e5d65b50149dd38e3bf02dce96",
+    "src/local/popup.ts": "66e5604acc15d88940968fd7aa1f1d08239a78c8287d7b03844c50bea8aa19f8",
     "tests/download-folder-audit.mjs": "813fb5db86ca70c993c0b686f87b5532303579cf8ca9921d7a42d4e236ade6b7"
   },
   "outcomes": [

@@ -1,0 +1,609 @@
+
+> my-video-app@1.16.0 verify
+> npm run typecheck && npm run check:source && npm test && npm run test:native && npm run build && npm run test:browser
+
+
+> my-video-app@1.16.0 typecheck
+> tsc --noEmit
+
+
+> my-video-app@1.16.0 check:source
+> node scripts/audit-source.mjs
+
+Source audit passed: 41 runtime modules, 9 browser entries.
+
+> my-video-app@1.16.0 test
+> node --experimental-strip-types --test tests/*.test.ts tests/*.test.mjs
+
+✔ indexed media lookup preserves stable IDs, richer replacements, separate tabs and original eviction order (3.353227ms)
+✔ indexed media catalog equals the prior implementation across deterministic mixed mutations (1604.361249ms)
+✔ catalog indexes remove replaced IDs and relocated entries rather than keeping stale selectable references (0.810055ms)
+✔ a full manifest-only tab keeps the original preference for evicting files before manifests (0.824135ms)
+✔ status times out at its deadline and ignores late replies and reentrant disconnects (6.073815ms)
+✔ status rejects malformed replies once even when cleanup disconnects synchronously (0.432008ms)
+✔ status keeps a valid response when cleanup disconnects synchronously (0.40657ms)
+✔ status reports disconnect details and limits native error text (0.458798ms)
+✔ status checks permission before connecting and handles connection setup failures (0.576915ms)
+✔ scan times out at its deadline and ignores late replies and reentrant disconnects (0.679148ms)
+✔ scan rejects malformed replies once even when cleanup disconnects synchronously (0.377106ms)
+✔ scan keeps a valid response when cleanup disconnects synchronously (0.390936ms)
+✔ scan reports disconnect details and limits native error text (0.421813ms)
+✔ scan checks permission before connecting and handles connection setup failures (0.419999ms)
+✔ readiness shares the pending promise and starts a new request after a timeout (0.447852ms)
+✔ antivirus preference defaults on and only an explicit boolean can disable it (12.166278ms)
+✔ a native host cannot forge the local user-disabled policy outcome (0.489915ms)
+✔ disabled and cancelled pre-connection requests never contact permissions or native messaging (1.457314ms)
+✔ cancellation during a permission lookup wins over late denied or granted replies (1.038867ms)
+▶ antivirus toggle UI preserves settings and permissions across delayed or failed operations
+  ✔ pending startup settings block the switch and permission prompt (192.285127ms)
+  ✔ stale settings read cannot overwrite a newer successful OFF save (194.578182ms)
+  ✔ switch stays disabled during save and OFF cancels a pending permission continuation (208.294381ms)
+  ✔ failed save blocks uncertain controls and explicit reread restores actual setting (186.969666ms)
+  ✔ cross-window setting refresh and failed read never imply a clean AV verdict (156.474764ms)
+  ✔ authoritative OFF blocks permission requests before the next cross-window UI poll (109.768333ms)
+  ✔ expired user activation asks for a fresh click without opening a permission prompt (159.757747ms)
+✔ antivirus toggle UI preserves settings and permissions across delayed or failed operations (1682.89883ms)
+✔ Chrome warning classification preserves pending and unknown danger states (0.832999ms)
+✔ native scan results bind the verdict to the request and measured file identity (0.537886ms)
+✔ malformed, mismatched, oversized and unverifiable native verdicts never count as clean (0.50717ms)
+✔ readiness responses identify the selected engine without accepting a file-scan verdict (0.91384ms)
+▶ local antivirus and background safety decisions
+  ✔ routine MV3 worker activation preserves preparation until an actual restart or update event (17.634986ms)
+  ✔ queue cleanup preserves files and metadata when database ready, read, status or commit fails (20.789125ms)
+  ✔ recovered legacy metadata suspends queue expiry, index rewrites and orphan-file deletion (18.067089ms)
+  ✔ recovery preserves over-cap history and jobs through decisions and explicit deletion (29.455786ms)
+  ✔ startup preserves unindexed temporary inputs while legacy recovery remains unresolved (26.991533ms)
+  ✔ startup database failure leaves unindexed temporary inputs untouched (22.33426ms)
+  ✔ private queue cleanup returns without touching the embedded database (17.475447ms)
+  ✔ antivirus setting defaults on and every fresh read follows the persisted boolean (16.732864ms)
+  ✔ antivirus setting rejects malformed and untrusted changes before any database or native side effect (17.448136ms)
+  ✔ a failed antivirus-setting save leaves the durable setting enabled (16.582003ms)
+  ✔ private antivirus choice neither reads nor overwrites the ordinary stored setting (17.230129ms)
+  ✔ disabled antivirus avoids status and connection calls and resumes only after explicit enable (17.190089ms)
+  ✔ disabled antivirus completes a benign download without claiming clean or offering automatic processing (22.432394ms)
+  ✔ turning antivirus off preserves known infected review and its token instead of accepting the file (19.199662ms)
+  ✔ internal suspicious evidence and Chrome warnings still require review with antivirus disabled (33.353759ms)
+  ✔ prior infection survives Chrome warning precedence and acceptance while antivirus is off (33.664096ms)
+  ✔ a native infected reply arriving with a Chrome warning remains evidence after Chrome acceptance and OFF (37.297559ms)
+  ✔ native-only internal risk survives Chrome precedence and later acceptance with antivirus disabled (34.060505ms)
+  ✔ disabling an active native scan disconnects it and ignores a late clean reply (40.726707ms)
+  ✔ disabling an infected-file rescan retains the previous threat verdict and rejects a late clean reply (45.081052ms)
+  ✔ turning antivirus off after a completed clean scan still blocks the pending automatic-processing offer (33.292167ms)
+  ✔ a stale final enabled read cannot authorize automatic processing after OFF (35.008201ms)
+  ✔ a stale final enabled read cannot authorize automatic processing after OFF then ON (31.285909ms)
+  ✔ a scan waiting for the native lock rechecks the disabled setting before connecting (34.159639ms)
+  ✔ missing nativeMessaging permission leaves the file unverified without opening a native port (18.360325ms)
+  ✔ antivirus readiness requires an actual native status reply with no user filename (20.329358ms)
+  ✔ readiness distinguishes missing permission, missing host and an older host returning file verdicts (16.544822ms)
+  ✔ concurrent readiness checks share one host connection without waiting for the file scan lock (23.035916ms)
+  ✔ trusted status command reports actual engine readiness without scanning or changing file history (19.333375ms)
+  ✔ connect reports missing host instead of success and resumes pending checks only after a ready probe (25.447693ms)
+  ✔ scanner uses connectNative and one versioned request containing the selected local filename (17.070916ms)
+  ✔ mismatched native reply is an error and a disconnected host remains unavailable (17.672253ms)
+  ✔ infected download enters review and cannot trigger automatic upscale or file opening (23.01147ms)
+  ✔ unavailable antivirus and malformed clean replies require review instead of succeeding (30.481458ms)
+  ✔ a verifiable clean scan completes, while a file-size mismatch still requires review (31.962764ms)
+  ✔ automatic upscale is offered only after a completed clean scan (65.176389ms)
+  ✔ retained upscale bytes must match the size and SHA256 of the scanned disk file (33.2206ms)
+  ✔ a browser record disappearing during scanning becomes review instead of remaining stuck scanning (29.773751ms)
+  ✔ a Chrome warning arriving during a native clean scan wins over that clean response (28.571549ms)
+  ✔ keeping a detected file requires explicit confirmation and the current review token (21.062994ms)
+  ✔ failed deletion retains review with a fresh token; successful deletion removes the actual browser file (18.696048ms)
+  ✔ rescan takes the current Chrome filename and ignores a caller-supplied path (23.901074ms)
+  ✔ late Chrome danger revokes retained upscale jobs and their files (22.387615ms)
+  ✔ late Chrome danger still revokes retained copies after download history is cleared (29.151568ms)
+  ✔ startup checks retained download IDs independently of pruned history without inspecting unrelated downloads (23.416127ms)
+  ✔ extension updates make orphaned preparation retryable rather than reserving an active slot forever (23.431711ms)
+  ✔ the persisted history cap retains old unresolved security reviews beside newer completed rows (20.405632ms)
+  ✔ asynchronous media discovery rejects another context and cannot resurrect a navigated or closed tab (22.11776ms)
+  ✔ website senders cannot connect, scan arbitrary paths or decide security outcomes (20.280374ms)
+  ✔ popup rescan rejects unavailable, privileged and opposite-mode pages before messaging or database access (15.434176ms)
+  ✔ popup rescan targets active main frame and returns matching-ticket media (16.079153ms)
+  ✔ navigation invalidates pending popup rescan and stale capture ticket (23.113002ms)
+  ✔ split incognito history clears private completed rows while preserving reviews and ordinary history (54.930289ms)
+✔ local antivirus and background safety decisions (1436.313834ms)
+✔ bounded Brotli decoder recovers after invalid bootstrap bytes and preserves exact binary bytes (27.913101ms)
+✔ Brotli decoder rejects truncation, trailing data, corrupted input and wrong exact output sizes (3.788261ms)
+✔ decoder bounds highly compressed expansion and releases native state on failure (90.048675ms)
+✔ decoder respects pre-abort and mid-stream cancellation, frees state and remains reusable (91.085429ms)
+✔ concurrent bounded decoder streams keep independent output and reject invalid resource declarations (47.320647ms)
+✔ revoked upscale copies stay unpublished and a fresh clean scan can authorize a new offer (12.80268ms)
+✔ decoder policy preserves allowed decoders and protects each separate FFmpeg input (1.429304ms)
+✔ decoder policy fails closed on missing, failed, excessive or blocked-only inventory (1.900991ms)
+✔ callers cannot replace the decoder whitelist after initialization (0.323075ms)
+✔ pinned Wasm rejects restricted image/video decoders while normal PNG remains available (229.264611ms)
+✔ release dependency evidence is fresh and bound to the exact lockfile (2.276704ms)
+✔ failed, partial, inconsistent and advisory-bearing registry responses fail closed (1.756974ms)
+✔ four streamed asset transfers preserve interleaved extents with bounded disk writes (153.369501ms)
+✔ ranges of one resource reject changed validators, total size, missing validators and redirects (5.320018ms)
+✔ parallel redirect aliases bind to the same final range resource (0.743886ms)
+✔ a single validator-free byte range still streams exact requested bytes (50.745002ms)
+✔ multiple ranges require a strong validator on every response including redirect aliases (2.849534ms)
+✔ ignored or malformed ranges fail before appending server data (1.063836ms)
+✔ truncated retries discard old logical extents while retaining correct final asset bytes (372.660918ms)
+✔ a harmless marker crossing stream blocks or DASH part boundaries refuses decoding (10.448284ms)
+✔ quota failures abort siblings without retrying or publishing an asset map (9.676902ms)
+✔ explicit cancellation stops writes and invalid inactivity settings fail before requesting files (7.279998ms)
+✔ range offsets above 2GiB remain metadata and preserve only the requested bytes (54.755407ms)
+✔ network inactivity retries are bounded and stalled bodies cannot hang a download (925.01648ms)
+▶ disk-backed FFmpeg files preserve extents, large positions and real remux output
+  ✔ virtual aliases and cross-extent random reads preserve exact original bytes (1.825327ms)
+  ✔ output seek/write/read/truncate support sparse positions above signed 32-bit (0.635193ms)
+  ✔ real video/audio remux and faststart use disk files and fully decode (24.139411ms)
+  ✔ bad extents, names and short or failed disk operations fail explicitly (2.096294ms)
+✔ disk-backed FFmpeg files preserve extents, large positions and real remux output (241.548548ms)
+✔ only an explicitly stored boolean acknowledges the initial download folder setup (0.746169ms)
+✔ transport accepts actual ALPN values without treating HTTPS or Alt-Svc as observed HTTP/3 (0.992789ms)
+✔ Retry-After supports delay seconds and HTTP dates without shortening long server waits (0.207872ms)
+✔ GET retries transient HTTP failures and returns exactly one intact response (30.295473ms)
+✔ redirected HLS masters and child playlists resolve references against each successful response URL (20.492127ms)
+✔ authorization failures and long rate-limit waits are not repeatedly requested (4.819148ms)
+✔ cancellation during retry backoff starts no further network request (28.076115ms)
+✔ cancellation after body completion during timing observation rejects and releases its byte reservation (53.459262ms)
+✔ partial responses without a range and malformed range totals are rejected (4.929332ms)
+✔ failed/truncated attempts return their reservations before a retry (315.467327ms)
+✔ range fallback retains only the requested bytes in the shared budget (2.511947ms)
+✔ parallel requests cannot exceed their shared retained-byte limit (4.184646ms)
+✔ segments run concurrently with a maximum of three and keep filename/data associations (75.87547ms)
+✔ preparation queue is FIFO, bounded and removes a cancelled waiting job (0.699739ms)
+✔ cancelling a running preparation releases the next queued job (0.205408ms)
+✔ versioned encryption round-trips empty and binary archive bytes without mutating caller buffers (2212.423498ms)
+✔ each encryption uses a fresh salt and nonce even for identical input and password (593.643156ms)
+✔ wrong passwords and modified salt, nonce, ciphertext or tag fail authentication (1812.298746ms)
+✔ unsupported headers, attacker-selected KDF costs, truncation and invalid lengths are rejected (294.076543ms)
+✔ API bounds reject oversized archives, envelopes and passwords before cryptography (1.347981ms)
+✔ CLI encrypts piped passwords, decrypts named environment passwords and creates private files (686.355341ms)
+✔ CLI leaves no output or temporary file after incorrect password, tampering or truncation (1017.472062ms)
+✔ CLI never replaces existing files, output symlinks, or its own input (1804.916572ms)
+✔ CLI enforces input and password limits and rejects unsafe inputs without output (220.808953ms)
+✔ CLI help documents password handling and parser never prints unrecognized secret arguments (103.10796ms)
+✔ generated engine loader decrypts exact bytes with Web Crypto and preserves core options (34.772977ms)
+✔ generated engine factory also accepts no options (4.395029ms)
+✔ ciphertext and authentication tag mutations reject before calling core (5.014528ms)
+✔ wrong key, nonce or authenticated context reject before calling core (7.844069ms)
+✔ HTTP errors, size mismatch and oversized streams reject before calling core (3.678124ms)
+✔ streamed responses reconstruct the ciphertext across arbitrary chunk boundaries (5.729559ms)
+✔ gzip reduces repetitive engine bytes before encryption and decompresses exactly (10.20653ms)
+✔ decompressed output must fit the exact expected size before calling core (14.549522ms)
+✔ each encryption gets independent random key and nonce and emits no key in metadata (1.021711ms)
+✔ encryptEngine validates engine size and relative packaged asset paths (1.30091ms)
+✔ Brotli engine bootstrap verifies the offline decoder and reproduces exact bytes without native Brotli support (12.218797ms)
+✔ Brotli authentication binds decoder identity and rejects before fetching or initializing decoder bytes (5.127126ms)
+✔ Brotli decoder HTTP, exact size and SHA-256 identity errors fail before engine initialization (4.908128ms)
+✔ Brotli exact plaintext bounds reject authenticated expansion or incomplete output (7.31067ms)
+✔ engine bootstrap cancellation interrupts a stalled response and rejects incomplete decoder declarations (7.502056ms)
+✔ download preferences reject arbitrary codecs, heights and malformed settings (1.346919ms)
+✔ quality selection prioritizes height over bitrate and handles missing renditions (0.267721ms)
+✔ HLS ceilings select real renditions and audio-only skips external video requests (1.466329ms)
+✔ processing options allow only fixed operations and formats (0.234842ms)
+✔ conversion fits the height ceiling with even dimensions and never enlarges normal inputs (0.150115ms)
+✔ media processing rejects missing tracks, excessive duration and unsafe video sizes (0.305157ms)
+✔ audio signatures do not accept executable documents or remote playlists (0.339869ms)
+✔ audio and merge commands use local inputs, exact tracks and bounded output (0.226189ms)
+✔ processed names keep selected extensions and safe basenames (0.539618ms)
+✔ incremental SHA-256 matches published known vectors and retains the unpadded byte count (13.792506ms)
+✔ incremental SHA-256 matches Node for padding boundaries, byte offsets and randomized chunk partitions (59.235629ms)
+✔ incremental SHA-256 preserves the high bit-length word past 512 MiB with constant input memory (3293.187853ms)
+✔ prepared-file inspection reads bounded slices, hashes all bytes, and keeps large static analysis explicitly partial (99.603255ms)
+✔ prepared-file inspection detects a harmless test marker crossing read slices without shipping its raw marker (46.232497ms)
+✔ prepared-file inspection accepts greater-than-2-GiB metadata and aborts without allocating that file (0.793019ms)
+✔ prepared-file inspection refuses truncated reads, invalid sizes, and cancellation before publishing (0.999308ms)
+✔ internal reports validate bounded findings, coverage and actual native file identity (2.089923ms)
+✔ suspicious reports require a risk finding while retaining partial scan coverage notices (0.475433ms)
+✔ risk evidence survives later no-signal reports and malformed stored history is not trusted (2.654529ms)
+✔ readiness reports internal helper availability independently from the external antivirus (0.399079ms)
+▶ internal signals remain a separate, fail-closed download safety gate
+  ✔ prepared app risk remains review even when the external antivirus reports clean (14.669971ms)
+  ✔ internal no-signals never turns an unavailable antivirus into a clean verdict (5.824582ms)
+  ✔ manual connect resumes internal-only scans while keeping the unavailable external verdict (15.92341ms)
+  ✔ a status-only check never resumes a pending file even with an internal helper (5.695878ms)
+  ✔ manual connect does not resume files for absent, false or malformed internal availability (15.923191ms)
+  ✔ missing permission or host cannot claim internal availability or resume pending files (11.792298ms)
+  ✔ a verified native internal report supplies risk coverage when browser metadata is absent (5.171593ms)
+  ✔ malformed prepared metadata cannot trigger a silent direct-download fallback (4.852324ms)
+  ✔ a scan refusal from preparation never silently downloads the original URL (4.837171ms)
+  ✔ saved-file hash mismatch invalidates the prepared no-signal evidence (4.981398ms)
+  ✔ Chrome warnings retain priority and do not erase app findings (5.462969ms)
+  ✔ normal clean downloads still reach the optional automatic-processing gate (5.522759ms)
+✔ internal signals remain a separate, fail-closed download safety gate (113.332006ms)
+✔ local processing refuses suspicious primary and secondary files before engine creation (31.116196ms)
+✔ a suspicious stream asset is refused before MEMFS staging or decoding (12.128121ms)
+✔ joined track inspection catches a marker that straddles separately fetched asset boundaries (11.723856ms)
+✔ benign whole-file and fragment inputs preserve owned buffers, protocol observations and output flow (20.395204ms)
+✔ internal scan labels never promote missing, partial or quiet evidence to an antivirus clean verdict (13.496774ms)
+✔ risk presentation retains warnings in partial evidence and treats finding text as bounded literal content (0.355413ms)
+✔ malformed and oversized finding records do not become quiet scanner evidence (0.324056ms)
+✔ full media and explicit raw fragments have bounded no-signals reports without a clean verdict (3.330583ms)
+✔ unknown, empty, partial and over-limit inputs remain incomplete (1090.610819ms)
+✔ the harmless standard AV marker is detected at arbitrary offsets and labelled as a test (7.483508ms)
+✔ Windows executable signals require valid PE structures rather than incidental MZ bytes (7.343448ms)
+✔ top-level ELF, Mach-O, archives, PDF and active text are risk signals only in relevant scopes (0.585618ms)
+✔ appended ZIP finding requires a complete consistent directory and matching local records (0.504376ms)
+✔ unsupported ZIP directory scopes remain incomplete instead of claiming no signals (36.492916ms)
+✔ structural work and reported findings are bounded without hiding incomplete coverage (10.761833ms)
+✔ actual generated media fixtures have no builtin signals when present (16.166745ms)
+✔ history retention bounds records without hiding older unresolved downloads or mutating its input (7.292862ms)
+✔ local media URLs reject executable schemes and embedded credentials (0.405017ms)
+✔ media discovery recognizes manifests and whole files without offering transport fragments (0.482574ms)
+✔ local filenames use media extensions, strip paths and support Windows reserved names (0.652949ms)
+✔ local commands distinguish extension UI from website collectors (0.389193ms)
+✔ popup commands require exact extension page and origin (0.201382ms)
+✔ HLS attributes preserve quoted commas and reject dangerous byte ranges (0.672989ms)
+✔ HLS media plans rewrite all source references into controlled local paths (1.209023ms)
+✔ HLS masters choose a complete video and its default external audio (0.437706ms)
+✔ HLS byte ranges and init segments are materialized as separate local files (0.377126ms)
+✔ HLS rejects encryption before fetching a key or child playlist (0.459088ms)
+✔ HLS rejects open live windows, cycles, executable URLs and empty streams (0.464426ms)
+✔ HLS redirect aliases cannot bypass cycle detection or URL validation (0.405317ms)
+✔ network reader enforces byte limits, validates ranges, handles ignored ranges and aborts (37.379606ms)
+✔ disk-backed media inspection seeks past large ID3 artwork without reading the whole file (2.422512ms)
+✔ container signatures distinguish MP4, MOV, M4A, WebM and Matroska (0.635683ms)
+✔ non-media and image containers cannot masquerade as video (0.36661ms)
+✔ download names use detected format and remove misleading text suffixes safely (0.563385ms)
+✔ signature probe bounds and cancels ignored Range responses despite text MIME (19.357338ms)
+✔ signature probe rejects mislabeled HTML, images, HTTP errors and invalid ranges (3.259646ms)
+✔ signature probe cancels and times out stalled fetch and body (30.769186ms)
+✔ large ID3 metadata preserves MP3 frames beyond the signature prefix (0.326439ms)
+✔ quality selection preserves the stable-sort oracle across ceilings, ties and nonfinite metadata (47.637082ms)
+✔ finite quality selection bounds metadata reads linearly and keeps the first tied rendition (0.946038ms)
+✔ HLS audio selection preserves the first default in its chosen group and the first fallback (1.684476ms)
+✔ byte assembly preserves exact bytes across chunk boundaries and returns an exact backing buffer (0.739649ms)
+✔ ignored HTTP ranges still read and budget the entire body before retaining only the requested bytes (31.868243ms)
+✔ media probe keeps required track fields and omits arbitrary container tags (1.475011ms)
+✔ oversized and invalid probe reports reject before reading or decoding their data (0.56669ms)
+✔ probe preserves image/audio classification and stream duration fallbacks (0.220981ms)
+✔ probe rejects decoder errors and malformed reports while cleaning up decoded reports (0.263084ms)
+✔ pinned Wasm ffprobe omits large WAV metadata tags while preserving audio duration (130.877447ms)
+✔ shared encoder profiles preserve the complete ordered command for every output (1.44074ms)
+✔ media metadata is immutable and keeps input and output format scopes separate (0.337936ms)
+✔ metadata validation preserves existing format coercion and strict quality matching (0.328172ms)
+✔ release archive rejects a source file symlink without leaking external bytes or publishing checksums (63.91187ms)
+✔ release archive rejects a source dir symlink without leaking external bytes or publishing checksums (68.932156ms)
+✔ normal release creates all six valid archives and keeps the two native helpers separate (64.527603ms)
+✔ missing native helper source aborts packaging and removes a stale checksum manifest (32.714813ms)
+✔ release entries use maximum DEFLATE compression even with deterministic custom ZipInfo metadata (347.353085ms)
+✔ four actual HTTP range transfers merge out-of-order chunks into exactly one original file (113.315461ms)
+✔ ignored Range streams its existing 200 response once with bounded writes, without arrayBuffer (64.74628ms)
+✔ a partial response without a strong validator falls back to one complete request (209.400791ms)
+✔ large ID3 artwork remains provisional until the caller inspects the actual final frame (52.772601ms)
+✔ multi-gigabyte size is metadata only and cancellation stops outstanding ranges without huge allocation (54.955062ms)
+✔ changed validators, totals, redirects, ignored ranges and compressed partial data never return a merged file (312.554389ms)
+✔ a truncated part retries before committing and transient HTTP failures use bounded retries (408.115994ms)
+✔ HTML masquerading as a video is rejected and its body is canceled before any disk write (1.189633ms)
+✔ network inactivity is bounded, but slow disk backpressure does not consume network inactivity time (996.246966ms)
+✔ unsafe range sizes and malformed probe ranges are rejected before any file allocation (9.209781ms)
+✔ 2x and 4x scaling preserve aspect ratio and use the expected pixel dimensions (1.22071ms)
+✔ scaling rejects invalid factors, corrupt dimensions and invalid video durations (0.43987ms)
+✔ scaling accepts documented edge boundaries and rejects output resource exhaustion (0.168423ms)
+✔ queue metadata accepts UUID-v4 jobs and rejects invalid identities and sizes (0.419479ms)
+✔ download output filenames strip paths, control characters and direction overrides (0.316725ms)
+✔ media detection uses signatures rather than attacker-controlled filenames (0.301381ms)
+✔ video encoding keeps audio optional, uses local-only input and bounds decoder resources (0.32037ms)
+✔ image encoding emits a single PNG and applies the same dimension validation (0.146499ms)
+✔ Asset references preserve context, root trust paths and URL suffixes (3.309551ms)
+✔ JavaScript rewrites complete literals and template paths without substring edits (12.211706ms)
+✔ HTML resource rewriting preserves policy text and relative destinations (0.287982ms)
+✔ application exports are private but registered event handlers retain behavior (8.769087ms)
+✔ unexpected application re-exports and default interfaces fail closed (3.290743ms)
+✔ identical PNG aliases share one file while contextual resources remain distinct (56.201195ms)
+✔ shared ESM preserves UTF-8 behavior with private entries and a closed local module graph (67.539869ms)
+▶ split incognito queue APIs and events preserve ordinary retained files, notifications and authorizations
+  ✔ private APIs do not read or mutate shared index, files, notifications or offer permissions (2.480909ms)
+  ✔ private startup, install and retained-copy notification events cannot select or erase ordinary copies (11.010917ms)
+  ✔ manual media tools remain available privately without selecting a retained ordinary job (11.216245ms)
+  ✔ returning to ordinary context preserves its files and opposite offer authorization states (13.976321ms)
+✔ split incognito queue APIs and events preserve ordinary retained files, notifications and authorizations (51.630909ms)
+✔ release guard rejects a complete harmless test payload in any binary location (1.435793ms)
+▶ release workflow validates both assets and refuses unsafe or mismatched helper releases
+  ✔ new release with two validated ZIPs (69.505696ms)
+  ✔ same-commit release retry (71.55942ms)
+  ✔ annotated tag resolves to exact commit (68.755161ms)
+  ✔ tag cannot move to another commit (66.858226ms)
+  ✔ API failure cannot count as missing tag (66.542623ms)
+  ✔ release without matching tag is rejected (67.094812ms)
+  ✔ incorrect helper checksum (67.064646ms)
+  ✔ extra private helper member (67.052408ms)
+  ✔ missing required helper member (69.172837ms)
+  ✔ stale helper source bytes (67.91382ms)
+  ✔ helper traversal (70.743251ms)
+  ✔ helper absolute path (73.093859ms)
+  ✔ helper duplicate member (75.610527ms)
+  ✔ helper symbolic link (77.244286ms)
+  ✔ helper CRC corruption despite recomputed SHA (75.587571ms)
+  ✔ helper encrypted flag (79.12215ms)
+  ✔ extension ZIP wrong version (70.601713ms)
+✔ release workflow validates both assets and refuses unsafe or mismatched helper releases (1219.200239ms)
+✔ release workflow publishes both validated assets with pinned checkout and exact tag target (0.254091ms)
+▶ native download tracking fails closed when its safety record cannot be committed
+  ✔ a transient post-start commit failure cancels transmission and retains the actual ID (11.612054ms)
+  ✔ a completed download that cannot be cancelled remains in explicit review (6.016071ms)
+  ✔ a Chrome warning still takes precedence when the cancellation attempt fails (5.509362ms)
+  ✔ a lookup failure after a successful ID commit never overwrites it with the preparing entry (5.6077ms)
+  ✔ a later scanning-state commit failure preserves the ID and explicit review (5.983082ms)
+  ✔ persistent storage failure still cancels and warns without an unhandled retry rejection (5.195581ms)
+  ✔ preparation cleanup still runs when its error status also cannot be persisted (4.967009ms)
+✔ native download tracking fails closed when its safety record cannot be committed (57.752525ms)
+✔ tree hashes preserve the original sorted name-NUL-content SHA format (31.957353ms)
+✔ tree hashes detect changed bytes, added files, renamed files and deletions (4.472386ms)
+✔ default inventories reject root, nested file and nested directory symlinks (3.103864ms)
+✔ cache exclusion is explicit and applies at every depth (2.276955ms)
+✔ source snapshots track new tooling, tsconfig and baseline files without caches (8.781558ms)
+✔ source audit follows runtime imports without executing browser modules (27.655492ms)
+✔ source audit separately accounts for the exact pinned vendor wrapper without executing it (26.435452ms)
+✔ vendor catalog rejects output collisions, escaping paths, unsupported formats and absent decoder resources (11.094268ms)
+✔ vendor imports, exports and npm lock drift fail closed without widening application import permissions (43.264019ms)
+✔ source audit rejects orphan runtime modules but accepts type-only modules (12.753615ms)
+✔ source audit rejects runtime cycles and excludes explicit type-only backreferences (37.262619ms)
+✔ empty named imports still retain runtime side effects (16.804601ms)
+✔ source audit checks both noUnused compiler guards (5.104785ms)
+✔ source audit catches missing manifest, HTML script, Worker and runtime getURL paths (26.926309ms)
+✔ HTML script paths resolve relative to their catalog output directory (9.245884ms)
+✔ copied directory resources must name a real inventoried file (18.479602ms)
+✔ relative FFmpeg externals must be allowed for every owning browser entry (19.762345ms)
+✔ source audit rejects dynamic imports and unresolved resource expressions (9.287617ms)
+✔ owned worker output reuses only an exact non-shared buffer (1.205838ms)
+✔ Wasm heap subviews copy exact bytes without detaching the heap (0.337185ms)
+✔ real worker transfer detaches owned output and preserves fallback backing bytes (55.469501ms)
+✔ pinned FFmpeg readFile owns a fresh buffer and transfer leaves MEMFS usable (112.433876ms)
+✔ node budget accepts exactly 100000 visits including aliases and excludes exit markers (83.025814ms)
+✔ wide rejected data does not read values beyond the traversal budget (24.427743ms)
+✔ early budgets preserve sparse arrays, exact depth and character boundaries (6.775159ms)
+✔ bounded data accepts ordinary structured messages and repeated non-cyclic references (0.870075ms)
+✔ bounded data rejects cycles, exotic objects, invalid primitives and prototype keys (0.277547ms)
+✔ bounded data accounts for key and value lengths and enforces depth and node limits (4.220069ms)
+✔ YouTube links canonicalize one video without retaining playlist or signed parameters (1.824947ms)
+✔ Playlist-only, ambiguous, credential, origin-spoof and non-HTTPS source links never reach the extractor (0.341231ms)
+✔ Resolved tracks are bound to the requested video and normalize video before audio (0.912128ms)
+✔ A native resolver cannot substitute another origin, arbitrary headers or malformed track metadata (1.038898ms)
+✔ Source mismatch, oversized metadata, duplicate tracks and unsupported track combinations fail closed (0.923365ms)
+✔ Native resolution uses the dedicated host, canonical one-video request and browser user agent (3.568461ms)
+✔ Readiness deduplicates only active status calls and never caches signed media results (1.054802ms)
+✔ Denied permission, already aborted signal and invalid source never open native connections (0.639089ms)
+✔ Cancellation while permission is pending prevents the later native request (0.382474ms)
+✔ Cancellation disconnects the active port and stale responses cannot revive the request (0.480891ms)
+✔ Mismatched response IDs, forged origins and forbidden metadata are never accepted (1.369964ms)
+✔ Extraction failures, unavailable host and insufficient tracks remain explicit errors (0.998978ms)
+✔ Readiness requires request-bound package and local runtime evidence instead of a fabricated ready status (0.491858ms)
+✔ A disconnected host and extraction timeout clean listeners and settle exactly once (0.531277ms)
+✔ Unusable browser header values cannot be forwarded into the native extractor (0.320621ms)
+ℹ tests 344
+ℹ suites 0
+ℹ pass 344
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11310.342906
+
+> my-video-app@1.16.0 test:native
+> node scripts/test-native.mjs
+
+Installed the My Video App YouTube resolver for this OS account. Reload the extension and connect in settings.
+Only public video URLs are resolved; media writes, browser cookies and antivirus settings are not accessed.
+YouTube resolver registration removed. The isolated dependency venv was retained.
+test_clamav_encrypted_content_is_unscanned_not_malware_or_clean (test_antivirus_host.AntivirusHostTests.test_clamav_encrypted_content_is_unscanned_not_malware_or_clean) ... ok
+test_clamav_encrypted_word_in_other_signature_keeps_detection (test_antivirus_host.AntivirusHostTests.test_clamav_encrypted_word_in_other_signature_keeps_detection) ... ok
+test_clamav_mixed_case_diagnostics_reject_apparent_success (test_antivirus_host.AntivirusHostTests.test_clamav_mixed_case_diagnostics_reject_apparent_success) ... ok
+test_clamav_real_detection_survives_encrypted_nested_entry (test_antivirus_host.AntivirusHostTests.test_clamav_real_detection_survives_encrypted_nested_entry) ... ok
+test_clean_scan_hashes_same_bytes_and_removes_private_snapshot (test_antivirus_host.AntivirusHostTests.test_clean_scan_hashes_same_bytes_and_removes_private_snapshot) ... ok
+test_deeply_nested_native_json_is_a_framed_error_not_a_host_crash (test_antivirus_host.AntivirusHostTests.test_deeply_nested_native_json_is_a_framed_error_not_a_host_crash) ... ok
+test_defender_ambiguous_exit_never_maps_to_clean (test_antivirus_host.AntivirusHostTests.test_defender_ambiguous_exit_never_maps_to_clean) ... ok
+test_defender_uses_current_protection_policy_without_changing_it (test_antivirus_host.AntivirusHostTests.test_defender_uses_current_protection_policy_without_changing_it) ... ok
+test_disabled_or_passive_defender_never_runs_file_scan (test_antivirus_host.AntivirusHostTests.test_disabled_or_passive_defender_never_runs_file_scan) ... ok
+test_file_mutation_during_scan_rejects_clean_verdict (test_antivirus_host.AntivirusHostTests.test_file_mutation_during_scan_rejects_clean_verdict) ... ok
+test_installer_registers_exact_id_per_user_and_uninstalls_own_files (test_antivirus_host.AntivirusHostTests.test_installer_registers_exact_id_per_user_and_uninstalls_own_files) ... ok
+test_invalid_actions_ids_and_schema_cannot_run_scanner (test_antivirus_host.AntivirusHostTests.test_invalid_actions_ids_and_schema_cannot_run_scanner) ... ok
+test_links_directories_relative_and_traversal_are_rejected (test_antivirus_host.AntivirusHostTests.test_links_directories_relative_and_traversal_are_rejected) ... ok
+test_native_framing_roundtrip_and_oversize_rejection (test_antivirus_host.AntivirusHostTests.test_native_framing_roundtrip_and_oversize_rejection) ... ok
+test_non_string_scanner_config_is_an_error_without_invoking_tools (test_antivirus_host.AntivirusHostTests.test_non_string_scanner_config_is_an_error_without_invoking_tools) ... ok
+test_real_fake_clamav_clean_exit (test_antivirus_host.AntivirusHostTests.test_real_fake_clamav_clean_exit) ... ok
+test_real_fake_clamav_error_and_limit_never_become_clean (test_antivirus_host.AntivirusHostTests.test_real_fake_clamav_error_and_limit_never_become_clean) ... ok
+test_real_fake_clamav_subprocess_detection_is_not_removed (test_antivirus_host.AntivirusHostTests.test_real_fake_clamav_subprocess_detection_is_not_removed) ... ok
+test_real_scanner_timeout_terminates_process (test_antivirus_host.AntivirusHostTests.test_real_scanner_timeout_terminates_process) ... ok
+test_scanner_output_is_bounded (test_antivirus_host.AntivirusHostTests.test_scanner_output_is_bounded) ... ok
+test_timeout_never_maps_to_clean (test_antivirus_host.AntivirusHostTests.test_timeout_never_maps_to_clean) ... ok
+test_truncated_and_non_json_frames_report_errors (test_antivirus_host.AntivirusHostTests.test_truncated_and_non_json_frames_report_errors) ... ok
+test_unavailable_keeps_external_status_and_binds_internal_scan (test_antivirus_host.AntivirusHostTests.test_unavailable_keeps_external_status_and_binds_internal_scan) ... ok
+test_amsi_readiness_failed_hresult_does_not_claim_ready (test_antivirus_status.AntivirusStatusTests.test_amsi_readiness_failed_hresult_does_not_claim_ready) ... ok
+test_amsi_readiness_initializes_and_releases_handles_without_scan (test_antivirus_status.AntivirusStatusTests.test_amsi_readiness_initializes_and_releases_handles_without_scan) ... ok
+test_builtin_capability_preserves_external_status_and_selected_engine (test_antivirus_status.AntivirusStatusTests.test_builtin_capability_preserves_external_status_and_selected_engine) ... ok
+test_builtin_capability_requires_loadable_expected_companion_and_valid_scan_contract (test_antivirus_status.AntivirusStatusTests.test_builtin_capability_requires_loadable_expected_companion_and_valid_scan_contract) ... ok
+test_builtin_capability_survives_missing_external_engine_config_error_and_timeout (test_antivirus_status.AntivirusStatusTests.test_builtin_capability_survives_missing_external_engine_config_error_and_timeout) ... ok
+test_clamav_status_only_invokes_version_and_requires_confirmed_execution (test_antivirus_status.AntivirusStatusTests.test_clamav_status_only_invokes_version_and_requires_confirmed_execution) ... ok
+test_defender_status_checks_active_normal_mode_without_invoking_scan (test_antivirus_status.AntivirusStatusTests.test_defender_status_checks_active_normal_mode_without_invoking_scan) ... ok
+test_missing_engine_and_timeout_cannot_claim_readiness (test_antivirus_status.AntivirusStatusTests.test_missing_engine_and_timeout_cannot_claim_readiness) ... ok
+test_native_status_framing_remains_bound_to_request (test_antivirus_status.AntivirusStatusTests.test_native_status_framing_remains_bound_to_request) ... ok
+test_real_native_process_accepts_pathless_status_and_returns_versioned_readiness (test_antivirus_status.AntivirusStatusTests.test_real_native_process_accepts_pathless_status_and_returns_versioned_readiness) ... ok
+test_status_rejects_paths_commands_bool_versions_and_extra_fields (test_antivirus_status.AntivirusStatusTests.test_status_rejects_paths_commands_bool_versions_and_extra_fields) ... ok
+test_status_uses_same_selection_but_never_scans_or_opens_a_file (test_antivirus_status.AntivirusStatusTests.test_status_uses_same_selection_but_never_scans_or_opens_a_file) ... ok
+test_appended_zip_requires_valid_eof_central_and_local_records (test_internal_scan.InternalScanTests.test_appended_zip_requires_valid_eof_central_and_local_records) ... ok
+test_benign_media_and_incidental_strings_are_not_malware (test_internal_scan.InternalScanTests.test_benign_media_and_incidental_strings_are_not_malware) ... ok
+test_config_failure_still_returns_verified_builtin_evidence (test_internal_scan.InternalScanTests.test_config_failure_still_returns_verified_builtin_evidence) ... ok
+test_disguised_archives_documents_and_scripts_are_signals (test_internal_scan.InternalScanTests.test_disguised_archives_documents_and_scripts_are_signals) ... ok
+test_elf_and_mach_o_need_coherent_executable_headers (test_internal_scan.InternalScanTests.test_elf_and_mach_o_need_coherent_executable_headers) ... ok
+test_external_clean_does_not_erase_suspicious_internal_evidence (test_internal_scan.InternalScanTests.test_external_clean_does_not_erase_suspicious_internal_evidence) ... ok
+test_host_builtin_is_independent_and_hash_bound_when_external_missing (test_internal_scan.InternalScanTests.test_host_builtin_is_independent_and_hash_bound_when_external_missing) ... ok
+test_incidental_mz_pairs_do_not_consume_expensive_header_budget (test_internal_scan.InternalScanTests.test_incidental_mz_pairs_do_not_consume_expensive_header_budget) ... ok
+test_mutation_on_unavailable_path_has_no_hash_or_builtin_assertion (test_internal_scan.InternalScanTests.test_mutation_on_unavailable_path_has_no_hash_or_builtin_assertion) ... ok
+test_non_byte_coverage_reasons_omit_offsets (test_internal_scan.InternalScanTests.test_non_byte_coverage_reasons_omit_offsets) ... ok
+test_partial_unknown_and_empty_inputs_never_get_no_signals (test_internal_scan.InternalScanTests.test_partial_unknown_and_empty_inputs_never_get_no_signals) ... ok
+test_pe_candidate_and_findings_limits_fail_closed (test_internal_scan.InternalScanTests.test_pe_candidate_and_findings_limits_fail_closed) ... ok
+test_reads_are_bounded_including_tail_and_random_header_checks (test_internal_scan.InternalScanTests.test_reads_are_bounded_including_tail_and_random_header_checks) ... ok
+test_standard_harmless_test_marker_crosses_stream_boundary (test_internal_scan.InternalScanTests.test_standard_harmless_test_marker_crosses_stream_boundary) ... ok
+test_validated_pe_top_level_and_embedded_are_risk_signals (test_internal_scan.InternalScanTests.test_validated_pe_top_level_and_embedded_are_risk_signals) ... ok
+test_zip_comment_eocd_decoys_do_not_hide_valid_appended_zip (test_internal_scan.InternalScanTests.test_zip_comment_eocd_decoys_do_not_hide_valid_appended_zip) ... ok
+test_detection_admin_blocks_and_uncertain_results_remain_distinct (test_windows_antivirus.WindowsAmsiContractTests.test_detection_admin_blocks_and_uncertain_results_remain_distinct) ... ok
+test_empty_and_larger_than_128_mib_remain_unscanned_without_api_call (test_windows_antivirus.WindowsAmsiContractTests.test_empty_and_larger_than_128_mib_remain_unscanned_without_api_call) ... ok
+test_failed_hresult_never_maps_to_clean_and_releases_initialized_resources (test_windows_antivirus.WindowsAmsiContractTests.test_failed_hresult_never_maps_to_clean_and_releases_initialized_resources) ... ok
+test_missing_context_or_session_never_reaches_a_successful_scan (test_windows_antivirus.WindowsAmsiContractTests.test_missing_context_or_session_never_reaches_a_successful_scan) ... ok
+test_scan_receives_exact_complete_bytes_once_and_releases_handles (test_windows_antivirus.WindowsAmsiContractTests.test_scan_receives_exact_complete_bytes_once_and_releases_handles) ... ok
+test_unavailable_windows_library_is_a_failed_scan (test_windows_antivirus.WindowsAmsiContractTests.test_unavailable_windows_library_is_a_failed_scan) ... ok
+test_active_other_product_uses_windows_amsi (test_windows_antivirus.WindowsAntivirusSelectionTests.test_active_other_product_uses_windows_amsi) ... ok
+test_active_unsupported_product_never_silently_falls_back_to_another_scanner (test_windows_antivirus.WindowsAntivirusSelectionTests.test_active_unsupported_product_never_silently_falls_back_to_another_scanner) ... ok
+test_every_active_third_party_product_must_have_a_supported_provider (test_windows_antivirus.WindowsAntivirusSelectionTests.test_every_active_third_party_product_must_have_a_supported_provider) ... ok
+test_explicit_clamav_path_remains_user_override (test_windows_antivirus.WindowsAntivirusSelectionTests.test_explicit_clamav_path_remains_user_override) ... ok
+test_inactive_third_party_products_do_not_override_defender (test_windows_antivirus.WindowsAntivirusSelectionTests.test_inactive_third_party_products_do_not_override_defender) ... ok
+test_inventory_failure_only_uses_defender_after_its_own_availability_check (test_windows_antivirus.WindowsAntivirusSelectionTests.test_inventory_failure_only_uses_defender_after_its_own_availability_check) ... ok
+test_untrusted_worker_response_never_becomes_clean (test_windows_antivirus.WindowsAntivirusSelectionTests.test_untrusted_worker_response_never_becomes_clean) ... ok
+test_windows_defaults_to_defender_even_with_clamav_installed (test_windows_antivirus.WindowsAntivirusSelectionTests.test_windows_defaults_to_defender_even_with_clamav_installed) ... ok
+test_active_state_is_explicit_and_inventory_never_runs_supplied_executable (test_windows_antivirus.WindowsInventoryContractTests.test_active_state_is_explicit_and_inventory_never_runs_supplied_executable) ... ok
+test_defender_name_match_cannot_swallow_another_vendor (test_windows_antivirus.WindowsInventoryContractTests.test_defender_name_match_cannot_swallow_another_vendor) ... ok
+test_failed_or_malformed_inventory_cannot_establish_a_connected_antivirus (test_windows_antivirus.WindowsInventoryContractTests.test_failed_or_malformed_inventory_cannot_establish_a_connected_antivirus) ... ok
+test_provider_identity_must_match_the_active_vendor_without_ambiguity (test_windows_antivirus.WindowsInventoryContractTests.test_provider_identity_must_match_the_active_vendor_without_ambiguity) ... ok
+test_already_cancelled_request_never_starts_a_process (test_youtube_host.YouTubeProcessTests.test_already_cancelled_request_never_starts_a_process) ... ok
+test_child_failure_does_not_expose_raw_signed_url_or_stderr (test_youtube_host.YouTubeProcessTests.test_child_failure_does_not_expose_raw_signed_url_or_stderr) ... ok
+test_descendant_is_killed_even_when_parent_exits_before_it (test_youtube_host.YouTubeProcessTests.test_descendant_is_killed_even_when_parent_exits_before_it) ... ok
+test_oversize_stdout_and_stderr_are_terminated (test_youtube_host.YouTubeProcessTests.test_oversize_stdout_and_stderr_are_terminated) ... ok
+test_real_child_echo_is_bounded_and_preserves_exact_bytes (test_youtube_host.YouTubeProcessTests.test_real_child_echo_is_bounded_and_preserves_exact_bytes) ... ok
+test_timeout_and_cancellation_terminate_children (test_youtube_host.YouTubeProcessTests.test_timeout_and_cancellation_terminate_children) ... ok
+test_actual_host_exits_cleanly_with_the_chrome_input_pipe_still_open (test_youtube_host.YouTubeProtocolTests.test_actual_host_exits_cleanly_with_the_chrome_input_pipe_still_open) ... ok
+test_actual_native_process_frames_invalid_requests_without_exposing_payload (test_youtube_host.YouTubeProtocolTests.test_actual_native_process_frames_invalid_requests_without_exposing_payload) ... ok
+test_disconnect_cancels_inflight_extraction_and_sends_no_late_reply (test_youtube_host.YouTubeProtocolTests.test_disconnect_cancels_inflight_extraction_and_sends_no_late_reply) ... ok
+test_json_rejects_duplicate_fields_and_nonfinite_values (test_youtube_host.YouTubeProtocolTests.test_json_rejects_duplicate_fields_and_nonfinite_values) ... ok
+test_malformed_request_values_never_become_commands (test_youtube_host.YouTubeProtocolTests.test_malformed_request_values_never_become_commands) ... ok
+test_only_canonical_single_video_url_is_accepted (test_youtube_host.YouTubeProtocolTests.test_only_canonical_single_video_url_is_accepted) ... ok
+test_read_exact_and_native_output_have_bounded_utf8_framing (test_youtube_host.YouTubeProtocolTests.test_read_exact_and_native_output_have_bounded_utf8_framing) ... ok
+test_valid_status_and_resolution_requests_have_fixed_fields (test_youtube_host.YouTubeProtocolTests.test_valid_status_and_resolution_requests_have_fixed_fields) ... ok
+test_configuration_requires_private_known_schema_and_safe_executable (test_youtube_host.YouTubeReadinessTests.test_configuration_requires_private_known_schema_and_safe_executable) ... ok
+test_dependency_or_runtime_mismatch_is_unavailable (test_youtube_host.YouTubeReadinessTests.test_dependency_or_runtime_mismatch_is_unavailable) ... ok
+test_exact_dependencies_and_supported_deno_are_reported (test_youtube_host.YouTubeReadinessTests.test_exact_dependencies_and_supported_deno_are_reported) ... ok
+test_runtime_rechecks_executable_permissions_and_writable_parent (test_youtube_host.YouTubeReadinessTests.test_runtime_rechecks_executable_permissions_and_writable_parent) ... ok
+test_unknown_child_output_is_not_forwarded_to_the_extension (test_youtube_host.YouTubeReadinessTests.test_unknown_child_output_is_not_forwarded_to_the_extension) ... ok
+test_audio_modes_choose_one_audio_only_track_prefer_matching_mp4 (test_youtube_host.YouTubeSelectionTests.test_audio_modes_choose_one_audio_only_track_prefer_matching_mp4) ... ok
+test_equal_resolution_prefers_higher_bitrate_and_combined_keeps_one_track (test_youtube_host.YouTubeSelectionTests.test_equal_resolution_prefers_higher_bitrate_and_combined_keeps_one_track) ... ok
+test_exact_googlevideo_https_playback_only (test_youtube_host.YouTubeSelectionTests.test_exact_googlevideo_https_playback_only) ... ok
+test_highest_resolution_is_not_capped_to_combined_720p (test_youtube_host.YouTubeSelectionTests.test_highest_resolution_is_not_capped_to_combined_720p) ... ok
+test_live_private_drm_age_and_playlist_results_are_rejected (test_youtube_host.YouTubeSelectionTests.test_live_private_drm_age_and_playlist_results_are_rejected) ... ok
+test_metadata_is_bounded_without_signed_urls_or_cookie_fields (test_youtube_host.YouTubeSelectionTests.test_metadata_is_bounded_without_signed_urls_or_cookie_fields) ... ok
+test_missing_required_tracks_does_not_silently_download_a_different_kind (test_youtube_host.YouTubeSelectionTests.test_missing_required_tracks_does_not_silently_download_a_different_kind) ... ok
+test_parent_revalidates_child_identity_urls_output_and_measurements (test_youtube_host.YouTubeSelectionTests.test_parent_revalidates_child_identity_urls_output_and_measurements) ... ok
+test_quality_ceiling_and_lowest_available_fallback_match_existing_app (test_youtube_host.YouTubeSelectionTests.test_quality_ceiling_and_lowest_available_fallback_match_existing_app) ... ok
+test_unsafe_formats_and_required_credentials_are_excluded (test_youtube_host.YouTubeSelectionTests.test_unsafe_formats_and_required_credentials_are_excluded) ... ok
+test_atomic_private_write_preserves_existing_external_hardlink_content (test_youtube_installer.YouTubeInstallerTests.test_atomic_private_write_preserves_existing_external_hardlink_content) ... ok
+test_deno_version_has_minimum_and_executes_no_user_arguments (test_youtube_installer.YouTubeInstallerTests.test_deno_version_has_minimum_and_executes_no_user_arguments) ... ok
+test_failed_dependency_install_does_not_activate_new_host_or_registration (test_youtube_installer.YouTubeInstallerTests.test_failed_dependency_install_does_not_activate_new_host_or_registration) ... ok
+test_fixed_dependency_argv_has_no_config_plugins_or_extra_package_source (test_youtube_installer.YouTubeInstallerTests.test_fixed_dependency_argv_has_no_config_plugins_or_extra_package_source) ... ok
+test_install_registers_only_after_dependency_success_and_keeps_private_config (test_youtube_installer.YouTubeInstallerTests.test_install_registers_only_after_dependency_success_and_keeps_private_config) ... ok
+test_linux_locations_use_current_user_and_reject_relative_config (test_youtube_installer.YouTubeInstallerTests.test_linux_locations_use_current_user_and_reject_relative_config) ... ok
+test_manifest_allows_exact_extension_origins_only (test_youtube_installer.YouTubeInstallerTests.test_manifest_allows_exact_extension_origins_only) ... ok
+test_relative_parent_control_and_missing_deno_paths_are_rejected (test_youtube_installer.YouTubeInstallerTests.test_relative_parent_control_and_missing_deno_paths_are_rejected) ... ok
+test_requirements_pin_only_pure_python_packages_with_hashes (test_youtube_installer.YouTubeInstallerTests.test_requirements_pin_only_pure_python_packages_with_hashes) ... ok
+test_runtime_in_a_replaceable_parent_is_rejected_without_execution (test_youtube_installer.YouTubeInstallerTests.test_runtime_in_a_replaceable_parent_is_rejected_without_execution) ... ok
+test_runtime_probe_output_and_timeout_are_bounded (test_youtube_installer.YouTubeInstallerTests.test_runtime_probe_output_and_timeout_are_bounded) ... ok
+test_symlink_runtime_and_parent_install_path_are_rejected (test_youtube_installer.YouTubeInstallerTests.test_symlink_runtime_and_parent_install_path_are_rejected) ... ok
+test_uninstall_removes_only_fixed_host_files_and_preserves_venv_and_unrelated_data (test_youtube_installer.YouTubeInstallerTests.test_uninstall_removes_only_fixed_host_files_and_preserves_venv_and_unrelated_data) ... ok
+test_unix_launcher_quotes_fixed_paths_and_never_forwards_browser_arguments (test_youtube_installer.YouTubeInstallerTests.test_unix_launcher_quotes_fixed_paths_and_never_forwards_browser_arguments) ... ok
+test_unsupported_browser_is_rejected (test_youtube_installer.YouTubeInstallerTests.test_unsupported_browser_is_rejected) ... ok
+test_windows_launcher_rejects_shell_metacharacters_and_uses_isolation (test_youtube_installer.YouTubeInstallerTests.test_windows_launcher_rejects_shell_metacharacters_and_uses_isolation) ... ok
+test_writable_or_nonexecuting_runtime_is_rejected_without_launch (test_youtube_installer.YouTubeInstallerTests.test_writable_or_nonexecuting_runtime_is_rejected_without_launch) ... ok
+
+----------------------------------------------------------------------
+Ran 115 tests in 1.265s
+
+OK
+
+> my-video-app@1.16.0 build
+> node scripts/build.mjs
+
+Local build complete: 50 files; 9 runtime entries; 16 shared modules; no test-only completion bundle.
+
+> my-video-app@1.16.0 test:browser
+> node tests/browser.mjs
+
+PASS 19 real IndexedDB database checks
+PASS Embedded database creates, migrates and manages data atomically in real IndexedDB
+PASS 10 download folder and automatic-save checks
+PASS Initial download folder setup gates every entry point and preserves automatic saving and private isolation
+PASS 13 YouTube browser and media checks
+PASS YouTube extraction plans preserve video/audio, automatic saving, cancellation and security using explicit native/site doubles
+PASS 8 popup/collector checks
+PASS Toolbar popup and authenticated collector rescan work with real DOM and IndexedDB
+PASS Explicit media URL copy and manual fallback work in popup and app without downloading
+PASS Built UI loads with CSP; actual FFmpeg Worker assets available
+PASS Local install uses independent entry points without an account/activation engine
+PASS PNG 2x produces a real decodable 128x96 image
+PASS PNG 4x produces a real decodable 256x192 image
+PASS MP4 2x preserves duration and audio in separate H.264/AAC output
+PASS Owned input buffers preserve exact media outputs, metadata, random reads and source files in eight real Workers
+PASS Local video conversion writes decodable MP4 with its expected codecs
+PASS Local video conversion writes decodable MKV with its expected codecs
+PASS Local video conversion writes decodable WEBM with its expected codecs
+PASS Local audio extraction writes MP3 with the original audible tone
+PASS Local audio extraction writes M4A with the original audible tone
+PASS Local audio extraction writes WAV with the original audible tone
+PASS Local MP4 merge copies video and replaces its audio with the chosen file
+PASS Local MKV merge copies video and replaces its audio with the chosen file
+PASS Standalone audio files can be converted without a video track
+PASS Missing audio is rejected and conversion cancellation allows the next job
+PASS HTML disguised as MP4 is rejected before decode
+PASS Excessive output dimensions are rejected
+PASS Cancel terminates actual Worker and allows a new job
+PASS Completion hook stages successful file before original cleanup; other outcomes skipped
+PASS Shared queue lock survives simultaneous offer and cleanup in two tabs
+PASS Private tools hide the shared normal queue and preserve its files while manual processing remains usable
+PASS Opt-out skips staging; TTL and delete clean real OPFS data
+PASS Independent HLS VOD remux preserves video frames and audio
+PASS Parallel stream segments download concurrently and preserve the complete decoded video
+PASS Transient segment failure is retried without a duplicate or missing media segment
+PASS Concurrent preparations queue successfully and cancelling a waiting job makes no file request
+PASS Browser-reported HTTP/1.1 is observed on a real fetch without forcing a transport
+PASS HLS master handles its separate default audio track
+PASS HLS byte ranges produce a complete decodable MP4
+PASS Independent static DASH remux preserves separate video and audio tracks
+PASS Redirected HLS master and child playlists resolve relative media against each actual response URL
+PASS Redirected DASH manifest resolves relative initialization and media against its actual response URL
+PASS DASH representation templates inherit parent attributes and timeline while overriding initialization
+PASS DASH child timeline replaces its parent timeline without losing inherited attributes
+PASS DASH terminal repeats respect inherited presentation offsets in real 100-second fragments
+PASS DASH SegmentList inherits initialization and replaces ancestor media URLs in a complete remux
+PASS DASH planner checks ten offset, inheritance, fractional-boundary and overflow invariants in Chromium
+PASS HLS highest quality selects the larger rendition even at lower declared bitrate
+PASS HLS height ceiling selects the actual available lower rendition
+PASS DASH highest quality selects the actual larger rendition
+PASS DASH height ceiling selects the actual available lower rendition
+PASS HLS separate audio can be saved as a decodable MP3
+PASS DASH audio can be saved as a decodable M4A
+PASS Direct MP4 can be downloaded as audio through the same local worker
+PASS Local video conversion applies a real height ceiling
+PASS Encrypted HLS and protected DASH are rejected without any key/license requests
+PASS Cancelling stream preparation terminates the real worker and allows a new task
+PASS Website collectors cannot invoke download/history commands or impersonate the app
+PASS Media collector discovers DOM video sources without initiating downloads
+PASS HTTP/3 observation metadata and partial-response totals preserve existing stream classification using API doubles
+PASS Local app downloads detected MP4 byte-for-byte and records completion using API doubles
+PASS Polling reuses unchanged rows, restores focus on changed rows and leaves outside controls focused
+PASS Local download UI passes the chosen audio format through background and offscreen using API doubles
+PASS Concurrent duplicate requests are coalesced and native cancellation updates history using API doubles
+PASS History retry creates a new intact download and keeps the cancelled record using API doubles
+PASS Cancellation while the offscreen document starts prevents the later media request using API doubles
+PASS Infected verdict opens an explicit review dialog and renders untrusted threat names as text using API doubles
+PASS Delete failure preserves review and a later explicit deletion records success using API doubles
+PASS Unavailable local scanner remains unverified until the user explicitly acknowledges keeping the file
+PASS Chrome danger offers browser review and cannot be overridden by the app keep control using API doubles
+PASS Built-in scan of real prepared bytes forces review despite a clean external verdict and never offers automatic processing
+PASS Bound native internal findings remain separate from external clean status and render as literal text
+PASS Bound internal no-signals evidence never turns an unavailable external scanner into clean
+PASS Local antivirus permission is requested only by the visible connect button using API doubles
+PASS Missing antivirus helper is shown as unavailable rather than a successful connection
+PASS Clearing local history leaves downloaded files intact
+PASS Antivirus OFF persists across reload without native requests or permission prompts
+PASS Antivirus OFF saves exact video with distinct disabled status and no automatic processing
+PASS Antivirus OFF preserves real prepared-byte internal risk and requires explicit review
+PASS Chrome warning remains authoritative while OFF and enabling restores native connection
+PASS Restart reconciliation releases interrupted preparation slots and cleans owned temp files using API doubles
+PASS Validated download quality and output choices survive reopening the local app
+PASS An immediate media-row download waits for saved quality and audio format using API doubles
+PASS An immediate direct-URL download waits for saved quality and audio format using API doubles
+PASS Choices changed while an immediate download waits take precedence over late saved options using API doubles
+PASS A late preferences restore never overwrites choices the user has already changed
+PASS Incognito choices neither read nor overwrite the stored normal-window preferences using API doubles
+PASS Prepared files ignore misleading text MIME and attachment names and save exact playable MP4/WebM
+PASS Background downloads preserve playable media and canonical extensions with upscale disabled using API doubles
+PASS HTML, plain text and fake video MIME are rejected before the browser download API using real file bytes
+PASS A real video exceeding 2 GiB downloads in parallel to OPFS and saves as one byte-identical playable MP4
+PASS Cancelling a multi-gigabyte preparation aborts parallel bodies and removes partial disk data
+PASS An injected disk quota error aborts preparation and removes the partial OPFS video
+PASS A DASH source exceeding 2 GiB remuxes through real OPFS-backed FFmpeg into one intact MP4
+PASS A four-hour finite video downloads through DASH without a media-duration cap and preserves both frames
+PASS No outbound requests or page exceptions in new processing workflow
+92 browser harness checks passed. Actual extension installation remains blocked by administrator policy.

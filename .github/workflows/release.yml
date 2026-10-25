@@ -6,6 +6,7 @@ on:
     paths:
       - package.json
       - artifacts/my-video-app-extension.zip
+      - artifacts/my-video-app-youtube-helper.zip
       - artifacts/SHA256SUMS
       - .github/workflows/release.yml
   workflow_dispatch:
@@ -51,26 +52,39 @@ jobs:
           manifest = json.loads(Path('src/local/manifest.json').read_text())
           if manifest['version'] != version:
               raise SystemExit('Source manifest and package versions differ.')
-          asset = Path('artifacts/my-video-app-extension.zip')
-          expected = [line.split()[0] for line in Path('artifacts/SHA256SUMS').read_text().splitlines()
-                      if len(line.split()) == 2 and line.split()[1] == asset.name]
-          digest = hashlib.sha256(asset.read_bytes()).hexdigest()
-          if expected != [digest]:
-              raise SystemExit('The committed installation ZIP checksum is invalid.')
-          with ZipFile(asset) as archive:
-              names = archive.namelist()
-              if not names or len(names) != len(set(names)):
-                  raise SystemExit('The installation ZIP is empty or contains duplicate names.')
-              for item in archive.infolist():
-                  name = PurePosixPath(item.filename)
-                  if (name.is_absolute() or '..' in name.parts or '\\' in item.filename
-                          or not item.filename.startswith('my-video-app/')
-                          or stat.S_ISLNK(item.external_attr >> 16) or item.flag_bits & 1):
-                      raise SystemExit('An unsafe or encrypted ZIP member was found.')
-              if archive.testzip() is not None:
-                  raise SystemExit('The installation ZIP failed its integrity check.')
-              if json.loads(archive.read('my-video-app/manifest.json'))['version'] != version:
-                  raise SystemExit('The installation ZIP belongs to another version.')
+          def validate_archive(filename, prefix, source_files=None):
+              asset = Path('artifacts', filename)
+              expected = [line.split()[0] for line in Path('artifacts/SHA256SUMS').read_text().splitlines()
+                          if len(line.split()) == 2 and line.split()[1] == asset.name]
+              digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+              if expected != [digest]:
+                  raise SystemExit('The committed ZIP checksum is invalid: ' + filename)
+              with ZipFile(asset) as archive:
+                  names = archive.namelist()
+                  if not names or len(names) != len(set(names)):
+                      raise SystemExit('A ZIP is empty or contains duplicate names: ' + filename)
+                  for item in archive.infolist():
+                      name = PurePosixPath(item.filename)
+                      if (name.is_absolute() or '..' in name.parts or '\\' in item.filename
+                              or name.as_posix() != item.filename
+                              or not item.filename.startswith(prefix + '/')
+                              or stat.S_ISLNK(item.external_attr >> 16) or item.flag_bits & 1):
+                          raise SystemExit('An unsafe or encrypted ZIP member was found: ' + filename)
+                  if archive.testzip() is not None:
+                      raise SystemExit('A ZIP failed its integrity check: ' + filename)
+                  if source_files is None:
+                      if json.loads(archive.read(prefix + '/manifest.json'))['version'] != version:
+                          raise SystemExit('The installation ZIP belongs to another version.')
+                  else:
+                      if set(names) != {prefix + '/' + name for name in source_files}:
+                          raise SystemExit('The YouTube helper ZIP file list is invalid.')
+                      for name in source_files:
+                          if archive.read(prefix + '/' + name) != Path('native', name).read_bytes():
+                              raise SystemExit('The YouTube helper ZIP has stale source bytes: ' + name)
+              return digest
+          digest = validate_archive('my-video-app-extension.zip', 'my-video-app')
+          helper_digest = validate_archive('my-video-app-youtube-helper.zip', 'my-video-app-youtube-helper',
+                                          {'YOUTUBE.ko.md', 'youtube_host.py', 'install_youtube.py', 'youtube-requirements.txt'})
           tag = 'v' + version
           repository = os.environ['GITHUB_REPOSITORY']
           commit = os.environ['GITHUB_SHA']
@@ -106,8 +120,11 @@ jobs:
           notes = ('설치 파일: **my-video-app-extension.zip**\n\n'
                    'ZIP을 풀고 Chrome의 확장 프로그램 화면에서 개발자 모드를 켠 뒤 '
                    '압축해제된 확장 프로그램을 로드하세요. 기존 설치는 설치 폴더를 갱신하고 새로고침하세요.\n\n'
+                   '**YouTube 다운로드는 별도 my-video-app-youtube-helper.zip과 Python·Deno를 한 번 설치해야 합니다.** '
+                   '설치 방법은 도우미 ZIP의 YOUTUBE.ko.md와 앱 설정에서 확인하세요.\n\n'
                    '버전별 변경 내역은 저장소 README.md에서 확인할 수 있습니다.\n\n'
-                   '**SHA-256**\n\n`' + digest + '`\n')
+                   '**SHA-256**\n\n- my-video-app-extension.zip: `' + digest + '`\n'
+                   '- my-video-app-youtube-helper.zip: `' + helper_digest + '`\n')
           if rows:
               changes = [line.strip('|').split('|')[1].strip() for line in rows
                          if len(line.strip('|').split('|')) >= 2]
@@ -116,7 +133,7 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('tag=' + tag + '\n')
               output.write('exists=' + str(release is not None).lower() + '\n')
-          print('Validated', tag, 'at', commit, '| ZIP SHA-256:', digest)
+          print('Validated', tag, 'at', commit, '| ZIP SHA-256:', digest, '| YouTube helper SHA-256:', helper_digest)
           PY
 
       - name: Publish release with installation ZIP
@@ -126,8 +143,8 @@ jobs:
           RELEASE_EXISTS: ${{ steps.validate.outputs.exists }}
         run: |
           if [ "$RELEASE_EXISTS" = true ]; then
-            gh release upload "$TAG" artifacts/my-video-app-extension.zip --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload "$TAG" artifacts/my-video-app-extension.zip artifacts/my-video-app-youtube-helper.zip --repo "$GITHUB_REPOSITORY" --clobber
             gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest --title "My Video App $TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
           else
-            gh release create "$TAG" artifacts/my-video-app-extension.zip --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest --title "My Video App $TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+            gh release create "$TAG" artifacts/my-video-app-extension.zip artifacts/my-video-app-youtube-helper.zip --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest --title "My Video App $TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
           fi

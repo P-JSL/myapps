@@ -11,7 +11,7 @@ process.chdir(fileURLToPath(new URL('../', import.meta.url)));
 await access('dist/manifest.json');
 validateDependencyAudit(JSON.parse(await readFile('reports/dependency-audit.json', 'utf8')), hash(await readFile('package-lock.json')));
 const report = JSON.parse(await readFile('reports/browser.json', 'utf8'));
-assert(report.outcomes.length >= 91 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
+assert(report.outcomes.length >= 92 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
 const large = JSON.parse(await readFile('reports/large-download.json', 'utf8'));
 assert(large.status === 'passed' && large.outcomes.length === 5 && large.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real large-file, disk-remux, long-video, cancellation and quota checks required');
 assert.deepEqual(large.outcomes.map(outcome => outcome.name), ['parallel-over-2-gib', 'cancel-and-cleanup', 'injected-quota-and-cleanup', 'disk-stream-remux-over-2-gib', 'long-duration-disk-stream']);
@@ -23,8 +23,8 @@ assert(antivirus.outcomes.length >= 6 && antivirus.outcomes.every(outcome => out
 assert.equal(hash(await readFile('native/antivirus_host.py')), antivirus.sourceSha256, 'Native host changed since real antivirus validation');
 assert.equal(hash(await readFile('native/internal_scan.py')), antivirus.internalScanSourceSha256, 'Internal scanner changed since real antivirus integration validation');
 const native = JSON.parse(await readFile('reports/native-tests.json', 'utf8'));
-assert(native.status === 'passed' && native.count >= 69, 'Successful native unit results required');
-for (const name of ['native/antivirus_host.py', 'native/windows_antivirus.py', 'native/internal_scan.py', 'native/install.py']) assert.equal(hash(await readFile(name)), native.sourceSha256[name], `Native source changed since verification: ${name}`);
+assert(native.status === 'passed' && native.count >= 115, 'Successful antivirus and YouTube native unit results required');
+for (const name of ['native/antivirus_host.py', 'native/windows_antivirus.py', 'native/internal_scan.py', 'native/install.py', 'native/youtube_host.py', 'native/install_youtube.py', 'native/youtube-requirements.txt']) assert.equal(hash(await readFile(name)), native.sourceSha256[name], `Native source changed since verification: ${name}`);
 assert.equal(JSON.parse(await readFile('reports/build.json', 'utf8')).engine, 'independent-local');
 const performance = JSON.parse(await readFile('reports/performance.json', 'utf8'));
 assert(performance.status === 'passed' && performance.outcomes.length === 5 && performance.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current algorithm benchmarks required');
@@ -56,6 +56,17 @@ assert(folder.outcomes.length >= 10 && folder.outcomes.every(outcome => outcome.
 assert.deepEqual(folder.pageErrors, []);
 assert.deepEqual(folder.outboundRequests, []);
 assert.equal(identity, folder.buildSha256, 'Download folder validation belongs to another build');
+const youtube = JSON.parse(await readFile('reports/youtube.json', 'utf8'));
+assert(youtube.outcomes.length >= 13 && youtube.outcomes.every(outcome => outcome.status === 'passed'), 'Successful YouTube media, source binding, required audio, retry and privacy checks required');
+assert.deepEqual(youtube.pageErrors, []);
+assert.deepEqual(youtube.outboundRequests, []);
+assert.equal(identity, youtube.buildSha256, 'YouTube validation belongs to another build');
+for (const [name, expected] of Object.entries(youtube.sourceSha256)) assert.equal(hash(await readFile(name)), expected, `YouTube source changed since browser validation: ${name}`);
+const youtubeNative = JSON.parse(await readFile('reports/youtube-native-integration.json', 'utf8'));
+assert(youtubeNative.status === 'passed' && youtubeNative.outcomes.length >= 8
+  && youtubeNative.outcomes.every(outcome => outcome.status === 'passed'), 'Successful pinned yt-dlp, EJS and Deno offline integration required');
+assert(youtubeNative.validationRuntimeProvenance?.installedBinaryMatchesVerifiedWheel === true, 'YouTube validation runtime must match its verified wheel');
+for (const [name, expected] of Object.entries(youtubeNative.sourceSha256)) assert.equal(hash(await readFile(name)), expected, `YouTube native source changed since integration validation: ${name}`);
 
 for (const directory of ['dist', 'native', 'src', 'scripts', 'tests', 'reports']) {
   for (const name of await files(directory, { skipDirectories: ['__pycache__'] })) assertNoTestMarker(await readFile(`${directory}/${name}`), `${directory}/${name}`);

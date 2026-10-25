@@ -1,0 +1,88 @@
+{
+  "status": "passed",
+  "ytDlpVersion": "2026.10.21",
+  "ejsVersion": "0.8.0",
+  "runtime": "deno 2.9.8 (stable, release, x86_64-unknown-linux-gnu)",
+  "scope": "Real hash-installed yt-dlp/EJS packages and Deno runtime; local injected InfoExtractor and harmless preprocessed-player fixtures; no live YouTube requests, cookies, media writes or real browser/native registration. The EJS protocol check does not validate current remote player parsing.",
+  "liveSiteValidation": {
+    "status": "not-run",
+    "reason": "Selected executor has a restricted HTTP egress policy with no youtube.com or www.youtube.com grant; no bypass or live-site request attempted. Offline checks do not establish current live YouTube compatibility."
+  },
+  "runtimeExecutableSha256": "368bca08999e02c6911b8f248167b582276b1f547db5712b6e736d7eda1dbda7",
+  "ejsBundleSha256": {
+    "core": "18da6ce0758b416e7ae645084f4f8801f9f9d59d6c477c05eaa0ff94ebd8cc00",
+    "lib": "c55987fe697e5b9ee18830163f7af85327e9bb5c3e674b969d38c8d205eaa577"
+  },
+  "outcomes": [
+    {
+      "name": "pinned-package-and-real-runtime-readiness",
+      "status": "passed"
+    },
+    {
+      "name": "real-ytdlp-offline-extraction-highest-split-tracks",
+      "status": "passed"
+    },
+    {
+      "name": "real-ytdlp-offline-quality-ceiling",
+      "status": "passed"
+    },
+    {
+      "name": "real-ytdlp-offline-audio-only",
+      "status": "passed"
+    },
+    {
+      "name": "real-package-config-isolation-and-no-browser-cookie-access",
+      "status": "passed"
+    },
+    {
+      "name": "real-deno-sandbox-denies-file-and-network-permissions",
+      "status": "passed"
+    },
+    {
+      "name": "real-ejs-and-deno-harmless-preprocessed-challenge-protocol",
+      "status": "passed"
+    },
+    {
+      "name": "real-ytdlp-deno-provider-honors-jitless-and-sandbox-policy",
+      "status": "passed"
+    }
+  ],
+  "sourceSha256": {
+    "native/youtube_host.py": "df078b86a473fd033d5c925ec2bd7d56ee263d52b80091603a33d164f8d18c2b",
+    "native/install_youtube.py": "9aeb8e48f69919e6f57eee97747930c313164ad8e148e205cae1afdfc0fb6d22",
+    "native/youtube-requirements.txt": "aa4d45e5bc75c6c6443e8036f5a11d12d0e9c4927d6edb10448c5f3937ebeda6",
+    "native/test_youtube_integration.py": "cbac6f997d17f8fea0181cf765a618053ba323cdc9f29ff42b3e6f734a6b2f93"
+  },
+  "validationRuntimeProvenance": {
+    "package": "deno",
+    "version": "2.9.8",
+    "wheel": "deno-2.9.8-validation.whl",
+    "wheelBytes": 41964284,
+    "wheelSha256": "b1d1318e7deda8efd593aefa8b565a827fe71cf83aeff09d3a5ceb047444ca18",
+    "sourceUrl": "https://files.pythonhosted.org/packages/76/21/16d41da4c0c1c966d85fbfc5af6e2ea5e55eb9aadce00b82810875fe11d0/deno-2.9.8-py3-none-manylinux_2_27_x86_64.whl",
+    "runtimeExecutableSha256": "368bca08999e02c6911b8f248167b582276b1f547db5712b6e736d7eda1dbda7",
+    "installedBinaryMatchesVerifiedWheel": true
+  },
+  "validationPackageProvenance": [
+    {
+      "package": "yt-dlp",
+      "version": "2026.10.21",
+      "wheel": "yt_dlp-2026.10.21-py3-none-any.whl",
+      "wheelBytes": 3188012,
+      "wheelSha256": "94a3a3e2c423129d0bbd2f1be000c4171fa1226c29e251c84aff868f2851c247",
+      "sourceUrl": "https://files.pythonhosted.org/packages/b7/75/ae700ddc7e0b1095fd06cf7e251627dcf4cafcaff460cce92cdc08023b13/yt_dlp-2026.10.21-py3-none-any.whl",
+      "verifiedInstalledPackageFiles": 1049,
+      "installedPackageBytesMatchVerifiedWheel": true
+    },
+    {
+      "package": "yt-dlp-ejs",
+      "version": "0.8.0",
+      "wheel": "yt_dlp_ejs-0.8.0-py3-none-any.whl",
+      "wheelBytes": 53443,
+      "wheelSha256": "79300e5fca7f937a1eeede11f0456862c1b41107ce1d726871e0207424f4bdb4",
+      "sourceUrl": "https://files.pythonhosted.org/packages/e3/bd/520769863744b669440a924271a6159ddd82ad5ae26b4ac4d4b69e9f8d44/yt_dlp_ejs-0.8.0-py3-none-any.whl",
+      "verifiedInstalledPackageFiles": 6,
+      "installedPackageBytesMatchVerifiedWheel": true
+    }
+  ]
+}

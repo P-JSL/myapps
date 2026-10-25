@@ -22,7 +22,7 @@ async function fixture(t: TestContext) {
   await writeFile(path.join(source, 'dist', 'manifest.json'), '{"name":"Archive fixture","version":"1.0.0"}\n');
   await writeFile(path.join(source, 'src', 'main.ts'), 'export const fixture = true;\n');
   await writeFile(path.join(source, 'README.md'), 'Harmless release fixture.\n');
-  for (const name of ['README.ko.md', 'antivirus_host.py', 'windows_antivirus.py', 'install.py', 'test_ignored.py']) {
+  for (const name of ['README.ko.md', 'antivirus_host.py', 'windows_antivirus.py', 'internal_scan.py', 'install.py', 'test_ignored.py', 'YOUTUBE.ko.md', 'youtube_host.py', 'install_youtube.py', 'youtube-requirements.txt']) {
     await writeFile(path.join(source, 'native', name), `Harmless fixture: ${name}\n`);
   }
   return { source, outside, artifacts: path.join(source, 'artifacts') };
@@ -63,29 +63,43 @@ for (const kind of ['file', 'dir'] as const) {
   });
 }
 
-test('normal release creates all five valid archives and checksums while excluding a node_modules symlink', async t => {
+test('normal release creates all six valid archives and keeps the two native helpers separate', async t => {
   const { source, outside, artifacts } = await fixture(t);
   await symlink(outside, path.join(source, 'node_modules'), 'dir');
+  await symlink(outside, path.join(source, '.venv'), 'dir');
+  for (const name of ['config.json', 'youtube-config.json']) await writeFile(path.join(source, 'native', name), sentinel);
   const result = archive(source);
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, result.stderr);
   const archives = inspect(artifacts);
-  assert.deepEqual(archives.map(file => file.name), ['my-video-app-antivirus-helper.zip', 'my-video-app-extension.zip', 'my-video-app-source.zip', 'vdh-typescript-upscale-extension.zip', 'vdh-typescript-upscale-source.zip']);
+  assert.deepEqual(archives.map(file => file.name), ['my-video-app-antivirus-helper.zip', 'my-video-app-extension.zip', 'my-video-app-source.zip', 'my-video-app-youtube-helper.zip', 'vdh-typescript-upscale-extension.zip', 'vdh-typescript-upscale-source.zip']);
   for (const file of archives) {
     assert.equal(file.corruptMember, null);
     assert.equal(file.containsOutsideFile, false, file.name);
     assert(!file.members.some(name => name.includes('/node_modules/')), file.name);
+    assert(!file.members.some(name => /\/(?:\.venv|config\.json|youtube-config\.json)(?:\/|$)/.test(name)), file.name);
   }
-  assert.deepEqual(archives.find(file => file.name === 'my-video-app-antivirus-helper.zip')?.members, ['my-video-app-antivirus-helper/README.ko.md', 'my-video-app-antivirus-helper/antivirus_host.py', 'my-video-app-antivirus-helper/install.py', 'my-video-app-antivirus-helper/windows_antivirus.py']);
+  assert.deepEqual(archives.find(file => file.name === 'my-video-app-antivirus-helper.zip')?.members, ['my-video-app-antivirus-helper/README.ko.md', 'my-video-app-antivirus-helper/antivirus_host.py', 'my-video-app-antivirus-helper/install.py', 'my-video-app-antivirus-helper/internal_scan.py', 'my-video-app-antivirus-helper/windows_antivirus.py']);
+  assert.deepEqual(archives.find(file => file.name === 'my-video-app-youtube-helper.zip')?.members, ['my-video-app-youtube-helper/YOUTUBE.ko.md', 'my-video-app-youtube-helper/install_youtube.py', 'my-video-app-youtube-helper/youtube-requirements.txt', 'my-video-app-youtube-helper/youtube_host.py']);
   assert.deepEqual(await readFile(path.join(artifacts, 'my-video-app-extension.zip')), await readFile(path.join(artifacts, 'vdh-typescript-upscale-extension.zip')));
   assert.deepEqual(await readFile(path.join(artifacts, 'my-video-app-source.zip')), await readFile(path.join(artifacts, 'vdh-typescript-upscale-source.zip')));
   const checksums = (await readFile(path.join(artifacts, 'SHA256SUMS'), 'utf8')).trim().split('\n');
-  assert.equal(checksums.length, 5);
+  assert.equal(checksums.length, 6);
   for (const line of checksums) {
     const match = line.match(/^([a-f0-9]{64})  ([a-z-]+\.zip)$/);
     assert(match?.[1] && match[2], 'Checksums must identify each archive');
     assert.equal(createHash('sha256').update(await readFile(path.join(artifacts, match[2]))).digest('hex'), match[1]);
   }
+});
+
+test('missing native helper source aborts packaging and removes a stale checksum manifest', async t => {
+  const { source, artifacts } = await fixture(t);
+  await mkdir(artifacts); await writeFile(path.join(artifacts, 'SHA256SUMS'), 'old-success\n');
+  await rm(path.join(source, 'native', 'youtube_host.py'));
+  const result = archive(source);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Required native helper files are missing: youtube_host.py/);
+  assert.equal((await readdir(artifacts)).includes('SHA256SUMS'), false);
 });
 
 test('release entries use maximum DEFLATE compression even with deterministic custom ZipInfo metadata', async t => {
@@ -96,7 +110,8 @@ test('release entries use maximum DEFLATE compression even with deterministic cu
     id: index % 137, title: 'media asset ' + (index % 41), url: 'https://media.invalid/clip/' + (index % 67) + '.mp4',
     payload: 'LOCAL_VIDEO_APP'.repeat(1 + index % 31), quality: [1080, 720, 480][index % 3],
   })).join('\n'));
-  for (const directory of ['dist', 'src', 'native']) await writeFile(path.join(source, directory, 'level-fixture.txt'), payload);
+  for (const directory of ['dist', 'src']) await writeFile(path.join(source, directory, 'level-fixture.txt'), payload);
+  for (const name of ['README.ko.md', 'YOUTUBE.ko.md']) await writeFile(path.join(source, 'native', name), payload);
   const result = archive(source);
   assert.equal(result.error, undefined); assert.equal(result.status, 0, result.stderr);
   const oracle = spawnSync(python, ['-c', `
@@ -112,7 +127,8 @@ results=[]
 for name,member in [
     ('my-video-app-extension.zip','my-video-app/level-fixture.txt'),
     ('my-video-app-source.zip','my-video-app-source/src/level-fixture.txt'),
-    ('my-video-app-antivirus-helper.zip','my-video-app-antivirus-helper/level-fixture.txt'),
+    ('my-video-app-antivirus-helper.zip','my-video-app-antivirus-helper/README.ko.md'),
+    ('my-video-app-youtube-helper.zip','my-video-app-youtube-helper/YOUTUBE.ko.md'),
     ('vdh-typescript-upscale-extension.zip','my-video-app/level-fixture.txt'),
     ('vdh-typescript-upscale-source.zip','my-video-app-source/src/level-fixture.txt'),
 ]:
@@ -136,7 +152,7 @@ print(json.dumps({'sixBytes':len(six),'nineBytes':len(nine),'archives':results})
     deflated: boolean; dateTime: number[]; mode: number;
   }> };
   assert(evidence.nineBytes < evidence.sixBytes, 'Fixture must distinguish the maximum compression from the default level');
-  assert.equal(evidence.archives.length, 5);
+  assert.equal(evidence.archives.length, 6);
   for (const file of evidence.archives) {
     assert.equal(file.maximumCompression, true, file.name);
     assert.equal(file.decodedBytesMatch, true, file.name); assert.equal(file.corruptMember, null, file.name);

@@ -12,7 +12,7 @@
   "baselineAdaptation": "The hash-checked 1.7.0 UI receives only the current internal-scan summary presentation in memory; historical row replacement and all full-text/focus/token/pending assertions remain unchanged.",
   "sourceSha256": {
     "src/local/collect.ts": "eb36555aa3441a421eafab00d1f449d09fd3d72aac5144a665894c95c00cce2a",
-    "src/local/ui.ts": "37df522eaeb6be4a108219e133eed321c424a1525b0b38b5b44f03bbe009d026"
+    "src/local/ui.ts": "9f5ecfb98034fb659a96437d184c66ca9fe3c6e5d65b50149dd38e3bf02dce96"
   },
   "browser": "154.0.8037.57",
   "platform": "linux",
@@ -26,11 +26,11 @@
         "nonMediaTimings": 200
       },
       "baseline": {
-        "elapsedMs": 58.39999997615814,
+        "elapsedMs": 51.5,
         "fullDocumentScans": 40
       },
       "optimized": {
-        "elapsedMs": 3.4000000059604645,
+        "elapsedMs": 2.599999964237213,
         "fullDocumentScans": 0
       }
     },
@@ -42,11 +42,11 @@
         "nonMediaTimings": 1000
       },
       "baseline": {
-        "elapsedMs": 10831.199999988079,
+        "elapsedMs": 10669.199999988079,
         "fullDocumentScans": 200
       },
       "optimized": {
-        "elapsedMs": 5.4000000059604645,
+        "elapsedMs": 5.699999988079071,
         "fullDocumentScans": 0
       }
     },
@@ -58,12 +58,12 @@
         "polls": 100
       },
       "baseline": {
-        "elapsedMs": 997.4000000059605,
+        "elapsedMs": 1086,
         "createdElements": 280000,
         "listNodeMutations": 80000
       },
       "optimized": {
-        "elapsedMs": 82.5,
+        "elapsedMs": 85.89999997615814,
         "createdElements": 0,
         "listNodeMutations": 0
       }
@@ -76,12 +76,12 @@
         "polls": 100
       },
       "baseline": {
-        "elapsedMs": 970.5,
+        "elapsedMs": 1095.3999999761581,
         "createdElements": 280000,
         "listNodeMutations": 80000
       },
       "optimized": {
-        "elapsedMs": 94.80000001192093,
+        "elapsedMs": 95,
         "createdElements": 700,
         "listNodeMutations": 200
       }

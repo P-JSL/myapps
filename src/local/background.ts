@@ -9,12 +9,14 @@ import { isMediaFileFormat, mediaFilename, probeMediaFile } from './media-file.t
 import { chromeWarning, scanFile, probeAntivirus, cancelAntivirusRequests, internalScanResponse, incompleteInternalScan, combineInternalScans, type ScanResult, type FileSecurity } from './antivirus.ts';
 import { ANTIVIRUS_ENABLED_KEY, antivirusEnabled } from './security-preferences.ts';
 import { DOWNLOAD_FOLDER_CONFIRMED_KEY, downloadFolderConfirmed } from './download-folder.ts';
+import { youtubeVideo, resolveYouTube, probeYouTube, type YouTubeResolution } from './youtube.ts';
 
 const media = new MediaCatalog();
 const discoveryEpochs = new Map<number, object>();
 const rescans = new Map<number, { id: string; epoch: object; url: string }>();
 const privateHistory = new Map<string, HistoryItem>();
 const cancelled = new Set<string>();
+const youtubeResolutions = new Map<string, AbortController>();
 const finalizing = new Set<number>();
 const finalizeAgain = new Set<number>();
 const deciding = new Set<number>();
@@ -314,6 +316,12 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
   // Gate every entry point before creating history, preparing bytes or starting a transfer.
   // Never pass an absolute path to downloads.download: Chrome only accepts relative names.
   if (!await ensureDownloadFolder()) return;
+  if (item.kind === 'youtube') {
+    const source = youtubeVideo(item.url);
+    if (!source) throw new Error('지원하는 YouTube 단일 영상 주소가 아닙니다.');
+    item = { ...item, url: source.url };
+    if (!await chrome.permissions.contains({ permissions: ['nativeMessaging'] })) throw new Error('설정의 YouTube 다운로드에서 로컬 도우미 연결 권한을 먼저 허용하세요.');
+  }
   const filename = filenameFor(item);
   const entry: HistoryItem = { id: crypto.randomUUID(), url: item.url, filename: options.output === 'original' ? filename : filename.replace(/\.[^.]+$/, '') + '.' + options.output, kind: item.kind, state: 'preparing', createdAt: Date.now(), incognito: !!tab.incognito || chrome.extension.inIncognitoContext, options, internalScan: incompleteInternalScan('다운로드 파일 전체의 내부 검사는 아직 수행되지 않았습니다.') };
   await navigator.locks.request('my-video-app-start', async () => {
@@ -327,6 +335,18 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
     try {
       let address = item.url;
       let transferProtocols: Transport[] = [];
+      let resolution: YouTubeResolution | undefined;
+      if (item.kind === 'youtube') {
+        const controller = new AbortController();
+        youtubeResolutions.set(entry.id, controller);
+        try {
+          if (cancelled.has(entry.id)) controller.abort(new DOMException('작업을 취소했습니다.', 'AbortError'));
+          resolution = await resolveYouTube(item.url, options, controller.signal);
+          const base = filenameFor({ ...item, title: resolution.title || item.title });
+          entry.filename = options.output === 'original' ? base : base.replace(/\.[^.]+$/, '') + '.' + options.output;
+          await update(entry, true);
+        } finally { youtubeResolutions.delete(entry.id); }
+      }
       const directOriginal = options.output === 'original' && item.kind === 'file';
       // Type ordinary originals regardless of private mode or upscale preferences.
       {
@@ -334,7 +354,7 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
         try {
           await ensureOffscreen();
           if (cancelled.has(entry.id)) throw new DOMException('작업을 취소했습니다.', 'AbortError');
-          result = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: 'prepare', id: entry.id, url: item.url, kind: item.kind, options });
+          result = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: 'prepare', id: entry.id, url: item.url, kind: item.kind, options, ...(resolution ? { resolution } : {}) });
         } catch (error) {
           if (!directOriginal || cancelled.has(entry.id)) throw error;
         }
@@ -387,9 +407,18 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
   })();
   return entry;
 }
+function observeYouTubeTab(tab: chrome.tabs.Tab): void {
+  if (tab.id === undefined || !!tab.incognito !== chrome.extension.inIncognitoContext) return;
+  const source = youtubeVideo(tab.url);
+  for (const item of media.items(tab.id)) if (item.kind === 'youtube' && item.url !== source?.url) media.delete(item.id);
+  if (!source) return;
+  const previous = media.get(tab.id, source.url);
+  const title = typeof tab.title === 'string' ? tab.title.slice(0, 200) : previous?.title || 'YouTube 영상';
+  media.set({ id: previous?.id ?? crypto.randomUUID(), tabId: tab.id, url: source.url, title, mime: 'video/mp4', kind: 'youtube', createdAt: previous?.createdAt ?? Date.now() });
+}
 async function currentTab() {
   const tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true })).find(tab => !!tab.incognito === chrome.extension.inIncognitoContext);
-  if (tab?.id !== undefined && tab.url && /^https?:/.test(tab.url)) return tab.id;
+  if (tab?.id !== undefined && tab.url && /^https?:/.test(tab.url)) { observeYouTubeTab(tab); return tab.id; }
   return lastTab ?? Array.from(media.tabIds()).at(-1);
 }
 async function rescanCurrentTab(): Promise<number> {
@@ -398,6 +427,7 @@ async function rescanCurrentTab(): Promise<number> {
     && typeof candidate.url === 'string' && /^https?:/.test(candidate.url));
   if (tab?.id === undefined || !tab.url) throw new Error('영상이 있는 웹페이지를 연 뒤 다시 감지하세요.');
   const tabId = tab.id;
+  if (youtubeVideo(tab.url)) { observeYouTubeTab(tab); return tabId; }
   const epoch = discoveryEpochs.get(tabId) ?? {};
   discoveryEpochs.set(tabId, epoch);
   const ticket = { id: crypto.randomUUID(), epoch, url: tab.url };
@@ -421,7 +451,11 @@ async function rescanCurrentTab(): Promise<number> {
   return tabId;
 }
 async function listMedia(tabId: number | undefined) {
-  const items = tabId === undefined ? [] : Array.from(media.items(tabId)).sort((a, b) => b.createdAt - a.createdAt);
+  const candidates = tabId === undefined ? [] : Array.from(media.items(tabId));
+  // A YouTube page exposes separate transient ranges. Offer its source page,
+  // then resolve complete video/audio tracks only after the explicit click.
+  const primary = candidates.find(item => item.kind === 'youtube');
+  const items = primary ? [primary] : candidates.sort((a, b) => b.createdAt - a.createdAt);
   const rows = await history();
   const progress = await Promise.all(rows.map(async row => {
     if (row.state !== 'downloading' || row.downloadId === undefined) return row;
@@ -457,6 +491,10 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
     return { ok: true };
   }
   if (!trustedUI(sender, chrome.runtime.id, chrome.runtime.getURL(''))) throw new Error('확장 화면에서만 사용할 수 있습니다.');
+  if (value.type === 'youtube-status' || value.type === 'youtube-connect') {
+    if (sender.tab?.incognito !== undefined && sender.tab.incognito !== chrome.extension.inIncognitoContext) throw new Error('다른 브라우징 모드의 YouTube 도우미에는 접근할 수 없습니다.');
+    return { ok: true, youtube: await probeYouTube() };
+  }
   if (['download-folder-settings', 'open-download-folder-settings', 'confirm-download-folder', 'prepare-output-save'].includes(value.type)) {
     if (sender.tab?.incognito !== undefined && sender.tab.incognito !== chrome.extension.inIncognitoContext) throw new Error('다른 브라우징 모드의 다운로드 폴더 설정에는 접근할 수 없습니다.');
     if (value.type === 'open-download-folder-settings') {
@@ -506,8 +544,10 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
     return downloadReply(item, downloadOptions(value.options));
   }
   if (value.type === 'download-url' && typeof value.url === 'string') {
-    const url = mediaURL(value.url).href;
-    return downloadReply({ id: crypto.randomUUID(), tabId: -1, url, title: '', mime: '', kind: mediaKind(url) ?? 'file', createdAt: Date.now() }, downloadOptions(value.options));
+    const address = mediaURL(value.url).href;
+    const source = youtubeVideo(address);
+    const url = source?.url ?? address;
+    return downloadReply({ id: crypto.randomUUID(), tabId: -1, url, title: '', mime: '', kind: source ? 'youtube' : mediaKind(url) ?? 'file', createdAt: Date.now() }, downloadOptions(value.options));
   }
   if (value.type === 'retry' && typeof value.id === 'string') {
     const item = (await history()).find(row => row.id === value.id && ['error', 'cancelled'].includes(row.state));
@@ -518,6 +558,7 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
     const item = (await history()).find(row => row.id === value.id);
     if (!item || !['preparing', 'downloading'].includes(item.state)) throw new Error('진행 중인 작업이 아닙니다.');
     cancelled.add(item.id);
+    youtubeResolutions.get(item.id)?.abort(new DOMException('작업을 취소했습니다.', 'AbortError'));
     if (item.downloadId !== undefined) await chrome.downloads.cancel(item.downloadId);
     else if (await chrome.offscreen.hasDocument()) await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: 'cancel', id: item.id });
     return { ok: true };
@@ -576,9 +617,10 @@ chrome.tabs.onUpdated.addListener((id, changes, tab) => {
   if (changes.url !== undefined) rescans.delete(id);
   if (!!tab.incognito !== chrome.extension.inIncognitoContext) return;
   if (changes.status === 'loading') { media.deleteTab(id); discoveryEpochs.set(id, {}); }
+  if (changes.url !== undefined || changes.title !== undefined) observeYouTubeTab(tab);
   if (tab.active && tab.url && /^https?:/.test(tab.url)) lastTab = id;
 });
-chrome.tabs.onActivated.addListener(info => { void chrome.tabs.get(info.tabId).then(tab => { if (!!tab.incognito === chrome.extension.inIncognitoContext && tab.url && /^https?:/.test(tab.url)) lastTab = info.tabId; }).catch(() => {}); });
+chrome.tabs.onActivated.addListener(info => { void chrome.tabs.get(info.tabId).then(tab => { if (!!tab.incognito === chrome.extension.inIncognitoContext && tab.url && /^https?:/.test(tab.url)) { observeYouTubeTab(tab); lastTab = info.tabId; } }).catch(() => {}); });
 async function setup(restarted = false) {
   await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => {});
   await chrome.action.setPopup({ popup: 'local/popup.html' });

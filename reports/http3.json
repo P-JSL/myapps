@@ -1,5 +1,5 @@
 {
-  "buildSha256": "cab0254bfc35951799b83006afce2042ff1f5223fbf38e1d8744b5d4e6ac52e4",
+  "buildSha256": "7875079ccfdadf334b3a19782aeb706f9f6b2b6b4f20494a1a39a25d372f4f4d",
   "browser": "154.0.8037.57",
   "transport": "h3",
   "tlsVerification": "enabled; untrusted CA rejected before isolated test-profile trust was configured",
@@ -9,26 +9,27 @@
   "server": {
     "aioquic": "1.3.0",
     "h1": 0,
-    "h3": 32
+    "h3": 33
   },
   "productionAssets": [
-    "assets/eeb474f56719acdf0f0e8a74846f6fc6.js",
-    "assets/33a8f08b2539bbed3ffd75c2b52c597a.js",
-    "assets/d7256d0e87d65331d76dc5715bdcd611.js",
-    "assets/aff0681dc81b8f67bfaddb7d329b83fa.js",
-    "assets/3611ec306cddccbac4ffe827957c1716.js",
-    "assets/f433fc96f2decce5fce31228c71e735d.js",
-    "assets/54012e43b56809fa8b0e11eb76f22fdd.js",
-    "assets/005d41aa5a87f2b364673034adf7e3dd.js",
-    "assets/ae088897b3986b12adfc92fd3de9a9f7.js",
-    "assets/76cf609f2d1054e947bc1ba4cdd83e81.js",
-    "assets/95f306b047466dc2f1fb1ec96fb68b5f.js",
-    "assets/056a69320ee08bb731f7aa902afbab9f.js",
-    "assets/28dca2a62034bdd03b326fc4e1e77b4c.js",
-    "assets/f7d84ae6bfdb782ef327f080baeb497c.js",
-    "assets/59bd6d11f14ee6f84cd04b86f01b0c60.bin",
-    "assets/c2eaa80e7c89a3871eb81d91b1580ce6.bin",
-    "assets/76159ab5623da4a04779de4e2e7534be.js"
+    "assets/db5bf0c4c8fa239ea0ed4a058d0b741b.js",
+    "assets/077f629cfcda4befc5fd665a2d5d9938.js",
+    "assets/9882a52d8c866763c1b8c47b1c350cb0.js",
+    "assets/3a81ab82df8698c76954734d2fb7417e.js",
+    "assets/ff6c6bbd27906b65c9b021f1375d7965.js",
+    "assets/17681ded93d36ac1aaa324a6489e726f.js",
+    "assets/a6bd95bfcd5a2cdb0dd739c1919b0315.js",
+    "assets/0bbb03037c15b37036c35f7987ce35f0.js",
+    "assets/34cbb1916277bdc99e5d686200795f46.js",
+    "assets/53d530f7210292ef4ff13b14c408e737.js",
+    "assets/fea189680168f77fdcc5abda87f8c89b.js",
+    "assets/dab13a6c78369ba81e853ce7fd00ae4c.js",
+    "assets/33f416b8337d3f208020c131b9f5292b.js",
+    "assets/674684f73bc02364da03e6f76ab982b1.js",
+    "assets/4bb7e9f8bda5833847d68013c6f07ff8.js",
+    "assets/69ad5200f803343e6368325fd5751aa1.bin",
+    "assets/6b5a3ce05129d2c37a732c6f6e2a4f09.bin",
+    "assets/df8e90ab33eaa5979d6f24e1c20a5a9e.js"
   ],
   "inputSha256": "a8536eaaa80e192769a341d98dc6c62e5fa489b81df82b06455feecb12fe3efe",
   "outcomes": [

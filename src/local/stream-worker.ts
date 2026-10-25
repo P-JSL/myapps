@@ -31,6 +31,10 @@ scope.onmessage = async event => {
       || !data.plan.assets.length || data.plan.assets.length > MAX_SEGMENTS || !data.plan.inputs.length || data.plan.inputs.length > 2) throw new Error('잘못된 스트림 작업입니다.');
     const plan = data.plan as unknown as StreamPlan;
     const options = downloadOptions(data.options);
+    const outputFormat = data.outputFormat ?? 'mp4';
+    if (typeof outputFormat !== 'string' || !['mp4', 'webm', 'mkv'].includes(outputFormat)) throw new Error('잘못된 스트림 저장 형식입니다.');
+    if (data.requireVideo !== undefined && typeof data.requireVideo !== 'boolean') throw new Error('잘못된 영상 트랙 설정입니다.');
+    if (data.requireAudio !== undefined && typeof data.requireAudio !== 'boolean') throw new Error('잘못된 음성 트랙 설정입니다.');
     const names = new Set<string>();
     for (const asset of plan.assets) {
       if (!/^asset-\d+\.(ts|m4s|data)$|^dash-\d+\.m4s$/.test(asset.filename) || names.has(asset.filename)) throw new Error('잘못된 조각 파일명입니다.');
@@ -68,8 +72,10 @@ scope.onmessage = async event => {
         args.push('-protocol_whitelist', 'file,pipe', '-i', input.filename);
       } else throw new Error('스트림 입력을 읽을 수 없습니다.');
     }
-    const outputName = `output.${options.output === 'original' ? 'mp4' : options.output}`;
-    if (options.output === 'original') args.push('-map', '0:v:0?', '-map', plan.inputs.length === 2 ? '1:a:0?' : '0:a:0?', '-c', 'copy', '-movflags', '+faststart');
+    const outputName = `output.${options.output === 'original' ? outputFormat : options.output}`;
+    if (options.output === 'original') args.push('-map', data.requireVideo === true ? '0:v:0' : '0:v:0?', '-map',
+      `${plan.inputs.length === 2 ? '1' : '0'}:a:0${data.requireAudio === true ? '' : '?'}`, '-c', 'copy',
+      ...(outputFormat === 'mp4' ? ['-movflags', '+faststart'] : []));
     else {
       args.push('-map', plan.inputs.length === 2 ? '1:a:0' : '0:a:0', '-vn', ...(options.output === 'mp3' ? ENCODER_ARGUMENTS.mp3 : ENCODER_ARGUMENTS.aac), '-threads', '1');
       if (options.output === 'm4a') args.push('-movflags', '+faststart');

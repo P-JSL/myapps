@@ -1,0 +1,5 @@
+
+> my-video-app@1.16.0 check:source
+> node scripts/audit-source.mjs
+
+Source audit passed: 41 runtime modules, 9 browser entries.

@@ -1,0 +1,28 @@
+✔ release archive rejects a source file symlink without leaking external bytes or publishing checksums (77.928078ms)
+✔ release archive rejects a source dir symlink without leaking external bytes or publishing checksums (64.816959ms)
+✔ normal release creates all six valid archives and keeps the two native helpers separate (66.846429ms)
+✔ missing native helper source aborts packaging and removes a stale checksum manifest (33.964495ms)
+✔ release entries use maximum DEFLATE compression even with deterministic custom ZipInfo metadata (280.675089ms)
+✔ YouTube links canonicalize one video without retaining playlist or signed parameters (4.525576ms)
+✔ Playlist-only, ambiguous, credential, origin-spoof and non-HTTPS source links never reach the extractor (0.319028ms)
+✔ Resolved tracks are bound to the requested video and normalize video before audio (1.04029ms)
+✔ A native resolver cannot substitute another origin, arbitrary headers or malformed track metadata (1.12729ms)
+✔ Source mismatch, oversized metadata, duplicate tracks and unsupported track combinations fail closed (0.955212ms)
+✔ Native resolution uses the dedicated host, canonical one-video request and browser user agent (3.784815ms)
+✔ Readiness deduplicates only active status calls and never caches signed media results (1.076034ms)
+✔ Denied permission, already aborted signal and invalid source never open native connections (0.732218ms)
+✔ Cancellation while permission is pending prevents the later native request (0.30704ms)
+✔ Cancellation disconnects the active port and stale responses cannot revive the request (0.428823ms)
+✔ Mismatched response IDs, forged origins and forbidden metadata are never accepted (1.358186ms)
+✔ Extraction failures, unavailable host and insufficient tracks remain explicit errors (1.041181ms)
+✔ Readiness requires request-bound package and local runtime evidence instead of a fabricated ready status (1.154971ms)
+✔ A disconnected host and extraction timeout clean listeners and settle exactly once (0.526169ms)
+✔ Unusable browser header values cannot be forwarded into the native extractor (0.354762ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 617.343212
