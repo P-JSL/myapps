@@ -143,6 +143,12 @@ function nativeRequest<T>(action: 'status' | 'resolve', payload: Record<string, 
       finish(new Error(error ? `유튜브 도우미 연결 실패: ${error.slice(0, 300)}` : '유튜브 도우미 연결이 종료되었습니다. 설치 상태를 확인하세요.'));
     };
     if (signal?.aborted) { abort(); return; }
+    // Native API bindings must exist in this extension context. Permission
+    // bookkeeping alone does not establish that the browser exposes the API.
+    if (typeof chrome.runtime.connectNative !== 'function') {
+      finish(new Error('현재 브라우저에서 로컬 도우미 연결 API를 사용할 수 없습니다. PC용 Chrome에서 확장을 업데이트·새로고침한 뒤 다시 시도하세요.'));
+      return;
+    }
     signal?.addEventListener('abort', abort, { once: true });
     try {
       port = chrome.runtime.connectNative(YOUTUBE_HOST);

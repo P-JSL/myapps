@@ -1,0 +1,5 @@
+
+> my-video-app@1.16.1 build
+> node scripts/build.mjs
+
+Local build complete: 50 files; 9 runtime entries; 16 shared modules; no test-only completion bundle.
