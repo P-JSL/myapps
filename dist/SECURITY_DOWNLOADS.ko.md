@@ -25,7 +25,7 @@ py -3 install.py --extension-id aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 전체 소스 ZIP을 사용하는 경우 `install.py` 대신 `native/install.py`를 실행합니다. Chromium은 `--browser chromium`, Chrome과 Chromium 모두 등록하려면 `--browser both`를 추가합니다. 표준 설치 경로가 아닌 ClamAV는 `--clamav /absolute/path/to/clamscan`을 지정합니다.
 
-4. 앱의 **백신 연결** 버튼을 누릅니다. 1.16.1부터 로컬 도우미 API 권한은 확장 시작 시 확보하며 실제 연결·검사는 백신 연동 ON/OFF 설정을 따릅니다. 도우미에 접속하고 선택 엔진과 준비 상태를 표시합니다. 준비됨이 확인된 경우에만 기존 미검사·실패 대기 파일도 다시 검사합니다. 권한 보유 자체가 설치나 연결 성공을 뜻하지는 않습니다. 구버전 도우미는 최신 ZIP으로 재설치하세요.
+4. 앱의 **백신 연결** 버튼에서 선택 권한을 허용합니다. 실제로 도우미에 접속하고 선택 엔진과 준비 상태를 표시합니다. 준비됨이 확인된 경우에만 기존 미검사·실패 대기 파일도 다시 검사합니다. 권한 허용 자체가 설치나 연결 성공을 뜻하지는 않습니다. 구버전 도우미는 최신 ZIP으로 재설치하세요.
 
 설치는 현재 OS 사용자에게만 등록되며 관리자 권한이나 브라우저 정책 변경이 필요하지 않습니다. 조직 정책이 연결을 차단하면 관리자의 허용이 필요합니다. 확장의 설치 경로나 ID가 바뀌면 새 ID로 도우미를 다시 등록합니다. 제거는 같은 폴더에서 `python3 install.py --uninstall`(Windows: `py -3 install.py --uninstall`)을 실행합니다.
 

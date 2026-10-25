@@ -2,7 +2,7 @@
 
 **영상을 내려받고, 오디오를 추출하고, 로컬에서 변환·확대하는 개인용 Chrome 확장 프로그램입니다.**
 
-현재 버전 **1.16.1** · 앱 계정·구독 불필요 · 독립 TypeScript 확장 · 파일 처리와 기록 저장은 로컬에서 수행
+현재 버전 **1.16.0** · 앱 계정·구독 불필요 · 독립 TypeScript 확장 · 파일 처리와 기록 저장은 로컬에서 수행
 
 [설치하기](#빠른-시작) · [사용법](#기능-안내) · [백신 설정](#백신-연동과-안전-확인) · [지원 범위](#지원-범위와-처리-한도) · [패치 내역](#버전별-패치-내역)
 
@@ -41,8 +41,6 @@
 ## 기능 안내
 
 ### YouTube 다운로드
-
-**1.16.0에서 `chrome.runtime.connectNative is not a function`이 나타났다면:** 새 확장 ZIP을 **기존 설치 폴더에 덮어쓴 뒤 `chrome://extensions`에서 My Video App을 새로고침**하세요. 도우미 연결 권한을 시작 시 확보하도록 수정했습니다. Chrome에서 권한 확인을 표시하면 확장을 다시 사용 설정하세요. 기존 도우미의 설치·확장 ID 등록은 그대로 사용합니다. [수정과 간단 검증 범위](reports/NATIVE_API_HOTFIX.ko.md)
 
 **YouTube는 확장 ZIP과 별도로 로컬 도우미를 한 번 설치해야 합니다.** [설치 안내](native/YOUTUBE.ko.md)에 따라 Python·Deno와 도우미를 준비하고 **설정 → YouTube 다운로드 → YouTube 도우미 연결**을 누릅니다. 백신 도우미와는 별도이며 백신 연동 OFF에서도 사용할 수 있습니다.
 
@@ -222,8 +220,7 @@ npm run package
 
 | 버전 | 주요 변경 | 관련 문서 |
 | --- | --- | --- |
-| **1.16.1** | YouTube 다운로드의 `connectNative is not a function` 수정. 로컬 도우미 권한을 시작 시 확보하고 API 미제공 환경은 새로고침·PC Chrome 안내. 새 오류 회귀 검사 3개와 타입 검사만 실행하고 기존 전체 검증은 사용자 요청으로 생략 | [오류 수정·간단 검증](reports/NATIVE_API_HOTFIX.ko.md) |
-| 1.16.0 | YouTube 공개 단일 영상·Shorts의 최고 제공 화질·MP3/M4A 저장 추가. 별도 로컬 yt-dlp/Deno 도우미로 주소 추출 후 기존 브라우저에서 MP4/WebM/MKV 병합·자동 저장·보안 검사 수행. 취소·만료 주소 재추출·시크릿 분리와 별도 도우미 ZIP·Release 첨부 추가 | [YouTube 분석과 검증](reports/YOUTUBE.ko.md) · [도우미 설치](native/YOUTUBE.ko.md) |
+| **1.16.0** | YouTube 공개 단일 영상·Shorts의 최고 제공 화질·MP3/M4A 저장 추가. 별도 로컬 yt-dlp/Deno 도우미로 주소 추출 후 기존 브라우저에서 MP4/WebM/MKV 병합·자동 저장·보안 검사 수행. 취소·만료 주소 재추출·시크릿 분리와 별도 도우미 ZIP·Release 첨부 추가 | [YouTube 분석과 검증](reports/YOUTUBE.ko.md) · [도우미 설치](native/YOUTUBE.ko.md) |
 | 1.15.0 | 최초 저장 전 폴더 설정 안내와 확인 저장, Chrome에서 선택한 절대경로로 저장 창 없는 다운로드, 설정에서 폴더 변경. 영상·오디오·변환·확대 결과 모두 적용하며 시크릿 확인은 메모리로 분리. GitHub Release에 설치 ZIP 자동 첨부 | [저장 폴더와 자동 저장](reports/DOWNLOAD_FOLDER.ko.md) · [Release 워크플로](.github/workflows/release.yml) |
 | 1.14.1 | 아이콘 팝업 너비를 640→720px로 확대하고 미디어 카드·글씨·버튼·여백을 컴팩트하게 조정. 긴 제목·주소는 말줄임과 전체 툴팁 제공, 좁은 화면에서도 다운로드·주소 복사·보안 안내 유지 | [팝업 크기와 배치 개선](reports/POPUP_COMPACT.ko.md) |
 | 1.14.0 | 공통 ESM·UTF-8·동일 아이콘 정리와 오프라인 Brotli 엔진 포장으로 기능을 유지하며 배포 경량화. 공식 유사 도구 5개를 조사하고 팝업·전체 앱에 클릭 시 미디어 주소 복사를 독립 구현. 추가 권한·클립보드 읽기·자동 복사 없이 브라우저 복사 실패 시 직접 선택·복사 지원 | [경량화 측정](reports/LIGHTWEIGHT_BUILD.ko.md) · [도구 비교와 기능 선택](reports/COMPETITOR_RESEARCH.ko.md) |
