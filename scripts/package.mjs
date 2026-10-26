@@ -1,77 +1,58 @@
 import { spawnSync } from 'node:child_process';
-import { readFile, access } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { hash, sourceIdentity, treeIdentity } from './lib/artifacts.mjs';
-import { algorithmSuites } from './project.mjs';
-import { validateDependencyAudit } from './lib/dependency-policy.mjs';
-import { assertNoTestMarker } from './lib/release-safety.mjs';
-import { files } from './lib/artifacts.mjs';
+
 process.chdir(fileURLToPath(new URL('../', import.meta.url)));
-await access('dist/manifest.json');
-validateDependencyAudit(JSON.parse(await readFile('reports/dependency-audit.json', 'utf8')), hash(await readFile('package-lock.json')));
-const report = JSON.parse(await readFile('reports/browser.json', 'utf8'));
-assert(report.outcomes.length >= 92 && report.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current local-app feature/browser harness results required');
-const large = JSON.parse(await readFile('reports/large-download.json', 'utf8'));
-assert(large.status === 'passed' && large.outcomes.length === 5 && large.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real large-file, disk-remux, long-video, cancellation and quota checks required');
-assert.deepEqual(large.outcomes.map(outcome => outcome.name), ['parallel-over-2-gib', 'cancel-and-cleanup', 'injected-quota-and-cleanup', 'disk-stream-remux-over-2-gib', 'long-duration-disk-stream']);
-assert(large.storageQuotaFixture?.overrideRestored === true, 'Large-download test quota override must be restored');
-const http3 = JSON.parse(await readFile('reports/http3.json', 'utf8'));
-assert(http3.transport === 'h3' && http3.outcomes.length >= 4 && http3.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real HTTP/3 results required');
-const antivirus = JSON.parse(await readFile('reports/antivirus.json', 'utf8'));
-assert(antivirus.outcomes.length >= 6 && antivirus.outcomes.every(outcome => outcome.status === 'passed'), 'Successful real antivirus integration results required');
-assert.equal(hash(await readFile('native/antivirus_host.py')), antivirus.sourceSha256, 'Native host changed since real antivirus validation');
-assert.equal(hash(await readFile('native/internal_scan.py')), antivirus.internalScanSourceSha256, 'Internal scanner changed since real antivirus integration validation');
-const native = JSON.parse(await readFile('reports/native-tests.json', 'utf8'));
-assert(native.status === 'passed' && native.count >= 115, 'Successful antivirus and YouTube native unit results required');
-for (const name of ['native/antivirus_host.py', 'native/windows_antivirus.py', 'native/internal_scan.py', 'native/install.py', 'native/youtube_host.py', 'native/install_youtube.py', 'native/youtube-requirements.txt']) assert.equal(hash(await readFile(name)), native.sourceSha256[name], `Native source changed since verification: ${name}`);
-assert.equal(JSON.parse(await readFile('reports/build.json', 'utf8')).engine, 'independent-local');
-const performance = JSON.parse(await readFile('reports/performance.json', 'utf8'));
-assert(performance.status === 'passed' && performance.outcomes.length === 5 && performance.outcomes.every(outcome => outcome.status === 'passed'), 'Successful current algorithm benchmarks required');
-assert.deepEqual(performance.outcomes.map(outcome => outcome.name), algorithmSuites.map(([name]) => name), 'All required algorithm scopes must be validated');
-assert.equal(performance.release, JSON.parse(await readFile('package.json', 'utf8')).version, 'Algorithm report belongs to another release');
-assert.deepEqual(await sourceIdentity(), performance.sourceSha256, 'Source inventory or contents changed since algorithm validation');
-const audit = JSON.parse(await readFile('reports/source-audit.json', 'utf8'));
-assert(audit.status === 'passed', 'Successful source audit required');
-assert.deepEqual(audit.sourceSha256, performance.sourceSha256, 'Source changed since architecture audit');
-for (const outcome of performance.outcomes) assert.equal(hash(await readFile(outcome.report)), outcome.reportSha256, `Algorithm measurement report changed: ${outcome.report}`);
-const identity = await treeIdentity('dist');
-assert.equal(identity, large.buildSha256, 'Large-download verification belongs to another build');
-assert.equal(identity, report.buildSha256, 'dist changed since successful browser validation; rebuild and revalidate');
-assert.equal(identity, http3.buildSha256, 'dist changed since real HTTP/3 validation; run npm run test:http3');
-
-assert.equal(identity, JSON.parse(await readFile('reports/build.json', 'utf8')).buildSha256, 'Build inventory is stale');
-const popup = JSON.parse(await readFile('reports/popup.json', 'utf8'));
-assert(popup.outcomes.length >= 8 && popup.outcomes.every(outcome => outcome.status === 'passed'), 'Successful compact popup validation required');
-assert(popup.compactLayout?.default?.width === 720 && popup.compactLayout.default.rowHeight <= 56
-  && popup.compactLayout.default.visibleRows >= 5, 'Compact popup geometry must be verified');
-assert.equal(identity, popup.buildSha256, 'Popup validation belongs to another build');
-const copy = JSON.parse(await readFile('reports/media-copy.json', 'utf8'));
-assert(copy.outcomes.length >= 7 && copy.outcomes.every(outcome => outcome.status === 'passed'), 'Successful explicit media URL copy and manual fallback checks required');
-assert.deepEqual(copy.pageErrors, []);
-assert.deepEqual(copy.outboundRequests, []);
-assert.equal(identity, copy.buildSha256, 'Media URL copy validation belongs to another build');
-const folder = JSON.parse(await readFile('reports/download-folder.json', 'utf8'));
-assert(folder.outcomes.length >= 10 && folder.outcomes.every(outcome => outcome.status === 'passed'), 'Successful first-use folder guard, automatic save and private isolation checks required');
-assert.deepEqual(folder.pageErrors, []);
-assert.deepEqual(folder.outboundRequests, []);
-assert.equal(identity, folder.buildSha256, 'Download folder validation belongs to another build');
-const youtube = JSON.parse(await readFile('reports/youtube.json', 'utf8'));
-assert(youtube.outcomes.length >= 13 && youtube.outcomes.every(outcome => outcome.status === 'passed'), 'Successful YouTube media, source binding, required audio, retry and privacy checks required');
-assert.deepEqual(youtube.pageErrors, []);
-assert.deepEqual(youtube.outboundRequests, []);
-assert.equal(identity, youtube.buildSha256, 'YouTube validation belongs to another build');
-for (const [name, expected] of Object.entries(youtube.sourceSha256)) assert.equal(hash(await readFile(name)), expected, `YouTube source changed since browser validation: ${name}`);
-const youtubeNative = JSON.parse(await readFile('reports/youtube-native-integration.json', 'utf8'));
-assert(youtubeNative.status === 'passed' && youtubeNative.outcomes.length >= 8
-  && youtubeNative.outcomes.every(outcome => outcome.status === 'passed'), 'Successful pinned yt-dlp, EJS and Deno offline integration required');
-assert(youtubeNative.validationRuntimeProvenance?.installedBinaryMatchesVerifiedWheel === true, 'YouTube validation runtime must match its verified wheel');
-for (const [name, expected] of Object.entries(youtubeNative.sourceSha256)) assert.equal(hash(await readFile(name)), expected, `YouTube native source changed since integration validation: ${name}`);
-
-for (const directory of ['dist', 'native', 'src', 'scripts', 'tests', 'reports']) {
-  for (const name of await files(directory, { skipDirectories: ['__pycache__'] })) assertNoTestMarker(await readFile(`${directory}/${name}`), `${directory}/${name}`);
+const json = async name => JSON.parse(await readFile(name, 'utf8'));
+const version = (await json('package.json')).version;
+const report = await json('reports/release-validation.json');
+assert.equal(report.release, version, 'Validation belongs to another release');
+assert.equal(report.status, 'passed', 'Successful focused validation required');
+assert.equal(report.validationMode, 'focused-architecture-change');
+assert.equal(report.userRequestedSkipPreviousChecks, true, 'Focused validation must record the requested scope');
+assert.deepEqual(await sourceIdentity(), report.sourceSha256, 'Source inventory or contents changed since focused validation');
+for (const name of ['extension', 'engine', 'gui', 'bundle', 'launcher']) {
+  assert(Number.isInteger(report.checks?.[name]) && report.checks[name] > 0, `Successful focused ${name} checks required`);
 }
+for (const name of ['typecheck', 'build']) assert.equal(report.checks?.[name], 'passed', `Successful ${name} required`);
+assert(Object.keys(report.logSha256 ?? {}).length > 0, 'Validation log hashes required');
+for (const [name, digest] of Object.entries(report.logSha256)) {
+  assert(name.startsWith('reports/') && !name.split('/').includes('..') && !name.includes('\\'), 'Validation logs must be local report paths');
+  assert.equal(hash(await readFile(name)), digest, `Validation log changed: ${name}`);
+}
+const identity = await treeIdentity('dist');
+assert.equal(report.buildSha256, identity, 'Build changed since focused validation');
+assert.equal((await json('reports/build.json')).buildSha256, identity, 'Build inventory is stale');
+assert.equal((await json('dist/manifest.json')).version, version, 'Extension build version is stale');
+const desktop = await json('reports/desktop-build.json');
+assert.equal(desktop.version, version, 'Desktop report version is stale');
+assert.equal(desktop.artifact, 'artifacts/my-video-app-desktop-windows-x64.zip');
+assert.equal(hash(await readFile(desktop.artifact)), desktop.sha256, 'Desktop artifact changed since validation');
+assert.equal(report.desktop?.sha256, desktop.sha256, 'Focused validation belongs to another desktop bundle');
 const python = process.env.PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3');
+// Check every packaged output and every current source named by the app manifest.
+const desktopCheck = spawnSync(python, ['-B', '-c', `
+import hashlib, json
+from pathlib import Path, PurePosixPath
+from zipfile import ZipFile
+root=Path.cwd()
+with ZipFile(root/'artifacts/my-video-app-desktop-windows-x64.zip') as bundle:
+    names=bundle.namelist()
+    assert len(names)==len(set(names)), 'Duplicate desktop members'
+    manifest=json.loads(bundle.read('MyVideoApp/APPMANIFEST.json'))
+    assert manifest['version']==json.loads((root/'package.json').read_text())['version'], 'Desktop manifest version mismatch'
+    assert set(names)=={'MyVideoApp/'+name for name in manifest['files']}|{'MyVideoApp/APPMANIFEST.json'}, 'Desktop output inventory mismatch'
+    for name, digest in manifest['files'].items():
+        assert hashlib.sha256(bundle.read('MyVideoApp/'+name)).hexdigest()==digest, 'Desktop output changed: '+name
+    assert manifest['sourceFiles'], 'Desktop source inventory required'
+    for name, digest in manifest['sourceFiles'].items():
+        path=PurePosixPath(name)
+        assert not path.is_absolute() and '..' not in path.parts and '\\\\' not in name, 'Unsafe desktop source path'
+        assert hashlib.sha256((root/name).read_bytes()).hexdigest()==digest, 'Desktop source changed: '+name
+`], { encoding: 'utf8' });
+assert.equal(desktopCheck.status, 0, desktopCheck.stderr || desktopCheck.error?.message);
 const result = spawnSync(python, ['-B', fileURLToPath(new URL('./archive.py', import.meta.url))], { encoding: 'utf8' });
 process.stdout.write(result.stdout ?? '');
 process.stderr.write(result.stderr ?? '');

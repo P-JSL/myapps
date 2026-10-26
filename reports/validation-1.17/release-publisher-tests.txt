@@ -1,0 +1,19 @@
+test_both_products_upload_before_publication (test_publish_release.ReleaseTests.test_both_products_upload_before_publication) ... ok
+test_desktop_traversal_rejected (test_publish_release.ReleaseTests.test_desktop_traversal_rejected) ... ok
+test_existing_tag_cannot_move (test_publish_release.ReleaseTests.test_existing_tag_cannot_move) ... ok
+test_extension_hash_is_binding (test_publish_release.ReleaseTests.test_extension_hash_is_binding) ... ok
+test_identical_rollback_skips_without_tag_move (test_publish_release.ReleaseTests.test_identical_rollback_skips_without_tag_move) ... ok
+test_rollback_rejects_changed_product (test_publish_release.ReleaseTests.test_rollback_rejects_changed_product) ... ok
+test_rollback_rejects_truncated_tree (test_publish_release.ReleaseTests.test_rollback_rejects_truncated_tree) ... ok
+test_rollback_rejects_unverified_asset (test_publish_release.ReleaseTests.test_rollback_rejects_unverified_asset) ... ok
+test_stale_desktop_source_rejected (test_publish_release.ReleaseTests.test_stale_desktop_source_rejected) ... ok
+test_valid_products (test_publish_release.ReleaseTests.test_valid_products) ... ok
+test_windows_verification_is_required (test_publish_release.ReleaseTests.test_windows_verification_is_required) ... ok
+test_wrong_repository_never_publishes (test_publish_release.ReleaseTests.test_wrong_repository_never_publishes) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.020s
+
+OK
+Published v1.17.0 at aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Existing identical v1.17.0 release; publication skipped without moving its tag.

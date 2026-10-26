@@ -1,6 +1,7 @@
 * text=auto eol=lf
-dist/** -text
-artifacts/** -text
-*.wasm binary
-*.png binary
-*.zip binary
+*.zip -text
+*.exe -text
+*.png -text
+*.bin -text
+*.wasm -text
+*.mp4 -text

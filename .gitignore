@@ -7,3 +7,6 @@ test-results/
 *.log
 __pycache__/
 *.pyc
+
+# Built desktop release ZIP is uploaded by CI; it exceeds Git file-size limits.
+/desktop/launcher/MyVideoApp.exe

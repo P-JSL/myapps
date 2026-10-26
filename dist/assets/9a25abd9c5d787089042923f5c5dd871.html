@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Video App</title><link rel="stylesheet" href="./48ee79a0cf256b23a68f22436c3f606b.css"><script type="module" src="./c4b069781f2fb22e5c606e66381ebc0b.js"></script></head>
+<body>
+<div class="popup-shell">
+  <header class="app-header">
+    <div class="app-brand">
+      <img class="brand-logo" src="./cf8e27d2eb455b4031942b0f7a1c02b0.png" width="36" height="36" alt="">
+      <div><p class="brand-name">My Video App</p><p class="brand-description">미디어 다운로드</p></div>
+    </div>
+    <span class="tab-indicator"><span aria-hidden="true"></span>현재 탭</span>
+  </header>
+  <main>
+    <section id="waiting" class="waiting" aria-labelledby="waiting-title">
+      <div class="waiting-illustration" aria-hidden="true">
+        <div class="waiting-icon"><svg viewBox="0 0 32 32"><path d="M16 6v14m-5-5 5 5 5-5M7 21v5h18v-5"/></svg></div>
+        <span class="illustration-dot illustration-dot-one"></span><span class="illustration-dot illustration-dot-two"></span>
+      </div>
+      <span class="waiting-label">다운로드할 미디어를 찾고 있어요</span>
+      <h1 id="waiting-title">미디어 대기 중...</h1>
+      <p class="waiting-description">영상을 재생하면 이곳에 표시됩니다.<br>원하는 미디어를 선택해 간편하게 저장하세요.</p>
+    </section>
+    <section id="media-view" class="media-view" aria-labelledby="media-heading" hidden>
+      <div class="media-heading"><div><h1 id="media-heading">감지된 미디어</h1><p>저장할 항목을 선택하세요.</p></div><span id="media-count" aria-live="polite"></span></div>
+      <ul id="media" aria-label="현재 탭의 미디어"></ul>
+    </section>
+  </main>
+  <div class="notices">
+    <button id="review-summary" class="review-summary" hidden></button>
+    <p id="status" role="status" aria-live="polite" hidden></p>
+  </div>
+  <aside id="discovery-card" class="discovery-card" aria-labelledby="discovery-heading">
+    <button id="dismiss-hint" aria-label="감지 도움말 닫기" title="닫기"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8"/></svg></button>
+    <div class="discovery-content">
+      <div class="discovery-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4M10.5 7.5v6M7.5 10.5h6"/></svg></div>
+      <div><p id="discovery-heading" title="찾으시는 미디어가 보이지 않나요?">찾으시는 미디어가 보이지 않나요?</p><p class="discovery-copy">영상을 재생한 뒤 다시 감지해 보세요.<br>광고가 있다면 본 영상이 시작된 뒤 시도하세요.</p></div>
+    </div>
+    <div class="discovery-actions"><button id="report" class="text-button">신고</button><button id="rescan" class="rescan-button"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 8a6.7 6.7 0 1 0 .1 4M16.5 3.5V8H12"/></svg>강제 감지</button></div>
+  </aside>
+  <footer aria-label="앱 도구">
+    <button id="settings" class="icon-button" title="설정" aria-label="설정 열기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 3-.7 2.4-2 .9-2.3-.7-2 3.4 1.7 1.8v2.4l-1.7 1.8 2 3.4 2.3-.7 2 .9.7 2.4h4.1l.7-2.4 2-.9 2.3.7 2-3.4-1.7-1.8v-2.4L20.6 9l-2-3.4-2.3.7-2-.9-.7-2.4z"/><circle cx="11.6" cy="12" r="3.2"/></svg><span>설정</span></button>
+    <div class="footer-actions">
+      <button id="history" class="icon-button" title="다운로드 기록" aria-label="다운로드 기록 열기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7M12 7v5l3 2"/></svg><span>기록</span></button>
+      <button id="folder" class="icon-button" title="다운로드 폴더" aria-label="다운로드 폴더 열기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 3h9v11H3zM3 9V5h7l2 3"/></svg><span>폴더</span></button>
+      <button id="clear-history" class="icon-button" title="완료 기록만 삭제 (저장한 파일은 유지)" aria-label="완료 기록만 삭제, 저장한 파일은 유지"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7"/></svg><span>정리</span></button>
+      <button id="help" class="icon-button" title="도움말" aria-label="도움말 열기"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.4 8.5a2.7 2.7 0 0 1 5.2 1c0 2-2.6 2-2.6 4M12 17h.01"/></svg><span>도움말</span></button>
+      <button id="upscale" class="icon-button" title="미디어 도구" aria-label="미디어 도구 열기"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m5-10 3 2-3 2z"/></svg><span>도구</span></button>
+    </div>
+  </footer>
+</div>
+<dialog id="info-dialog" aria-labelledby="info-title" aria-describedby="info-description">
+  <h2 id="info-title"></h2><p id="info-description"></p>
+  <label id="report-label" for="report-notes" hidden>사이트 주소와 증상 메모 (이 창에서만 유지)</label>
+  <textarea id="report-notes" rows="4" maxlength="4000" hidden></textarea>
+  <form method="dialog"><button id="info-close" value="close">닫기</button></form>
+</dialog>
+</body>
+</html>

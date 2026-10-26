@@ -1,0 +1,13 @@
+✔ release archive rejects a source file symlink without leaking external bytes or publishing checksums (94.051723ms)
+✔ release archive rejects a source dir symlink without leaking external bytes or publishing checksums (59.469678ms)
+✔ normal release creates five valid archives with desktop source and the optional antivirus helper (100.051283ms)
+✔ missing native helper source aborts packaging and removes a stale checksum manifest (33.215556ms)
+✔ release entries use maximum DEFLATE compression even with deterministic custom ZipInfo metadata (228.670083ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 570.677501

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'; img-src 'self' blob:; media-src blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>미디어 도구 · My Video App</title>
+  <link rel="stylesheet" href="./de38017c3772248823a3b1dba9ee0a05.css">
+  <script type="module" src="./7e5455a9880de4286fbbd06d2d18844d.js"></script>
+</head>
+<body>
+  <main>
+    <header><span class="eyebrow">MY VIDEO APP · LOCAL MEDIA</span><h1>내 파일을, 원하는 형태로.</h1><p>업스케일링 · 영상 변환 · 오디오 저장 · 영상과 음성 병합. 원본은 그대로 보관합니다.</p></header>
+    <section aria-labelledby="queue-title">
+      <div class="section-heading"><h2 id="queue-title">완료된 다운로드</h2><button id="refresh" class="secondary">새로고침</button></div>
+      <label class="setting"><input id="offer" type="checkbox">다운로드 완료 알림에 업스케일링 선택 표시</label>
+      <p class="hint">지원 파일만 임시 보관합니다. 파일당 256MiB, 최대 4개·총 512MiB이며 24시간이 지난 복사본은 다음 사용 시 정리합니다. 시크릿 창 파일은 보관하지 않습니다.</p>
+      <ul id="jobs" aria-label="업스케일링 대기 파일"></ul>
+      <p id="empty" class="hint">대기 중인 파일이 없습니다. 새 다운로드를 완료하거나 아래에서 파일을 선택하세요.</p>
+      <button id="clear" class="secondary">임시 복사본 모두 삭제</button>
+    </section>
+    <section aria-labelledby="convert-title">
+      <h2 id="convert-title">로컬 미디어 도구</h2>
+      <label for="mode">작업 선택</label><select id="mode"><option value="upscale">이미지·영상 업스케일링</option><option value="convert">영상 형식 변환</option><option value="audio">오디오 추출·변환</option><option value="merge">별도 영상·음성 병합</option></select>
+      <label for="file">직접 파일 선택 · 병합 시 영상 파일</label><input id="file" type="file" accept=".png,.jpg,.jpeg,.webp,.mp4,.mov,.webm,.mkv,.avi,.mp3,.m4a,.wav,.ogg,.flac,.aac">
+      <p id="selected" class="selected">선택한 파일 없음</p>
+      <div id="upscale-settings" class="controls"><label for="factor">확대 배율</label><select id="factor"><option value="2">2배</option><option value="4">4배</option></select></div>
+      <div id="convert-settings" class="controls" hidden><label for="video-format">영상 형식</label><select id="video-format"><option value="mp4">MP4 · H.264/AAC</option><option value="webm">WebM · VP8/Opus</option><option value="mkv">MKV · H.264/AAC</option></select><label for="convert-quality">출력 높이</label><select id="convert-quality"><option value="highest">원본 크기</option><option value="2160">최대 2160p</option><option value="1080">최대 1080p</option><option value="720">최대 720p</option><option value="480">최대 480p</option></select></div>
+      <div id="audio-settings" class="controls" hidden><label for="audio-format">오디오 형식</label><select id="audio-format"><option value="mp3">MP3 · 192kbps</option><option value="m4a">M4A · AAC 192kbps</option><option value="wav">WAV · PCM 16-bit</option></select></div>
+      <div id="merge-settings" hidden><label for="audio-file">병합할 음성 파일 · 오디오 트랙이 있는 영상도 가능</label><input id="audio-file" type="file" accept=".mp3,.m4a,.wav,.ogg,.flac,.aac,.mp4,.webm,.mkv,.mov"><label for="merge-format">병합 형식</label><select id="merge-format"><option value="mp4">MP4</option><option value="mkv">MKV</option></select><p class="hint">영상 트랙은 코덱 복사, 음성은 AAC로 저장합니다. 두 트랙 중 짧은 길이까지 저장합니다. 컨테이너에 맞지 않는 영상 코덱은 먼저 형식을 변환하세요.</p></div>
+      <div class="controls"><button id="start" disabled>확대 시작</button><button id="cancel" class="secondary" disabled>취소</button></div>
+      <p id="mode-hint" class="hint">Lanczos 2x/4x 보간입니다. AI 복원은 아닙니다. 영상은 MP4(H.264/AAC), 이미지는 PNG로 저장합니다.</p>
+      <p class="hint">입력·출력은 각각 256MiB 이하이며 병합 입력은 두 파일의 합계로 계산합니다. 동영상·오디오는 최대 10분, 영상 결과는 최대 1,677만 픽셀입니다. 재인코딩은 화질·용량·메타데이터가 달라질 수 있습니다. 이 탭을 열어 두세요.</p>
+      <progress id="progress" max="1" value="0" aria-label="미디어 처리 진행률"></progress>
+      <p id="status" role="status" aria-live="polite">파일은 이 브라우저 안에서만 처리합니다.</p>
+      <p id="details" class="hint"></p>
+      <button id="save" hidden>결과 저장</button>
+    </section>
+    <footer><a href="./dfa6b4039a88e2f4353dba72bac89ad7.html">다운로드 · 기록으로 이동</a><br>파일 처리와 기록 저장은 브라우저 안에서 수행합니다. 다운로드는 선택한 미디어 사이트와 통신합니다.</footer>
+  </main>
+</body>
+</html>

@@ -5,7 +5,6 @@ import { downloadOptions } from './preferences.ts';
 import { transport, transportLabel } from './transport.ts';
 import { HISTORY_STATE_LABELS, PREPARATION_STAGE_LABELS, SECURITY_STATUS_LABELS, internalScanPresentation, formatBytes } from './labels.ts';
 import { mediaCopyButton } from './media-copy.ts';
-import { youtubeVideo } from './youtube.ts';
 
 function node<T extends HTMLElement>(id: string): T { const element = document.getElementById(id); if (!element) throw new Error(`Missing ${id}`); return element as T; }
 const status = node('status');
@@ -26,30 +25,12 @@ let folderSettingsBusy = false;
 let folderOpening = false;
 let folderSettingsEpoch = 0;
 let folderSettingsPending: Promise<void> | undefined;
-let youtubeConnecting = false;
 async function request(type: string, data: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
   const result: unknown = await chrome.runtime.sendMessage({ scope: SCOPE, type, ...data });
   if (!record(result) || result.ok !== true) throw new Error(record(result) && typeof result.error === 'string' ? result.error : '확장 프로그램을 다시 로드하고 페이지를 새로고침하세요.');
   return result;
 }
 function error(value: unknown) { hasError = true; status.textContent = value instanceof Error ? value.message : '요청 중 오류가 발생했습니다.'; }
-async function ensureYouTubePermission(): Promise<void> {
-  // Start the optional-permission request on the actual click, before preferences
-  // or another asynchronous lookup can expire Chrome's transient user activation.
-  if (!await chrome.permissions.request({ permissions: ['nativeMessaging'] })) throw new Error('YouTube 추출 도우미 연결 권한을 허용하지 않았습니다. 설정의 YouTube 다운로드에서 다시 연결하세요.');
-}
-function showYouTubeStatus(value: unknown) {
-  if (!record(value) || !['ready', 'unavailable', 'error'].includes(String(value.status))
-    || typeof value.message !== 'string' || value.message.length > 1000
-    || (value.ytDlpVersion !== undefined && (typeof value.ytDlpVersion !== 'string' || value.ytDlpVersion.length > 80))
-    || (value.runtime !== undefined && (typeof value.runtime !== 'string' || value.runtime.length > 160))) throw new Error('YouTube 도우미의 응답을 확인하지 못했습니다. 최신 도우미 설치 상태를 확인하세요.');
-  const parts = [value.status === 'ready' ? '추출 도우미 연결됨' : value.status === 'unavailable' ? '추출 도우미를 사용할 수 없습니다' : '추출 도우미 확인에 실패했습니다'];
-  if (value.ytDlpVersion) parts.push(`yt-dlp ${value.ytDlpVersion}`);
-  if (value.runtime) parts.push(value.runtime);
-  if (value.message) parts.push(value.message);
-  parts.push(value.status === 'ready' ? '실제 영상의 추출 가능 여부는 다운로드할 때 확인합니다.' : '설치 안내를 확인한 뒤 연결을 다시 눌러 주세요.');
-  const connection = node('youtube-connection-status'); connection.textContent = parts.join(' · '); connection.dataset.tone = String(value.status);
-}
 function folderControls() {
   const confirmed = folderConfirmed === true;
   const checkbox = node<HTMLInputElement>('download-folder-acknowledge');
@@ -230,13 +211,12 @@ function replaceRows<T extends { id: string }>(id: string, items: T[], render: (
 }
 function mediaRow(item: MediaItem) {
   const row = document.createElement('li'); row.dataset.rowId = item.id;
-  const kind = document.createElement('span'); kind.className = 'kind'; kind.textContent = item.kind === 'youtube' ? 'YouTube · 로컬 추출' : item.kind === 'file' ? 'MEDIA FILE' : `${item.kind.toUpperCase()} · VOD`;
+  const kind = document.createElement('span'); kind.className = 'kind'; kind.textContent = item.kind === 'file' ? 'MEDIA FILE' : `${item.kind.toUpperCase()} · VOD`;
   const title = document.createElement('h3'); title.textContent = item.title || new URL(item.url).pathname.split('/').at(-1) || '미디어';
   const source = document.createElement('p'); source.textContent = new URL(item.url).hostname + (item.size ? ` · ${formatBytes(item.size)}` : '');
   const observed = transport(item.observedTransport); if (observed) source.textContent += ` · 페이지 연결 ${transportLabel(observed)}`;
   const controls = document.createElement('div'); controls.className = 'actions';
   controls.append(button('다운로드', async () => {
-    if (item.kind === 'youtube') await ensureYouTubePermission();
     await preferencesReady;
     const result = await request('download', { id: item.id, options: options() });
     if (showFolderSetup(result)) return;
@@ -353,8 +333,10 @@ function historyRow(item: HistoryItem) {
   const controls = document.createElement('div'); controls.className = 'actions';
   if (item.state === 'review' && item.security) controls.append(button('검사 결과 확인', async () => { openReview(item); }, true, 'security-review'));
   if (item.state === 'complete') controls.append(button('저장 폴더', () => request('show-file', { id: item.id }), true, 'show-file'));
-  if (item.state === 'error' || item.state === 'cancelled') controls.append(button('다시 시도', async () => {
-    if (item.kind === 'youtube') await ensureYouTubePermission();
+  if (item.kind === 'youtube') {
+    const message = document.createElement('p'); message.textContent = '이전 YouTube 기록입니다. YouTube는 별도 데스크톱 앱에서 다운로드하세요.'; row.append(message);
+  }
+  if (item.kind !== 'youtube' && (item.state === 'error' || item.state === 'cancelled')) controls.append(button('다시 시도', async () => {
     showFolderSetup(await request('retry', { id: item.id }));
   }, true, 'retry'));
   if (item.state === 'downloading' || item.state === 'preparing') controls.append(button('취소', () => request('cancel', { id: item.id }), true, 'cancel'));
@@ -366,7 +348,7 @@ async function refresh() {
     void refreshAntivirusSettings();
     void refreshFolderSettings();
     const result = await request('list');
-    const media = Array.isArray(result.items) ? result.items.filter((item): item is MediaItem => record(item) && typeof item.id === 'string' && typeof item.url === 'string' && typeof item.title === 'string' && ['file', 'hls', 'dash', 'youtube'].includes(String(item.kind))) : [];
+    const media = Array.isArray(result.items) ? result.items.filter((item): item is MediaItem => record(item) && typeof item.id === 'string' && typeof item.url === 'string' && typeof item.title === 'string' && ['file', 'hls', 'dash'].includes(String(item.kind))) : [];
     const history = Array.isArray(result.history) ? result.history.filter(isHistory) : [];
     replaceRows('media', media, mediaRow); node('empty').hidden = media.length > 0;
     replaceRows('history', history, historyRow); node('history-empty').hidden = history.length > 0;
@@ -390,20 +372,6 @@ node('history-tab').addEventListener('click', () => show(true));
 node('refresh').addEventListener('click', () => { hasError = false; void refresh().catch(error); void refreshDatabaseStatus(); });
 node('upscale').addEventListener('click', () => { void request('upscale').catch(error); });
 node('clear-history').addEventListener('click', () => { void request('clear-history').then(refresh).catch(error); });
-node('youtube-connect').addEventListener('click', () => {
-  if (youtubeConnecting) return;
-  youtubeConnecting = true;
-  const button = node<HTMLButtonElement>('youtube-connect'); button.disabled = true;
-  node('youtube-connection').setAttribute('aria-busy', 'true');
-  node('youtube-connection-status').textContent = 'YouTube 추출 도우미 연결 권한을 확인하고 있습니다…';
-  void ensureYouTubePermission().then(async () => {
-    node('youtube-connection-status').textContent = '설치된 YouTube 추출 도우미와 실행 환경을 확인하고 있습니다…';
-    showYouTubeStatus((await request('youtube-connect')).youtube);
-  }).catch(value => {
-    const connection = node('youtube-connection-status'); connection.dataset.tone = 'error';
-    connection.textContent = value instanceof Error ? value.message : 'YouTube 도우미에 연결하지 못했습니다. 설치 안내를 확인한 뒤 다시 시도하세요.';
-  }).finally(() => { youtubeConnecting = false; button.disabled = false; node('youtube-connection').setAttribute('aria-busy', 'false'); });
-});
 node('security-acknowledge').addEventListener('change', reviewControls);
 node('security-delete').addEventListener('click', () => { void securityAction('security-delete'); });
 node('security-rescan').addEventListener('click', () => { void securityAction('security-rescan'); });
@@ -515,8 +483,7 @@ node('download-folder-confirm').addEventListener('click', () => {
 node('url-form').addEventListener('submit', event => {
   event.preventDefault();
   const url = node<HTMLInputElement>('url').value;
-  const permission = youtubeVideo(url) ? ensureYouTubePermission() : Promise.resolve();
-  void permission.then(() => preferencesReady).then(() => request('download-url', { url, options: options() })).then(result => {
+  void preferencesReady.then(() => request('download-url', { url, options: options() })).then(result => {
     if (showFolderSetup(result)) return;
     hasError = false; status.textContent = '파일을 준비하고 있습니다.'; show(true);
   }).catch(error);
@@ -528,7 +495,4 @@ if (new URL(location.href).searchParams.get('view') === 'history') show(true);
 else void refresh().catch(error);
 if (new URL(location.href).searchParams.get('setup') === 'downloads') {
   const section = node('download-folder'); section.scrollIntoView({ block: 'start' }); section.focus({ preventScroll: true });
-}
-if (new URL(location.href).searchParams.get('setup') === 'youtube') {
-  const section = node('youtube-connection'); section.scrollIntoView({ block: 'start' }); section.focus({ preventScroll: true });
 }

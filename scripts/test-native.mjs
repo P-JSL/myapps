@@ -12,5 +12,5 @@ const summary = `${result.stdout}\n${result.stderr}`;
 const count = Number(summary.match(/Ran (\d+) tests?/)?.[1]);
 if (!count || !/^OK(?:\s|$)/m.test(summary)) throw new Error('Native test summary missing');
 const sourceSha256 = {};
-for (const name of ['antivirus_host.py', 'windows_antivirus.py', 'internal_scan.py', 'install.py', 'youtube_host.py', 'install_youtube.py', 'youtube-requirements.txt']) sourceSha256[`native/${name}`] = createHash('sha256').update(await readFile(`native/${name}`)).digest('hex');
+for (const name of ['antivirus_host.py', 'windows_antivirus.py', 'internal_scan.py', 'install.py']) sourceSha256[`native/${name}`] = createHash('sha256').update(await readFile(`native/${name}`)).digest('hex');
 await writeFile('reports/native-tests.json', JSON.stringify({ status: 'passed', count, platform: process.platform, windowsRuntimeVerified: false, scope: 'native unit and subprocess tests; Windows COM/AMSI interfaces use test doubles on non-Windows', sourceSha256 }, null, 2) + '\n');

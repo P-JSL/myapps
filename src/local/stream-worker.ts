@@ -2,6 +2,7 @@ import createFFmpegCore from '../vendor/ffmpeg/ffmpeg-core.js';
 import { record } from '../security/validation.ts';
 import { MAX_SEGMENTS, MAX_STREAM_BYTES, mediaURL } from './model.ts';
 import { downloadAssets } from './assets.ts';
+import { validExpectedSize } from './network.ts';
 import type { StreamPlan } from './hls.ts';
 import { downloadOptions } from './preferences.ts';
 import { ownedTransferBuffer } from '../security/transfer.ts';
@@ -38,7 +39,7 @@ scope.onmessage = async event => {
     const names = new Set<string>();
     for (const asset of plan.assets) {
       if (!/^asset-\d+\.(ts|m4s|data)$|^dash-\d+\.m4s$/.test(asset.filename) || names.has(asset.filename)) throw new Error('잘못된 조각 파일명입니다.');
-      mediaURL(asset.url); names.add(asset.filename);
+      mediaURL(asset.url); validExpectedSize(asset.expectedSize, asset.range); names.add(asset.filename);
     }
     const core = await createFFmpegCore();
     let log = '';

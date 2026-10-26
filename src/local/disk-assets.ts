@@ -1,5 +1,5 @@
 import { mediaURL } from './model.ts';
-import { retryDelay } from './network.ts';
+import { retryDelay, validExpectedSize, validateCompleteMediaResponse } from './network.ts';
 import type { RemoteAsset } from './hls.ts';
 import type { DiskAccessHandle, DiskExtent } from './disk-fs.ts';
 import { observeTransport, type Transport } from './transport.ts';
@@ -64,6 +64,7 @@ export async function downloadDiskAssets(assets: readonly RemoteAsset[], store: 
     const range = asset.range;
     if (range && (!Number.isSafeInteger(range.offset) || !Number.isSafeInteger(range.length) || range.offset < 0
       || range.length < 1 || !Number.isSafeInteger(range.offset + range.length))) throw new Error('미디어 바이트 범위가 올바르지 않습니다.');
+    const expectedSize = validExpectedSize(asset.expectedSize, range);
     let pinned: string | undefined, pinnedURL: string | undefined;
     for (let attempt = 0; ; attempt++) {
       combined.throwIfAborted();
@@ -85,6 +86,7 @@ export async function downloadDiskAssets(assets: readonly RemoteAsset[], store: 
           if (RETRY_STATUSES.has(response.status) && (wait === undefined || wait <= 5000)) throw new Retryable(`미디어 조각 요청 실패 (${response.status})`, wait);
           throw new Error(`미디어 조각 요청 실패 (${response.status})`);
         }
+        if (expectedSize !== undefined) validateCompleteMediaResponse(response, expectedSize);
         const finalURL = response.url ? mediaURL(response.url).href : address;
         if (pinnedURL && finalURL !== pinnedURL) throw new Error('재시도 중 미디어 조각 주소가 변경되었습니다.');
         pinnedURL = finalURL;
@@ -139,6 +141,7 @@ export async function downloadDiskAssets(assets: readonly RemoteAsset[], store: 
           if (!Number.isSafeInteger(total + chunk.value.length)) throw new Error('미디어 조각 크기가 파일 시스템 범위를 초과했습니다.');
           total += chunk.value.length;
           if ((declared !== undefined && total > declared) || (range && total > range.length)) throw new Error('서버가 선언한 범위를 넘는 미디어 데이터를 반환했습니다.');
+          if (expectedSize !== undefined && total > expectedSize) throw new Error('전체 미디어가 예상 크기를 초과했습니다.');
           let offset = 0;
           while (offset < chunk.value.length) {
             const take = Math.min(BLOCK_BYTES - used, chunk.value.length - offset);
@@ -149,6 +152,7 @@ export async function downloadDiskAssets(assets: readonly RemoteAsset[], store: 
           loaded += chunk.value.length; monitor.progress?.(loaded, completed);
         }
         if (!total) throw new Error('미디어 조각이 비어 있습니다.');
+        if (expectedSize !== undefined && total !== expectedSize) throw new Error('전체 미디어가 예상 크기보다 작아 불완전합니다.');
         if ((declared !== undefined && total !== declared) || (range && total !== range.length)) throw new Retryable('미디어 조각이 불완전합니다.');
         flush(); if (timer) clearTimeout(timer);
         const protocol = await observation.finish(); if (protocol) monitor.protocol?.(protocol);

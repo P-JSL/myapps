@@ -2,6 +2,7 @@ import createFFmpegCore from '../vendor/ffmpeg/ffmpeg-core.js';
 import { record } from '../security/validation.ts';
 import { hardenMediaCore } from '../security/decoder-policy.ts';
 import { mediaURL } from './model.ts';
+import { validExpectedSize } from './network.ts';
 import type { StreamPlan } from './hls.ts';
 import { downloadDiskAssets, inspectDiskBoundaries, DiskInputRiskError } from './disk-assets.ts';
 import { mountDiskFiles, type DiskAccessHandle, type DiskExtent } from './disk-fs.ts';
@@ -18,7 +19,7 @@ function validatePlan(value: unknown): StreamPlan {
   for (const asset of value.assets) {
     if (!record(asset) || typeof asset.filename !== 'string' || !/^(?:asset-\d+\.(?:ts|m4s|data)|dash-\d+\.m4s)$/.test(asset.filename)
       || names.has(asset.filename)) throw new Error('잘못된 스트림 조각 이름입니다.');
-    mediaURL(asset.url); names.add(asset.filename);
+    mediaURL(asset.url); validExpectedSize(asset.expectedSize, asset.range); names.add(asset.filename);
   }
   const inputs = new Set<string>();
   for (const input of value.inputs) {

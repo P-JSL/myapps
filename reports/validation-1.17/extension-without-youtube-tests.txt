@@ -1,0 +1,12 @@
+✔ browser discovery excludes YouTube pages and playback chunks while retaining ordinary files and VOD (1.736443ms)
+✔ direct YouTube links fail before folder setup, history, transfer, or native helper access (1.88695ms)
+✔ legacy YouTube history remains visible without retry or synthesized media cards (3.572988ms)
+✔ extension packaging has no YouTube scripts, capture permissions, settings, or embedded installer (4.255591ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 74.554201

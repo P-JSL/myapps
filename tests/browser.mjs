@@ -15,7 +15,6 @@ import { prepareDatabaseAudit, verifyDatabaseAudit } from './database-audit.mjs'
 import { verifyPopupAudit } from './popup-audit.mjs';
 import { verifyMediaCopyAudit } from './media-copy-audit.mjs';
 import { verifyDownloadFolderAudit } from './download-folder-audit.mjs';
-import { prepareYouTubeAuditFixtures, verifyYouTubeAudit } from './youtube-audit.mjs';
 import { prepareLargeDownloadAudit, handleLargeDownloadRequest, runLargeDownloadAudit } from './large-download-audit.mjs';
 import { loadBuildPaths, assertProtectedBuild } from './build-paths.mjs';
 
@@ -33,7 +32,6 @@ function command(binary, args) {
 }
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=160x90:rate=12:duration=1', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100:duration=1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', '-y', `${fixtures}/clip.mp4`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', `${fixtures}/clip.mp4`, '-c:v', 'libvpx', '-c:a', 'libopus', '-y', `${fixtures}/clip.webm`]);
-await prepareYouTubeAuditFixtures(fixtures);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=64x48', '-frames:v', '1', '-threads', '1', '-y', `${fixtures}/image.png`]);
 command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=size=8192x2', '-frames:v', '1', '-threads', '1', '-y', `${fixtures}/wide.png`]);
 for (const directory of ['hls', 'dash', 'range', 'video', 'audio', 'low', 'high', 'quality-dash', 'parallel', 'retry', 'redirect']) await mkdir(`${fixtures}/${directory}`, { recursive: true });
@@ -349,7 +347,6 @@ function toneFrequency(filename) {
 try {
   await checks('Embedded database creates, migrates and manages data atomically in real IndexedDB', () => verifyDatabaseAudit(context, origin));
   await checks('Initial download folder setup gates every entry point and preserves automatic saving and private isolation', () => verifyDownloadFolderAudit(browser, origin, buildPaths));
-  await checks('YouTube extraction plans preserve video/audio, automatic saving, cancellation and security using explicit native/site doubles', () => verifyYouTubeAudit(browser, origin, buildPaths));
   await checks('Toolbar popup and authenticated collector rescan work with real DOM and IndexedDB', () => verifyPopupAudit(browser, origin, buildPaths));
   await checks('Explicit media URL copy and manual fallback work in popup and app without downloading', () => verifyMediaCopyAudit(browser, origin, buildPaths));
   await checks('Built UI loads with CSP; actual FFmpeg Worker assets available', async () => {

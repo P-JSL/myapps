@@ -111,10 +111,6 @@ export const staticFiles = freeze([
     "output": "LOCAL_MODE.ko.md"
   },
   {
-    "input": "native/YOUTUBE.ko.md",
-    "output": "YOUTUBE.ko.md"
-  },
-  {
     "input": "reports/FEATURES.ko.md",
     "output": "FEATURES.ko.md"
   },

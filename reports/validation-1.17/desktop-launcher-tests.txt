@@ -1,0 +1,10 @@
+test_built_binary_is_native_windows_gui_with_only_system_imports (test_launcher.LauncherBinaryTests.test_built_binary_is_native_windows_gui_with_only_system_imports) ... ok
+test_child_failure_shows_recovery_dialog_and_preserves_code (test_launcher.LauncherEntryTests.test_child_failure_shows_recovery_dialog_and_preserves_code) ... ok
+test_linked_runtime_is_rejected_before_process_creation (test_launcher.LauncherEntryTests.test_linked_runtime_is_rejected_before_process_creation) ... ok
+test_process_creation_failure_shows_error (test_launcher.LauncherEntryTests.test_process_creation_failure_shows_error) ... ok
+test_success_does_not_display_error (test_launcher.LauncherEntryTests.test_success_does_not_display_error) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.044s
+
+OK

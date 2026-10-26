@@ -22,7 +22,7 @@ export const ACTIVE_HISTORY_STATES = ['preparing', 'downloading', 'scanning', 'r
 export function isActiveHistoryState(state: DownloadState): boolean {
   return (ACTIVE_HISTORY_STATES as readonly DownloadState[]).includes(state);
 }
-export type MediaKind = 'file' | 'hls' | 'dash' | 'youtube';
+export type MediaKind = 'file' | 'hls' | 'dash';
 export interface MediaItem {
   id: string; tabId: number; url: string; title: string; mime: string;
   kind: MediaKind; createdAt: number; size?: number; observedTransport?: Transport;
@@ -71,7 +71,7 @@ export class MediaCatalog {
   }
 }
 export interface HistoryItem {
-  id: string; url: string; filename: string; kind: MediaKind; state: DownloadState;
+  id: string; url: string; filename: string; kind: MediaKind | 'youtube'; state: DownloadState;
   createdAt: number; incognito: boolean; downloadId?: number; error?: string; options?: DownloadOptions;
   preparation?: { stage: 'queued' | 'fetching' | 'processing' | 'saving'; progress?: number; loaded?: number; total?: number };
   transferProtocols?: Transport[]; receivedBytes?: number; totalBytes?: number;
@@ -91,8 +91,20 @@ export function mediaURL(value: unknown, base?: string): URL {
   url.hash = '';
   return url;
 }
+function requiresDesktopApp(url: URL): boolean {
+  const hostname = url.hostname.replace(/\.$/, '');
+  return ['youtube.com', 'youtu.be', 'youtube-nocookie.com', 'googlevideo.com'].some(host => hostname === host || hostname.endsWith(`.${host}`));
+}
+/** Browser downloads exclude site pages and partial playback tracks handled by the desktop app. */
+export function browserMediaURL(value: unknown, base?: string): URL {
+  const url = mediaURL(value, base);
+  if (requiresDesktopApp(url)) throw new Error('YouTube는 별도 데스크톱 앱에서 다운로드하세요.');
+  return url;
+}
 export function mediaKind(url: string, mime = '', fromElement = false): MediaKind | undefined {
-  const path = mediaURL(url).pathname.toLowerCase();
+  const address = mediaURL(url);
+  if (requiresDesktopApp(address)) return undefined;
+  const path = address.pathname.toLowerCase();
   if (/\.m3u8$/.test(path) || /mpegurl/i.test(mime)) return 'hls';
   if (/\.mpd$/.test(path) || /dash\+xml/i.test(mime)) return 'dash';
   if (!fromElement && (/\.(ts|m4s)$/.test(path) || /video\/mp2t/i.test(mime))) return undefined;

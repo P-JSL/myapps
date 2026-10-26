@@ -1,0 +1,8 @@
+{
+  "version": "0.17.0",
+  "linux_x86_64": {
+    "filename": "ziglang-0.17.0-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.musllinux_1_1_x86_64.whl",
+    "url": "https://files.pythonhosted.org/packages/fe/6f/e1c380fe61db36cb464d5d4d18c557338812500986885373e2550d4ebf6b/ziglang-0.17.0-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.musllinux_1_1_x86_64.whl",
+    "sha256": "97079827064a7492cce5541ceb438ae8003ce1e54e399676da2d62fb7a5dc08b"
+  }
+}

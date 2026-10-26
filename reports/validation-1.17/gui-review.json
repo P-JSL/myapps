@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "version": "1.17.0",
+  "generated_at_utc": "2026-10-26T04:29:13.409422+00:00",
+  "status": "passed",
+  "environment": {
+    "os": "Linux",
+    "python": "3.12.14",
+    "pyside": "6.12.0",
+    "qt": "6.12.0",
+    "qt_platform": "offscreen"
+  },
+  "command": "PYTHONPATH=.cache/desktop-gui-dev QT_QPA_PLATFORM=offscreen python desktop/test_gui.py -v --review-report test-results/desktop-gui-review.json --screenshots-dir reports/screenshots",
+  "windows_ci_command": "runtime/python/python.exe -I <source>/desktop/test_gui.py --app-root <extracted>/MyVideoApp -v",
+  "tests_run": 6,
+  "cases": [
+    {
+      "test": "test_failed_history_retry_reuses_existing_job_without_duplicate_row",
+      "status": "passed"
+    },
+    {
+      "test": "test_first_uuid_worker_persists_selected_unicode_folder_and_error",
+      "status": "passed"
+    },
+    {
+      "test": "test_folder_format_quality_and_theme_survive_window_reopen",
+      "status": "passed"
+    },
+    {
+      "test": "test_invalid_url_and_cancelled_first_folder_selection_do_not_enqueue",
+      "status": "passed"
+    },
+    {
+      "test": "test_one_instance_owns_each_data_directory",
+      "status": "passed"
+    },
+    {
+      "test": "test_queue_cancellation_retry_advance_and_finished_card_cleanup",
+      "status": "passed"
+    }
+  ],
+  "boundaries": {
+    "real": [
+      "MainWindow",
+      "DownloadWorker",
+      "Qt queued signals and thread pool",
+      "Engine request validation and history transitions",
+      "SQLite history and preferences"
+    ],
+    "mocked": [
+      "Engine._dependencies before any media extraction or download",
+      "Native folder chooser return value"
+    ],
+    "media_network_requests": 0
+  },
+  "reviewed_source_sha256": {
+    "main.py": "07ea610d412a2a325f5d8412fcfb20dcf0b473a9b6b99f7ab0d591fe8948e3e1",
+    "engine.py": "d3d43657384f95cc7ea94d3e57f5bc99818eff9c435cc5f3d0524ecc3a876c18",
+    "storage.py": "4d222a5f3cd754386183a97a4cb5149b253c1867a902e34e470f34758d50c042",
+    "theme.py": "8214e4fc4786608388e8ecc3e7b501eb206d18ba34fcb32304db990b1544defe"
+  },
+  "screenshots": [],
+  "official_design_sources": [
+    {
+      "url": "https://github.com/jely2002/youtube-dl-gui",
+      "observed": "Documented video/audio, quality/output selection, queue, light/dark and explicit errors."
+    },
+    {
+      "url": "https://github.com/subhra74/xdm#-screenshots",
+      "observed": "Official screenshots: sidebar/list, per-item folder actions, destination and one primary download action."
+    },
+    {
+      "url": "https://github.com/oleksis/youtube-dl-gui#screenshots",
+      "observed": "Official screenshot: URL input, visible destination/format and queue progress/status."
+    },
+    {
+      "url": "https://github.com/axcore/tartube#4-quick-start-guide",
+      "observed": "Documented destination-first setup and classic URL/destination/format/add/download sequence."
+    }
+  ],
+  "design_review_scope": "Qualitative review of official public documentation and screenshots. No third-party application code copied; no universal usability ranking or user-study claim.",
+  "known_limitations": [
+    "This recorded execution used Linux Qt offscreen; actual Windows display, launcher and bundled runtime behavior require Windows CI or device testing.",
+    "Live YouTube extraction, media downloads, format conversion and playback were not exercised by these GUI integration tests.",
+    "Microsoft Defender execution, threat detection and scan results were not exercised.",
+    "Native folder picker rendering and assistive technology were not exercised; only chooser results and resulting state were tested.",
+    "Preview images use empty temporary fixtures and require visual review; offscreen rendering can differ from Windows fonts and display scaling."
+  ]
+}

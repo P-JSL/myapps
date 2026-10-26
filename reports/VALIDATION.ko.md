@@ -1,3 +1,7 @@
+# 현재 릴리스 1.17.0: 확장과 Windows 앱 분리
+
+확장의 YouTube 기능을 제거하고 별도 Windows GUI 앱을 추가했습니다. **기존 전체 검증은 사용자 요청으로 반복하지 않았습니다.** 새 기능 검사·타입 검사·빌드·ZIP 검증의 범위와 한계는 [1.17 보고서](DESKTOP_1_17.ko.md) 및 `release-validation.json`을 기준으로 합니다. 아래는 1.16.0 검증 이력입니다.
+
 # My Video App 1.16.0 로컬 버전 검증
 
 환경: Node.js 24.19.0, Chromium 154.0.8037.57, Linux x86_64.

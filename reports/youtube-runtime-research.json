@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "platform": "win32-x64",
+  "inputs": [
+    {
+      "id": "python",
+      "version": "3.13.17",
+      "filename": "python.3.13.17.nupkg",
+      "url": "https://api.nuget.org/v3-flatcontainer/python/3.13.17/python.3.13.17.nupkg",
+      "sha256": "dce409744b088f94c6e37ba41f8100c384c27e029e843237364c602d30d475e5",
+      "sha512Base64": "DmZ5KLtPGVc8bNiPZRM7LgeyQ6XHFvM1tWqma7nsb4IyglbSLDop4joCdqxcam14YhH+q1JIkK0eVmKRlsaynA==",
+      "sha512MetadataUrl": "https://api.nuget.org/v3/catalog0/data/2026.10.21.16.02.39/python.3.13.17.json",
+      "hashVerified": true,
+      "size": 14826465,
+      "license": "PSF-2.0 and included third-party notices",
+      "licensePaths": [
+        "runtime/python/LICENSE.txt",
+        "licenses/python/LICENSE.txt"
+      ],
+      "authors": "Python Software Foundation",
+      "owners": [
+        "CPython",
+        "steve.dower"
+      ],
+      "projectUrl": "https://www.python.org/",
+      "repository": {
+        "@id": "https://api.nuget.org/v3/catalog0/data/2026.10.21.16.02.39/python.3.13.17.json#repository",
+        "commit": "64e080d",
+        "type": "git",
+        "url": "https://github.com/Python/CPython.git"
+      },
+      "ownershipMetadataUrl": "https://azuresearch-usnc.nuget.org/query?q=packageid:python&prerelease=false&semVerLevel=2.0.0&take=5",
+      "nuspecUrl": "https://api.nuget.org/v3-flatcontainer/python/3.13.17/python.nuspec",
+      "nugetVerifiedFlag": false,
+      "extract": {
+        "prefix": "tools/",
+        "destination": "runtime/python/"
+      },
+      "pe": {
+        "format": "PE32+",
+        "architecture": "AMD64",
+        "machine": "0x8664"
+      }
+    },
+    {
+      "id": "yt-dlp",
+      "version": "2026.10.21",
+      "filename": "yt_dlp-2026.10.21-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b7/75/ae700ddc7e0b1095fd06cf7e251627dcf4cafcaff460cce92cdc08023b13/yt_dlp-2026.10.21-py3-none-any.whl",
+      "sha256": "94a3a3e2c423129d0bbd2f1be000c4171fa1226c29e251c84aff868f2851c247",
+      "hashVerified": true,
+      "hashMetadataUrl": "https://pypi.org/pypi/yt-dlp/2026.10.21/json",
+      "size": 3188012,
+      "license": "Unlicense",
+      "licensePaths": [
+        "licenses/yt-dlp/LICENSE"
+      ],
+      "extract": {
+        "packagesAndDistInfo": "runtime/python/Lib/site-packages/",
+        "data": "runtime/python/"
+      }
+    },
+    {
+      "id": "yt-dlp-ejs",
+      "version": "0.8.0",
+      "filename": "yt_dlp_ejs-0.8.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/e3/bd/520769863744b669440a924271a6159ddd82ad5ae26b4ac4d4b69e9f8d44/yt_dlp_ejs-0.8.0-py3-none-any.whl",
+      "sha256": "79300e5fca7f937a1eeede11f0456862c1b41107ce1d726871e0207424f4bdb4",
+      "hashVerified": true,
+      "hashMetadataUrl": "https://pypi.org/pypi/yt-dlp-ejs/0.8.0/json",
+      "size": 53443,
+      "license": "Unlicense AND MIT AND ISC",
+      "licensePaths": [
+        "licenses/yt-dlp-ejs/LICENSE"
+      ],
+      "extract": {
+        "packagesAndDistInfo": "runtime/python/Lib/site-packages/",
+        "data": "runtime/python/"
+      }
+    },
+    {
+      "id": "deno",
+      "version": "2.9.8",
+      "filename": "deno-2.9.8-py3-none-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/fb/42/07b0f91b0962869218653e32a85aebf22fc359a146d8c032623994b9457f/deno-2.9.8-py3-none-win_amd64.whl",
+      "sha256": "60dd97e612b8bab67c8080712646a821071e3809909489f853763cea19617700",
+      "hashVerified": true,
+      "hashMetadataUrl": "https://pypi.org/pypi/deno/2.9.8/json",
+      "size": 41825460,
+      "license": "MIT",
+      "licensePaths": [
+        "licenses/deno/LICENSE"
+      ],
+      "extract": {
+        "member": "deno-2.9.8.data/scripts/deno.exe",
+        "destination": "runtime/deno.exe"
+      },
+      "pe": {
+        "format": "PE32+",
+        "architecture": "AMD64",
+        "machine": "0x8664"
+      }
+    }
+  ],
+  "readyDirectory": ".cache/youtube-offline-runtime/ready",
+  "fileInventory": ".cache/youtube-offline-runtime/ready-file-inventory.json",
+  "runtimePaths": {
+    "python": "runtime/python/python.exe",
+    "deno": "runtime/deno.exe",
+    "sitePackages": "runtime/python/Lib/site-packages"
+  },
+  "staticValidation": {
+    "allArchiveCRCsValid": true,
+    "pythonAndDenoPE32PlusAMD64": true,
+    "runtimeIncludesStdlibDLLsAndVCRuntime": true,
+    "hasIsolatedPthFile": false,
+    "windowsBinaryExecutionPerformed": false,
+    "sitePackageLoading": "The shipped Lib/site.py includes prefix/Lib/site-packages on Windows; -I disables user site and environment variables, but does not disable the global site module. No ._pth file is present.",
+    "executionLimit": "Linux static inspection only. Windows execution and Chrome native registration must be tested on Windows.",
+    "publisherEvidence": "NuGet owners are CPython and steve.dower; authors, project URL, and repository identify the Python Software Foundation/CPython. NuGet verified flag is false and is preserved accurately.",
+    "sha512Note": "NuGet flatcontainer .nupkg.sha512 returned 404; official catalog packageHash SHA512 is verified instead.",
+    "importedDLLs": {
+      "runtime/python/python.exe": [
+        "python313.dll",
+        "VCRUNTIME140.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "KERNEL32.dll"
+      ],
+      "runtime/python/python313.dll": [
+        "VERSION.dll",
+        "WS2_32.dll",
+        "api-ms-win-core-path-l1-1-0.dll",
+        "bcrypt.dll",
+        "ADVAPI32.dll",
+        "KERNEL32.dll",
+        "VCRUNTIME140.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-time-l1-1-0.dll",
+        "api-ms-win-crt-process-l1-1-0.dll",
+        "api-ms-win-crt-conio-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll"
+      ],
+      "runtime/python/DLLs/_ssl.pyd": [
+        "WS2_32.dll",
+        "CRYPT32.dll",
+        "libcrypto-3.dll",
+        "libssl-3.dll",
+        "KERNEL32.dll",
+        "python313.dll",
+        "VCRUNTIME140.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll"
+      ],
+      "runtime/deno.exe": [
+        "bcryptprimitives.dll",
+        "kernel32.dll",
+        "api-ms-win-core-synch-l1-2-0.dll",
+        "user32.dll",
+        "ntdll.dll",
+        "advapi32.dll",
+        "ws2_32.dll",
+        "crypt32.dll",
+        "userenv.dll",
+        "shell32.dll",
+        "bcrypt.dll"
+      ]
+    }
+  },
+  "size": {
+    "inputArchivesBytes": 59893380,
+    "readyUncompressedBytes": 148568312,
+    "readyFiles": 2411,
+    "referenceRuntimeZipBytes": 59733122,
+    "referenceRuntimeZipMiB": 56.97
+  }
+}

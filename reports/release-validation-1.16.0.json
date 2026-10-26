@@ -1,0 +1,579 @@
+{
+  "release": "1.16.0",
+  "buildSha256": "7875079ccfdadf334b3a19782aeb706f9f6b2b6b4f20494a1a39a25d372f4f4d",
+  "recordedAtUtc": "2026-10-25T09:39:32.653946+00:00",
+  "unitTests": 344,
+  "nativeTests": 115,
+  "browserScenarios": 92,
+  "embeddedDatabaseSubchecks": 19,
+  "popupCollectorSubchecks": 8,
+  "http3Checks": 4,
+  "algorithmSuites": 5,
+  "realClamAvChecks": 6,
+  "unitAndBrowserLogSha256": "6cff3b50b90147b8c56e83a0b01395fa1419df72ba0452b6cb4880bad705caec",
+  "http3LogSha256": "fc107488dcb0e12faa55674794f562c4e14a8f411843c6899e18fe7dda91de3f",
+  "benchmarkLogSha256": "caeb5a68bfb48ee80ed921c1e8df344c554ecf81127570f955bf13012741fae7",
+  "independentReview": {
+    "agent": "/root/youtube_final_review",
+    "status": "source-approved; final archive review before publication",
+    "scope": "Source-bound native bridge, canonical history/no signedURL persistence, local executable and process budgets/cleanup, required audio/video mapping, no native media writer, AV-independent permission and first-folder/privacy flow. Reviewer independently passed46native/15client/19workflow tests and verified fixes. LiveYouTube/WindowsAPI/Chrome native registration are explicitly unverified."
+  },
+  "sourceArchitecture": {
+    "status": "passed",
+    "moduleCount": 41,
+    "entryCount": 9,
+    "vendorEntryCount": 1,
+    "sourceFiles": 136,
+    "reportSha256": "654185b1daa07e12b9d74316b1b9c44a434814fe6654fa0cc7ef0976d2f70638"
+  },
+  "securityReview": {
+    "report": "reports/SECURITY_REVIEW_2026-10-21.ko.md",
+    "reportSha256": "cf9f6576e57014aef08a76af7487014007e47daf187f92ee6ce136ae7af9a221",
+    "dependencyAuditSha256": "21e69dc4651cf420095d603e96d79fe4ab84cbd485d1348f50a1c62c19162bb0",
+    "npmKnownAdvisories": 0,
+    "npmAuditScope": "npm dependency advisories only; bundled native/Wasm components and browser/OS vulnerabilities require separate review",
+    "engineVersion": "FFmpeg 5.1.4",
+    "enginePatched": false,
+    "decoderMitigation": "Dynamically bounded per-input whitelist excludes JPEG2000/PNM/MagicYUV/EXR/SANM families before FFprobe/FFmpeg decoding. Targeted exposure reduction, not an engine update.",
+    "nativeHostRevalidated": true,
+    "priorReportRelease": "1.11.0",
+    "offlineDecoder": {
+      "package": "brotli-dec-wasm",
+      "version": "2.3.2",
+      "scope": "Exact npm lock/integrity and source wrapper audited; decoder Wasm size/SHA256 validated before initialization. npm advisory audit is not a complete Rust/Wasm vulnerability review."
+    }
+  },
+  "buildProtection": {
+    "version": 2,
+    "exportSurface": {
+      "application": 0,
+      "removedApplicationSymbols": 4,
+      "engineModules": "default-only",
+      "sharedInternalModules": 16,
+      "sharedInternalNamedExports": 103,
+      "decoderModule": "default-only"
+    },
+    "minified": true,
+    "charset": "utf8",
+    "opaqueFilenames": true,
+    "sourceMaps": false,
+    "dynamicEvaluation": false,
+    "engine": {
+      "format": "my-video-engine-v2",
+      "algorithm": "AES-256-GCM",
+      "compression": "brotli",
+      "cipherPath": "assets/69ad5200f803343e6368325fd5751aa1.bin",
+      "coreModulePath": "assets/4bb7e9f8bda5833847d68013c6f07ff8.js",
+      "iv": "PvQAqWZTuo0RhTkW",
+      "tagBits": 128,
+      "plaintextBytes": 32232419,
+      "compressedBytes": 7280521,
+      "ciphertextBytes": 7280537,
+      "clientKeyEmbedded": true,
+      "compressionOptions": {
+        "quality": 11,
+        "windowBits": 22
+      },
+      "decoder": {
+        "modulePath": "assets/df8e90ab33eaa5979d6f24e1c20a5a9e.js",
+        "wasmPath": "assets/6b5a3ce05129d2c37a732c6f6e2a4f09.bin",
+        "wasmBytes": 208439,
+        "wasmSha256": "79b29cb1790560f0a0f32b4a31d935e2782875e4a367fde23c81d986b327ec3f"
+      }
+    },
+    "limitation": "Client decryption keys are embedded and recoverable; packaging is not a secrecy boundary. The manifest and license notices remain readable."
+  },
+  "antivirusEvidence": "Final native115 (existingAV69+newYouTube46) rerun after the finalnative setting correction. AVproduction source unchanged; prior matching-hash realClamAV6 evidence retained, not newly rerun. Separate newYouTubehelper does not alter AVhelper or AV toggle. Windows APIs and liveYouTube not validated.",
+  "userTxtSample": {
+    "sha256": "704a5e15ae1068e4df52a8bcff04270efdad595cf685e0eccff86ab335471a46",
+    "actualMime": "audio/mp4",
+    "actualExtension": "m4a",
+    "videoTracks": 0,
+    "audioCodec": "aac",
+    "durationSeconds": 0.487619
+  },
+  "limitations": [
+    "Actual extension installation blocked by administrator policy; Chrome APIs doubled",
+    "Windows antivirus APIs not executed on Linux",
+    "User TXT sample is a short audio-only fragment; it cannot recreate a complete video",
+    "Client decryption keys are embedded and recoverable; JS/HTML/CSS, manifest, license notices and public source history remain readable",
+    "Encrypted packaging is for local developer-mode installation; Chrome Web Store policy acceptance is not validated",
+    "Older bundled FFmpeg5.1.4 and linked C libraries remain; identified decoder exposure is limited, not all CVEs patched",
+    "SANM blocked by name policy; no real SANM fixture executed",
+    "Native fallback signature probe and actual download are separate requests; large ID3 may be rejected",
+    "Static no-signals does not mean safe or replace Defender/other AV/Chrome protection; unknown malware and crafted media may be missed",
+    "Browser cannot inspect arbitrary files written by Chrome downloads; updated native helper required for direct-disk full-file internal evidence; risk review can occur after the file is already saved",
+    "AV integration OFF disconnects app helper ports, not OS real-time protection or already-started OS scans; helper-dependent actual-disk internal scan unavailable while OFF",
+    "Incognito AV preference lives only in the current isolated worker execution memory; a new execution defaults ON",
+    "Actual extension optional-permission user gesture integration is unverified under administrator installation block; real Chromium UI tests verify active/expired activation behavior with Chrome API doubles",
+    "Original downloads have no application media byte/duration/overall preparation timer cap, but server behavior, safe-integer lengths, disk/browser quota and finite metadata budgets still bound success; this is not unlimited capacity.",
+    "Disk original HLS/DASH planning is bounded to100000 assets and8MiB playlists; live, DRM and unsupported variants remain rejected. Same-resource distinct byte ranges require a consistent strong ETag; sequential fallback applies to ordinary files.",
+    "Audio conversion, local conversion/merge and upscaling retain separate existing resource/time bounds; cross-restart partial-download resume is not implemented.",
+    "Prepared final files at most256MiB retain full browser static scan; larger prepared files receive only8MiB static-prefix analysis marked incomplete, with SHA256 over all bytes. Native scan limit2GiB minus1 and AMSI128MiB remain; exceeding these is never classified as a completed clean scan.",
+    "Large audit uses disposable regular disk-backed Chromium and test-origin CDP8GiB quota override, restored afterward; no product/OS/user settings changed. Installed-extension unlimitedStorage behavior remains unverified.",
+    "2GiB audit inserts a large free box in owned one-second MP4. Long-duration audit has2 frames spanning14402seconds, not four hours of continuous media throughput. Page Blob reads are bounded; full browser/worker RSS was not measured.",
+    "Brotli packaging uses an additional pinned offline Rust/Wasm decoder, build CPU time and temporary memory; engine memory and all codecs remain unchanged. Direct Chrome120 binary was not executed; actual browser verification isChromium154.",
+    "The app cannot read/set Chrome absolute default directory or automatically verify ask-pref; user configures Chrome and explicitly acknowledges. Save As may still appear for browser preferences/policy/permissions/security.",
+    "Live YouTube extraction/signatures/PO-token requirements are not validated: network policy excludes YouTube; test native/site responses in browser are explicit doubles.",
+    "Native Windows Job Object/registry APIs and actual Chrome native registration were not executed on this Linux environment.",
+    "YouTube requires separately installed Python/Deno resolver; extension ZIP alone is insufficient."
+  ],
+  "builtinRiskScreening": {
+    "engine": "builtin-static-v1",
+    "report": "reports/INTERNAL_SCAN.ko.md",
+    "reportSha256": "e2a505b311db98831084bd6d547db86956ba42ed0813860a9efb86626bbe18cc",
+    "browserScannerSha256": "525e925be98cbd1ad4a921fad1e7d9a529ec0cb729ce5ff30604f827e57ee288",
+    "nativeScannerSha256": "7ea25bb21ff73c0055beba1d85f351389d737f02587189c91f84129754c7d6f7",
+    "scope": "Offline bounded static risk signals; never a complete malware verdict. Predecode checks, prepared/final-byte scan, native private snapshot scan, separate external AV status, SHA-256/size-bound evidence and sticky risk review. No file execution/unpacking/upload. Direct disk scans require updated helper.",
+    "browserByteLimit": 268435456,
+    "nativeByteLimit": 2147483647,
+    "nativeReadChunkBytes": 65536,
+    "maxFindings": 16,
+    "releaseGuard": "Build and packaging reject a contiguous standard harmless antivirus test marker in distributable sources/resources/reports; tests construct it only at runtime. Test media/signatures/databases excluded from ZIPs.",
+    "benchmarkScope": "Five existing algorithm domains rerun against final source. Frozen UI baseline uses explicit in-memory presentation adaptation for internal summary and copy control; original/adapted hashes, full text equality and focus/token/pending assertions retained. Not a whole-scanner throughput or download benchmark.",
+    "largePreparedFiles": {
+      "thresholdBytes": 268435456,
+      "staticPrefixBytes": 8388608,
+      "staticStatus": "incomplete unless suspicious signals found",
+      "fullFileDigest": "incremental SHA-256,4MiB blocks",
+      "predecodeScope": "Disk stream assets scanned in overlapping bounded blocks; no complete malware verdict."
+    }
+  },
+  "verificationLogs": {
+    "unitAndBrowser": "test-results/youtube-verify.log",
+    "nativeFinal": "test-results/youtube-native-final.log",
+    "youtubeNativeIntegration": "test-results/youtube-native-integration.log",
+    "http3": "test-results/youtube-http3.log",
+    "benchmark": "test-results/youtube-benchmarks.log",
+    "dependencies": "test-results/youtube-dependencies.log",
+    "source": "test-results/youtube-source.log",
+    "releaseWorkflow": "test-results/youtube-release-workflow.log"
+  },
+  "antivirusIntegration": {
+    "preferenceKey": "my_video_app_antivirus_enabled_v1",
+    "defaultEnabled": true,
+    "normalPersistence": "Validated boolean in existing IndexedDB settings store; schema1 unchanged",
+    "incognitoPersistence": "Isolated execution memory only; never reads or writes normal-window AV setting",
+    "disabledStatus": "local-only disabled; native parsers reject forged disabled",
+    "disabledBehavior": "No new native readiness/scan requests; queued and pre-permission requests recheck policy; active ports disconnected and late replies ignored. Benign new downloads complete distinctly unscanned; no automatic processing. Browser byte/predecode checks, OS AV and Chrome protection remain. Helper-dependent actual disk internal scans do not run.",
+    "riskRetention": "Known AV threats, native-only hash/size-bound internal suspicious findings and prepared-byte risk survive Chrome priority, OFF and browser acceptance; explicit rescan while OFF cannot clear prior evidence.",
+    "raceProtection": "Connection and preference generations reject stale active/queued callbacks and stale final preference GET across OFF or OFF-to-ON; finalizing offer generations revoked on committed OFF.",
+    "permissionControl": "Fresh authoritative setting checked before optional permission prompt, with active user activation; expired click requests an explicit new click. Unknown/read/save failure disables uncertain controls and offers reread.",
+    "uiSubchecksIncludedInUnitTests": 8,
+    "report": "reports/SECURITY_DOWNLOADS.ko.md",
+    "reportSha256": "f0f146c4612ea0d7fb5719c302d65dbbbd325aebf48338c6b7504eeafcccacd1"
+  },
+  "readmeChangelog": {
+    "path": "README.md",
+    "versions": 20,
+    "first": "1.0.0",
+    "latest": "1.16.0",
+    "sha256": "f674208e38f9174ea9ddd44cd32cc5e96b7207617718928df51bac9447fc7fb0",
+    "format": "Newest-first GFM table with version, changes and related document columns; historical project versions distinct from original extension10.6.1.2"
+  },
+  "largeDownloads": {
+    "report": "reports/large-download.json",
+    "reportSha256": "ca07e71b36e1e439d679eb92e4e35b9151e858496975ebd39bf0930ede14974a",
+    "status": "passed",
+    "checksIncludedInBrowserTotal": 5,
+    "parallelWorkers": 4,
+    "ordinaryRangeChunkBytes": 4194304,
+    "diskAssetBlockBytes": 1048576,
+    "diskFilesystemHandles": 2,
+    "metadataAssets": 100000,
+    "metadataBytes": 8388608,
+    "wholeFileDigestChunkBytes": 4194304,
+    "originalMediaByteCap": null,
+    "originalMediaDurationCap": null,
+    "originalPreparationTimeout": null,
+    "outcomes": [
+      {
+        "name": "parallel-over-2-gib",
+        "status": "passed",
+        "size": 2147506265,
+        "sha256": "8849960b8a49bc64462ce159d436eeaa28cc978aad4045336ab2b3b35d1655de",
+        "maximumBlobRead": 4194304,
+        "traffic": {
+          "requests": 513,
+          "rangeRequests": 513,
+          "maximumActive": 4,
+          "active": 0,
+          "bytesSent": 2147506265,
+          "aborted": 0
+        },
+        "codecs": [
+          "h264",
+          "aac"
+        ],
+        "durationSeconds": 1
+      },
+      {
+        "name": "cancel-and-cleanup",
+        "status": "passed",
+        "traffic": {
+          "requests": 5,
+          "rangeRequests": 5,
+          "maximumActive": 4,
+          "active": 0,
+          "bytesSent": 1441792,
+          "aborted": 4
+        }
+      },
+      {
+        "name": "injected-quota-and-cleanup",
+        "status": "passed",
+        "injectedFailure": true,
+        "traffic": {
+          "requests": 5,
+          "rangeRequests": 5,
+          "maximumActive": 4,
+          "active": 0,
+          "bytesSent": 16842752,
+          "aborted": 0
+        }
+      },
+      {
+        "name": "disk-stream-remux-over-2-gib",
+        "status": "passed",
+        "inputBytes": 2147506265,
+        "outputBytes": 22618,
+        "maximumPageBlobRead": 22618,
+        "videoPayloadSha256": "6fe6563f28d0b880da909d31ec9e0f9f02def6deec91d0ec56bb18b26d2964f0",
+        "frames": 12,
+        "durationSeconds": 1,
+        "traffic": {
+          "requests": 1,
+          "rangeRequests": 0,
+          "maximumActive": 1,
+          "active": 0,
+          "bytesSent": 2147506265,
+          "aborted": 0
+        }
+      },
+      {
+        "name": "long-duration-disk-stream",
+        "status": "passed",
+        "sourceFrames": 2,
+        "outputFrames": 2,
+        "durationSeconds": 14402,
+        "videoPayloadSha256": "982ecc009674b13c8311a5f0a8fef44861b057e0c7a669736c6ceb954bdd247e",
+        "fixtureScope": "Two low-frame-rate frames spanning four hours; verifies real media timestamps and frame preservation, not hours of continuous recording throughput."
+      }
+    ],
+    "storageQuotaFixture": {
+      "scope": "Disposable regular disk-backed Chromium profile and localhost test origin only. This HTTP harness lacks the extension manifest existing unlimitedStorage exemption; no product permission, OS setting or user profile is changed. Actual installed-extension permission behavior remains unverified.",
+      "method": "CDP Storage.overrideQuotaForOrigin",
+      "requestedQuotaBytes": 8589934592,
+      "estimateBefore": {
+        "quota": 10740483985,
+        "usage": 3065745,
+        "usageDetails": {
+          "fileSystem": 174,
+          "indexedDB": 3065571
+        }
+      },
+      "estimateDuring": {
+        "quota": 10740483985,
+        "usage": 3065745,
+        "usageDetails": {
+          "fileSystem": 174,
+          "indexedDB": 3065571
+        }
+      },
+      "estimateAfterRestore": {
+        "quota": 10740483985,
+        "usage": 3065745,
+        "usageDetails": {
+          "fileSystem": 174,
+          "indexedDB": 3065571
+        }
+      },
+      "overrideRestored": true,
+      "protocolBefore": {
+        "usage": 3065745,
+        "quota": 10723128114,
+        "overrideActive": false,
+        "usageBreakdown": [
+          {
+            "storageType": "file_systems",
+            "usage": 174
+          },
+          {
+            "storageType": "indexeddb",
+            "usage": 3065571
+          },
+          {
+            "storageType": "cache_storage",
+            "usage": 0
+          },
+          {
+            "storageType": "service_workers",
+            "usage": 0
+          }
+        ]
+      },
+      "protocolDuring": {
+        "usage": 3065745,
+        "quota": 8589934592,
+        "overrideActive": true,
+        "usageBreakdown": [
+          {
+            "storageType": "file_systems",
+            "usage": 174
+          },
+          {
+            "storageType": "indexeddb",
+            "usage": 3065571
+          },
+          {
+            "storageType": "cache_storage",
+            "usage": 0
+          },
+          {
+            "storageType": "service_workers",
+            "usage": 0
+          }
+        ]
+      },
+      "protocolAfterRestore": {
+        "usage": 3065745,
+        "quota": 10723128114,
+        "overrideActive": false,
+        "usageBreakdown": [
+          {
+            "storageType": "file_systems",
+            "usage": 174
+          },
+          {
+            "storageType": "indexeddb",
+            "usage": 3065571
+          },
+          {
+            "storageType": "cache_storage",
+            "usage": 0
+          },
+          {
+            "storageType": "service_workers",
+            "usage": 0
+          }
+        ]
+      },
+      "estimateScope": "navigator.storage.estimate may report a privacy-rounded quota; CDP values above verify the actual isolated override and its removal."
+    },
+    "memoryScope": "Page-scope Blob.arrayBuffer calls are guarded at8MiB in both successful large scenarios; workers use the production disk filesystem and are not instrumented by this page guard. Server/host hashing uses bounded chunks. This is not a complete browser heap/RSS measurement.",
+    "fixtureScope": "Owned one-second H264/AAC MP4 with a2GiB free box and relocated chunk offsets; a separate two-frame H264 source spans14402seconds. Virtual giant HTTP bytes and resulting large files are not retained in the repository.",
+    "networkIdleMilliseconds": {
+      "ordinaryFile": 30000,
+      "streamAsset": 60000
+    }
+  },
+  "integrationUnitTests": 344,
+  "mediaCopySubchecks": 7,
+  "mediaUrlCopy": {
+    "report": "reports/media-copy.json",
+    "reportSha256": "1b2555d1dba1cbb14f377e64cfc531d85e3041cbbb6688e855d306b0fad906a9",
+    "subchecksIncludedInBrowserTotal": 7,
+    "extraProductPermissions": [],
+    "clipboardReads": false,
+    "automaticCopy": false,
+    "mode": "Real Chromium Clipboard writes on trusted click with fresh default-permission contexts before any grant; only afterward test read permission inspects the known URL. Additional click/keyboard/denial cases use test read/write grants or explicit denial/unavailability doubles. Chrome extension APIs are doubles. Product never reads clipboard."
+  },
+  "lightweightBuild": {
+    "report": "reports/lightweight-build.json",
+    "reportSha256": "dd5dce6dc962f09fd45f28d96e9855bcd54a5efceb5bda648d022febe1fd3fbc",
+    "measurements": {
+      "applicationJavaScript": {
+        "beforeBytes": 288971,
+        "afterBytes": 191875,
+        "savedBytes": 97096,
+        "reductionPercent": 33.600604
+      },
+      "allDistResources": {
+        "beforeBytes": 10763869,
+        "afterBytes": 7918102,
+        "savedBytes": 2845767,
+        "reductionPercent": 26.438142
+      },
+      "extensionZip": {
+        "beforeBytes": 10460511,
+        "afterBytes": 7562311,
+        "savedBytes": 2898200,
+        "reductionPercent": 27.706103
+      }
+    },
+    "expectedExtensionZipSha256": "3e1b1b9d84e6c05945fbd4810e594ffe20bd4f2e896710dc636be64fa36667c5",
+    "engineInputSha256": "9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7",
+    "engineCompressionReportSha256": "22f521acb0c3b13b81d61d06c16e5a0caf2cd057334f793eed29e7f52142b0be",
+    "archiveDeflateLevel": 9
+  },
+  "competitorResearch": {
+    "report": "reports/COMPETITOR_RESEARCH.ko.md",
+    "reportSha256": "bbf5bd3e2a97193a4b68fc61fbf00c4f519786f4706ee968e93764851a5815e4",
+    "evidence": "reports/competitor-research.json",
+    "evidenceSha256": "8caab692cf177c8094b05384a74d818191ed535567d35eaf642029fa88ea0768",
+    "officialRepositories": 5,
+    "addedFeature": "Explicit per-media URL copy, independently implemented; no competitor code copied.",
+    "scope": "Pinned repository documentation/source comparison, not installed competitor benchmarks or latest stable release claims."
+  },
+  "popupCompact": {
+    "report": "reports/POPUP_COMPACT.ko.md",
+    "reportSha256": "64ab0f60ad6e87e9bc34faa2b21d7f8d23cc3eca2896b9690f8761001826496e",
+    "browserReport": "reports/popup.json",
+    "browserReportSha256": "ed2843c0b716cf11039bc34a23d2eae3b231a4164e3d93cbcebd7fc0e72e3250",
+    "baselineWidth": 640,
+    "width": 720,
+    "height": 600,
+    "baselineNormalCardHeight": 72,
+    "normalCardHeight": 53.359375,
+    "completeRowsIn20ItemFixture": 6,
+    "viewports": [
+      {
+        "width": 720,
+        "height": 600,
+        "cardHeight": 53.359375,
+        "horizontalOverflow": false,
+        "actionsVisible": true
+      },
+      {
+        "width": 640,
+        "height": 600,
+        "cardHeight": 53.359375,
+        "horizontalOverflow": false,
+        "actionsVisible": true
+      },
+      {
+        "width": 480,
+        "height": 500,
+        "cardHeight": 53.359375,
+        "horizontalOverflow": false,
+        "actionsVisible": true
+      },
+      {
+        "width": 400,
+        "height": 500,
+        "cardHeight": 91.359375,
+        "horizontalOverflow": false,
+        "actionsVisible": true
+      },
+      {
+        "width": 360,
+        "height": 500,
+        "cardHeight": 91.359375,
+        "horizontalOverflow": false,
+        "actionsVisible": true
+      }
+    ],
+    "screenshots": {
+      "test-results/popup-compact.png": "169c3f047ca433d09fdf965992367d52f2d332f2dcf23c679a083b6900c39328",
+      "test-results/popup-compact-narrow.png": "4dca861cbf9ac1ac9009a4bcbeb1d8f6237928eaf08a9a74032e0f7c35b47033"
+    }
+  },
+  "downloadFolderSubchecks": 10,
+  "downloadFolder": {
+    "report": "reports/DOWNLOAD_FOLDER.ko.md",
+    "reportSha256": "3b3b304e90959fbe74f17b8899d28c2c767fae09eb664c7c90f18812bf5aade6",
+    "browserReport": "reports/download-folder.json",
+    "browserReportSha256": "46a9749b1f561572a62d354879473c32d2350980da388088197810d373c1c892",
+    "checksIncludedInBrowserTotal": 10,
+    "preferenceKey": "my_video_app_download_folder_confirmed_v1",
+    "storedValue": "boolean acknowledgement only; not a verified filesystem path or browser preference",
+    "normalPersistence": "existing IndexedDB settings store, schema1 unchanged",
+    "privatePersistence": "isolated execution memory; no normal DB calls",
+    "destination": "actual Chrome default download directory; chosen absolute folder via fixed chrome://settings/downloads",
+    "saveAs": false,
+    "conflictAction": "uniquify",
+    "covers": [
+      "popup",
+      "media list",
+      "direct URL",
+      "retry",
+      "keyboard",
+      "processed video/audio/image output"
+    ],
+    "chromeAskPreferenceMustBeOff": true,
+    "extraPermissions": [],
+    "nativeFileWriter": false,
+    "screenshot": {
+      "path": "test-results/download-folder-setup.png",
+      "sha256": "8bc2283a2ed8afb1a134fcafee27107f1eb9a99671a95a432f7623bfad114b08"
+    }
+  },
+  "githubRelease": {
+    "workflow": ".github/workflows/release.yml",
+    "workflowSha256": "03af42960414b7e359028cdac2faa360d5fa89d6e45012e756a88b856cc59dfa",
+    "tag": "v1.16.0",
+    "asset": "my-video-app-extension.zip",
+    "assetSha256": "3e1b1b9d84e6c05945fbd4810e594ffe20bd4f2e896710dc636be64fa36667c5",
+    "visibilityChanged": false,
+    "publishStage": "GitHub Actions after final main push; report validation does not assert publication already occurred",
+    "localApiLimitation": "Current environment GitHub API is Forbidden; Git transport works. Release publication uses the repository runner GITHUB_TOKEN.",
+    "validationCases": 19,
+    "tagSafety": "Existing tags must resolve to the exact triggering commit; tags are never moved.",
+    "assets": {
+      "my-video-app-extension.zip": {
+        "bytes": 7562311,
+        "sha256": "3e1b1b9d84e6c05945fbd4810e594ffe20bd4f2e896710dc636be64fa36667c5"
+      },
+      "my-video-app-youtube-helper.zip": {
+        "bytes": 15718,
+        "sha256": "26565d1c18139c75a0f36203a381d26da6fc119516006cdb3251e240625bae24"
+      }
+    }
+  },
+  "youtubeSubchecks": 13,
+  "youtubeNativeOfflineChecks": 8,
+  "verificationLogSha256": {
+    "unitAndBrowser": "6cff3b50b90147b8c56e83a0b01395fa1419df72ba0452b6cb4880bad705caec",
+    "nativeFinal": "74f429032f6969b8572eaf028025f13f0a25b86b8239a1337fb7312a14aedc9e",
+    "youtubeNativeIntegration": "26ac538d268e6c6e3ba3908eb481265e25c8f50f7849a5ec6f593339e96b9a61",
+    "http3": "fc107488dcb0e12faa55674794f562c4e14a8f411843c6899e18fe7dda91de3f",
+    "benchmark": "caeb5a68bfb48ee80ed921c1e8df344c554ecf81127570f955bf13012741fae7",
+    "dependencies": "5692a7debdf5177f54cdb209640731078054a539c6e83245288e563d2400af80",
+    "source": "0a343682d08a9f1c72ced5a98594a334b8b478c65ea8f317a6e2a3bedfa96310",
+    "releaseWorkflow": "2cd422b1917f0854a67a8da3ed2d22a25b9134c1bee9d67f55d968a117014efc"
+  },
+  "youtube": {
+    "report": "reports/YOUTUBE.ko.md",
+    "reportSha256": "49fe4fe64976c31cf1b9d83f267cb6219baa33282552c9880f70922a94193bcc",
+    "browserReport": "reports/youtube.json",
+    "browserReportSha256": "fff0d4963ea701bdafe5c7da5bd5e74e251c109b5f12fc125ff43ced010cc8e8",
+    "nativeReport": "reports/youtube-native-integration.json",
+    "nativeReportSha256": "e60b1ac17ffa81b42824f867c0d3bd7aabc2d6ae4c46f125f2ad1562a55fff46",
+    "browserSubchecksIncludedInTotal": 13,
+    "unitClientChecksIncludedInTotal": 15,
+    "nativeUnitChecksIncludedInTotal": 46,
+    "realOfflinePackageRuntimeChecks": 8,
+    "ytDlpVersion": "2026.10.21",
+    "ytDlpCommit": "6ccd977303412151ee23352c6257dd658ffc1987",
+    "ejsVersion": "0.8.0",
+    "testedDenoVersion": "2.9.8",
+    "nativeHost": "com.myvideoapp.youtube",
+    "nativeMediaWrites": false,
+    "cookieAccess": false,
+    "signedURLsPersisted": false,
+    "formatContainers": [
+      "mp4",
+      "webm",
+      "mkv"
+    ],
+    "audioFormats": [
+      "mp3",
+      "m4a"
+    ],
+    "requiredAudioVerified": true,
+    "helperZipSha256": "26565d1c18139c75a0f36203a381d26da6fc119516006cdb3251e240625bae24",
+    "actualLiveYouTubeValidated": false,
+    "actualInstalledNativeRegistrationValidated": false,
+    "screenshot": {
+      "path": "test-results/youtube-settings.png",
+      "sha256": "3aa597fa748e3317d7b0c22596e6c936df444e7a19be82c39d09784ae065687a"
+    },
+    "sourceRepositoryReview": {
+      "repository": "https://github.com/semtle/hitomi-downloader-KR",
+      "master": "501e71f3d7ab0ccf6bc3a03c91d82d30cf75f04b",
+      "sourceTag": "v2.0",
+      "sourceCommit": "3d1cd37200436a34508ffaf62194263ec0f67842",
+      "findings": "Historical VB.NET image downloader; no YouTube extractor found; no code copied."
+    }
+  }
+}

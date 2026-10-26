@@ -1,0 +1,4 @@
+
+> my-video-app@1.17.0 typecheck
+> tsc --noEmit
+

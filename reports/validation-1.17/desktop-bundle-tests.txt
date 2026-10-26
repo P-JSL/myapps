@@ -1,0 +1,15 @@
+test_corrupted_cached_input_fails_before_creating_output (test_desktop_bundle.DesktopBundleTests.test_corrupted_cached_input_fails_before_creating_output) ... ok
+test_earlier_verified_runtime_cache_can_be_reused (test_desktop_bundle.DesktopBundleTests.test_earlier_verified_runtime_cache_can_be_reused) ... ok
+test_missing_input_offline_does_not_download (test_desktop_bundle.DesktopBundleTests.test_missing_input_offline_does_not_download) ... ok
+test_missing_platform_plugin_is_rejected (test_desktop_bundle.DesktopBundleTests.test_missing_platform_plugin_is_rejected) ... ok
+test_offline_bundle_is_reproducible_complete_and_has_verifiable_manifest (test_desktop_bundle.DesktopBundleTests.test_offline_bundle_is_reproducible_complete_and_has_verifiable_manifest) ... ok
+test_only_official_https_download_and_redirect_hosts_are_allowed (test_desktop_bundle.DesktopBundleTests.test_only_official_https_download_and_redirect_hosts_are_allowed) ... ok
+test_symlink_archives_and_application_sources_are_rejected (test_desktop_bundle.DesktopBundleTests.test_symlink_archives_and_application_sources_are_rejected) ... ok
+test_traversal_windows_aliases_and_case_collisions_are_rejected (test_desktop_bundle.DesktopBundleTests.test_traversal_windows_aliases_and_case_collisions_are_rejected) ... ok
+test_version_and_matching_qt_pair_are_required (test_desktop_bundle.DesktopBundleTests.test_version_and_matching_qt_pair_are_required) ... ok
+test_windows_architecture_is_checked_without_execution (test_desktop_bundle.DesktopBundleTests.test_windows_architecture_is_checked_without_execution) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.033s
+
+OK

@@ -14,7 +14,8 @@ export async function downloadAssets(assets: RemoteAsset[], consume: (name: stri
     try {
       while (next < assets.length) {
         combined.throwIfAborted(); const asset = assets[next++]!;
-        const bytes = await fetchBytes(asset.url, MAX_STREAM_BYTES, combined, asset.range, { budget, protocol });
+        const bytes = await fetchBytes(asset.url, MAX_STREAM_BYTES, combined, asset.range, { budget, protocol,
+          ...(asset.expectedSize === undefined ? {} : { expectedSize: asset.expectedSize }) });
         combined.throwIfAborted(); consume(asset.filename, bytes); progress(++completed);
       }
     } catch (error) { failure ??= error; controller.abort(); }

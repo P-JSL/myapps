@@ -10,12 +10,10 @@ out.mkdir(exist_ok=True)
 # Failed packaging must not leave an old checksum manifest implying success.
 (out / 'SHA256SUMS').unlink(missing_ok=True)
 antivirus_files = {'README.ko.md', 'antivirus_host.py', 'windows_antivirus.py', 'internal_scan.py', 'install.py'}
-youtube_files = {'YOUTUBE.ko.md', 'youtube_host.py', 'install_youtube.py', 'youtube-requirements.txt'}
 packages = [
     ('my-video-app-extension.zip', root / 'dist', 'my-video-app', None),
     ('my-video-app-source.zip', root, 'my-video-app-source', None),
     ('my-video-app-antivirus-helper.zip', root / 'native', 'my-video-app-antivirus-helper', antivirus_files),
-    ('my-video-app-youtube-helper.zip', root / 'native', 'my-video-app-youtube-helper', youtube_files),
 ]
 source_exclusions = {'.git', 'node_modules', 'dist', 'dist-compat', 'artifacts', 'test-results', '.cache', '.venv', 'venv'}
 private_configs = {'native/config.json', 'native/youtube-config.json'}
@@ -42,6 +40,7 @@ for name, source, prefix, allowed in packages:
     if allowed is not None and included != allowed:
         raise ValueError('Required native helper files are missing: ' + ', '.join(sorted(allowed - included)))
     print(name, (out / name).stat().st_size, 'bytes')
+
 
 aliases = {'vdh-typescript-upscale-extension.zip': 'my-video-app-extension.zip',
            'vdh-typescript-upscale-source.zip': 'my-video-app-source.zip'}

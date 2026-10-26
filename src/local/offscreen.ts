@@ -3,7 +3,7 @@ import { scanBytes, type InternalScanResult } from '../security/internal-scan.ts
 import { inspectPreparedFile } from '../security/file-digest.ts';
 import { internalScanResponse, incompleteInternalScan } from './antivirus.ts';
 import { MAX_INPUT_BYTES } from '../upscale/policy.ts';
-import { OFFSCREEN_SCOPE, PREPARE_TIMEOUT_MS, MAX_DISK_MANIFEST_BYTES, SCOPE, mediaURL } from './model.ts';
+import { OFFSCREEN_SCOPE, PREPARE_TIMEOUT_MS, MAX_DISK_MANIFEST_BYTES, SCOPE, mediaURL, browserMediaURL } from './model.ts';
 import { fetchManifestResource } from './network.ts';
 import { inspectMediaFile, inspectMediaBlob, InvalidMediaFileError } from './media-file.ts';
 import { downloadParallelFile } from './parallel-download.ts';
@@ -12,7 +12,6 @@ import { planDash } from './dash.ts';
 import { downloadOptions } from './preferences.ts';
 import { PreparationQueue } from './queue.ts';
 import { transport, type Transport } from './transport.ts';
-import { youtubeResolution, type YouTubeResolution } from './youtube.ts';
 
 class PreparedInspectionError extends Error {
   constructor(message: string, readonly internalScan: InternalScanResult, readonly invalidMedia = false) { super(message); }
@@ -38,14 +37,10 @@ export async function disposeLocal(id: string) {
 export function cancelLocal(id: string) {
   queue.cancel(id);
 }
-export async function prepareLocal(id: string, url: string, kind: string, settings?: unknown, resolution?: unknown) {
-  if (!/^[0-9a-f-]{36}$/.test(id) || prepared.has(id) || !['file', 'hls', 'dash', 'youtube'].includes(kind)) throw new Error('잘못된 파일 준비 요청입니다.');
+export async function prepareLocal(id: string, url: string, kind: string, settings?: unknown) {
+  if (!/^[0-9a-f-]{36}$/.test(id) || prepared.has(id) || !['file', 'hls', 'dash'].includes(kind)) throw new Error('잘못된 파일 준비 요청입니다.');
   const options = downloadOptions(settings);
-  const address = mediaURL(url).href;
-  // A resolved signed URL is an ephemeral input, never a substitute source URL
-  // or an instruction to invoke native code from this offscreen document.
-  const youtube = kind === 'youtube' ? youtubeResolution(resolution, address) : undefined;
-  if (youtube && options.output === 'original' && !youtube.tracks.some(track => track.kind !== 'audio')) throw new Error('유튜브 영상 트랙이 없습니다. 오디오 저장 형식을 선택하거나 다시 추출하세요.');
+  const address = browserMediaURL(url).href;
   let latest: Record<string, unknown> = { stage: 'queued' };
   let lastSent = 0;
   function report(value: Record<string, unknown>, force = false) {
@@ -56,11 +51,11 @@ export async function prepareLocal(id: string, url: string, kind: string, settin
   }
   report(latest, true);
   const heartbeat = setInterval(() => report(latest, true), 15_000);
-  try { return await queue.run(id, signal => prepareOne(id, address, kind, options, signal, report, youtube)); }
+  try { return await queue.run(id, signal => prepareOne(id, address, kind, options, signal, report)); }
   finally { clearInterval(heartbeat); }
 }
 async function prepareOne(id: string, url: string, kind: string, options: ReturnType<typeof downloadOptions>, signal: AbortSignal,
-  report: (value: Record<string, unknown>, force?: boolean) => void, youtube?: YouTubeResolution) {
+  report: (value: Record<string, unknown>, force?: boolean) => void) {
   const task: ActiveTask = { id, controller: new AbortController() };
   const abort = () => { task.controller.abort(); task.worker?.terminate(); task.reject?.(new DOMException('작업을 취소했습니다.', 'AbortError')); };
   signal.addEventListener('abort', abort, { once: true }); if (signal.aborted) abort();
@@ -91,16 +86,7 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
     }
     else {
       let plan: StreamPlan;
-      let outputFormat: 'mp4' | 'webm' | 'mkv' = 'mp4';
-      if (youtube) {
-        // Complete direct tracks reuse the same disk/input risk screening as
-        // HLS/DASH. Choose a copy-compatible container without lowering quality.
-        const assets = youtube.tracks.map((track, index) => ({ url: track.url, filename: `asset-${String(index).padStart(5, '0')}.data` }));
-        plan = { assets, inputs: assets.map((asset, index) => ({ filename: `input-${index}.mp4`, parts: [asset.filename] })) };
-        outputFormat = youtube.tracks.every(track => track.mime.endsWith('/mp4')) ? 'mp4'
-          : youtube.tracks.every(track => track.mime.endsWith('/webm')) ? 'webm' : 'mkv';
-      }
-      else if (kind === 'file') plan = { assets: [{ url, filename: 'asset-00000.data' }], inputs: [{ filename: 'input-0.mp4', parts: ['asset-00000.data'] }] };
+      if (kind === 'file') plan = { assets: [{ url, filename: 'asset-00000.data' }], inputs: [{ filename: 'input-0.mp4', parts: ['asset-00000.data'] }] };
       else if (kind === 'hls') plan = await planHls(url, address => fetchManifestResource(address, task.controller.signal, options.output === 'original' ? MAX_DISK_MANIFEST_BYTES : undefined), options, options.output === 'original');
       else {
         const resource = await fetchManifestResource(url, task.controller.signal, options.output === 'original' ? MAX_DISK_MANIFEST_BYTES : undefined);
@@ -133,8 +119,7 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
             } else reject(new Error(message));
           }
         });
-        worker.postMessage({ id, plan, options, outputFormat, requireVideo: youtube !== undefined && options.output === 'original',
-          requireAudio: youtube !== undefined && options.output === 'original' && youtube.tracks.some(track => track.kind !== 'video') });
+        worker.postMessage({ id, plan, options });
       });
     }
     if (task.controller.signal.aborted) throw new Error('작업을 취소했습니다.');
@@ -170,9 +155,6 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
     return { ok: true, url: blob, filename, ...actual, protocols: [...protocols], internalScan, internalScanSha256, internalScanSize: file.size };
   } catch (error) {
     await disposeLocal(id).catch(() => {});
-    if (youtube && error instanceof Error && /\((?:401|403|410)\)/.test(error.message)) {
-      throw new Error('유튜브 미디어 주소가 만료되었거나 서버가 접근을 거부했습니다. 다시 다운로드해 주소를 새로 추출하고 도우미와 Chrome의 네트워크·프록시 설정을 확인하세요.');
-    }
     throw error;
   }
   finally { clearTimeout(timeout); signal.removeEventListener('abort', abort); task.worker?.terminate(); }
@@ -184,10 +166,10 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, reply) => {
   const id = message.id;
   if (message.type === 'cancel') { cancelLocal(id); reply({ ok: true }); return false; }
   if (message.type === 'dispose') { void disposeLocal(id).then(() => reply({ ok: true })).catch(() => reply({ ok: false })); return true; }
-  if (message.type !== 'prepare' || !['file', 'hls', 'dash', 'youtube'].includes(String(message.kind))) return false;
+  if (message.type !== 'prepare' || !['file', 'hls', 'dash'].includes(String(message.kind))) return false;
   let url: string;
   try { url = mediaURL(message.url).href; } catch { reply({ ok: false, error: '미디어 주소가 올바르지 않습니다.' }); return false; }
-  void prepareLocal(id, url, String(message.kind), message.options, message.resolution).then(reply).catch((error: unknown) => { reply({ ok: false, error: error instanceof Error ? error.message : '파일 준비 오류', invalidMedia: error instanceof InvalidMediaFileError || (error instanceof PreparedInspectionError && error.invalidMedia),
+  void prepareLocal(id, url, String(message.kind), message.options).then(reply).catch((error: unknown) => { reply({ ok: false, error: error instanceof Error ? error.message : '파일 준비 오류', invalidMedia: error instanceof InvalidMediaFileError || (error instanceof PreparedInspectionError && error.invalidMedia),
     ...(error instanceof PreparedInspectionError ? { internalRisk: true, internalScan: error.internalScan } : {}) }); });
   return true;
 });

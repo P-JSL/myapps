@@ -2,7 +2,7 @@ import { MAX_SEGMENTS, MAX_DISK_SEGMENTS, MAX_DISK_MANIFEST_BYTES, mediaURL } fr
 import { validRange, type ByteRange, type ManifestResource } from './network.ts';
 import { chooseQuality, downloadOptions, type DownloadOptions } from './preferences.ts';
 
-export interface RemoteAsset { url: string; filename: string; range?: ByteRange; }
+export interface RemoteAsset { url: string; filename: string; range?: ByteRange; expectedSize?: number; }
 export interface StreamInput { filename: string; playlist?: string; parts?: string[]; }
 export interface StreamPlan { assets: RemoteAsset[]; inputs: StreamInput[]; }
 export function attributes(value: string): Record<string, string> {

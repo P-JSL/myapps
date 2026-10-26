@@ -6,6 +6,22 @@ export interface ByteRange { offset: number; length: number; }
 export function validRange(range: ByteRange): void {
   if (!Number.isSafeInteger(range.offset) || !Number.isSafeInteger(range.length) || !Number.isSafeInteger(range.offset + range.length) || range.offset < 0 || range.length < 1 || range.length > 128 * 1024 * 1024) throw new Error('미디어 바이트 범위가 허용 범위를 초과했습니다.');
 }
+/** A known whole-track size must never be interpreted as a fragment range. */
+export function validExpectedSize(value: unknown, range?: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  if (!Number.isSafeInteger(value) || Number(value) < 1 || range !== undefined) throw new Error('전체 미디어의 예상 크기가 올바르지 않습니다.');
+  return Number(value);
+}
+/** Whole-track downloads require an ordinary, uncompressed media response. */
+export function validateCompleteMediaResponse(response: Response, expectedSize: number): void {
+  if (response.status !== 200 || response.headers.has('Content-Range')) throw new Error('전체 미디어 요청에 일부 데이터만 반환되었습니다.');
+  const mime = response.headers.get('Content-Type')?.split(';')[0]?.trim().toLowerCase();
+  if (!mime || !/^(?:audio|video)\/(?:mp4|webm)$/.test(mime)) throw new Error('전체 미디어 응답 형식이 올바르지 않습니다.');
+  const encoding = response.headers.get('Content-Encoding');
+  if (encoding && encoding.trim().toLowerCase() !== 'identity') throw new Error('압축된 전체 미디어 응답은 지원하지 않습니다.');
+  const length = response.headers.get('Content-Length');
+  if (length !== null && (!/^\d+$/.test(length) || !Number.isSafeInteger(Number(length)) || Number(length) !== expectedSize)) throw new Error('전체 미디어의 선언된 크기가 예상 크기와 일치하지 않습니다.');
+}
 /** Counts retained bytes across parallel requests, including their in-flight chunks. */
 export class ByteBudget {
   private used = 0;
@@ -15,7 +31,7 @@ export class ByteBudget {
   release(bytes: number) { this.used -= bytes; }
   get remaining() { return this.limit - this.used; }
 }
-interface FetchMonitor { budget?: ByteBudget; progress?: (loaded: number, total?: number) => void; protocol?: (value: Transport) => void; finalURL?: (value: string) => void; }
+interface FetchMonitor { budget?: ByteBudget; progress?: (loaded: number, total?: number) => void; protocol?: (value: Transport) => void; finalURL?: (value: string) => void; expectedSize?: number; }
 class Retryable extends Error { readonly delay: number | undefined; constructor(message: string, delay?: number) { super(message); this.delay = delay; } }
 const RETRY_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 export function retryDelay(header: string | null, now = Date.now()): number | undefined {
@@ -37,6 +53,8 @@ export async function fetchBytes(url: string, maximum: number, signal: AbortSign
   const address = mediaURL(url).href;
   if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > 256 * 1024 * 1024) throw new Error('미디어 용량이 처리 한도를 초과했습니다.');
   if (range) validRange(range);
+  const expectedSize = validExpectedSize(monitor.expectedSize, range);
+  if (expectedSize !== undefined && expectedSize > maximum) throw new Error('미디어 용량이 처리 한도를 초과했습니다.');
   for (let attempt = 0; ; attempt++) {
     signal.throwIfAborted();
     const controller = new AbortController();
@@ -62,6 +80,7 @@ export async function fetchBytes(url: string, maximum: number, signal: AbortSign
       }
       if (!response.body) throw new Error('미디어 응답에 파일 데이터가 없습니다.');
       const finalURL = response.url ? mediaURL(response.url).href : address;
+      if (expectedSize !== undefined) validateCompleteMediaResponse(response, expectedSize);
       if (!range && response.status === 206) throw new Error('전체 파일 요청에 일부 미디어만 반환되었습니다.');
       const length = response.headers.get('Content-Length');
       const declared = length !== null && /^\d+$/.test(length) ? Number(length) : undefined;
@@ -80,10 +99,12 @@ export async function fetchBytes(url: string, maximum: number, signal: AbortSign
         const result = await reader.read(); if (result.done) break;
         total += result.value.length;
         if (total > maximum) throw new Error('미디어 용량이 처리 한도를 초과했습니다.');
+        if (expectedSize !== undefined && total > expectedSize) throw new Error('전체 미디어가 예상 크기를 초과했습니다.');
         monitor.budget?.take(result.value.length); reserved += result.value.length;
         chunks.push(result.value); monitor.progress?.(total, encoding && encoding !== 'identity' ? undefined : declared);
       }
       if (!total) throw new Error('미디어 파일이 비어 있습니다.');
+      if (expectedSize !== undefined && total !== expectedSize) throw new Error('전체 미디어가 예상 크기보다 작아 불완전합니다.');
       if ((!encoding || encoding === 'identity') && declared !== undefined && total !== declared) throw new Retryable('미디어 파일이 불완전합니다.');
       if (range) {
         if (response.status === 206) { if (total !== range.length) throw new Retryable('미디어 조각이 불완전합니다.'); }

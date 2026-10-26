@@ -29,8 +29,14 @@ export async function sourceIdentity(root = '.') {
   for (const directory of ['src', 'native', 'scripts', 'tests']) {
     for (const name of await files(path.join(root, directory), { skipDirectories: ['__pycache__'] })) {
       const full = `${directory}/${name}`;
-      if (/\.(?:ts|mjs|py)$/.test(full) || full === 'native/youtube-requirements.txt'
+      if (/\.(?:ts|mjs|py)$/.test(full)
         || (full.startsWith('tests/baselines/') && full.endsWith('.txt'))) names.push(full);
+    }
+  }
+  const desktopRoot = path.join(root, 'desktop');
+  if (await lstat(desktopRoot).catch(error => { if (error.code === 'ENOENT') return undefined; throw error; })) {
+    for (const name of await files(desktopRoot, { skipDirectories: ['__pycache__'] })) {
+      if (/\.(?:py|c|rc|manifest|json)$/.test(name)) names.push(`desktop/${name}`);
     }
   }
   return Object.fromEntries(await Promise.all(names.sort().map(async name => [name, hash(await readFile(path.join(root, name)))])));

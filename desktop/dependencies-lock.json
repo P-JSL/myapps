@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "platform": "win32-x64",
+  "inputs": [
+    {
+      "id": "python",
+      "version": "3.13.17",
+      "filename": "python.3.13.17.nupkg",
+      "url": "https://api.nuget.org/v3-flatcontainer/python/3.13.17/python.3.13.17.nupkg",
+      "sha256": "dce409744b088f94c6e37ba41f8100c384c27e029e843237364c602d30d475e5",
+      "size": 14826465,
+      "license": "PSF-2.0 and included third-party notices",
+      "metadataUrl": "https://api.nuget.org/v3/catalog0/data/2026.10.21.16.02.39/python.3.13.17.json",
+      "sourceUrl": "https://github.com/python/cpython/tree/v3.13.17"
+    },
+    {
+      "id": "yt-dlp",
+      "version": "2026.10.21",
+      "filename": "yt_dlp-2026.10.21-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b7/75/ae700ddc7e0b1095fd06cf7e251627dcf4cafcaff460cce92cdc08023b13/yt_dlp-2026.10.21-py3-none-any.whl",
+      "sha256": "94a3a3e2c423129d0bbd2f1be000c4171fa1226c29e251c84aff868f2851c247",
+      "size": 3188012,
+      "license": "Unlicense",
+      "metadataUrl": "https://pypi.org/pypi/yt-dlp/2026.10.21/json",
+      "sourceUrl": "https://github.com/yt-dlp/yt-dlp/tree/2026.10.21"
+    },
+    {
+      "id": "yt-dlp-ejs",
+      "version": "0.8.0",
+      "filename": "yt_dlp_ejs-0.8.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/e3/bd/520769863744b669440a924271a6159ddd82ad5ae26b4ac4d4b69e9f8d44/yt_dlp_ejs-0.8.0-py3-none-any.whl",
+      "sha256": "79300e5fca7f937a1eeede11f0456862c1b41107ce1d726871e0207424f4bdb4",
+      "size": 53443,
+      "license": "Unlicense AND MIT AND ISC",
+      "metadataUrl": "https://pypi.org/pypi/yt-dlp-ejs/0.8.0/json",
+      "sourceUrl": "https://github.com/yt-dlp/ejs/tree/0.8.0"
+    },
+    {
+      "id": "deno",
+      "version": "2.9.8",
+      "filename": "deno-2.9.8-py3-none-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/fb/42/07b0f91b0962869218653e32a85aebf22fc359a146d8c032623994b9457f/deno-2.9.8-py3-none-win_amd64.whl",
+      "sha256": "60dd97e612b8bab67c8080712646a821071e3809909489f853763cea19617700",
+      "size": 41825460,
+      "license": "MIT",
+      "metadataUrl": "https://pypi.org/pypi/deno/2.9.8/json",
+      "sourceUrl": "https://github.com/denoland/deno/tree/v2.9.8"
+    },
+    {
+      "id": "pyside6-essentials",
+      "version": "6.12.0",
+      "filename": "pyside6_essentials-6.12.0-cp310-abi3-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/03/61/9a7e32a37b224f68506785bfb0f288d516098ec71681782d72b695a6c95d/pyside6_essentials-6.12.0-cp310-abi3-win_amd64.whl",
+      "sha256": "c9a95102aa23c1f86516a30d5a9be37552d324eee7e567eb7508973f1218cb42",
+      "size": 82153795,
+      "license": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "metadataUrl": "https://pypi.org/pypi/pyside6-essentials/6.12.0/json",
+      "sourceUrl": "https://github.com/pyside/pyside-setup/tree/v6.12.0",
+      "requiresPython": "<3.16,>=3.10"
+    },
+    {
+      "id": "shiboken6",
+      "version": "6.12.0",
+      "filename": "shiboken6-6.12.0-cp310-abi3-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/2a/b6/bee97e7a2edeab72aafabb46ee5adc939790a638d107860b4cad7a20e407/shiboken6-6.12.0-cp310-abi3-win_amd64.whl",
+      "sha256": "a1906cb8116869178c64b6bab52623bbc8b4ceed7b30bfc3c9aa0f6e67f6438e",
+      "size": 1265476,
+      "license": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "metadataUrl": "https://pypi.org/pypi/shiboken6/6.12.0/json",
+      "sourceUrl": "https://github.com/pyside/pyside-setup/tree/v6.12.0",
+      "requiresPython": "<3.16,>=3.10"
+    },
+    {
+      "id": "ffmpeg",
+      "version": "9.0.2-36-g6882969ce9",
+      "filename": "ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0.zip",
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-25-13-00/ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0.zip",
+      "sha256": "47526345cc4800f4163337d5db8048a2d06c78a53bb234532f55a30dbfb49868",
+      "size": 171482755,
+      "license": "LGPL-3.0-or-later and included third-party licenses",
+      "metadataUrl": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-25-13-00/checksums.sha256",
+      "sourceUrl": "https://github.com/FFmpeg/FFmpeg/tree/6882969ce9",
+      "buildSourceUrl": "https://github.com/BtbN/FFmpeg-Builds/tree/autobuild-2026-10-25-13-00",
+      "buildVersion": "autobuild-2026-10-25-13-00",
+      "archiveRoot": "ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0"
+    }
+  ],
+  "version": "1.17.0",
+  "description": "Portable Windows x64 native Qt Widgets application; verified external runtimes only.",
+  "notices": [
+    {
+      "filename": "qt-LGPL-3.0-only.txt",
+      "url": "https://raw.githubusercontent.com/qt/qtbase/v6.12.0/LICENSES/LGPL-3.0-only.txt",
+      "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768",
+      "size": 7651,
+      "destination": "licenses/qt/LGPL-3.0-only.txt"
+    },
+    {
+      "filename": "qt-GPL-3.0-only.txt",
+      "url": "https://raw.githubusercontent.com/qt/qtbase/v6.12.0/LICENSES/GPL-3.0-only.txt",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "size": 35147,
+      "destination": "licenses/qt/GPL-3.0-only.txt"
+    },
+    {
+      "filename": "qt-GPL-2.0-only.txt",
+      "url": "https://raw.githubusercontent.com/qt/qtbase/v6.12.0/LICENSES/GPL-2.0-only.txt",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "size": 18092,
+      "destination": "licenses/qt/GPL-2.0-only.txt"
+    },
+    {
+      "filename": "btbn-README.md",
+      "url": "https://raw.githubusercontent.com/BtbN/FFmpeg-Builds/autobuild-2026-10-25-13-00/README.md",
+      "sha256": "4f6f817fd57c5524e0d0832618e8f75d589093e2f05ef1ec2839af98e70e5053",
+      "size": 2777,
+      "destination": "licenses/ffmpeg/BUILD-README.md"
+    }
+  ]
+}

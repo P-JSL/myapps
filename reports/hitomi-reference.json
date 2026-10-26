@@ -1,0 +1,49 @@
+{
+  "checked_at_utc": "2026-10-25T22:29:13Z",
+  "requested_reference": "KurtBestor/Hitomi-Downloader (official)",
+  "official_repository": {
+    "url": "https://github.com/KurtBestor/Hitomi-Downloader",
+    "http_status": 451,
+    "response_date_utc": "2026-10-25T22:28:28Z",
+    "github_notice": "Repository unavailable due to DMCA takedown.",
+    "github_notice_detail": "This repository is currently disabled due to a DMCA takedown notice. We have disabled public access to the repository.",
+    "notice_url": "https://github.com/github/dmca/blob/master/2026/03/2026-03-23-fakku.md"
+  },
+  "official_readme": {
+    "url": "https://raw.githubusercontent.com/KurtBestor/Hitomi-Downloader/master/README.md",
+    "http_status": 404
+  },
+  "official_releases": {
+    "url": "https://github.com/KurtBestor/Hitomi-Downloader/releases",
+    "same_unavailable_notice_observed": true
+  },
+  "verified_implementation_claims": [],
+  "unverified": [
+    "Current official source commit hash and commit date",
+    "Current YouTube extractor path or source",
+    "PyInstaller or embedded CPython packaging",
+    "Bundled yt-dlp, Deno or another JS runtime",
+    "A browser-only or WebAssembly implementation",
+    "Current Hitomi-Downloader license terms"
+  ],
+  "scope": "Official endpoints only for implementation conclusions. No third-party implementation copied, binaries downloaded or executed, YouTube requests made, repository edits, git commits or pushes. No additional mirror research after parent instruction.",
+  "conclusion": "Cannot substantiate current official Hitomi implementation or cite an official commit while the repository is disabled. Describe our offline CPython + yt-dlp + EJS + Deno helper kit as an independent packaging strategy; do not attribute it to Hitomi.",
+  "artifacts": [
+    {
+      "path": "/tmp/hitomi-httpheaders.txt",
+      "sha256": "bb39909948adb0081f94675fa2fcc6e8010ec78cbbd69157574750ffcb502ea4"
+    },
+    {
+      "path": "/tmp/hitomi-httpbody.txt",
+      "sha256": "bc3aac7a9d33241d8e8353b0d093a87b5a288500b113a23e9b5eb45e7666d54a"
+    },
+    {
+      "path": "/tmp/hitomi-official-releases.html",
+      "sha256": "62a2d9e9e2f7e1d9ae5688370c46a18eed22b1afbd96522a5c7d03cf6addb7a5"
+    },
+    {
+      "path": "/tmp/hitomi-dmca.md",
+      "sha256": "eb869ff7d903598af66fb3ff36ffd62a3ffaab4f101bbd221e45d23a2f02785b"
+    }
+  ]
+}
