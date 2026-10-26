@@ -6,14 +6,16 @@
 
 ## 다운로드
 
+**[Downloads 폴더에서 설치 파일 받기](Downloads/)** · [최신 Release 전체 보기](https://github.com/P-JSL/myapps/releases/latest)
+
 | 파일 | 사용자에게 필요한 내용 |
 | --- | --- |
-| **[Windows 앱 · Release](https://github.com/P-JSL/myapps/releases/latest)** | **my-video-app-desktop-windows-x64.zip**을 전부 풀고 **My Video App.exe** 실행. Windows 10/11 x64, Python·yt-dlp·Deno·FFmpeg·Qt 포함 |
+| **[Windows 앱 ZIP 다운로드](https://github.com/P-JSL/myapps/releases/latest/download/my-video-app-desktop-windows-x64.zip)** | **my-video-app-desktop-windows-x64.zip**을 전부 풀고 **My Video App.exe** 실행. Windows 10/11 x64, Python·yt-dlp·Deno·FFmpeg·Qt 포함 |
 | **[Chrome 확장 ZIP](artifacts/my-video-app-extension.zip)** | 영상 감지·일반 미디어·HLS/DASH 다운로드·로컬 미디어 도구. **YouTube 미지원** |
 | [전체 소스 ZIP](artifacts/my-video-app-source.zip) | 확장·앱·빌드 스크립트·의존성 잠금·검사 코드 |
 | [확장 백신 도우미](artifacts/my-video-app-antivirus-helper.zip) | Chrome 확장의 선택적 로컬 백신 연동. 데스크톱 앱의 YouTube에는 필요하지 않음 |
 
-**Windows 앱 ZIP은 런타임을 포함해 커지므로 GitHub Release에 첨부하고 저장소 Git 파일로는 올리지 않습니다.** [배포 워크플로](.github/workflows/release.yml)가 버전·코드·고정 의존성으로 앱을 빌드하고 확장 ZIP과 함께 게시합니다. 비공개 저장소의 Release는 권한 있는 계정으로 로그인해야 접근할 수 있습니다.
+**Windows 앱 ZIP은 약 236MiB로 GitHub 일반 Git 파일 제한(100MiB)을 넘으므로 Release에 보관합니다.** 저장소의 [Downloads 폴더](Downloads/)에는 실제 ZIP을 내려받는 링크를 제공합니다. [배포 워크플로](.github/workflows/release.yml)가 버전·코드·고정 의존성으로 앱을 빌드하고 확장 ZIP과 함께 게시합니다. 비공개 저장소의 Release는 권한 있는 계정으로 로그인해야 접근할 수 있습니다.
 
 ![Windows 앱 밝은 화면](reports/screenshots/desktop-light.png)
 
