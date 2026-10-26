@@ -320,7 +320,6 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
     const source = youtubeVideo(item.url);
     if (!source) throw new Error('지원하는 YouTube 단일 영상 주소가 아닙니다.');
     item = { ...item, url: source.url };
-    if (!await chrome.permissions.contains({ permissions: ['nativeMessaging'] })) throw new Error('설정의 YouTube 다운로드에서 로컬 도우미 연결 권한을 먼저 허용하세요.');
   }
   const filename = filenameFor(item);
   const entry: HistoryItem = { id: crypto.randomUUID(), url: item.url, filename: options.output === 'original' ? filename : filename.replace(/\.[^.]+$/, '') + '.' + options.output, kind: item.kind, state: 'preparing', createdAt: Date.now(), incognito: !!tab.incognito || chrome.extension.inIncognitoContext, options, internalScan: incompleteInternalScan('다운로드 파일 전체의 내부 검사는 아직 수행되지 않았습니다.') };
