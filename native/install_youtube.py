@@ -84,7 +84,7 @@ def matching_extension(entry: object) -> bool:
             and manifest.get("manifest_version") == 3
             and "nativeMessaging" in manifest.get("optional_permissions", [])
             and isinstance(manifest.get("version"), str)
-            and re.fullmatch(r"[0-9]+\\.[0-9]+\\.[0-9]+(?:\\.[0-9]+)?", manifest["version"]) is not None)
+            and re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?", manifest["version"]) is not None)
 
 
 def detect_extension_ids(browser: str) -> list[str]:
