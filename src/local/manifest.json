@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "My Video App",
   "short_name": "My Video App",
-  "version": "1.16.3",
-  "version_name": "1.16.3 · 개인용 로컬 버전",
+  "version": "1.16.0",
+  "version_name": "1.16.0 · 개인용 로컬 버전",
   "description": "계정·구독 없이 미디어를 감지하고 다운로드하며, 기록과 업스케일링을 브라우저 안에서 처리합니다.",
   "minimum_chrome_version": "120",
   "background": {

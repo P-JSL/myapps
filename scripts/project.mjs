@@ -111,7 +111,7 @@ export const staticFiles = freeze([
     "output": "LOCAL_MODE.ko.md"
   },
   {
-    "input": "reports/YOUTUBE_BROWSER.ko.md",
+    "input": "native/YOUTUBE.ko.md",
     "output": "YOUTUBE.ko.md"
   },
   {
@@ -193,7 +193,6 @@ export const capabilities = freeze([
   "parallel-range-download",
   "disk-backed-stream-remux",
   "incremental-large-file-hash",
-  "offline-brotli-engine-packaging",
-  "browser-youtube-direct-stream"
+  "offline-brotli-engine-packaging"
 ]);
 export const algorithmSuites = freeze([['state','tests/bench-state.mjs'],['media','tests/bench-media.mjs'],['transfer','tests/bench-transfer.mjs'],['ui','tests/bench-ui.mjs'],['security','scripts/benchmark-security.mjs']]);

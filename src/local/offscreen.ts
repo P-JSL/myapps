@@ -171,7 +171,7 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
   } catch (error) {
     await disposeLocal(id).catch(() => {});
     if (youtube && error instanceof Error && /\((?:401|403|410)\)/.test(error.message)) {
-      throw new Error('유튜브 미디어 주소가 만료되었거나 서버가 접근을 거부했습니다. 다시 다운로드해 공개 스트림 주소를 갱신하세요. 서명·접근 토큰이 필요한 영상은 브라우저 내장 방식으로 처리할 수 없습니다.');
+      throw new Error('유튜브 미디어 주소가 만료되었거나 서버가 접근을 거부했습니다. 다시 다운로드해 주소를 새로 추출하고 도우미와 Chrome의 네트워크·프록시 설정을 확인하세요.');
     }
     throw error;
   }
