@@ -6,18 +6,18 @@
 
 1. Python **3.10 이상**과 공식 [Deno](https://deno.com/) **2.3.0 이상**을 설치합니다. 검토한 권장 버전은 Deno **2.9.8**입니다. Deno 실행 파일은 심볼릭 링크가 아닌 실제 절대경로를 사용하세요. POSIX 환경에서는 실행 파일이 현재 계정이나 root 소유이고, 다른 사용자가 실행 파일이나 상위 경로를 바꿀 수 없는 위치여야 합니다.
 2. 전체 소스 ZIP을 풀고 해당 프로젝트 폴더를 엽니다. 별도 YouTube 도우미 ZIP을 풀었다면 아래 `native/install_youtube.py`를 `install_youtube.py`로 바꿉니다.
-3. `chrome://extensions`에서 개발자 모드를 켜고 **My Video App의 확장 ID**를 확인합니다. 예제 ID를 실제 32자리 ID로 바꾸세요. 비밀번호나 브라우저 쿠키는 입력하지 않습니다.
+3. Chrome에 **My Video App** 확장 프로그램을 설치하고 활성화합니다. 도우미 설치기가 확장 ID `kjlhlmbokcdokcmfhbmdbfkkgoacclff`를 우선 확인하고, 없으면 현재 사용자 Chrome 프로필에서 동일한 이름·권한 구성을 가진 활성 확장 ID를 확인합니다. 자동 감지가 안 되거나 복수 후보가 발견되면 `--extension-id`로 직접 지정합니다.
 
 Windows PowerShell 예시:
 
 ```powershell
-py -3 native/install_youtube.py --extension-id aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --deno "C:\Users\사용자\.deno\bin\deno.exe"
+py -3 native/install_youtube.py --deno "C:\Users\사용자\.deno\bin\deno.exe"
 ```
 
 Linux/macOS 예시:
 
 ```sh
-python3 native/install_youtube.py --extension-id aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --deno "/home/사용자/.deno/bin/deno"
+python3 native/install_youtube.py --deno "/home/사용자/.deno/bin/deno"
 ```
 
 macOS에서는 `/Users/사용자/...`처럼 실제 Deno 경로로 바꿉니다. Chromium은 `--browser chromium`, 두 브라우저에 등록하려면 `--browser both`를 추가합니다. 경로에 공백이 있으면 따옴표로 감싸세요. Windows 설치 경로의 명령 셸 특수문자는 허용하지 않습니다.
@@ -52,3 +52,9 @@ python3 native/install_youtube.py --uninstall
 처음 등록한 브라우저와 같은 `--browser`를 지정하세요. 선택한 브라우저의 등록과 도우미 고정 파일만 제거하며, 다른 브라우저 등록이 있으면 공용 파일을 유지합니다. 임의 데이터의 재귀 삭제를 피하기 위해 전용 폴더의 `venv`는 남깁니다. 필요하면 등록 제거 후 위 표의 본인 도우미 폴더를 직접 삭제하세요.
 
 yt-dlp의 PyPI 소스/wheel은 Unlicense이며 EJS는 Unlicense 및 포함 구성 요소의 MIT/ISC 고지를 따릅니다. Hitomi Downloader 소스를 복제하거나 배포하지 않습니다. 실제 YouTube 사이트 접근 성공은 로컬 환경과 사이트 조건에 따라 추가 확인이 필요합니다.
+
+## 확장 ID 자동 감지
+
+설치기는 기본 ID `kjlhlmbokcdokcmfhbmdbfkkgoacclff`가 해당 Chrome 사용자 프로필에서 활성화되어 있는지 먼저 확인합니다. 없으면 활성화된 `My Video App` 확장 중 매니페스트 이름·버전·Native Messaging 선택 권한이 일치하는 단일 ID를 사용합니다. 여러 후보가 발견되면 잘못된 확장에 로컬 호스트 권한을 주지 않도록 자동 등록하지 않습니다. 사용자 프로필 파일을 수정하지 않습니다.
+
+브라우저에 확장 프로그램을 **등록하는 것만으로는** OS 실행 파일이나 Native Messaging 레지스트리를 설치할 수 없습니다. Chrome 보안 제한상 한 번은 로컬 설치 프로그램을 직접 실행해야 합니다. 그 후에는 ID 수동 입력 없이 연결할 수 있습니다. 원하지 않는 확장 프로그램에 권한을 부여하지 않도록 `allowed_origins`는 감지된 ID만 포함합니다.

@@ -17,6 +17,8 @@ import threading
 import venv
 
 NAME = "com.myvideoapp.youtube"
+DEFAULT_EXTENSION_ID = "kjlhlmbokcdokcmfhbmdbfkkgoacclff"
+EXTENSION_ID = re.compile(r"[a-p]{32}\Z")
 VERSIONS = {"yt-dlp": "2026.10.21", "yt-dlp-ejs": "0.8.0"}
 MIN_DENO = (2, 3, 0)
 OWN_FILES = ("youtube_host.py", "youtube-config.json", "youtube-requirements.txt", "launch.sh", "launch.cmd")
@@ -56,6 +58,78 @@ def locations(browser: str) -> tuple[Path, list[Path]]:
     for item in paths:
         safe_path(item)
     return base, paths
+
+
+def profile_root(browser: str) -> Path:
+    """Return only the current OS user's Chrome/Chromium profile directory."""
+    home = Path.home()
+    if sys.platform == "win32":
+        local = Path(os.environ.get("LOCALAPPDATA", str(home / "AppData" / "Local")))
+        return safe_path(local / ("Google/Chrome/User Data" if browser == "chrome" else "Chromium/User Data"))
+    if sys.platform == "darwin":
+        return safe_path(home / "Library/Application Support" / ("Google/Chrome" if browser == "chrome" else "Chromium"))
+    config = Path(os.environ.get("XDG_CONFIG_HOME", str(home / ".config")))
+    return safe_path(config / ("google-chrome" if browser == "chrome" else "chromium"))
+
+
+def matching_extension(entry: object) -> bool:
+    """Match the app's own Chrome manifest; never grant access to arbitrary IDs."""
+    if not isinstance(entry, dict) or entry.get("state") != 1:
+        return False
+    manifest = entry.get("manifest")
+    if not isinstance(manifest, dict):
+        return False
+    return (manifest.get("name") == "My Video App"
+            and manifest.get("short_name") == "My Video App"
+            and manifest.get("manifest_version") == 3
+            and "nativeMessaging" in manifest.get("optional_permissions", [])
+            and isinstance(manifest.get("version"), str)
+            and re.fullmatch(r"[0-9]+\\.[0-9]+\\.[0-9]+(?:\\.[0-9]+)?", manifest["version"]) is not None)
+
+
+def detect_extension_ids(browser: str) -> list[str]:
+    """Prefer the default ID; otherwise locate one matching enabled extension.
+
+    Read only the user's bounded Chrome profile Preferences. An unpacked
+    extension is represented here too, so no filesystem-wide search is needed.
+    """
+    browsers = ["chrome", "chromium"] if browser == "both" else [browser]
+    candidates: set[str] = set()
+    for name in browsers:
+        root = profile_root(name)
+        if not root.is_dir():
+            continue
+        # Bounded profile enumeration and bounded preference documents.
+        for profile in list(root.iterdir())[:128]:
+            if not profile.is_dir() or not (profile.name == "Default" or re.fullmatch(r"Profile [0-9]{1,4}", profile.name)):
+                continue
+            prefs = safe_path(profile / "Preferences")
+            try:
+                if not prefs.is_file() or prefs.stat().st_size > 8 * 1024 * 1024:
+                    continue
+                with prefs.open("r", encoding="utf-8") as stream:
+                    data = json.load(stream)
+                extensions = data.get("extensions", {}).get("settings", {})
+                if not isinstance(extensions, dict):
+                    continue
+                for extension_id, entry in extensions.items():
+                    if EXTENSION_ID.fullmatch(extension_id) and matching_extension(entry):
+                        candidates.add(extension_id)
+            except (OSError, ValueError, UnicodeError, TypeError, AttributeError):
+                continue
+    if DEFAULT_EXTENSION_ID in candidates:
+        return [DEFAULT_EXTENSION_ID]
+    if len(candidates) == 1:
+        return sorted(candidates)
+    if not candidates:
+        raise ValueError("My Video App extension not detected in Chrome Preferences. Install and enable the extension, close Chrome, and retry; or provide --extension-id.")
+    raise ValueError("Multiple matching My Video App extension IDs found; specify --extension-id explicitly.")
+
+
+def extension_ids_for_install(browser: str, supplied: list[str]) -> list[str]:
+    """Explicit IDs remain supported for diagnostic/development installations."""
+    return supplied if supplied else detect_extension_ids(browser)
+
 
 
 def write_private(path: Path, content: str, mode: int = 0o600) -> None:
@@ -214,7 +288,7 @@ def main() -> int:
     deno = validate_deno(args.deno)
     base, manifests = locations(args.browser)
     launcher = base / ("launch.cmd" if sys.platform == "win32" else "launch.sh")
-    data = manifest_data(launcher, args.extension_id)
+    data = manifest_data(launcher, extension_ids_for_install(args.browser, args.extension_id))
     # Validate launcher syntax before touching an existing installation.
     python = python_for(base)
     content = launcher_text(python, base / "youtube_host.py")
