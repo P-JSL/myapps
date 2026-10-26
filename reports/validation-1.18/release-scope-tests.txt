@@ -1,0 +1,21 @@
+test_every_focused_evidence_field_is_required (__main__.ConcurrencyEvidenceTests.test_every_focused_evidence_field_is_required) ... ok
+test_exact_focused_evidence_is_accepted (__main__.ConcurrencyEvidenceTests.test_exact_focused_evidence_is_accepted) ... ok
+test_identity_is_bound_to_current_version_commit_and_platform (__main__.ConcurrencyEvidenceTests.test_identity_is_bound_to_current_version_commit_and_platform) ... ok
+test_legacy_proof_remains_limited_to_version_1_17 (__main__.ConcurrencyEvidenceTests.test_legacy_proof_remains_limited_to_version_1_17) ... ok
+test_live_youtube_claim_must_remain_explicitly_false (__main__.ConcurrencyEvidenceTests.test_live_youtube_claim_must_remain_explicitly_false) ... ok
+test_mode_baseline_and_requested_scope_cannot_be_changed (__main__.ConcurrencyEvidenceTests.test_mode_baseline_and_requested_scope_cannot_be_changed) ... ok
+test_prior_release_proof_does_not_authorize_the_concurrency_release (__main__.ConcurrencyEvidenceTests.test_prior_release_proof_does_not_authorize_the_concurrency_release) ... ok
+test_verification_is_bound_to_the_actual_desktop_archive (__main__.ConcurrencyEvidenceTests.test_verification_is_bound_to_the_actual_desktop_archive) ... ok
+test_archive_changed_after_packaged_tests_cannot_be_published (__main__.ConcurrencyPublicationTests.test_archive_changed_after_packaged_tests_cannot_be_published) ... ok
+test_concurrency_module_source_identity_cannot_be_stale (__main__.ConcurrencyPublicationTests.test_concurrency_module_source_identity_cannot_be_stale) ... ok
+test_existing_version_tag_cannot_move_for_the_new_scope (__main__.ConcurrencyPublicationTests.test_existing_version_tag_cannot_move_for_the_new_scope) ... ok
+test_focused_proof_uploads_new_version_and_records_skipped_scope (__main__.ConcurrencyPublicationTests.test_focused_proof_uploads_new_version_and_records_skipped_scope) ... ok
+test_missing_concurrency_runtime_module_is_rejected (__main__.ConcurrencyPublicationTests.test_missing_concurrency_runtime_module_is_rejected) ... ok
+test_ci_evidence_states_the_exact_scope_without_prior_pass_claims (__main__.ConcurrencyWorkflowScopeTests.test_ci_evidence_states_the_exact_scope_without_prior_pass_claims) ... ok
+test_windows_job_runs_only_the_three_new_isolated_suites (__main__.ConcurrencyWorkflowScopeTests.test_windows_job_runs_only_the_three_new_isolated_suites) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.011s
+
+OK
+Published v1.18.0 at aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

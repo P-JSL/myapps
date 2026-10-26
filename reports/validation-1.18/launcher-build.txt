@@ -1,0 +1,20 @@
+{
+  "path": "/workspace/myapps/desktop/launcher/MyVideoApp.exe",
+  "size": 8192,
+  "sha256": "d40bd297f28a1393c62e0c3a94966bf8e9a29b700264470c9bf1e2d497e1ceaa",
+  "machine": "AMD64",
+  "format": "PE32+",
+  "subsystem": "Windows GUI",
+  "imports": [
+    "KERNEL32.dll",
+    "USER32.dll"
+  ],
+  "crt_dependency": false,
+  "dotnet_dependency": false,
+  "aslr": true,
+  "high_entropy_aslr": true,
+  "dep": true,
+  "resources": true,
+  "windows_execution_tested": false,
+  "compiler": "Zig 0.17.0"
+}

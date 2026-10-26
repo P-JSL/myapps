@@ -1,35 +1,39 @@
 {
-  "release": "1.17.0",
-  "baseRelease": "1.16.0",
+  "schemaVersion": 1,
+  "release": "1.18.0",
   "status": "passed",
-  "validationMode": "focused-architecture-change",
+  "validationMode": "focused-desktop-concurrency",
+  "baseline": "v1.17.0",
+  "baselineCommit": "252b452da32f16dc81cb36cca94231879d43c5f1",
+  "date": "2026-10-26",
+  "timezone": "Asia/Seoul",
   "userRequestedSkipPreviousChecks": true,
-  "recordedAtUtc": "2026-10-26T08:18:50.054Z",
+  "priorChecks": "skipped-per-user",
+  "liveYouTubeVerified": false,
   "checks": {
-    "extension": 4,
-    "engine": 26,
-    "gui": 6,
-    "bundle": 10,
-    "launcher": 5,
-    "packaging": 5,
-    "publisher": 12,
-    "typecheck": "passed",
+    "concurrency": 14,
+    "concurrencyGui": 9,
+    "releaseScope": 15,
+    "total": 38,
     "build": "passed",
-    "runtimePaths": 4
+    "typecheck": "skipped-per-user"
   },
-  "buildSha256": "87873c19e65d1871107a22b0c4f6ebdff8758956ee8d48ed16d7b3ed7d259ece",
+  "buildSha256": "6cbc946b8d864ee54acb7646eca18fe1fc1d57e35c00a31ac97424e24e4bab26",
   "sourceSha256": {
-    "desktop/dependencies-lock.json": "a320929817a20e1ba0122eb2f3dbd66ba01d10bbc5b3b05cca0ccd4428b2c064",
-    "desktop/engine.py": "d3d43657384f95cc7ea94d3e57f5bc99818eff9c435cc5f3d0524ecc3a876c18",
+    "desktop/concurrency.py": "8d149124f8f12899622838909e87cae9fe831f4da7f367ddd315cf831030e162",
+    "desktop/dependencies-lock.json": "fb237c8f15bc47891931a3af87019460c18cad5c6dd73dc005c34e79692b8404",
+    "desktop/engine.py": "67bb58602582923f8e54aca2122d066f27846cbcb20123c1f399f7ee7822c9a5",
     "desktop/launcher/build.py": "4902f425398b11e24a3b6b3c6fc8ebfe63b605b2c73b45b0470830a62caa3285",
     "desktop/launcher/launcher.c": "019910f3f2a0f464ed9d99a302fb68ffa99333d711ed625879824dd0e3585637",
-    "desktop/launcher/launcher.manifest": "76a3037f6a32153f051a87de32ee63d8ba110a44bc2fb2d96b34bdf55d640f09",
-    "desktop/launcher/launcher.rc": "324662b1c2f402236766d44a1f0d66720f91e418a83a01d3259c46ad8caf1ea7",
+    "desktop/launcher/launcher.manifest": "368465d3aee0e8942437dfc29ecb9f8acdc392c304093f2c65e556179b50e397",
+    "desktop/launcher/launcher.rc": "1cf028893efb9b6720f87f3d127ad971e35b569b673cf3a88094e654bd94db72",
     "desktop/launcher/test_launcher.py": "7cc241f34c0d64eb5871e8b1b08901484c149230186b08376b291bc4cdb00552",
     "desktop/launcher/toolchain-lock.json": "e30a59ade77d6a2cd4c84296004617f840809e557430c445050e79d94149751f",
     "desktop/launcher/verify_pe.py": "ef29dabcff593ac562301ef7f35535bbb831f727f66676ec0b381eacc3ecfd70",
-    "desktop/main.py": "07ea610d412a2a325f5d8412fcfb20dcf0b473a9b6b99f7ab0d591fe8948e3e1",
-    "desktop/storage.py": "4d222a5f3cd754386183a97a4cb5149b253c1867a902e34e470f34758d50c042",
+    "desktop/main.py": "eb494791a1d891e11369d2a32ad7286eb4a3657c715b3fcc8b53688cc9a8cd38",
+    "desktop/storage.py": "89e889f1d1cb7e958b47ce0ec7ece481d00cb876278661c261937d69f18ba911",
+    "desktop/test_concurrency.py": "7563318557fad7acfd4f87f1ebb513178aa365b7c5a96e027f1543261361aef4",
+    "desktop/test_concurrency_gui.py": "5e7767d9d6b1145faee88f06ee37e175493fd40f5876e490362cd41ff36d6651",
     "desktop/test_engine.py": "899c820ecb43d5af71da7e3b3a4a07c6276d45e721f34e138d6784b9f72379ef",
     "desktop/test_gui.py": "37499eecef5598d0f1b3f533fe8086435a058c2e0a9dd90d0aa46197e67fb767",
     "desktop/test_runtime.py": "e7130c2178e2b6288b2bd8f65bb6690f21d212ae2b767a9341140707d46ff494",
@@ -43,8 +47,8 @@
     "native/test_internal_scan.py": "1f6bf1e60fe50fc4f00ae3dc2a0cb1c6037122e41a170c8ac70284511c2ee4b9",
     "native/test_windows_antivirus.py": "bd64dfa7b0f374602374eefd46b655779bcbdea46d5187e75ff38aaef8ec84fb",
     "native/windows_antivirus.py": "d31d257a74e3f4f676f82ad7f5b2f0d4a04172d72af52fe8cb40999b83c30c88",
-    "package-lock.json": "382c36f83c25db3b7d46f6717168b17e921ea6af0b87100d8652d6eff9a657c4",
-    "package.json": "45a5b6961dac60b4e8dccd2fc35c287ff82c2d408e0f9e126d84bbe7c9cc2e36",
+    "package-lock.json": "0880e8eeea6ea45027a6191ce76ae36a96ed366a557bb962102e41bd8cbddf38",
+    "package.json": "bc0b7e9bd920af9cbaa1de36699c64915c773dae56a0ca9257b44a4c5ef5d0cd",
     "scripts/archive.py": "7d79bf3eb2e930b68193fdc7ba82bb31caf1190b95aeeb5aa3c0d4f9d01f6388",
     "scripts/audit-dependencies.mjs": "986733aa350a0ab382270e16cf992375193554cf32c9073fee3e36cb8c7a376c",
     "scripts/audit-source.mjs": "790b84d7be982dc1af0bf16149d25052f6b1c8e1a74c571f986d13f3852ae23f",
@@ -62,9 +66,9 @@
     "scripts/lib/engine-cipher.mjs": "86d5ecd6bbe240cbebf869144d5609944162053fb725f64dac0b91a802071906",
     "scripts/lib/protect-build.mjs": "f7ba19ec5edd1adcb821d744dee56cd8e7f5d77c711cc10c8814a0da1a49a5c5",
     "scripts/lib/release-safety.mjs": "f2aa593317defaf3cb8d3a12f3014e6725c948a9b86a62d351236d82fd79870c",
-    "scripts/package.mjs": "318560dd46c75b1ce8636336a8ceb80e8fd5a9cd6b5f29b59b910ea63a583183",
+    "scripts/package.mjs": "9bfbe1ea7203f38e2029f8d7c485b2faef5edc3e9d0c80b4e3406b82f50d7477",
     "scripts/project.mjs": "eba685b7486bd16b789ea1ce5c57c37f604d2eed1ff8f88905cf2ae589eaf66f",
-    "scripts/publish-release.py": "361dfbe87ffd56510e0a391fce8cfc9358de97d012664fb061cac8a10126c86e",
+    "scripts/publish-release.py": "b9ec5736767c251f858637b0bf655973272547eba4743283d0248dc9faf3aa6b",
     "scripts/test-native.mjs": "df51aab957aec7d02e8f577783a8c94d356e1ccebca8cb2dda093504a72e3282",
     "src/data/database.ts": "9ad2a7536462d778885eecc1340fb649437fd4f3fe6791869dfd1e7b50a26cf5",
     "src/local/antivirus.ts": "93f0e263b6de9e885b4b220cfcc9edf8cebc84ee505560db67fc59bb39bb6e3f",
@@ -157,6 +161,7 @@
     "tests/queue-privacy.test.ts": "067fd865093d6da4bd27fde290e9236096885485f83cf1a01f8c6d3562ac732d",
     "tests/release-safety.test.mjs": "1709938412c9b0670a376ea2863db1bf06bcb166771a1c6715b7244863bc510e",
     "tests/security-runtime.test.ts": "63777d2928c72248107c1b342e71d7b3096705daf33a85b2f197ca1a37ffc664",
+    "tests/test_concurrency_release.py": "ff4cbdd868eadc4fd8dae225c9beffa2af9c97b309168a09cfe4588ca8878b82",
     "tests/test_desktop_bundle.py": "dfdd8e49dca0ab5925ea0b7299ae6f65d5adb79ebb18bea22371ede7a4d096d2",
     "tests/test_publish_release.py": "896a2cd9f100574a09328d1437bb8046c88ef93bf73385257a58ee34a2059635",
     "tests/test_runtime_paths.py": "a282e6765e5ebd4ff837f1646795c8c9f50e89718840d638e2b1a3d8cf501ad6",
@@ -168,31 +173,25 @@
     "tsconfig.json": "a447c838b1d18d1c8500c2dc125198660e6a600dde1bceed697a58c186758529"
   },
   "logSha256": {
-    "reports/validation-1.17/desktop-build.txt": "539ade54a72b4d163e1661300ca1c3cec0bf8435bc02c16375f6c75ad0351653",
-    "reports/validation-1.17/desktop-bundle-tests.txt": "e5c2d9fc1dc716ea84bc70865f6b1b4d2597e79d1a59326b37e25c097227ccf4",
-    "reports/validation-1.17/desktop-engine-tests.txt": "a51fb91352ecd31e8f6b8adc84d6cf1beedc09769b193dd146ed81deb5940869",
-    "reports/validation-1.17/desktop-gui-tests.txt": "ebdbdd139fd0a2c193999ae81d2f0cd2784bc4fa59fe48081613995b8c55d7af",
-    "reports/validation-1.17/desktop-launcher-tests.txt": "579cc9f7833034a972e2aa692024d56eceef8278056d2acff141bfba1cece31c",
-    "reports/validation-1.17/extension-1.17-build.txt": "712afc8106e5959d77e48316ff2ed5b5f175e14a1e0e4335c4ce256161bde61a",
-    "reports/validation-1.17/extension-1.17-typecheck.txt": "40e6270aa55fcf9d329232d4f5a0b940dc0bafc9fdcaecf7c310065b414bdbe6",
-    "reports/validation-1.17/extension-without-youtube-tests.txt": "fe7ea4cdfe4df6797ed5c984dd823c2ff29cc111beb28dcebc9b13db74e48647",
-    "reports/validation-1.17/gui-review.json": "706c896ed6be0b1d02464d1e6596f61893d5d60b7821eb08f540d130aa5740b0",
-    "reports/validation-1.17/package-contract-tests.txt": "e87193b57c3a99767b52e6c7b2f9bee83361b63edc4974eeb2050092f248a302",
-    "reports/validation-1.17/release-publisher-tests.txt": "64d866f61d7120b4b3b2e7b2023fd1ba1fd9ae1373e7edfed364f2037d2d8312",
-    "reports/validation-1.17/runtime-path-tests.txt": "be14a64f221c703711909854e662aef2e346f437a30b5e288ae9e6640e71a18f"
+    "reports/validation-1.18/concurrency-gui-tests.txt": "a4659b92d6bdd3cf44dc5db39e8738652fab7d7f01c3e9c809884fb523655341",
+    "reports/validation-1.18/concurrency-tests.txt": "5f4ff9263182b585d5c6e0f4f71f17ff36ecfa20bd50c3e3a30aa4570a8bdd63",
+    "reports/validation-1.18/desktop-build.txt": "3169ff3e9a185d6f45ca606e501dd14f5d9546b55e734eb757c39a3166a1eb93",
+    "reports/validation-1.18/extension-build.txt": "27d8435cef5dd39835fce005861364ba61dbd9fc876da138415c2cf2be6232ee",
+    "reports/validation-1.18/launcher-build.txt": "43285599b53a862165315f5dd8c1a52a583349e979c2abcef14d6f2c6c848659",
+    "reports/validation-1.18/release-scope-tests.txt": "59eaa4b58cb83ebe99b13f268517088a47d6fc829e136020935a2767f66441f7"
   },
   "desktop": {
     "schemaVersion": 1,
     "name": "My Video App",
-    "version": "1.17.0",
+    "version": "1.18.0",
     "platform": "win32-x64",
     "artifact": "artifacts/my-video-app-desktop-windows-x64.zip",
-    "sha256": "2ff88e6466e32fdacec4bf5bf4997dbd445c50aaf13d18a98ab81a918eb7bf19",
-    "size": 247522002,
+    "sha256": "73c4c2f7e6bac986ece5b2f06cbdec126c543484d0890b0fd355f00005e141ba",
+    "size": 247528367,
     "sizeMiB": 236.06,
-    "files": 3223,
-    "uncompressedBytes": 633262583,
-    "uncompressedMiB": 603.93,
+    "files": 3224,
+    "uncompressedBytes": 633283098,
+    "uncompressedMiB": 603.95,
     "versions": {
       "python": "3.13.17",
       "yt-dlp": "2026.10.21",
@@ -202,232 +201,95 @@
       "shiboken6": "6.12.0",
       "ffmpeg": "9.0.2-36-g6882969ce9"
     },
-    "verifiedInputs": [
-      {
-        "id": "python",
-        "filename": "python.3.13.17.nupkg",
-        "sha256": "dce409744b088f94c6e37ba41f8100c384c27e029e843237364c602d30d475e5",
-        "size": 14826465
-      },
-      {
-        "id": "yt-dlp",
-        "filename": "yt_dlp-2026.10.21-py3-none-any.whl",
-        "sha256": "94a3a3e2c423129d0bbd2f1be000c4171fa1226c29e251c84aff868f2851c247",
-        "size": 3188012
-      },
-      {
-        "id": "yt-dlp-ejs",
-        "filename": "yt_dlp_ejs-0.8.0-py3-none-any.whl",
-        "sha256": "79300e5fca7f937a1eeede11f0456862c1b41107ce1d726871e0207424f4bdb4",
-        "size": 53443
-      },
-      {
-        "id": "deno",
-        "filename": "deno-2.9.8-py3-none-win_amd64.whl",
-        "sha256": "60dd97e612b8bab67c8080712646a821071e3809909489f853763cea19617700",
-        "size": 41825460
-      },
-      {
-        "id": "pyside6-essentials",
-        "filename": "pyside6_essentials-6.12.0-cp310-abi3-win_amd64.whl",
-        "sha256": "c9a95102aa23c1f86516a30d5a9be37552d324eee7e567eb7508973f1218cb42",
-        "size": 82153795
-      },
-      {
-        "id": "shiboken6",
-        "filename": "shiboken6-6.12.0-cp310-abi3-win_amd64.whl",
-        "sha256": "a1906cb8116869178c64b6bab52623bbc8b4ceed7b30bfc3c9aa0f6e67f6438e",
-        "size": 1265476
-      },
-      {
-        "id": "ffmpeg",
-        "filename": "ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0.zip",
-        "sha256": "47526345cc4800f4163337d5db8048a2d06c78a53bb234532f55a30dbfb49868",
-        "size": 171482755
-      },
-      {
-        "id": "qt-LGPL-3.0-only.txt",
-        "filename": "qt-LGPL-3.0-only.txt",
-        "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768",
-        "size": 7651
-      },
-      {
-        "id": "qt-GPL-3.0-only.txt",
-        "filename": "qt-GPL-3.0-only.txt",
-        "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
-        "size": 35147
-      },
-      {
-        "id": "qt-GPL-2.0-only.txt",
-        "filename": "qt-GPL-2.0-only.txt",
-        "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
-        "size": 18092
-      },
-      {
-        "id": "btbn-README.md",
-        "filename": "btbn-README.md",
-        "sha256": "4f6f817fd57c5524e0d0832618e8f75d589093e2f05ef1ec2839af98e70e5053",
-        "size": 2777
-      }
-    ],
+    "validationMode": "focused-desktop-concurrency",
     "validation": {
-      "archiveCrcsValid": true,
-      "allOutputHashesValid": true,
-      "outputHashesChecked": 3222,
-      "allSourceHashesValid": true,
-      "sourceHashesChecked": 10,
-      "allInputHashesValid": true,
-      "inputHashesChecked": 11,
-      "noUnmanifestedFiles": true,
-      "noTestsOrSourceCaches": true,
-      "ffplayOmitted": true,
-      "nativeGuiLauncherIncluded": true,
-      "launcherSha256": "32aa2731d09c3f63b746e82beab599b2697609ef75f4571b5a1b082e996ccc60",
-      "pe32PlusAmd64Checked": [
-        "My Video App.exe",
-        "runtime/python/python.exe",
-        "runtime/python/pythonw.exe",
-        "runtime/deno.exe",
-        "runtime/ffmpeg/ffmpeg.exe",
-        "runtime/ffmpeg/ffprobe.exe",
-        "runtime/python/Lib/site-packages/PySide6/QtWidgets.pyd"
+      "performedDuringBuild": [
+        "Pinned input size/SHA-256 verification",
+        "Per-output SHA-256 generation and source identity check",
+        "Required Windows AMD64 executable PE headers"
       ],
       "windowsExecutionPerformed": false,
-      "executionLimit": "Verified on Linux by static inspection; Windows launch, GUI rendering and process execution require Windows CI/manual validation.",
-      "method": "Pinned input SHA-256/size verification; full ZIP CRC pass; SHA-256 for every output and every current source file; native PE headers and DLL import/delay-import closure inspection.",
-      "nativeImportClosure": {
-        "peFilesInspected": 202,
-        "architectures": {
-          "0x8664": 198,
-          "0x14c": 2,
-          "0xaa64": 2
-        },
-        "missingNonSystemDlls": [],
-        "externalWindowsSystemDlls": [
-          "advapi32.dll",
-          "api-ms-win-core-path-l1-1-0.dll",
-          "api-ms-win-core-synch-l1-2-0.dll",
-          "api-ms-win-core-winrt-error-l1-1-0.dll",
-          "api-ms-win-core-winrt-error-l1-1-1.dll",
-          "api-ms-win-core-winrt-l1-1-0.dll",
-          "api-ms-win-core-winrt-string-l1-1-0.dll",
-          "api-ms-win-crt-conio-l1-1-0.dll",
-          "api-ms-win-crt-convert-l1-1-0.dll",
-          "api-ms-win-crt-environment-l1-1-0.dll",
-          "api-ms-win-crt-filesystem-l1-1-0.dll",
-          "api-ms-win-crt-heap-l1-1-0.dll",
-          "api-ms-win-crt-locale-l1-1-0.dll",
-          "api-ms-win-crt-math-l1-1-0.dll",
-          "api-ms-win-crt-multibyte-l1-1-0.dll",
-          "api-ms-win-crt-private-l1-1-0.dll",
-          "api-ms-win-crt-process-l1-1-0.dll",
-          "api-ms-win-crt-runtime-l1-1-0.dll",
-          "api-ms-win-crt-stdio-l1-1-0.dll",
-          "api-ms-win-crt-string-l1-1-0.dll",
-          "api-ms-win-crt-time-l1-1-0.dll",
-          "api-ms-win-crt-utility-l1-1-0.dll",
-          "api-ms-win-shcore-scaling-l1-1-1.dll",
-          "authz.dll",
-          "avicap32.dll",
-          "avrt.dll",
-          "bcrypt.dll",
-          "bcryptprimitives.dll",
-          "cfgmgr32.dll",
-          "combase.dll",
-          "comdlg32.dll",
-          "crypt32.dll",
-          "d2d1.dll",
-          "d3d11.dll",
-          "d3d12.dll",
-          "d3d9.dll",
-          "d3dcompiler_47.dll",
-          "dbghelp.dll",
-          "dnsapi.dll",
-          "dwmapi.dll",
-          "dwrite.dll",
-          "dxgi.dll",
-          "gdi32.dll",
-          "icuuc.dll",
-          "imagehlp.dll",
-          "imm32.dll",
-          "iphlpapi.dll",
-          "kernel32.dll",
-          "mpr.dll",
-          "mscms.dll",
-          "msimg32.dll",
-          "ncrypt.dll",
-          "netapi32.dll",
-          "ntdll.dll",
-          "ole32.dll",
-          "oleaut32.dll",
-          "opengl32.dll",
-          "propsys.dll",
-          "psapi.dll",
-          "rpcrt4.dll",
-          "rstrtmgr.dll",
-          "secur32.dll",
-          "setupapi.dll",
-          "shell32.dll",
-          "shlwapi.dll",
-          "uiautomationcore.dll",
-          "user32.dll",
-          "userenv.dll",
-          "usp10.dll",
-          "uxtheme.dll",
-          "version.dll",
-          "winhttp.dll",
-          "winmm.dll",
-          "winspool.drv",
-          "ws2_32.dll",
-          "wtsapi32.dll"
-        ],
-        "platformRequirement": "Modern Windows 10/11 x64, including OS-provided Universal CRT, DirectX, API-set contracts and ICUUC.dll.",
-        "nonAmd64Scope": "Four original, unused pip distlib launcher templates (x86 and ARM64) are retained as package data; application/runtime entry points are AMD64.",
-        "includedRuntimeLibraries": [
-          "CPython python3.dll/python313.dll and OpenSSL DLLs",
-          "MSVC140 C/C++ runtimes including vcruntime140_1.dll and msvcp140 variants",
-          "Qt6 module DLLs, pyside6.abi3.dll and shiboken6.abi3.dll",
-          "Qt Windows platform and required image/style plugins"
-        ],
-        "detailReport": ".cache/desktop-runtime/windows-packaged-import-closure.json"
-      }
+      "liveYouTubeVerified": false,
+      "priorChecks": "skipped-per-user",
+      "priorFullImportClosureAudit": "skipped-per-user",
+      "packagedRuntimeExecution": "Required by Windows CI new concurrency suites only"
     },
-    "omittedOptionalComponents": {
-      "ffmpeg": [
-        "bin/ffplay.exe"
+    "launcher": {
+      "path": "/workspace/myapps/desktop/launcher/MyVideoApp.exe",
+      "size": 8192,
+      "sha256": "d40bd297f28a1393c62e0c3a94966bf8e9a29b700264470c9bf1e2d497e1ceaa",
+      "machine": "AMD64",
+      "format": "PE32+",
+      "subsystem": "Windows GUI",
+      "imports": [
+        "KERNEL32.dll",
+        "USER32.dll"
       ],
-      "pyside6-essentials": [
-        "PySide6/qml/",
-        "PySide6/plugins/designer/",
-        "PySide6/plugins/qmltooling/",
-        "PySide6/plugins/sqldrivers/",
-        "PySide6/plugins/platforminputcontexts/",
-        "PySide6/plugins/imageformats/qpdf.dll"
-      ]
-    }
+      "crt_dependency": false,
+      "dotnet_dependency": false,
+      "aslr": true,
+      "high_entropy_aslr": true,
+      "dep": true,
+      "resources": true,
+      "windows_execution_tested": false,
+      "compiler": "Zig 0.17.0"
+    },
+    "runtimeDependencyChanges": false
   },
-  "actualLocalMedia": {
-    "ytDlp": "2026.10.21",
-    "runtime": "Linux ffmpeg/ffprobe",
-    "outputs": [
-      "MP4 H.264+AAC",
-      "MP3",
-      "M4A AAC"
+  "scope": {
+    "real": [
+      "Engine download lifecycle",
+      "SQLite settings/history",
+      "ResourceBudget FIFO/cancellable leases",
+      "Qt worker pool and queued signals",
+      "Collision-safe output publication",
+      "New settings view"
     ],
-    "source": "owned one-second loopback fixture",
-    "liveYouTubeVerified": false
+    "replacedBoundaries": [
+      "External dependency probes",
+      "yt-dlp metadata/download network",
+      "FFmpeg/Defender child execution"
+    ],
+    "assertions": [
+      "16 simultaneous engine jobs across two Engine objects; 17th waits",
+      "8 simultaneous GUI workers",
+      "Metadata2/media2/scan1 stage budgets",
+      "Atomic fragment leases and cancellation release",
+      "Per-source scheduling and total/site drain",
+      "10,000 progress hooks reduced with final delivery",
+      "Current Windows release evidence identity and explicit skipped previous checks"
+    ]
   },
   "windowsVerification": {
     "localExecution": false,
     "requiredBeforePublication": true,
-    "evidence": "Release WINDOWS-VALIDATION.json"
+    "validationMode": "focused-desktop-concurrency",
+    "evidence": "Release WINDOWS-VALIDATION.json",
+    "newSuitesOnly": true
+  },
+  "research": {
+    "papersRead": 2,
+    "actualProgramsReviewed": [
+      "yt-dlp",
+      "aria2",
+      "qBittorrent",
+      "Netflix concurrency-limits"
+    ],
+    "report": "reports/DESKTOP_CONCURRENCY_RESEARCH.ko.md",
+    "downloadSpeedBenchmarkPerformed": false
   },
   "skipped": [
-    "previous full unit suite",
-    "full browser harness",
+    "previous engine suite",
+    "previous GUI suite",
+    "previous actual MP4/MP3/M4A runtime test",
+    "previous launcher suite",
+    "previous publisher suite",
+    "extension unit and browser suites",
     "HTTP/3 suite",
     "antivirus suite",
     "algorithm benchmarks",
-    "dependency audit"
+    "dependency audit",
+    "TypeScript typecheck",
+    "full Windows DLL import audit"
   ]
 }

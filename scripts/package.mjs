@@ -10,13 +10,34 @@ const version = (await json('package.json')).version;
 const report = await json('reports/release-validation.json');
 assert.equal(report.release, version, 'Validation belongs to another release');
 assert.equal(report.status, 'passed', 'Successful focused validation required');
-assert.equal(report.validationMode, 'focused-architecture-change');
+const concurrencyMode = report.validationMode === 'focused-desktop-concurrency';
+if (concurrencyMode) {
+  assert.equal(version, '1.18.0', 'Desktop concurrency scope belongs to release 1.18.0');
+  assert.equal(report.baseline, 'v1.17.0', 'Desktop concurrency baseline is fixed');
+  assert.equal(report.baselineCommit, '252b452da32f16dc81cb36cca94231879d43c5f1', 'Desktop concurrency baseline commit is fixed');
+  assert.equal(report.priorChecks, 'skipped-per-user', 'Previous checks must be recorded as skipped');
+  assert.equal(report.liveYouTubeVerified, false, 'Focused concurrency checks do not establish live YouTube behavior');
+  // These are read-only scope checks, not reruns of the previous extension suite.
+  const extensionScope = spawnSync('git', ['diff', '--name-only', report.baselineCommit, '--', 'src', 'native', 'tsconfig.json', ':(exclude)src/local/manifest.json'], { encoding: 'utf8' });
+  assert.equal(extensionScope.status, 0, extensionScope.stderr || extensionScope.error?.message);
+  assert.equal(extensionScope.stdout.trim(), '', 'Focused desktop concurrency scope requires unchanged extension sources');
+  const baselineManifest = spawnSync('git', ['show', `${report.baselineCommit}:src/local/manifest.json`], { encoding: 'utf8' });
+  assert.equal(baselineManifest.status, 0, baselineManifest.stderr || baselineManifest.error?.message);
+  const beforeManifest = JSON.parse(baselineManifest.stdout), currentManifest = await json('src/local/manifest.json');
+  assert.equal(currentManifest.version, version, 'Extension source version metadata is stale');
+  assert.equal(currentManifest.version_name, beforeManifest.version_name.replace(beforeManifest.version, version), 'Only the extension version label may change');
+  for (const key of ['version', 'version_name']) { delete beforeManifest[key]; delete currentManifest[key]; }
+  assert.deepEqual(currentManifest, beforeManifest, 'Only extension version metadata may change in the desktop concurrency scope');
+} else {
+  assert.equal(version, '1.17.0', 'Architecture validation belongs to release 1.17.0');
+  assert.equal(report.validationMode, 'focused-architecture-change');
+}
 assert.equal(report.userRequestedSkipPreviousChecks, true, 'Focused validation must record the requested scope');
 assert.deepEqual(await sourceIdentity(), report.sourceSha256, 'Source inventory or contents changed since focused validation');
-for (const name of ['extension', 'engine', 'gui', 'bundle', 'launcher']) {
+for (const name of concurrencyMode ? ['concurrency', 'concurrencyGui', 'releaseScope'] : ['extension', 'engine', 'gui', 'bundle', 'launcher']) {
   assert(Number.isInteger(report.checks?.[name]) && report.checks[name] > 0, `Successful focused ${name} checks required`);
 }
-for (const name of ['typecheck', 'build']) assert.equal(report.checks?.[name], 'passed', `Successful ${name} required`);
+for (const name of concurrencyMode ? ['build'] : ['typecheck', 'build']) assert.equal(report.checks?.[name], 'passed', `Successful ${name} required`);
 assert(Object.keys(report.logSha256 ?? {}).length > 0, 'Validation log hashes required');
 for (const [name, digest] of Object.entries(report.logSha256)) {
   assert(name.startsWith('reports/') && !name.split('/').includes('..') && !name.includes('\\'), 'Validation logs must be local report paths');

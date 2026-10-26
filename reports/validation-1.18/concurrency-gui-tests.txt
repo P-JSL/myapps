@@ -1,0 +1,14 @@
+test_auto_and_all_sixteen_manual_choices_persist_across_reopen (__main__.ConcurrencyGuiTests.test_auto_and_all_sixteen_manual_choices_persist_across_reopen) ... ok
+test_busy_host_at_queue_head_does_not_block_other_hosts (__main__.ConcurrencyGuiTests.test_busy_host_at_queue_head_does_not_block_other_hosts) ... ok
+test_eight_actual_workers_run_and_pending_jobs_do_not_exceed_total_limit (__main__.ConcurrencyGuiTests.test_eight_actual_workers_run_and_pending_jobs_do_not_exceed_total_limit) ... ok
+test_least_active_host_then_oldest_fifo_admission (__main__.ConcurrencyGuiTests.test_least_active_host_then_oldest_fifo_admission) ... ok
+test_lower_host_cap_drains_that_host_while_other_hosts_fill_slots (__main__.ConcurrencyGuiTests.test_lower_host_cap_drains_that_host_while_other_hosts_fill_slots) ... ok
+test_lower_total_drains_existing_workers_and_increase_starts_pending_immediately (__main__.ConcurrencyGuiTests.test_lower_total_drains_existing_workers_and_increase_starts_pending_immediately) ... ok
+test_pending_and_engine_waiting_cancellation_preserve_slots_and_database_state (__main__.ConcurrencyGuiTests.test_pending_and_engine_waiting_cancellation_preserve_slots_and_database_state) ... ok
+test_progress_storm_is_reduced_and_final_delivery_reaches_card_and_sqlite (__main__.ConcurrencyGuiTests.test_progress_storm_is_reduced_and_final_delivery_reaches_card_and_sqlite) ... ok
+test_worker_progress_rate_uses_one_hundred_milliseconds_and_forwards_stage_changes (__main__.ConcurrencyGuiTests.test_worker_progress_rate_uses_one_hundred_milliseconds_and_forwards_stage_changes) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 1.681s
+
+OK

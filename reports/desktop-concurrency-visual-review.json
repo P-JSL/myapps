@@ -1,0 +1,104 @@
+{
+  "version": "1.18.0",
+  "scope": "Changed settings page only; fresh offline render, no previous GUI test suite or app smoke test.",
+  "checks": [
+    {
+      "viewport": [
+        1000,
+        700
+      ],
+      "image": "/tmp/desktop-concurrency-settings-min.png",
+      "controls": {
+        "concurrent_combo": {
+          "x": 764,
+          "y": 523,
+          "width": 160,
+          "height": 41,
+          "visible": true,
+          "text": "한 번에 16개"
+        },
+        "host_concurrent_combo": {
+          "x": 764,
+          "y": 609,
+          "width": 160,
+          "height": 41,
+          "visible": true,
+          "text": "사이트당 16개"
+        },
+        "host_concurrency_hint": {
+          "x": 271,
+          "y": 634,
+          "width": 481,
+          "height": 18,
+          "visible": true,
+          "text": "현재 사이트당 최대 16개 · YouTube 주소는 하나의 사이트로 계산해요."
+        }
+      }
+    },
+    {
+      "viewport": [
+        1220,
+        860
+      ],
+      "image": "/workspace/myapps/reports/screenshots/desktop-concurrency-settings.png",
+      "controls": {
+        "concurrent_combo": {
+          "x": 984,
+          "y": 523,
+          "width": 160,
+          "height": 41,
+          "visible": true,
+          "text": "한 번에 16개"
+        },
+        "host_concurrent_combo": {
+          "x": 984,
+          "y": 609,
+          "width": 160,
+          "height": 41,
+          "visible": true,
+          "text": "사이트당 16개"
+        },
+        "host_concurrency_hint": {
+          "x": 271,
+          "y": 634,
+          "width": 701,
+          "height": 18,
+          "visible": true,
+          "text": "현재 사이트당 최대 16개 · YouTube 주소는 하나의 사이트로 계산해요."
+        }
+      }
+    }
+  ],
+  "result": "Both controls set to 16 and effective-limit caption fit without horizontal clipping at both widths. At minimum height, scroll down 130px to expose the full same-site row.",
+  "minimum_scrolled_check": {
+    "viewport": [
+      1000,
+      700
+    ],
+    "scroll_y": 130,
+    "image": "/tmp/desktop-concurrency-settings-min-scrolled.png",
+    "controls": {
+      "concurrent_combo": {
+        "fully_visible_in_scroll_viewport": true,
+        "x": 518,
+        "y": 317,
+        "width": 160,
+        "height": 41
+      },
+      "host_concurrent_combo": {
+        "fully_visible_in_scroll_viewport": true,
+        "x": 518,
+        "y": 403,
+        "width": 160,
+        "height": 41
+      },
+      "host_concurrency_hint": {
+        "fully_visible_in_scroll_viewport": true,
+        "x": 25,
+        "y": 428,
+        "width": 481,
+        "height": 18
+      }
+    }
+  }
+}

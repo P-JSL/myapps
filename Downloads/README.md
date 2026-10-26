@@ -18,4 +18,4 @@
 
 **데스크톱 ZIP은 약 236MiB로 GitHub 일반 Git 파일 제한(100MiB)을 넘습니다.** 따라서 ZIP 자체는 Release에 보관하고, 이 폴더에서 바로 내려받도록 연결합니다. 저장소의 **Code → Download ZIP**에는 데스크톱 실행 패키지가 포함되지 않습니다.
 
-[최신 Release 전체 파일](https://github.com/P-JSL/myapps/releases/latest) · [1.17.0 Release](https://github.com/P-JSL/myapps/releases/tag/v1.17.0) · [Windows 앱 사용법](../desktop/README.ko.md) · [Chrome 확장 설치법](../README.md#chrome-확장-설치)
+[최신 Release 전체 파일](https://github.com/P-JSL/myapps/releases/latest) · [1.18.0 Release](https://github.com/P-JSL/myapps/releases/tag/v1.18.0) · [Windows 앱 사용법](../desktop/README.ko.md) · [Chrome 확장 설치법](../README.md#chrome-확장-설치)

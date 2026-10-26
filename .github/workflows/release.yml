@@ -39,26 +39,27 @@ jobs:
         with:
           path: .cache/desktop-runtime
           key: ${{ runner.os }}-desktop-runtime-${{ hashFiles('desktop/dependencies-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-desktop-runtime-
 
       - name: Build the pinned portable Windows app
         run: python -B scripts/build-desktop.py
 
-      - name: Check release and rollback safety
-        run: python -B -m unittest discover -s tests -p test_publish_release.py -v
-
-      - name: Verify the actual packaged Windows runtime and GUI
+      - name: Verify only the new packaged desktop concurrency scope
         shell: pwsh
         run: |
-          Expand-Archive -LiteralPath artifacts/my-video-app-desktop-windows-x64.zip -DestinationPath "$env:RUNNER_TEMP/myvideoapp-smoke"
-          $appRoot = "$env:RUNNER_TEMP/myvideoapp-smoke/MyVideoApp"
+          Expand-Archive -LiteralPath artifacts/my-video-app-desktop-windows-x64.zip -DestinationPath "$env:RUNNER_TEMP/myvideoapp-concurrency"
+          $appRoot = "$env:RUNNER_TEMP/myvideoapp-concurrency/MyVideoApp"
+          $python = "$appRoot/runtime/python/python.exe"
           $env:QT_QPA_PLATFORM = "offscreen"
-          & "$appRoot/runtime/python/python.exe" -I -B "$appRoot/desktop/main.py" --data-dir "$env:RUNNER_TEMP/myvideoapp-ui-data" --smoke-test --screenshot "$env:RUNNER_TEMP/myvideoapp-gui.png"
+          & $python -I -B tests/test_concurrency_release.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & "$appRoot/runtime/python/python.exe" -I -B desktop/test_gui.py --app-root "$appRoot"
+          & $python -I -B desktop/test_concurrency.py --app-root "$appRoot" -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & "$appRoot/runtime/python/python.exe" -I -B desktop/test_runtime.py --app-root "$appRoot"
+          & $python -I -B desktop/test_concurrency_gui.py --app-root "$appRoot" -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          @{version=(Get-Content package.json | ConvertFrom-Json).version; commit=$env:GITHUB_SHA; platform="windows-x64"; packagedGui="passed"; guiQueueTests="passed"; localMediaMp4Mp3M4a="passed"; liveYouTubeVerified=$false} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
+          # Prior checks are deliberately skipped at the user's request.
+          @{version=(Get-Content package.json | ConvertFrom-Json).version; commit=$env:GITHUB_SHA; platform="windows-x64"; validationMode="focused-desktop-concurrency"; baseline="v1.17.0"; baselineCommit="252b452da32f16dc81cb36cca94231879d43c5f1"; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); concurrencyTests="passed"; concurrencyGuiTests="passed"; releaseScopeTests="passed"; priorChecks="skipped-per-user"; liveYouTubeVerified=$false} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
 
       - name: Publish both products in one release
         env:

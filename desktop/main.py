@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import sys
 import threading
+import time
 from typing import Any
 from urllib.parse import urlsplit
 import uuid
@@ -43,19 +44,28 @@ try:
     )
     from .theme import DARK, LIGHT, stylesheet
     from .storage import default_data_dir
+    from .concurrency import (
+        MAX_CONCURRENT_DOWNLOADS, MAX_HOST_DOWNLOADS, effective_concurrency,
+        normalize_concurrency, normalize_host_concurrency, source_key,
+    )
 except ImportError:
     from engine import (
         DownloadCancelled, DownloadProgress, DownloadRequest, DownloadResult, Engine, EngineError,
     )
     from theme import DARK, LIGHT, stylesheet
     from storage import default_data_dir
+    from concurrency import (
+        MAX_CONCURRENT_DOWNLOADS, MAX_HOST_DOWNLOADS, effective_concurrency,
+        normalize_concurrency, normalize_host_concurrency, source_key,
+    )
 
 
-VERSION = "1.17.0"
+VERSION = "1.18.0"
 APP_ROOT = Path(__file__).resolve().parent.parent
-ACTIVE_STAGES = {"queued", "preparing", "downloading", "processing", "scanning"}
+ACTIVE_STAGES = {"queued", "preparing", "waiting", "downloading", "processing", "scanning"}
 STAGE_NAMES = {
     "queued": "대기 중", "preparing": "영상 확인 중", "analyzing": "영상 확인 중",
+    "waiting": "작업 대기 중",
     "metadata": "영상 확인 중", "downloading": "다운로드 중", "processing": "파일 정리 중",
     "scanning": "보안 검사 중", "complete": "완료", "completed": "완료",
     "cancelled": "취소됨", "error": "실패", "interrupted": "중단됨", "failed": "실패",
@@ -386,13 +396,31 @@ class DownloadWorker(QRunnable):
         super().__init__()
         self.engine, self.item = engine, item
         self.signals = WorkerSignals()
+        self._progress_lock = threading.Lock()
+        self._progress_stage: str | None = None
+        self._progress_time = 0.0
+        self._progress_percent: float | None = None
+
+    def _emit_progress(self, progress: DownloadProgress):
+        # Fragment hooks can arrive much faster than Qt can repaint many cards.
+        # Stage changes and the first 100% update still reach the UI immediately.
+        with self._progress_lock:
+            now = time.monotonic()
+            finished = progress.percent is not None and progress.percent >= 100 and (
+                self._progress_percent is None or self._progress_percent < 100)
+            if progress.stage == self._progress_stage and now - self._progress_time < .1 and not finished:
+                return
+            self._progress_stage = progress.stage
+            self._progress_time = now
+            self._progress_percent = progress.percent
+            self.signals.progress.emit(self.item.job_id, progress)
 
     @Slot()
     def run(self):
         try:
             result = self.engine.download(
                 self.item.request,
-                lambda p: self.signals.progress.emit(self.item.job_id, p),
+                self._emit_progress,
                 self.item.cancel,
             )
             self.signals.completed.emit(self.item.job_id, result)
@@ -538,16 +566,15 @@ class MainWindow(QMainWindow):
         downloads = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation) or str(Path.home() / "Downloads")
         self.folder = Path(self.preferences.get("download_folder") or downloads).expanduser().resolve()
         self.folder_confirmed = bool(self.preferences.get("folder_confirmed", False))
-        try:
-            self.concurrency = min(2, max(1, int(self.preferences.get("concurrent_downloads", 1))))
-        except (ValueError, TypeError):
-            self.concurrency = 1
+        self.concurrency_setting = normalize_concurrency(self.preferences.get("concurrent_downloads"))
+        self.concurrency = effective_concurrency(self.concurrency_setting)
+        self.host_concurrency = normalize_host_concurrency(self.preferences.get("host_concurrent_downloads"))
         self.items: dict[str, QueueItem] = {}
         self.cards: dict[str, JobCard] = {}
         self.pending: list[str] = []
         self.workers: dict[str, DownloadWorker] = {}
         self.pool = QThreadPool(self)
-        self.pool.setMaxThreadCount(2)
+        self.pool.setMaxThreadCount(MAX_CONCURRENT_DOWNLOADS)
         self._closing = False
         self._history_rows: list[dict] = []
         self.history_filter = "all"
@@ -870,17 +897,39 @@ class MainWindow(QMainWindow):
         queue_text = QVBoxLayout()
         queue_text.setSpacing(5)
         queue_text.addWidget(label("동시 다운로드", "CardTitle"))
-        queue_text.addWidget(label("추가한 작업은 순서대로 시작합니다.", "Small"))
+        queue_text.addWidget(label("자동으로 개수를 정하거나 최대 16개까지 선택하세요.", "Small"))
         queue_row.addLayout(queue_text, 1)
         self.concurrent_combo = ChoiceBox()
         self.concurrent_combo.setMinimumWidth(160)
-        self.concurrent_combo.addItem("한 번에 1개", 1)
-        self.concurrent_combo.addItem("한 번에 2개", 2)
-        self.concurrent_combo.setCurrentIndex(self.concurrency - 1)
+        self.concurrent_combo.addItem(f"자동 · {effective_concurrency(0)}개", 0)
+        for count in range(1, MAX_CONCURRENT_DOWNLOADS + 1):
+            self.concurrent_combo.addItem(f"한 번에 {count}개", count)
+        self.concurrent_combo.setCurrentIndex(self.concurrent_combo.findData(self.concurrency_setting))
         self.concurrent_combo.setAccessibleName("동시에 실행할 다운로드 개수")
         self.concurrent_combo.currentIndexChanged.connect(self._concurrency_changed)
         queue_row.addWidget(self.concurrent_combo)
         layout.addLayout(queue_row)
+        divider = QFrame()
+        divider.setObjectName("Divider")
+        divider.setFixedHeight(1)
+        layout.addWidget(divider)
+        host_row = row()
+        host_text = QVBoxLayout()
+        host_text.setSpacing(5)
+        host_text.addWidget(label("같은 사이트의 동시 다운로드", "CardTitle"))
+        self.host_concurrency_hint = label("", "Small", True)
+        host_text.addWidget(self.host_concurrency_hint)
+        host_row.addLayout(host_text, 1)
+        self.host_concurrent_combo = ChoiceBox()
+        self.host_concurrent_combo.setMinimumWidth(160)
+        for count in range(1, MAX_HOST_DOWNLOADS + 1):
+            self.host_concurrent_combo.addItem(f"사이트당 {count}개", count)
+        self.host_concurrent_combo.setCurrentIndex(self.host_concurrent_combo.findData(self.host_concurrency))
+        self.host_concurrent_combo.setAccessibleName("같은 사이트에서 동시에 실행할 다운로드 개수")
+        self.host_concurrent_combo.currentIndexChanged.connect(self._host_concurrency_changed)
+        host_row.addWidget(self.host_concurrent_combo)
+        layout.addLayout(host_row)
+        self._refresh_concurrency_hint()
         content.addWidget(behavior)
         scan_card, layout = card_layout()
         head = row(10)
@@ -1020,11 +1069,30 @@ class MainWindow(QMainWindow):
     def _pump_queue(self):
         if self._closing:
             return
+        # Keep admission in the GUI thread. A cancelled worker retains its slot
+        # until done, while queued cancellation never reserves one.
+        self.pending[:] = [job_id for job_id in self.pending
+                           if job_id in self.items and not self.items[job_id].cancel.is_set()]
+        active_by_host: dict[str, int] = {}
+        for worker in self.workers.values():
+            host = source_key(worker.item.request.url)
+            active_by_host[host] = active_by_host.get(host, 0) + 1
+        host_limit = min(self.concurrency, self.host_concurrency)
         while self.pending and len(self.workers) < self.concurrency:
-            job_id = self.pending.pop(0)
-            item = self.items.get(job_id)
-            if item is None or item.cancel.is_set():
-                continue
+            # Prefer the least active eligible source, then its oldest queued
+            # item. A busy source at the front cannot block other sources.
+            selected_index = None
+            selected_host = ""
+            selected_count = host_limit
+            for index, pending_id in enumerate(self.pending):
+                host = source_key(self.items[pending_id].request.url)
+                count = active_by_host.get(host, 0)
+                if count < selected_count:
+                    selected_index, selected_host, selected_count = index, host, count
+            if selected_index is None:
+                break
+            job_id = self.pending.pop(selected_index)
+            item = self.items[job_id]
             item.stage = "preparing"
             self.cards[job_id].refresh()
             worker = DownloadWorker(self.engine, item)
@@ -1033,6 +1101,7 @@ class MainWindow(QMainWindow):
             worker.signals.failed.connect(self._on_failed, Qt.ConnectionType.QueuedConnection)
             worker.signals.done.connect(self._on_done, Qt.ConnectionType.QueuedConnection)
             self.workers[job_id] = worker
+            active_by_host[selected_host] = selected_count + 1
             self.pool.start(worker)
         self._refresh_counts()
 
@@ -1230,9 +1299,21 @@ class MainWindow(QMainWindow):
         self._save_preferences(theme="dark" if self.dark else "light")
 
     def _concurrency_changed(self, *_):
-        self.concurrency = int(self.concurrent_combo.currentData())
-        self._save_preferences(concurrent_downloads=self.concurrency)
+        self.concurrency_setting = normalize_concurrency(self.concurrent_combo.currentData())
+        self.concurrency = effective_concurrency(self.concurrency_setting)
+        self._save_preferences(concurrent_downloads=self.concurrency_setting)
+        self._refresh_concurrency_hint()
         self._pump_queue()
+
+    def _host_concurrency_changed(self, *_):
+        self.host_concurrency = normalize_host_concurrency(self.host_concurrent_combo.currentData())
+        self._save_preferences(host_concurrent_downloads=self.host_concurrency)
+        self._refresh_concurrency_hint()
+        self._pump_queue()
+
+    def _refresh_concurrency_hint(self):
+        limit = min(self.concurrency, self.host_concurrency)
+        self.host_concurrency_hint.setText(f"현재 사이트당 최대 {limit}개 · YouTube 주소는 하나의 사이트로 계산해요.")
 
     @Slot()
     def _refresh_history(self):

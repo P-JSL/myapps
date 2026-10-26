@@ -2,29 +2,29 @@
   "manifest_version": 3,
   "name": "My Video App",
   "short_name": "My Video App",
-  "version": "1.17.0",
-  "version_name": "1.17.0 · 개인용 로컬 버전",
+  "version": "1.18.0",
+  "version_name": "1.18.0 · 개인용 로컬 버전",
   "description": "계정·구독 없이 미디어를 감지하고 다운로드하며, 기록과 업스케일링을 브라우저 안에서 처리합니다.",
   "minimum_chrome_version": "120",
   "background": {
-    "service_worker": "assets/98f08c1bdbd633776217f841f1387c0b.js",
+    "service_worker": "assets/99c55947ec159eeeaea0eb860f04a02e.js",
     "type": "module"
   },
   "action": {
     "default_title": "My Video App",
-    "default_popup": "assets/9a25abd9c5d787089042923f5c5dd871.html",
+    "default_popup": "assets/23553b58f3b793c50113c10171deb012.html",
     "default_icon": {
-      "128": "assets/cf8e27d2eb455b4031942b0f7a1c02b0.png"
+      "128": "assets/9a8ffd35836c10a8718318c35d843a1f.png"
     }
   },
   "icons": {
-    "128": "assets/cf8e27d2eb455b4031942b0f7a1c02b0.png"
+    "128": "assets/9a8ffd35836c10a8718318c35d843a1f.png"
   },
   "side_panel": {
-    "default_path": "assets/dfa6b4039a88e2f4353dba72bac89ad7.html"
+    "default_path": "assets/a618d0759870feded8dc1f1312c32db3.html"
   },
   "options_ui": {
-    "page": "assets/dfa6b4039a88e2f4353dba72bac89ad7.html",
+    "page": "assets/a618d0759870feded8dc1f1312c32db3.html",
     "open_in_tab": true
   },
   "permissions": [
@@ -52,7 +52,7 @@
         "https://*/*"
       ],
       "js": [
-        "assets/285a996d3ab36116c1b61e383fb5e1d4.js"
+        "assets/eca89a4d55355cdb7835f82942b1840a.js"
       ],
       "all_frames": true,
       "run_at": "document_idle"

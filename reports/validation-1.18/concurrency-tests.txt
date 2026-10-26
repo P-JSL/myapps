@@ -1,0 +1,19 @@
+test_default_budgets_are_process_wide_and_snapshot_is_a_copy (__main__.BudgetTests.test_default_budgets_are_process_wide_and_snapshot_is_a_copy) ... ok
+test_exception_and_pre_cancelled_acquisition_return_every_token (__main__.BudgetTests.test_exception_and_pre_cancelled_acquisition_return_every_token) ... ok
+test_invalid_weight_never_consumes_capacity (__main__.BudgetTests.test_invalid_weight_never_consumes_capacity) ... ok
+test_weighted_fifo_does_not_partially_acquire_and_cancelled_head_unblocks (__main__.BudgetTests.test_weighted_fifo_does_not_partially_acquire_and_cancelled_head_unblocks) ... ok
+test_fragment_leases_are_weighted_and_cancelling_a_waiter_returns_tokens (__main__.EngineConcurrencyTests.test_fragment_leases_are_weighted_and_cancelling_a_waiter_returns_tokens) ... ok
+test_metadata_processing_and_scan_have_independent_stage_caps (__main__.EngineConcurrencyTests.test_metadata_processing_and_scan_have_independent_stage_caps) ... ok
+test_sixteen_actual_downloads_share_two_engines_and_seventeenth_waits (__main__.EngineConcurrencyTests.test_sixteen_actual_downloads_share_two_engines_and_seventeenth_waits) ... ok
+test_waiting_job_cancels_without_reaching_dependency_or_network_boundary (__main__.EngineConcurrencyTests.test_waiting_job_cancels_without_reaching_dependency_or_network_boundary) ... ok
+test_auto_is_bounded_and_manual_choices_are_exact (__main__.PolicyTests.test_auto_is_bounded_and_manual_choices_are_exact) ... ok
+test_fragment_budget_decreases_as_worker_count_increases (__main__.PolicyTests.test_fragment_budget_decreases_as_worker_count_increases) ... ok
+test_host_keys_share_youtube_aliases_and_preserve_other_hosts (__main__.PolicyTests.test_host_keys_share_youtube_aliases_and_preserve_other_hosts) ... ok
+test_settings_migrate_malformed_values_and_persist_legal_values (__main__.PolicyTests.test_settings_migrate_malformed_values_and_persist_legal_values) ... ok
+test_settings_save_rejects_non_integer_or_out_of_range_limits (__main__.PolicyTests.test_settings_save_rejects_non_integer_or_out_of_range_limits) ... ok
+test_strict_total_limits_keep_old_values_and_reject_malformed_values (__main__.PolicyTests.test_strict_total_limits_keep_old_values_and_reject_malformed_values) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.448s
+
+OK

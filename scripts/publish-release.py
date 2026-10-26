@@ -13,6 +13,10 @@ from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ('my-video-app-extension.zip', 'my-video-app-desktop-windows-x64.zip', 'my-video-app-source.zip', 'my-video-app-antivirus-helper.zip')
+CONCURRENCY_VERSION = '1.18.0'
+CONCURRENCY_MODE = 'focused-desktop-concurrency'
+CONCURRENCY_BASELINE = 'v1.17.0'
+CONCURRENCY_BASELINE_COMMIT = '252b452da32f16dc81cb36cca94231879d43c5f1'
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -60,7 +64,35 @@ def validate():
                 for required in ('My Video App.exe', 'desktop/main.py', 'desktop/engine.py', 'runtime/python/pythonw.exe', 'runtime/deno.exe', 'runtime/ffmpeg/ffmpeg.exe', 'runtime/ffmpeg/ffprobe.exe'):
                     if 'MyVideoApp/' + required not in names:
                         raise ValueError('Desktop runtime missing: ' + required)
+                if version == CONCURRENCY_VERSION:
+                    for required in ('desktop/concurrency.py', 'runtime/python/python.exe'):
+                        if 'MyVideoApp/' + required not in names:
+                            raise ValueError('Desktop concurrency runtime missing: ' + required)
     return version, hashes
+
+def validate_windows_evidence(version, commit, evidence, desktop_sha256):
+    """Keep the original 1.17 proof separate from the requested 1.18 scope."""
+    if not isinstance(evidence, dict) or any(evidence.get(key) != value for key, value in (
+            ('version', version), ('commit', commit), ('platform', 'windows-x64'))):
+        raise SystemExit('Actual packaged Windows verification is missing or stale.')
+    if version == CONCURRENCY_VERSION:
+        required = {
+            'validationMode': CONCURRENCY_MODE,
+            'baseline': CONCURRENCY_BASELINE,
+            'baselineCommit': CONCURRENCY_BASELINE_COMMIT,
+            'desktopSha256': desktop_sha256,
+            'concurrencyTests': 'passed',
+            'concurrencyGuiTests': 'passed',
+            'releaseScopeTests': 'passed',
+            'priorChecks': 'skipped-per-user',
+        }
+        if any(evidence.get(key) != value for key, value in required.items()) or evidence.get('liveYouTubeVerified') is not False:
+            raise SystemExit('Focused desktop concurrency Windows verification is missing, stale, or has the wrong scope.')
+    elif version == '1.17.0':
+        if any(evidence.get(key) != 'passed' for key in ('packagedGui', 'guiQueueTests', 'localMediaMp4Mp3M4a')):
+            raise SystemExit('Actual packaged Windows verification is missing or stale.')
+    else:
+        raise SystemExit('This release version has no authorized Windows verification scope.')
 
 def main():
     version, hashes = validate()
@@ -71,8 +103,7 @@ def main():
         raise SystemExit('Invalid release commit.')
     evidence_path = ROOT / 'artifacts/WINDOWS-VALIDATION.json'
     evidence = json.loads(evidence_path.read_text(encoding='utf-8-sig'))
-    if evidence.get('version') != version or evidence.get('commit') != commit or evidence.get('platform') != 'windows-x64' or any(evidence.get(key) != 'passed' for key in ('packagedGui', 'guiQueueTests', 'localMediaMp4Mp3M4a')):
-        raise SystemExit('Actual packaged Windows verification is missing or stale.')
+    validate_windows_evidence(version, commit, evidence, hashes[ASSETS[1]])
     hashes[evidence_path.name] = sha256(evidence_path)
     tag, repository = 'v' + version, os.environ['GITHUB_REPOSITORY']
     def api(path):
@@ -134,7 +165,12 @@ def main():
     artifacts = ROOT / 'artifacts'
     sums = artifacts / 'SHA256SUMS-RELEASE.txt'
     sums.write_text(''.join(value + '  ' + name + '\n' for name, value in hashes.items()), encoding='utf-8')
+    concurrency_notes = ('- **데스크톱 동시 다운로드:** 자동(기본값, CPU에 따라 2~4개) 또는 1~16개 작업을 선택할 수 있습니다. '
+                         '호스트당 기본 4개(1~16개 설정), 전체 조각 예산 16개, 동시 변환 2개와 FFmpeg 스레드 2개로 리소스를 제한합니다.\n'
+                         '- **검증 범위:** 새 동시성·동시성 GUI·릴리스 범위 검사만 실행했습니다. '
+                         '이전 검사는 사용자 요청으로 건너뛰었으며 실제 YouTube 다운로드는 확인하지 않았습니다.\n') if version == CONCURRENCY_VERSION else ''
     notes = ('My Video App **' + version + '**\n\n'
+             + concurrency_notes +
              '- **Windows 앱:** `my-video-app-desktop-windows-x64.zip` 전체 압축 해제 후 `My Video App.exe` 실행. '
              'YouTube·최고 화질·MP3/M4A·병합·대기열·기록·설정. Python·yt-dlp·Deno·FFmpeg·Qt 내장. 별도 도우미 등록·API 키 불필요.\n'
              '- **Chrome 확장:** `my-video-app-extension.zip`. **YouTube 제외**, 일반 미디어·HLS/DASH·로컬 도구 유지.\n'

@@ -2,12 +2,30 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 import os
 from contextlib import contextmanager
 from pathlib import Path
 import sqlite3
+import sys
 import threading
 import time
+
+try:
+    from .concurrency import MAX_CONCURRENT_DOWNLOADS, MAX_HOST_DOWNLOADS, normalize_concurrency, normalize_host_concurrency
+except ImportError:
+    # The bundled interpreter also imports this file in isolated script mode.
+    _policy_name = "_myvideoapp_concurrency"
+    if _policy_name not in sys.modules:
+        _policy_spec = importlib.util.spec_from_file_location(_policy_name, Path(__file__).absolute().with_name("concurrency.py"))
+        _policy_module = importlib.util.module_from_spec(_policy_spec)
+        sys.modules[_policy_name] = _policy_module
+        _policy_spec.loader.exec_module(_policy_module)
+    _policy = sys.modules[_policy_name]
+    MAX_CONCURRENT_DOWNLOADS = _policy.MAX_CONCURRENT_DOWNLOADS
+    MAX_HOST_DOWNLOADS = _policy.MAX_HOST_DOWNLOADS
+    normalize_concurrency = _policy.normalize_concurrency
+    normalize_host_concurrency = _policy.normalize_host_concurrency
 
 
 def default_data_dir() -> Path:
@@ -59,17 +77,29 @@ class Storage:
 
     def settings(self) -> dict:
         with self.lock, self.connect() as database:
-            return {row["key"]: json.loads(row["value"]) for row in database.execute("SELECT key,value FROM preferences")}
+            values = {}
+            for row in database.execute("SELECT key,value FROM preferences"):
+                try:
+                    values[row["key"]] = json.loads(row["value"])
+                except (ValueError, TypeError):
+                    # A malformed preference must not prevent startup. Missing
+                    # values use the same defaults as a new installation.
+                    continue
+            values["concurrent_downloads"] = normalize_concurrency(values.get("concurrent_downloads"))
+            values["host_concurrent_downloads"] = normalize_host_concurrency(values.get("host_concurrent_downloads"))
+            return values
 
     def save_settings(self, values: dict):
-        allowed = {"download_folder", "folder_confirmed", "theme", "concurrent_downloads", "scan_after_download", "quality", "output"}
+        allowed = {"download_folder", "folder_confirmed", "theme", "concurrent_downloads", "host_concurrent_downloads", "scan_after_download", "quality", "output"}
         clean = {key: value for key, value in values.items() if key in allowed}
         if "download_folder" in clean and not isinstance(clean["download_folder"], str):
             raise ValueError("Download folder must be a path.")
         if "theme" in clean and clean["theme"] not in ("system", "dark", "light"):
             raise ValueError("Unknown theme.")
-        if "concurrent_downloads" in clean and (type(clean["concurrent_downloads"]) is not int or not 1 <= clean["concurrent_downloads"] <= 3):
-            raise ValueError("Choose one to three simultaneous downloads.")
+        if "concurrent_downloads" in clean and (type(clean["concurrent_downloads"]) is not int or not 0 <= clean["concurrent_downloads"] <= MAX_CONCURRENT_DOWNLOADS):
+            raise ValueError("Choose automatic mode or one to sixteen simultaneous downloads.")
+        if "host_concurrent_downloads" in clean and (type(clean["host_concurrent_downloads"]) is not int or not 1 <= clean["host_concurrent_downloads"] <= MAX_HOST_DOWNLOADS):
+            raise ValueError("Choose one to sixteen simultaneous downloads per host.")
         if "scan_after_download" in clean and type(clean["scan_after_download"]) is not bool:
             raise ValueError("Invalid scan preference.")
         if "folder_confirmed" in clean and type(clean["folder_confirmed"]) is not bool:

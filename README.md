@@ -1,8 +1,8 @@
-# My Video App 1.17.0
+# My Video App 1.18.0
 
 **Chrome 확장과 Windows 데스크톱 앱을 함께 제공합니다. YouTube는 Windows 앱에서 다운로드합니다.**
 
-1.16.0을 기준으로 확장의 YouTube 기능을 제거하고, 독립 GUI 앱을 추가했습니다. 1.16.1은 제거된 버전으로 다시 포함하지 않습니다. 앱 계정·구독·API 키는 필요하지 않습니다.
+Windows 앱에서 **최대 16개 동시 다운로드**와 사이트별 작업 수를 설정할 수 있습니다. 앱 계정·구독·API 키는 필요하지 않습니다. 1.17에서 분리한 Chrome 확장과 Windows 앱의 지원 범위를 유지합니다.
 
 ## 다운로드
 
@@ -27,6 +27,10 @@
 4. 대기열에서 진행률·속도·남은 시간을 확인하고, 완료 후 **폴더 열기**를 누릅니다.
 
 **다운로드마다 저장 창을 띄우지 않습니다.** 저장 폴더는 설정에서 바꿉니다. 최고 화질·해상도 선택, 영상·음성 병합, MP3/M4A 저장, 취소·재시도, 검색 가능한 기록, 밝은/어두운 테마를 제공합니다. 상세 실행법은 [Windows 앱 안내](desktop/README.ko.md)를 참고하세요.
+
+**설정 → 동시 다운로드**에서 자동(PC의 논리 CPU 수에 따라 2~4개) 또는 1~16개를 선택하세요. **같은 사이트 동시 다운로드**는 기본 4개이며 1~16개로 바꿀 수 있습니다. 예를 들어 YouTube 영상 8개를 동시에 진행하려면 두 설정을 모두 8개 이상으로 지정합니다. 기존에 저장한 1개·2개 설정은 유지합니다. 수를 낮춰도 진행 중인 다운로드는 취소하지 않고 완료 후 새 제한을 적용합니다.
+
+조각 다운로드의 전체 예산과 영상 분석·변환·백신 검사 수를 별도로 제한합니다. 작업 수를 늘려도 서버·회선·디스크의 한계를 넘는 속도 향상을 보장하지는 않습니다. [설계와 논문·프로그램 조사](reports/DESKTOP_CONCURRENCY_RESEARCH.ko.md)를 참고하세요.
 
 ## Chrome 확장 설치
 
@@ -64,9 +68,9 @@ python3 desktop/launcher/build.py --fetch-toolchain
 python3 -B scripts/build-desktop.py
 ```
 
-데스크톱 실행 파일은 Windows x64용입니다. Linux에서 만든 패키지의 PE·의존성·GUI·로컬 다운로드 경계는 검증하되 실제 Windows 실행과 실제 YouTube 서버 검증 여부는 보고서에 구분합니다. 이번에는 요청대로 기존 전체 검사를 반복하지 않고 새 확장 분리·앱 엔진·GUI·패키지 검사만 수행합니다.
+데스크톱 실행 파일은 Windows x64용입니다. **1.18에서는 요청에 따라 이전에 수행한 검사를 모두 건너뛰고 동시 다운로드 변경에 대한 신규 검사만 실행합니다.** 실제 YouTube 서버를 이용한 속도 측정은 수행하지 않습니다. 빌드의 의존성 해시 확인과 압축 파일 생성은 그대로 수행합니다.
 
-[1.17 검사 보고서](reports/DESKTOP_1_17.ko.md) · [저작권·제3자 고지](THIRD_PARTY_NOTICES.md) · [데스크톱 고지](desktop/THIRD_PARTY_NOTICES.md)
+[1.18 변경과 검사 범위](reports/DESKTOP_1_18.ko.md) · [1.17 검사 보고서](reports/DESKTOP_1_17.ko.md) · [저작권·제3자 고지](THIRD_PARTY_NOTICES.md) · [데스크톱 고지](desktop/THIRD_PARTY_NOTICES.md)
 
 ## 버전별 패치 내역
 
@@ -74,6 +78,7 @@ python3 -B scripts/build-desktop.py
 
 | 버전 | 주요 변경 | 관련 문서 |
 | --- | --- | --- |
+| **1.18.0** | 데스크톱 동시 다운로드 최대 16개, 자동 2~4개, 사이트별 제한 설정과 작업 배분. 조각 다운로드·메타데이터 분석·변환·백신 검사를 별도 자원 예산으로 제어하고 진행률 알림을 줄여 UI 부하 완화. 이전 검사는 건너뛰고 신규 동시성 검사만 수행 | [변경·검사 범위](reports/DESKTOP_1_18.ko.md) · [조사와 설계](reports/DESKTOP_CONCURRENCY_RESEARCH.ko.md) |
 | **1.17.0** | 확장의 YouTube 기능 제거. yt-dlp·EJS·Deno·FFmpeg·Python·Qt를 내장한 Windows GUI 앱 추가. 대기열·최고 화질·오디오 저장·취소/재시도·SQLite·테마·폴더 설정, 확장과 앱을 같은 Release에 게시 | [검사 범위](reports/DESKTOP_1_17.ko.md) · [앱 사용법](desktop/README.ko.md) |
 | 1.16.0 | YouTube 공개 단일 영상·Shorts의 최고 제공 화질·MP3/M4A 저장 추가. 별도 로컬 yt-dlp/Deno 도우미로 주소 추출 후 기존 브라우저에서 MP4/WebM/MKV 병합·자동 저장·보안 검사 수행. 취소·만료 주소 재추출·시크릿 분리와 별도 도우미 ZIP·Release 첨부 추가 | [YouTube 분석과 검증](reports/YOUTUBE.ko.md) · [도우미 설치](native/YOUTUBE.ko.md) |
 | 1.15.0 | 최초 저장 전 폴더 설정 안내와 확인 저장, Chrome에서 선택한 절대경로로 저장 창 없는 다운로드, 설정에서 폴더 변경. 영상·오디오·변환·확대 결과 모두 적용하며 시크릿 확인은 메모리로 분리. GitHub Release에 설치 ZIP 자동 첨부 | [저장 폴더와 자동 저장](reports/DOWNLOAD_FOLDER.ko.md) · [Release 워크플로](.github/workflows/release.yml) |

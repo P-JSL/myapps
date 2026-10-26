@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "name": "My Video App",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "platform": "win32-x64",
   "artifact": "artifacts/my-video-app-desktop-windows-x64.zip",
-  "sha256": "2ff88e6466e32fdacec4bf5bf4997dbd445c50aaf13d18a98ab81a918eb7bf19",
-  "size": 247522002,
+  "sha256": "73c4c2f7e6bac986ece5b2f06cbdec126c543484d0890b0fd355f00005e141ba",
+  "size": 247528367,
   "sizeMiB": 236.06,
-  "files": 3223,
-  "uncompressedBytes": 633262583,
-  "uncompressedMiB": 603.93,
+  "files": 3224,
+  "uncompressedBytes": 633283098,
+  "uncompressedMiB": 603.95,
   "versions": {
     "python": "3.13.17",
     "yt-dlp": "2026.10.21",
@@ -19,207 +19,38 @@
     "shiboken6": "6.12.0",
     "ffmpeg": "9.0.2-36-g6882969ce9"
   },
-  "verifiedInputs": [
-    {
-      "id": "python",
-      "filename": "python.3.13.17.nupkg",
-      "sha256": "dce409744b088f94c6e37ba41f8100c384c27e029e843237364c602d30d475e5",
-      "size": 14826465
-    },
-    {
-      "id": "yt-dlp",
-      "filename": "yt_dlp-2026.10.21-py3-none-any.whl",
-      "sha256": "94a3a3e2c423129d0bbd2f1be000c4171fa1226c29e251c84aff868f2851c247",
-      "size": 3188012
-    },
-    {
-      "id": "yt-dlp-ejs",
-      "filename": "yt_dlp_ejs-0.8.0-py3-none-any.whl",
-      "sha256": "79300e5fca7f937a1eeede11f0456862c1b41107ce1d726871e0207424f4bdb4",
-      "size": 53443
-    },
-    {
-      "id": "deno",
-      "filename": "deno-2.9.8-py3-none-win_amd64.whl",
-      "sha256": "60dd97e612b8bab67c8080712646a821071e3809909489f853763cea19617700",
-      "size": 41825460
-    },
-    {
-      "id": "pyside6-essentials",
-      "filename": "pyside6_essentials-6.12.0-cp310-abi3-win_amd64.whl",
-      "sha256": "c9a95102aa23c1f86516a30d5a9be37552d324eee7e567eb7508973f1218cb42",
-      "size": 82153795
-    },
-    {
-      "id": "shiboken6",
-      "filename": "shiboken6-6.12.0-cp310-abi3-win_amd64.whl",
-      "sha256": "a1906cb8116869178c64b6bab52623bbc8b4ceed7b30bfc3c9aa0f6e67f6438e",
-      "size": 1265476
-    },
-    {
-      "id": "ffmpeg",
-      "filename": "ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0.zip",
-      "sha256": "47526345cc4800f4163337d5db8048a2d06c78a53bb234532f55a30dbfb49868",
-      "size": 171482755
-    },
-    {
-      "id": "qt-LGPL-3.0-only.txt",
-      "filename": "qt-LGPL-3.0-only.txt",
-      "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768",
-      "size": 7651
-    },
-    {
-      "id": "qt-GPL-3.0-only.txt",
-      "filename": "qt-GPL-3.0-only.txt",
-      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
-      "size": 35147
-    },
-    {
-      "id": "qt-GPL-2.0-only.txt",
-      "filename": "qt-GPL-2.0-only.txt",
-      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
-      "size": 18092
-    },
-    {
-      "id": "btbn-README.md",
-      "filename": "btbn-README.md",
-      "sha256": "4f6f817fd57c5524e0d0832618e8f75d589093e2f05ef1ec2839af98e70e5053",
-      "size": 2777
-    }
-  ],
+  "validationMode": "focused-desktop-concurrency",
   "validation": {
-    "archiveCrcsValid": true,
-    "allOutputHashesValid": true,
-    "outputHashesChecked": 3222,
-    "allSourceHashesValid": true,
-    "sourceHashesChecked": 10,
-    "allInputHashesValid": true,
-    "inputHashesChecked": 11,
-    "noUnmanifestedFiles": true,
-    "noTestsOrSourceCaches": true,
-    "ffplayOmitted": true,
-    "nativeGuiLauncherIncluded": true,
-    "launcherSha256": "32aa2731d09c3f63b746e82beab599b2697609ef75f4571b5a1b082e996ccc60",
-    "pe32PlusAmd64Checked": [
-      "My Video App.exe",
-      "runtime/python/python.exe",
-      "runtime/python/pythonw.exe",
-      "runtime/deno.exe",
-      "runtime/ffmpeg/ffmpeg.exe",
-      "runtime/ffmpeg/ffprobe.exe",
-      "runtime/python/Lib/site-packages/PySide6/QtWidgets.pyd"
+    "performedDuringBuild": [
+      "Pinned input size/SHA-256 verification",
+      "Per-output SHA-256 generation and source identity check",
+      "Required Windows AMD64 executable PE headers"
     ],
     "windowsExecutionPerformed": false,
-    "executionLimit": "Verified on Linux by static inspection; Windows launch, GUI rendering and process execution require Windows CI/manual validation.",
-    "method": "Pinned input SHA-256/size verification; full ZIP CRC pass; SHA-256 for every output and every current source file; native PE headers and DLL import/delay-import closure inspection.",
-    "nativeImportClosure": {
-      "peFilesInspected": 202,
-      "architectures": {
-        "0x8664": 198,
-        "0x14c": 2,
-        "0xaa64": 2
-      },
-      "missingNonSystemDlls": [],
-      "externalWindowsSystemDlls": [
-        "advapi32.dll",
-        "api-ms-win-core-path-l1-1-0.dll",
-        "api-ms-win-core-synch-l1-2-0.dll",
-        "api-ms-win-core-winrt-error-l1-1-0.dll",
-        "api-ms-win-core-winrt-error-l1-1-1.dll",
-        "api-ms-win-core-winrt-l1-1-0.dll",
-        "api-ms-win-core-winrt-string-l1-1-0.dll",
-        "api-ms-win-crt-conio-l1-1-0.dll",
-        "api-ms-win-crt-convert-l1-1-0.dll",
-        "api-ms-win-crt-environment-l1-1-0.dll",
-        "api-ms-win-crt-filesystem-l1-1-0.dll",
-        "api-ms-win-crt-heap-l1-1-0.dll",
-        "api-ms-win-crt-locale-l1-1-0.dll",
-        "api-ms-win-crt-math-l1-1-0.dll",
-        "api-ms-win-crt-multibyte-l1-1-0.dll",
-        "api-ms-win-crt-private-l1-1-0.dll",
-        "api-ms-win-crt-process-l1-1-0.dll",
-        "api-ms-win-crt-runtime-l1-1-0.dll",
-        "api-ms-win-crt-stdio-l1-1-0.dll",
-        "api-ms-win-crt-string-l1-1-0.dll",
-        "api-ms-win-crt-time-l1-1-0.dll",
-        "api-ms-win-crt-utility-l1-1-0.dll",
-        "api-ms-win-shcore-scaling-l1-1-1.dll",
-        "authz.dll",
-        "avicap32.dll",
-        "avrt.dll",
-        "bcrypt.dll",
-        "bcryptprimitives.dll",
-        "cfgmgr32.dll",
-        "combase.dll",
-        "comdlg32.dll",
-        "crypt32.dll",
-        "d2d1.dll",
-        "d3d11.dll",
-        "d3d12.dll",
-        "d3d9.dll",
-        "d3dcompiler_47.dll",
-        "dbghelp.dll",
-        "dnsapi.dll",
-        "dwmapi.dll",
-        "dwrite.dll",
-        "dxgi.dll",
-        "gdi32.dll",
-        "icuuc.dll",
-        "imagehlp.dll",
-        "imm32.dll",
-        "iphlpapi.dll",
-        "kernel32.dll",
-        "mpr.dll",
-        "mscms.dll",
-        "msimg32.dll",
-        "ncrypt.dll",
-        "netapi32.dll",
-        "ntdll.dll",
-        "ole32.dll",
-        "oleaut32.dll",
-        "opengl32.dll",
-        "propsys.dll",
-        "psapi.dll",
-        "rpcrt4.dll",
-        "rstrtmgr.dll",
-        "secur32.dll",
-        "setupapi.dll",
-        "shell32.dll",
-        "shlwapi.dll",
-        "uiautomationcore.dll",
-        "user32.dll",
-        "userenv.dll",
-        "usp10.dll",
-        "uxtheme.dll",
-        "version.dll",
-        "winhttp.dll",
-        "winmm.dll",
-        "winspool.drv",
-        "ws2_32.dll",
-        "wtsapi32.dll"
-      ],
-      "platformRequirement": "Modern Windows 10/11 x64, including OS-provided Universal CRT, DirectX, API-set contracts and ICUUC.dll.",
-      "nonAmd64Scope": "Four original, unused pip distlib launcher templates (x86 and ARM64) are retained as package data; application/runtime entry points are AMD64.",
-      "includedRuntimeLibraries": [
-        "CPython python3.dll/python313.dll and OpenSSL DLLs",
-        "MSVC140 C/C++ runtimes including vcruntime140_1.dll and msvcp140 variants",
-        "Qt6 module DLLs, pyside6.abi3.dll and shiboken6.abi3.dll",
-        "Qt Windows platform and required image/style plugins"
-      ],
-      "detailReport": ".cache/desktop-runtime/windows-packaged-import-closure.json"
-    }
+    "liveYouTubeVerified": false,
+    "priorChecks": "skipped-per-user",
+    "priorFullImportClosureAudit": "skipped-per-user",
+    "packagedRuntimeExecution": "Required by Windows CI new concurrency suites only"
   },
-  "omittedOptionalComponents": {
-    "ffmpeg": [
-      "bin/ffplay.exe"
+  "launcher": {
+    "path": "/workspace/myapps/desktop/launcher/MyVideoApp.exe",
+    "size": 8192,
+    "sha256": "d40bd297f28a1393c62e0c3a94966bf8e9a29b700264470c9bf1e2d497e1ceaa",
+    "machine": "AMD64",
+    "format": "PE32+",
+    "subsystem": "Windows GUI",
+    "imports": [
+      "KERNEL32.dll",
+      "USER32.dll"
     ],
-    "pyside6-essentials": [
-      "PySide6/qml/",
-      "PySide6/plugins/designer/",
-      "PySide6/plugins/qmltooling/",
-      "PySide6/plugins/sqldrivers/",
-      "PySide6/plugins/platforminputcontexts/",
-      "PySide6/plugins/imageformats/qpdf.dll"
-    ]
-  }
+    "crt_dependency": false,
+    "dotnet_dependency": false,
+    "aslr": true,
+    "high_entropy_aslr": true,
+    "dep": true,
+    "resources": true,
+    "windows_execution_tested": false,
+    "compiler": "Zig 0.17.0"
+  },
+  "runtimeDependencyChanges": false
 }

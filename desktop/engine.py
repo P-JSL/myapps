@@ -6,6 +6,7 @@ Every media write occurs in an application-owned job directory until publication
 """
 from __future__ import annotations
 
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 import hashlib
 import importlib.metadata
@@ -27,9 +28,24 @@ from urllib.parse import parse_qs, unquote, urlsplit, urlunsplit
 import uuid
 
 try:
+    from .concurrency import (FFMPEG_THREADS, PROCESS_RESOURCES, ResourceBudget, ResourceCancelled,
+                              fragment_parallelism, normalize_concurrency)
     from .storage import Storage
 except ImportError:
     # Isolated Python does not put the script directory on sys.path.
+    _policy_name = "_myvideoapp_concurrency"
+    if _policy_name not in sys.modules:
+        _policy_spec = importlib.util.spec_from_file_location(_policy_name, Path(__file__).absolute().with_name("concurrency.py"))
+        _policy_module = importlib.util.module_from_spec(_policy_spec)
+        sys.modules[_policy_name] = _policy_module
+        _policy_spec.loader.exec_module(_policy_module)
+    _policy = sys.modules[_policy_name]
+    FFMPEG_THREADS = _policy.FFMPEG_THREADS
+    PROCESS_RESOURCES = _policy.PROCESS_RESOURCES
+    ResourceBudget = _policy.ResourceBudget
+    ResourceCancelled = _policy.ResourceCancelled
+    fragment_parallelism = _policy.fragment_parallelism
+    normalize_concurrency = _policy.normalize_concurrency
     _storage_spec = importlib.util.spec_from_file_location("_myvideoapp_storage", Path(__file__).absolute().with_name("storage.py"))
     _storage_module = importlib.util.module_from_spec(_storage_spec)
     _storage_spec.loader.exec_module(_storage_module)
@@ -47,7 +63,6 @@ MANIFEST_EXTENSIONS = frozenset(("m3u8", "mpd"))
 VIDEO_ID = re.compile(r"[A-Za-z0-9_-]{11}\Z")
 JOB_ID = re.compile(r"[0-9a-f]{32}\Z")
 _DEPENDENCY_LOCK = threading.Lock()
-_DOWNLOAD_SLOTS = threading.BoundedSemaphore(3)
 
 
 class EngineError(Exception):
@@ -351,7 +366,7 @@ def _media_signature(path: Path):
 
 
 class Engine:
-    def __init__(self, app_root: str | Path, data_dir: str | Path | None = None):
+    def __init__(self, app_root: str | Path, data_dir: str | Path | None = None, *, resources: ResourceBudget | None = None):
         self.app_root = Path(app_root).absolute()
         try:
             self.store = Storage(Path(data_dir) if data_dir is not None else None)
@@ -360,6 +375,10 @@ class Engine:
         self._active: set[str] = set()
         self._lock = threading.Lock()
         self._private_urls: dict[str, str] = {}
+        self.resources = resources if resources is not None else PROCESS_RESOURCES
+        self._settings_lock = threading.Lock()
+        self._concurrency_setting = normalize_concurrency(self.store.settings().get("concurrent_downloads"))
+        self._progress_local = threading.local()
 
     def history(self) -> list[dict]:
         return self.store.history()
@@ -368,7 +387,41 @@ class Engine:
         return self.store.settings()
 
     def save_settings(self, values: dict):
-        self.store.save_settings(values)
+        with self._settings_lock:
+            self.store.save_settings(values)
+            if "concurrent_downloads" in values:
+                self._concurrency_setting = normalize_concurrency(values["concurrent_downloads"])
+
+    @contextmanager
+    def _resource(self, resource: str, cancel: threading.Event, units=1):
+        """Expose an actual resource wait without changing persisted job state."""
+        emit = getattr(self._progress_local, "emit", None)
+        stage = getattr(self._progress_local, "stage", "queued")
+        waiting = False
+        labels = {"jobs": "다운로드", "metadata": "미디어 정보 확인", "network": "네트워크 다운로드",
+                  "processing": "미디어 처리", "scan": "파일 검사"}
+
+        def on_wait():
+            nonlocal waiting
+            waiting = True
+            if emit is not None:
+                emit("waiting", message=labels[resource] + " 순서를 기다리고 있습니다.")
+
+        try:
+            with self.resources.hold(resource, cancel, units, on_wait=on_wait):
+                if waiting and emit is not None:
+                    emit(stage, message=labels[resource] + " 작업을 시작합니다.")
+                yield
+        except ResourceCancelled:
+            raise DownloadCancelled("다운로드를 취소했습니다.") from None
+
+    def _fragment_workers(self, track: dict) -> int:
+        if track.get("protocol") not in ("m3u8", "m3u8_native", "http_dash_segments"):
+            return 1
+        with self._settings_lock:
+            workers = fragment_parallelism(self._concurrency_setting)
+        # A smaller injected budget is useful for deterministic local checks.
+        return min(workers, self.resources.capacities["network"])
 
     def remove_history(self, job_id: str):
         self.store.remove(job_id)
@@ -425,7 +478,7 @@ class Engine:
                 raise EngineError("내장 미디어 실행기 버전이 일치하지 않습니다. 데스크톱 ZIP 전체를 다시 압축 해제하세요.")
         return yt_dlp, deno, ffmpeg, ffprobe
 
-    def _options(self, deno: Path, progress=None) -> dict:
+    def _options(self, deno: Path, progress=None, *, fragment_workers: int = 1) -> dict:
         return {"quiet": True, "no_warnings": True, "logger": _SilentLogger(), "noplaylist": True,
                 "ignoreconfig": True, "cachedir": False, "cookiefile": None, "cookiesfrombrowser": None,
                 "usenetrc": False, "netrc_location": None, "username": None, "password": None,
@@ -434,7 +487,7 @@ class Engine:
                 "ffmpeg_location": str(self.app_root / "runtime" / "ffmpeg"),
                 "progress_hooks": [progress] if progress is not None else [],
                 "socket_timeout": 15, "retries": 3, "fragment_retries": 3, "extractor_retries": 2,
-                "concurrent_fragment_downloads": 4, "continuedl": True, "nopart": False,
+                "concurrent_fragment_downloads": fragment_workers, "continuedl": True, "nopart": False,
                 "overwrites": False, "keep_fragments": False, "skip_unavailable_fragments": False,
                 "hls_prefer_native": True, "allow_unplayable_formats": False,
                 "geo_bypass": False, "mark_watched": False, "windowsfilenames": True,
@@ -479,9 +532,10 @@ class Engine:
     def get_info(self, request: DownloadRequest, cancel: threading.Event | None = None) -> dict:
         cancel = cancel or threading.Event()
         url, youtube, _folder, _request_digest = self._validate_request(request)
-        module, deno, _ffmpeg, _ffprobe = self._dependencies(youtube, cancel)
         try:
-            info = self._extract_isolated(url, youtube, request.quality, request.output, cancel)
+            with self._resource("metadata", cancel):
+                self._dependencies(youtube, cancel)
+                info = self._extract_isolated(url, youtube, request.quality, request.output, cancel)
             tracks, container = choose_tracks(info, request.quality, request.output)
             return {"title": info["title"], "duration": _number(info.get("duration")), "container": container,
                     "formats": [{key: track.get(key) for key in ("format_id", "ext", "height", "vcodec", "acodec", "filesize")} for track in tracks]}
@@ -580,7 +634,7 @@ class Engine:
 
     def _probe(self, path: Path, ffprobe: Path, cancel: threading.Event):
         _media_signature(path)
-        payload = self._run([str(ffprobe), "-v", "error", "-protocol_whitelist", "file,pipe", "-show_entries",
+        payload = self._run([str(ffprobe), "-v", "error", "-threads", str(FFMPEG_THREADS), "-protocol_whitelist", "file,pipe", "-show_entries",
                              "format=format_name:stream=codec_type", "-of", "json", str(path)], cancel, timeout=60)
         try:
             info = json.loads(payload)
@@ -591,9 +645,10 @@ class Engine:
 
     def _process(self, sources: list[Path], tracks: list[dict], destination: Path, output: str,
                  ffmpeg: Path, cancel: threading.Event):
-        arguments = [str(ffmpeg), "-hide_banner", "-loglevel", "error", "-nostdin", "-n"]
+        arguments = [str(ffmpeg), "-hide_banner", "-loglevel", "error", "-nostdin", "-n",
+                     "-filter_threads", str(FFMPEG_THREADS), "-filter_complex_threads", str(FFMPEG_THREADS)]
         for source in sources:
-            arguments.extend(["-protocol_whitelist", "file,pipe", "-i", str(source)])
+            arguments.extend(["-threads", str(FFMPEG_THREADS), "-protocol_whitelist", "file,pipe", "-i", str(source)])
         if output in ("mp3", "m4a"):
             arguments.extend(["-map", "0:a:0", "-vn", "-c:a", "libmp3lame" if output == "mp3" else "aac", "-b:a", "192k"])
         else:
@@ -604,7 +659,7 @@ class Engine:
             else:
                 arguments.extend(["-map", "0:a:0"])
             arguments.extend(["-c", "copy"])
-        arguments.extend(["-map_metadata", "-1", "-map_chapters", "-1", str(destination)])
+        arguments.extend(["-threads", str(FFMPEG_THREADS), "-map_metadata", "-1", "-map_chapters", "-1", str(destination)])
         self._run(arguments, cancel)
 
     def _owned_directory(self, folder: Path, job_id: str, request_digest: str) -> Path:
@@ -681,7 +736,7 @@ class Engine:
         job_id = request.job_id or uuid.uuid4().hex
         title = ""
         directory = None
-        acquired = False
+        leases = ExitStack()
         published = None
         with self._lock:
             if job_id in self._active:
@@ -700,14 +755,14 @@ class Engine:
             self._private_urls[job_id] = url
 
         def emit(stage, **fields):
+            if stage != "waiting":
+                self._progress_local.stage = stage
             progress(DownloadProgress(stage=stage, title=title, **fields))
 
+        self._progress_local.emit = emit
         try:
             emit("queued", message="시작을 기다리고 있습니다.")
-            while not acquired:
-                _check_cancel(cancel)
-                acquired = _DOWNLOAD_SLOTS.acquire(timeout=0.1)
-            module, deno, ffmpeg, ffprobe = self._dependencies(youtube, cancel)
+            leases.enter_context(self._resource("jobs", cancel))
             directory = self._owned_directory(folder, job_id, request_digest)
             self.store.update(job_id, stage="downloading")
             emit("downloading", message="공개 미디어 정보를 확인하고 있습니다.")
@@ -728,39 +783,44 @@ class Engine:
                 emit("downloading", percent=percent, downloaded=overall, total=total,
                      speed=_number(value.get("speed")), eta=_number(value.get("eta")), message="미디어를 다운로드하고 있습니다.")
 
-            info = self._extract_isolated(url, youtube, request.quality, request.output, cancel)
-            with module.YoutubeDL(self._options(deno, hook)) as downloader:
-                title = info["title"]
-                self.store.update(job_id, title=title)
-                tracks, container = choose_tracks(info, request.quality, request.output)
-                totals = [int(size) if (size := _number(track.get("filesize"))) else None for track in tracks]
-                # Resume only the same immutable YouTube video and selected format identities.
-                identity = [{key: track.get(key) for key in ("format_id", "ext", "filesize")} for track in tracks]
-                fingerprint = hashlib.sha256(json.dumps([info.get("id"), identity], sort_keys=True).encode()).hexdigest()
-                identity_path = directory / "selection.json"
-                resume = False
-                if youtube and identity_path.is_file() and not identity_path.is_symlink():
-                    try:
-                        resume = identity_path.read_text(encoding="ascii") == fingerprint
-                    except OSError:
-                        pass
-                if not resume:
-                    self._clean_owned(directory, job_id, request_digest)
-                identity_path.write_text(fingerprint, encoding="ascii")
-                sources = []
-                for track_index, track in enumerate(tracks):
-                    _check_cancel(cancel)
-                    path = directory / f"source-{track_index}.{track['ext']}"
-                    # __postprocessors, webpage data and metadata are deliberately not handed to dl().
-                    item = {**track, "id": info.get("id", job_id), "title": title,
-                            "http_headers": track.get("http_headers") or info.get("http_headers") or {}}
-                    success = downloader.dl(str(path), item)
-                    if not (success[0] if isinstance(success, tuple) else success) or not path.is_file() or path.is_symlink():
-                        raise EngineError("다운로드가 끝나지 않았습니다. 다시 시도하면 새 원본을 확인하고 안전하게 이어받습니다.")
+            with self._resource("metadata", cancel):
+                module, deno, ffmpeg, ffprobe = self._dependencies(youtube, cancel)
+                info = self._extract_isolated(url, youtube, request.quality, request.output, cancel)
+            title = info["title"]
+            self.store.update(job_id, title=title)
+            tracks, container = choose_tracks(info, request.quality, request.output)
+            totals = [int(size) if (size := _number(track.get("filesize"))) else None for track in tracks]
+            # Resume only the same immutable YouTube video and selected format identities.
+            identity = [{key: track.get(key) for key in ("format_id", "ext", "filesize")} for track in tracks]
+            fingerprint = hashlib.sha256(json.dumps([info.get("id"), identity], sort_keys=True).encode()).hexdigest()
+            identity_path = directory / "selection.json"
+            resume = False
+            if youtube and identity_path.is_file() and not identity_path.is_symlink():
+                try:
+                    resume = identity_path.read_text(encoding="ascii") == fingerprint
+                except OSError:
+                    pass
+            if not resume:
+                self._clean_owned(directory, job_id, request_digest)
+            identity_path.write_text(fingerprint, encoding="ascii")
+            sources = []
+            for track_index, track in enumerate(tracks):
+                _check_cancel(cancel)
+                path = directory / f"source-{track_index}.{track['ext']}"
+                # __postprocessors, webpage data and metadata are deliberately not handed to dl().
+                item = {**track, "id": info.get("id", job_id), "title": title,
+                        "http_headers": track.get("http_headers") or info.get("http_headers") or {}}
+                workers = self._fragment_workers(track)
+                with self._resource("network", cancel, workers):
+                    with module.YoutubeDL(self._options(deno, hook, fragment_workers=workers)) as downloader:
+                        success = downloader.dl(str(path), item)
+                if not (success[0] if isinstance(success, tuple) else success) or not path.is_file() or path.is_symlink():
+                    raise EngineError("다운로드가 끝나지 않았습니다. 다시 시도하면 새 원본을 확인하고 안전하게 이어받습니다.")
+                with self._resource("processing", cancel):
                     self._probe(path, ffprobe, cancel)
-                    completed_bytes += path.stat().st_size
-                    totals[track_index] = path.stat().st_size
-                    sources.append(path)
+                completed_bytes += path.stat().st_size
+                totals[track_index] = path.stat().st_size
+                sources.append(path)
             _check_cancel(cancel)
             self.store.update(job_id, stage="processing")
             emit("processing", downloaded=completed_bytes, total=completed_bytes, message="오디오를 변환하고 있습니다." if request.output in ("mp3", "m4a") else "미디어 저장 형식을 준비하고 있습니다.")
@@ -769,15 +829,17 @@ class Engine:
                 if prepared.is_symlink() or not prepared.is_file():
                     raise EngineError("임시 출력 파일이 안전하지 않습니다. 다른 저장 폴더를 선택하세요.")
                 prepared.unlink()
-            self._process(sources, tracks, prepared, request.output, ffmpeg, cancel)
-            self._probe(prepared, ffprobe, cancel)
+            with self._resource("processing", cancel):
+                self._process(sources, tracks, prepared, request.output, ffmpeg, cancel)
+                self._probe(prepared, ffprobe, cancel)
             _check_cancel(cancel)
             published = self._publish(prepared, folder, title, container)
             self.store.update(job_id, filepath=str(published))
             message = "저장했습니다."
             if request.scan:
-                emit("processing", filepath=str(published), message="Microsoft Defender로 저장한 파일을 검사하고 있습니다.")
-                message = self._scan(published, cancel)
+                emit("scanning", filepath=str(published), message="Microsoft Defender로 저장한 파일을 검사하고 있습니다.")
+                with self._resource("scan", cancel):
+                    message = self._scan(published, cancel)
             self.store.update(job_id, stage="complete", filepath=str(published), message=message)
             self._clean_owned(directory, job_id, request_digest, remove=True)
             emit("complete", percent=100.0, downloaded=completed_bytes, total=completed_bytes, filepath=str(published), message=message)
@@ -802,8 +864,8 @@ class Engine:
             emit("error", filepath=str(published) if published else None, message=message)
             raise EngineError(message) from None
         finally:
-            if acquired:
-                _DOWNLOAD_SLOTS.release()
+            leases.close()
+            self._progress_local.__dict__.clear()
             with self._lock:
                 self._active.discard(job_id)
 

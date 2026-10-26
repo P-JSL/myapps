@@ -85,7 +85,7 @@
       "archiveRoot": "ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0"
     }
   ],
-  "version": "1.17.0",
+  "version": "1.18.0",
   "description": "Portable Windows x64 native Qt Widgets application; verified external runtimes only.",
   "notices": [
     {
