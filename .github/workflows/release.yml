@@ -33,6 +33,13 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
+      - name: Restore verified public runtime archives
+        id: runtime-cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: .cache/desktop-runtime
+          key: ${{ runner.os }}-desktop-runtime-${{ hashFiles('desktop/dependencies-lock.json') }}
+
       - name: Build the pinned portable Windows app
         run: python -B scripts/build-desktop.py
 
@@ -57,3 +64,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python -B scripts/publish-release.py
+
+      - name: Cache verified public runtime archives
+        if: always() && steps.runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: .cache/desktop-runtime
+          key: ${{ runner.os }}-desktop-runtime-${{ hashFiles('desktop/dependencies-lock.json') }}

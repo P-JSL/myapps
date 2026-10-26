@@ -25,6 +25,17 @@ class QuietHandler(SimpleHTTPRequestHandler):
         pass
 
 
+def assert_saved_media(saved: Path, destination: Path) -> None:
+    # Windows TEMP often uses an 8.3 alias (RUNNER~1), whereas the engine
+    # resolves the same directory to its full name. Compare filesystem identity.
+    if not saved.is_file():
+        raise AssertionError("The completed media file is missing: " + str(saved))
+    if saved.stat().st_size < 1024:
+        raise AssertionError("The completed media file is unexpectedly small.")
+    if not saved.parent.samefile(destination):
+        raise AssertionError("The media file was saved outside the selected directory.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app-root", required=True, type=Path)
@@ -43,6 +54,7 @@ def main() -> int:
         work = Path(temporary)
         destination = work / "한글 저장 폴더"
         destination.mkdir()
+        destination = destination.resolve(strict=True)
         downloader = module.Engine(root, work / "data")
         server = ThreadingHTTPServer(("127.0.0.1", 0), partial(QuietHandler, directory=str(source.parent)))
         server.daemon_threads = True
@@ -55,8 +67,7 @@ def main() -> int:
                 identifier = uuid.uuid4().hex
                 result = downloader.download(module.DownloadRequest(url, destination, output=output, job_id=identifier), events.append, threading.Event())
                 saved = Path(result.filepath)
-                if saved.parent != destination or not saved.is_file() or saved.stat().st_size < 1024:
-                    raise AssertionError("Download did not create the expected actual media file.")
+                assert_saved_media(saved, destination)
                 expected_extension = ".mp4" if output == "original" else "." + output
                 if saved.suffix != expected_extension or result.job_id != identifier:
                     raise AssertionError("Saved extension or GUI queue identifier does not match the request.")

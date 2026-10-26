@@ -1,0 +1,9 @@
+test_different_directory_is_rejected (test_runtime_paths.RuntimePathTests.test_different_directory_is_rejected) ... ok
+test_directory_alias_is_same_destination (test_runtime_paths.RuntimePathTests.test_directory_alias_is_same_destination) ... ok
+test_missing_file_is_rejected (test_runtime_paths.RuntimePathTests.test_missing_file_is_rejected) ... ok
+test_truncated_file_is_rejected (test_runtime_paths.RuntimePathTests.test_truncated_file_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+OK
