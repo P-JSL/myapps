@@ -1,0 +1,77 @@
+name: Publish browser YouTube preview
+on:
+  push:
+    branches: [main]
+    paths: [package.json, package-lock.json, src/local/youtube.ts, .github/workflows/browser-preview.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: browser-preview-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install and verify
+        run: |
+          npm ci --no-audit --fund=false
+          npm run typecheck
+          node --experimental-strip-types --test tests/youtube.test.ts tests/youtube-browser.test.ts
+          npm run build
+      - name: Package verified output
+        run: |
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          from zipfile import ZipFile,ZIP_DEFLATED
+          version=json.loads(Path('package.json').read_text())['version']
+          lock=json.loads(Path('package-lock.json').read_text())
+          manifest=json.loads(Path('dist/manifest.json').read_text())
+          assert lock['version']==version and lock['packages']['']['version']==version and manifest['version']==version
+          paths=sorted(p for p in Path('dist').rglob('*') if p.is_file())
+          assert paths and not any(p.is_symlink() for p in Path('dist').rglob('*'))
+          Path('release-assets').mkdir(exist_ok=True)
+          out=Path('release-assets/my-video-app-extension.zip')
+          with ZipFile(out,'w',ZIP_DEFLATED,compresslevel=9) as z:
+              for p in paths:z.write(p,'my-video-app/'+p.relative_to('dist').as_posix())
+          with ZipFile(out) as z:
+              assert z.testzip() is None
+              assert json.loads(z.read('my-video-app/manifest.json'))['version']==version
+          Path('release-assets/SHA256SUMS').write_text(hashlib.sha256(out.read_bytes()).hexdigest()+'  my-video-app-extension.zip\n')
+          PY
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="v${VERSION}"
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" > /tmp/tag.json 2>/dev/null; then
+            TARGET="$(python3 -c "import json; x=json.load(open('/tmp/tag.json'))['object']; print(x['sha'] if x['type']=='commit' else 'unsupported')")"
+            test "$TARGET" = "$GITHUB_SHA" || { echo "Tag points to another commit"; exit 1; }
+          fi
+          cat > "$RUNNER_TEMP/notes.md" <<'NOTES'
+          ## Browser-only YouTube direct streams (Preview)
+          - Based on v1.16.0 with the updated browser-only direct-stream extractor.
+          - Requires no Python, Deno, yt-dlp EXE or YouTube native host.
+          - Supports only publicly available direct URLs; signatures, login, DRM and tokens are not bypassed.
+          - ZIP passed CI typecheck, extractor fixtures, and production build; live YouTube behavior remains unverified.
+          - Install the extracted my-video-app folder using chrome://extensions.
+          NOTES
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/my-video-app-extension.zip release-assets/SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --prerelease --title "My Video App $TAG (Preview)" --notes-file "$RUNNER_TEMP/notes.md"
+          else
+            gh release create "$TAG" release-assets/my-video-app-extension.zip release-assets/SHA256SUMS --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "My Video App $TAG (Preview)" --notes-file "$RUNNER_TEMP/notes.md"
+          fi

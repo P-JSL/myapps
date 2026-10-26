@@ -1,4 +1,4 @@
-# YouTube 브라우저 내부 다운로드 (v1.16.2)
+# YouTube 브라우저 내부 다운로드 (v1.16.3)
 
 Python, Deno, yt-dlp EXE 및 Native Messaging 호스트 없이 **Chrome 확장 프로그램 내부**에서 공개 영상 페이지의 `ytInitialPlayerResponse` JSON 데이터를 읽어 직접 다운로드 가능한 HTTPS `*.googlevideo.com/videoplayback` 형식만 선택합니다. 원래 `v1.16.0`의 대용량 다운로드, FFmpeg 병합, MP3/M4A 변환, 저장 위치, 내부 정적 검사, 선택적 백신 검사를 재사용합니다.
 
