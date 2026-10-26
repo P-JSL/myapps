@@ -30,6 +30,9 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
+      - name: Test release validation and rollback safety
+        run: node --test tests/release-workflow.test.mjs
+
       - name: Validate committed installation ZIP and release identity
         id: validate
         env:
@@ -101,6 +104,13 @@ jobs:
                       return None
                   raise SystemExit('GitHub API identity check failed: HTTP ' + str(error.code))
           reference = api('/git/ref/tags/' + tag)
+          release = api('/releases/tags/' + tag)
+          if release is not None and reference is None:
+              raise SystemExit('An existing release has no verified matching tag; inspect it manually.')
+
+          # Do not move an immutable version tag when a rollback restores its
+          # content. Only release-automation maintenance files may differ.
+          publish = True
           if reference is not None:
               target = reference['object']
               for _ in range(8):
@@ -110,11 +120,50 @@ jobs:
                   if annotated is None:
                       raise SystemExit('An annotated release tag could not be resolved.')
                   target = annotated['object']
-              if target['type'] != 'commit' or target['sha'] != commit:
-                  raise SystemExit('This release tag already points to a different commit; bump the version.')
-          release = api('/releases/tags/' + tag)
-          if release is not None and reference is None:
-              raise SystemExit('An existing release has no verified matching tag; inspect it manually.')
+              if target['type'] != 'commit':
+                  raise SystemExit('The release tag must resolve to a commit.')
+              if target['sha'] != commit:
+                  if release is None or release.get('draft') is not False or release.get('prerelease') is not False:
+                      raise SystemExit('An existing tag at a different commit requires a published stable release.')
+                  tagged_commit = api('/git/commits/' + target['sha'])
+                  running_commit = api('/git/commits/' + commit)
+                  if not tagged_commit or not running_commit:
+                      raise SystemExit('Could not verify the release and rollback commits.')
+                  def contents(snapshot):
+                      tree_sha = snapshot.get('tree', {}).get('sha')
+                      if not isinstance(tree_sha, str) or not re.fullmatch(r'[a-f0-9]{40}', tree_sha):
+                          raise SystemExit('A release commit has no verifiable Git tree.')
+                      tree = api('/git/trees/' + tree_sha + '?recursive=1')
+                      if not tree or tree.get('truncated') is not False or not isinstance(tree.get('tree'), list):
+                          raise SystemExit('The release Git tree is missing or truncated.')
+                      result = {}
+                      for item in tree['tree']:
+                          if item.get('type') == 'tree':
+                              continue  # Directory hashes change when permitted workflow/tests change.
+                          path = item.get('path')
+                          if not isinstance(path, str) or path in result:
+                              raise SystemExit('Invalid or duplicate Git tree entry.')
+                          result[path] = (item.get('mode'), item.get('type'), item.get('sha'))
+                      return result
+                  original = contents(tagged_commit)
+                  current = contents(running_commit)
+                  # These files affect publishing tests/logic, not released assets.
+                  permitted = {'.github/workflows/release.yml', 'tests/release-workflow.test.mjs'}
+                  changed = sorted(path for path in (original.keys() | current.keys())
+                                   if path not in permitted and original.get(path) != current.get(path))
+                  if changed:
+                      raise SystemExit('Existing release has differing tracked content; bump the version: '
+                                       + ', '.join(changed[:10]))
+                  assets = release.get('assets', [])
+                  if not isinstance(assets, list):
+                      raise SystemExit('Existing release assets are not verifiable.')
+                  for filename, expected in [('my-video-app-extension.zip', digest),
+                                             ('my-video-app-youtube-helper.zip', helper_digest)]:
+                      matches = [asset for asset in assets if asset.get('name') == filename]
+                      if len(matches) != 1 or matches[0].get('digest') != 'sha256:' + expected:
+                          raise SystemExit('Existing release asset digest differs: ' + filename)
+                  publish = False
+                  print('Existing identical', tag, 'release; skip publication for restored content.')
           rows = [line for line in Path('README.md').read_text().splitlines()
                   if line.startswith('|') and re.search(r'(?<![\d.])' + re.escape(version) + r'(?![\d.])', line)]
           notes = ('설치 파일: **my-video-app-extension.zip**\n\n'
@@ -133,10 +182,12 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('tag=' + tag + '\n')
               output.write('exists=' + str(release is not None).lower() + '\n')
+              output.write('publish=' + str(publish).lower() + '\n')
           print('Validated', tag, 'at', commit, '| ZIP SHA-256:', digest, '| YouTube helper SHA-256:', helper_digest)
           PY
 
       - name: Publish release with installation ZIP
+        if: steps.validate.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.validate.outputs.tag }}
