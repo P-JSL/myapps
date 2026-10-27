@@ -54,7 +54,7 @@ class RecoveryReleaseTests(unittest.TestCase):
                     self.verify(proof)
 
     def test_workflow_executes_exactly_two_affected_suites_with_bundled_python(self):
-        text = (ROOT / '.github/workflows/release.yml').read_text()
+        text = (ROOT / '.github/workflows/release.yml').read_text(encoding='utf-8')
         tests = re.findall(r'& \$python -I -B (\S+test\S+\.py)', text)
         self.assertEqual(tests, ['tests/test_download_recovery_release.py', 'desktop/test_download_recovery.py'])
         self.assertIn('desktop/test_download_recovery.py --app-root "$appRoot"', text)
@@ -62,14 +62,14 @@ class RecoveryReleaseTests(unittest.TestCase):
         self.assertNotIn('test_transport.py -', text)
 
     def test_packager_checks_recovery_source_identity_and_new_scope_only(self):
-        text = (ROOT / 'scripts/package.mjs').read_text()
+        text = (ROOT / 'scripts/package.mjs').read_text(encoding='utf-8')
         self.assertIn("recoveryMode ? ['recovery', 'releaseScope']", text)
         self.assertIn('await sourceIdentity()', text)
         self.assertIn("assert.equal(version, '1.19.1')", text)
         self.assertIn("assert.equal(report.priorChecks, 'skipped-per-user')", text)
 
     def test_existing_version_tags_are_not_moved_by_the_publisher(self):
-        text = (ROOT / 'scripts/publish-release.py').read_text()
+        text = (ROOT / 'scripts/publish-release.py').read_text(encoding='utf-8')
         self.assertIn('never move a', text)
         self.assertNotIn('update-ref', text)
         self.assertNotIn("'--force'", text)

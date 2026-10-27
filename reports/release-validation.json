@@ -173,7 +173,7 @@
     "tests/security-runtime.test.ts": "63777d2928c72248107c1b342e71d7b3096705daf33a85b2f197ca1a37ffc664",
     "tests/test_concurrency_release.py": "ff4cbdd868eadc4fd8dae225c9beffa2af9c97b309168a09cfe4588ca8878b82",
     "tests/test_desktop_bundle.py": "dfdd8e49dca0ab5925ea0b7299ae6f65d5adb79ebb18bea22371ede7a4d096d2",
-    "tests/test_download_recovery_release.py": "410ef503804366f589e5d0fe922a56a6edb1926a0e6ba1fbc2b12058938ffd3a",
+    "tests/test_download_recovery_release.py": "77398b76d1373656a0e56783786cbf81f788fa3593f41157d0db0aaf3eded658",
     "tests/test_publish_release.py": "896a2cd9f100574a09328d1437bb8046c88ef93bf73385257a58ee34a2059635",
     "tests/test_runtime_paths.py": "a282e6765e5ebd4ff837f1646795c8c9f50e89718840d638e2b1a3d8cf501ad6",
     "tests/test_transport_release.py": "baa27f19276fdf37213f1a991e76f228ef00d6dcff485d7008349669715be61a",
@@ -293,5 +293,10 @@
     "bandwidth and throughput suites",
     "full GUI/browser/antivirus/codec/algorithm suites",
     "dependency audits and TypeScript typecheck"
-  ]
+  ],
+  "releaseScopeEncodingCheck": "python3 -I -B -X warn_default_encoding -W error::EncodingWarning tests/test_download_recovery_release.py -v",
+  "followUp": {
+    "changed": "Release test explicitly reads UTF-8 source files on Windows CP1252",
+    "rerun": "Only the seven release-scope checks; product recovery code and thirteen recovery checks unchanged"
+  }
 }
