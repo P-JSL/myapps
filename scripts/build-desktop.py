@@ -24,7 +24,7 @@ import zipfile
 
 PREFIX = "MyVideoApp/"
 INPUT_IDS = ("python", "yt-dlp", "yt-dlp-ejs", "deno", "pyside6-essentials", "shiboken6",
-             "curl-cffi", "cffi", "certifi", "pycparser", "ffmpeg")
+             "ffmpeg")
 MAX_FILES = 30_000
 MAX_FILE_BYTES = 300 * 1024 * 1024
 MAX_TOTAL_BYTES = 1200 * 1024 * 1024
@@ -81,6 +81,8 @@ def load_lock(path):
     inputs = lock.get("inputs")
     if not isinstance(inputs, list) or [item.get("id") for item in inputs] != list(INPUT_IDS):
         raise ValueError("Desktop lock must contain the pinned runtime inputs in order")
+    if "nativeTransportMatch" in lock:
+        raise ValueError("The restored desktop runtime does not bundle a native HTTP transport")
     seen = set()
     for item in inputs + lock.get("notices", []):
         if (not re.fullmatch(r"[0-9a-f]{64}", item.get("sha256", ""))
@@ -259,7 +261,7 @@ def build_bundle(root, lock_path, cache, output, offline=False):
     for name in ("main.py", "engine.py", "README.ko.md", "THIRD_PARTY_NOTICES.md"):
         if "desktop/" + name not in plan:
             raise ValueError(f"Missing desktop application source: {name}")
-    if app_version in ("1.19.2", "1.19.3") and "desktop/activity.py" not in plan:
+    if app_version in ("1.19.2", "1.19.3", "1.19.4") and "desktop/activity.py" not in plan:
         raise ValueError("Missing desktop activity logging source: activity.py")
     launcher = root / "desktop/launcher/MyVideoApp.exe"
     if launcher.is_symlink() or not launcher.is_file():
@@ -318,9 +320,6 @@ def build_bundle(root, lock_path, cache, output, offline=False):
             "runtime/python/Lib/ssl.py", "runtime/python/DLLs/_ssl.pyd",
             "runtime/ffmpeg/ffmpeg.exe", "runtime/ffmpeg/ffprobe.exe", "licenses/ffmpeg/LICENSE.txt",
             "runtime/python/Lib/site-packages/yt_dlp/__init__.py", "runtime/python/Lib/site-packages/yt_dlp_ejs/__init__.py",
-            "runtime/python/Lib/site-packages/curl_cffi/__init__.py", "runtime/python/Lib/site-packages/certifi/cacert.pem",
-            "runtime/python/Lib/site-packages/curl_cffi/_wrapper.pyd",
-            "runtime/python/Lib/site-packages/_cffi_backend.cp313-win_amd64.pyd",
             "runtime/python/Lib/site-packages/PySide6/__init__.py", "runtime/python/Lib/site-packages/shiboken6/__init__.py",
             "runtime/python/Lib/site-packages/PySide6/QtCore.pyd", "runtime/python/Lib/site-packages/PySide6/QtGui.pyd",
             "runtime/python/Lib/site-packages/PySide6/QtWidgets.pyd", "runtime/python/Lib/site-packages/PySide6/plugins/platforms/qwindows.dll",
@@ -329,10 +328,6 @@ def build_bundle(root, lock_path, cache, output, offline=False):
         )
         if any(name not in plan for name in required):
             raise ValueError("Pinned desktop runtime archives are incomplete")
-        native_member = lock.get("nativeTransportMatch", {}).get("wheel_member")
-        if (not isinstance(native_member, str)
-                or "runtime/python/Lib/site-packages/" + safe_name(native_member) not in plan):
-            raise ValueError("Pinned native HTTP transport library is missing")
 
         def open_source(source):
             if isinstance(source, Path):
@@ -343,9 +338,6 @@ def build_bundle(root, lock_path, cache, output, offline=False):
             return archive.open(info)
 
         checked = ["My Video App.exe", "runtime/python/python.exe", "runtime/python/pythonw.exe", "runtime/deno.exe", "runtime/ffmpeg/ffmpeg.exe", "runtime/ffmpeg/ffprobe.exe", "runtime/python/Lib/site-packages/PySide6/QtWidgets.pyd"]
-        checked.extend(["runtime/python/Lib/site-packages/curl_cffi/_wrapper.pyd",
-                        "runtime/python/Lib/site-packages/_cffi_backend.cp313-win_amd64.pyd",
-                        "runtime/python/Lib/site-packages/" + native_member])
         for name in checked:
             with open_source(plan[name][1]) as source:
                 validate_pe(source, name)

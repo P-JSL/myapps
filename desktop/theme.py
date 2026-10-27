@@ -51,7 +51,7 @@ def stylesheet(dark: bool = False) -> str:
     QPushButton { background: %(surface)s; color: %(text)s; border: 1px solid %(line)s; border-radius: 8px; padding: 9px 14px; font-weight: 600; }
     QPushButton:hover { background: %(raised)s; border-color: %(subtle)s; }
     QPushButton:pressed { background: %(accent_soft)s; }
-    QPushButton:focus, QComboBox:focus, QLineEdit:focus, QSpinBox:focus, QCheckBox:focus { border: 2px solid %(accent)s; }
+    QPushButton:focus, QComboBox:focus, QLineEdit:focus, QCheckBox:focus { border: 2px solid %(accent)s; }
     QPushButton:disabled { color: %(subtle)s; background: %(raised)s; border-color: %(line)s; }
     QPushButton#Primary { background: %(accent)s; color: %(white)s; border: 1px solid %(accent)s; font-size: 14px; padding: 12px 22px; font-weight: 700; }
     QPushButton#Primary:hover { background: %(accent_hover)s; border-color: %(accent_hover)s; }
@@ -74,8 +74,6 @@ def stylesheet(dark: bool = False) -> str:
     QLineEdit:read-only { color: %(muted)s; }
     QComboBox { background: %(surface)s; color: %(text)s; border: 1px solid %(line)s; border-radius: 8px; padding: 9px 12px; min-height: 20px; font-size: 13px; }
     QComboBox:hover { border-color: %(subtle)s; }
-    QSpinBox { background: %(surface)s; color: %(text)s; border: 1px solid %(line)s; border-radius: 8px; padding: 9px 12px; min-height: 20px; font-size: 13px; }
-    QSpinBox:disabled { color: %(subtle)s; background: %(raised)s; border-color: %(line)s; }
     QComboBox:disabled { color: %(subtle)s; background: %(raised)s; border-color: %(line)s; }
     QComboBox::drop-down { border: none; width: 28px; }
     QComboBox QAbstractItemView { background: %(surface)s; color: %(text)s; selection-background-color: %(accent_soft)s; selection-color: %(accent_text)s; border: 1px solid %(line)s; padding: 5px; outline: none; }

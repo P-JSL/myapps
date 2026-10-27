@@ -36,7 +36,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton,
-    QPlainTextEdit, QScrollArea, QSizePolicy, QSpinBox, QStackedWidget, QVBoxLayout, QWidget,
+    QPlainTextEdit, QScrollArea, QSizePolicy, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 try:
@@ -63,7 +63,7 @@ except ImportError:
     )
 
 
-VERSION = "1.19.3"
+VERSION = "1.19.4"
 APP_ROOT = Path(__file__).resolve().parent.parent
 ACTIVE_STAGES = {"queued", "preparing", "waiting", "downloading", "processing", "scanning"}
 STAGE_NAMES = {
@@ -720,18 +720,7 @@ class JobCard(QFrame):
                 total, downloaded = getattr(p, "total", None), getattr(p, "downloaded", 0)
                 volume = f"{format_bytes(downloaded)} / {format_bytes(total)}" if total else format_bytes(downloaded)
                 speed = getattr(p, "speed", None)
-                details = {"h2": "HTTP/2", "http/1.1": "HTTP/1.1"}.get(getattr(p, "transport", None), "")
-                count = getattr(p, "connections", None)
-                mode = getattr(p, "transfer_mode", None)
-                if mode == "parallel" and type(count) is int and 1 < count <= 4:
-                    details += (" · " if details else "") + f"병렬 요청 {count}개"
-                elif mode == "single":
-                    details += (" · " if details else "") + "단일 요청"
-                stats = ([details] if details else []) + [volume]
-                if speed:
-                    stats.append(f"{format_bytes(speed)}/s")
-                stats.append(format_eta(getattr(p, "eta", None)))
-                self.stats.setText("   ·   ".join(stats))
+                self.stats.setText(f"{volume}" + (f"   ·   {format_bytes(speed)}/s" if speed else "") + f"   ·   {format_eta(getattr(p, 'eta', None))}")
             else:
                 self.stats.setText(getattr(p, "message", "") or STAGE_NAMES.get(item.stage, "영상 정보를 확인하고 있어요"))
         else:
@@ -1122,37 +1111,6 @@ class MainWindow(QMainWindow):
         host_row.addWidget(self.host_concurrent_combo)
         layout.addLayout(host_row)
         self._refresh_concurrency_hint()
-        divider = QFrame()
-        divider.setObjectName("Divider")
-        divider.setFixedHeight(1)
-        layout.addWidget(divider)
-        self.parallel_checkbox = ScanSwitch("파일별 병렬 다운로드")
-        self.parallel_checkbox.setChecked(self.preferences.get("parallel_downloads", True) is True)
-        self.parallel_checkbox.setAccessibleName("파일별 병렬 다운로드 사용")
-        self.parallel_checkbox.toggled.connect(lambda enabled: self._save_preferences(parallel_downloads=enabled))
-        layout.addWidget(self.parallel_checkbox)
-        layout.addWidget(label("서버가 지원하면 파일 하나를 최대 4개 요청으로 나눠 받습니다. 지원하지 않으면 한 번에 받습니다.", "Small", True))
-        divider = QFrame()
-        divider.setObjectName("Divider")
-        divider.setFixedHeight(1)
-        layout.addWidget(divider)
-        speed_row = row()
-        self.speed_limit_checkbox = ScanSwitch("다운로드 속도 제한")
-        self.speed_limit_checkbox.setChecked(self.preferences.get("speed_limit_enabled", False) is True)
-        self.speed_limit_checkbox.setAccessibleName("앱 전체 다운로드 속도 제한 사용")
-        speed_row.addWidget(self.speed_limit_checkbox, 1)
-        self.speed_limit_spin = QSpinBox()
-        self.speed_limit_spin.setRange(64, 1048576)
-        self.speed_limit_spin.setSuffix(" KiB/s")
-        self.speed_limit_spin.setValue(self.preferences.get("speed_limit_kib", 10240))
-        self.speed_limit_spin.setMinimumWidth(170)
-        self.speed_limit_spin.setEnabled(self.speed_limit_checkbox.isChecked())
-        self.speed_limit_spin.setAccessibleName("앱 전체 다운로드 속도 상한 KiB/s")
-        self.speed_limit_spin.valueChanged.connect(lambda value: self._save_preferences(speed_limit_kib=value))
-        self.speed_limit_checkbox.toggled.connect(self._speed_limit_toggled)
-        speed_row.addWidget(self.speed_limit_spin)
-        layout.addLayout(speed_row)
-        layout.addWidget(label("앱에서 받는 모든 파일의 합산 속도를 제한합니다. 변경 사항은 진행 중인 다운로드에도 바로 적용됩니다. 1 MiB/s = 1024 KiB/s.", "Small", True))
         content.addWidget(behavior)
         scan_card, layout = card_layout()
         head = row(10)
@@ -1593,10 +1551,6 @@ class MainWindow(QMainWindow):
             _activity_exception(self.activity, "settings.save_failed", exc)
             if hasattr(self, "toast"):
                 self.notify("설정을 저장하지 못했습니다. 앱의 저장 공간을 확인해 주세요.")
-
-    def _speed_limit_toggled(self, enabled):
-        self.speed_limit_spin.setEnabled(enabled)
-        self._save_preferences(speed_limit_enabled=enabled)
 
     def apply_theme(self):
         app = QApplication.instance()

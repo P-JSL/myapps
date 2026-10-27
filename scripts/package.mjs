@@ -15,7 +15,16 @@ const transportMode = report.validationMode === 'focused-desktop-transport';
 const recoveryMode = report.validationMode === 'focused-download-recovery';
 const activityMode = report.validationMode === 'focused-desktop-activity';
 const noHttp3Mode = report.validationMode === 'focused-desktop-no-http3';
-if (noHttp3Mode) {
+const v18RestoreMode = report.validationMode === 'focused-desktop-v18-restore';
+if (v18RestoreMode) {
+  assert.equal(version, '1.19.4');
+  assert.equal(report.baseline, 'v1.19.3');
+  assert.equal(report.baselineCommit, '2d11e5043fa403fbe373feb7c168e490f4ef0b69');
+  assert.equal(report.downloadBaseline, 'v1.18.0');
+  assert.equal(report.downloadBaselineCommit, '1756c8dec1cb6e655fd486ab4a55fcc35641fd74');
+  assert.equal(report.priorChecks, 'skipped-per-user');
+  assert.equal(report.liveYouTubeVerified, false);
+} else if (noHttp3Mode) {
   assert.equal(version, '1.19.3');
   assert.equal(report.baseline, 'v1.19.2');
   assert.equal(report.baselineCommit, 'dd3187fcfab45cad89fb95ad1cb24c3edd2c6365');
@@ -50,7 +59,7 @@ if (noHttp3Mode) {
   assert.equal(version, '1.17.0', 'Architecture validation belongs to release 1.17.0');
   assert.equal(report.validationMode, 'focused-architecture-change');
 }
-if (noHttp3Mode || activityMode || recoveryMode || transportMode || concurrencyMode) {
+if (v18RestoreMode || noHttp3Mode || activityMode || recoveryMode || transportMode || concurrencyMode) {
   // Read-only source comparisons preserve the requested desktop-only scope.
   const extensionScope = spawnSync('git', ['diff', '--name-only', report.baselineCommit, '--', 'src', 'native', 'tsconfig.json', ':(exclude)src/local/manifest.json'], { encoding: 'utf8' });
   assert.equal(extensionScope.status, 0, extensionScope.stderr || extensionScope.error?.message);
@@ -65,10 +74,10 @@ if (noHttp3Mode || activityMode || recoveryMode || transportMode || concurrencyM
 }
 assert.equal(report.userRequestedSkipPreviousChecks, true, 'Focused validation must record the requested scope');
 assert.deepEqual(await sourceIdentity(), report.sourceSha256, 'Source inventory or contents changed since focused validation');
-for (const name of noHttp3Mode ? ['noHttp3', 'noHttp3Gui', 'releaseScope'] : activityMode ? ['activity', 'activityGui', 'releaseScope'] : recoveryMode ? ['recovery', 'releaseScope'] : transportMode ? ['bandwidth', 'transfer', 'transport', 'engineTransport', 'releaseScope'] : concurrencyMode ? ['concurrency', 'concurrencyGui', 'releaseScope'] : ['extension', 'engine', 'gui', 'bundle', 'launcher']) {
+for (const name of v18RestoreMode ? ['v18Restore', 'v18RestoreGui', 'releaseScope'] : noHttp3Mode ? ['noHttp3', 'noHttp3Gui', 'releaseScope'] : activityMode ? ['activity', 'activityGui', 'releaseScope'] : recoveryMode ? ['recovery', 'releaseScope'] : transportMode ? ['bandwidth', 'transfer', 'transport', 'engineTransport', 'releaseScope'] : concurrencyMode ? ['concurrency', 'concurrencyGui', 'releaseScope'] : ['extension', 'engine', 'gui', 'bundle', 'launcher']) {
   assert(Number.isInteger(report.checks?.[name]) && report.checks[name] > 0, `Successful focused ${name} checks required`);
 }
-for (const name of (noHttp3Mode || activityMode || recoveryMode || transportMode || concurrencyMode) ? ['build'] : ['typecheck', 'build']) assert.equal(report.checks?.[name], 'passed', `Successful ${name} required`);
+for (const name of (v18RestoreMode || noHttp3Mode || activityMode || recoveryMode || transportMode || concurrencyMode) ? ['build'] : ['typecheck', 'build']) assert.equal(report.checks?.[name], 'passed', `Successful ${name} required`);
 assert(Object.keys(report.logSha256 ?? {}).length > 0, 'Validation log hashes required');
 for (const [name, digest] of Object.entries(report.logSha256)) {
   assert(name.startsWith('reports/') && !name.split('/').includes('..') && !name.includes('\\'), 'Validation logs must be local report paths');
@@ -102,7 +111,20 @@ with ZipFile(root/'artifacts/my-video-app-desktop-windows-x64.zip') as bundle:
     if manifest['version'] in ('1.19.0', '1.19.3'):
         for required in ('desktop/bandwidth.py', 'desktop/transfer.py', 'desktop/transport.py', 'runtime/python/Lib/site-packages/curl_cffi/__init__.py'):
             assert 'MyVideoApp/'+required in names, 'Desktop transport runtime missing: '+required
-    if manifest['version'] in ('1.19.2', '1.19.3'):
+    if manifest['version']=='1.19.4':
+        lock=json.loads((root/'desktop/dependencies-lock.json').read_text(encoding='utf-8'))
+        assert manifest['inputs']==lock['inputs'], 'Desktop runtime inputs differ from the current lock'
+        assert hashlib.sha256(json.dumps(lock['inputs'], ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()=='0b1a0aac4c30abddc20788194cf53ece5a2a23038b6b60c6a52dca2f059e2501', 'Desktop runtime pins differ from v1.18.0'
+        assert [item['id'] for item in manifest['inputs']]==['python', 'yt-dlp', 'yt-dlp-ejs', 'deno', 'pyside6-essentials', 'shiboken6', 'ffmpeg'], 'Desktop runtime differs from the restored v1.18 architecture'
+        assert 'nativeTransportMatch' not in lock, 'Native HTTP transport is outside the restore scope'
+        for removed in ('desktop/bandwidth.py', 'desktop/transfer.py', 'desktop/transport.py'):
+            assert 'MyVideoApp/'+removed not in names, 'Removed desktop transport source is still bundled'
+        site_packages='MyVideoApp/runtime/python/Lib/site-packages/'
+        for name in names:
+            if name.startswith(site_packages):
+                distribution=name[len(site_packages):].split('/', 1)[0].replace('-', '_').casefold()
+                assert not any(distribution==package or distribution.startswith((package+'_', package+'.')) for package in ('curl_cffi', 'cffi', '_cffi_backend', 'certifi', 'pycparser')), 'Removed native HTTP runtime is still bundled'
+    if manifest['version'] in ('1.19.2', '1.19.3', '1.19.4'):
         required='desktop/activity.py'
         assert 'MyVideoApp/'+required in names, 'Desktop activity logging module missing'
         assert required in manifest['sourceFiles'], 'Desktop activity source identity missing'

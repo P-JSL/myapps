@@ -14,6 +14,7 @@ on:
       - tests/requirements-desktop-transport.lock
       - tests/test_activity_release.py
       - tests/test_no_http3_release.py
+      - tests/test_v18_restore_release.py
       - artifacts/my-video-app-extension.zip
       - artifacts/my-video-app-source.zip
       - artifacts/SHA256SUMS
@@ -51,20 +52,20 @@ jobs:
       - name: Build the pinned portable Windows app
         run: python -B scripts/build-desktop.py
 
-      - name: Verify only the new desktop HTTP/3 removal scope
+      - name: Verify only the new desktop v1.18 restore scope
         shell: pwsh
         run: |
-          Expand-Archive -LiteralPath artifacts/my-video-app-desktop-windows-x64.zip -DestinationPath "$env:RUNNER_TEMP/myvideoapp-no-http3"
-          $appRoot = "$env:RUNNER_TEMP/myvideoapp-no-http3/MyVideoApp"
+          Expand-Archive -LiteralPath artifacts/my-video-app-desktop-windows-x64.zip -DestinationPath "$env:RUNNER_TEMP/myvideoapp-v18-restore"
+          $appRoot = "$env:RUNNER_TEMP/myvideoapp-v18-restore/MyVideoApp"
           $python = "$appRoot/runtime/python/python.exe"
-          & $python -I -B tests/test_no_http3_release.py -v
+          & $python -I -B tests/test_v18_restore_release.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B desktop/test_no_http3.py --app-root "$appRoot" --real-http1 -v
+          & $python -I -B desktop/test_v18_restore.py --app-root "$appRoot" --real-download -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B desktop/test_no_http3_gui.py --app-root "$appRoot" -v
+          & $python -I -B desktop/test_v18_restore_gui.py --app-root "$appRoot" -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # All previous suites stay skipped at the user's request.
-          @{version=(Get-Content -Encoding utf8 package.json | ConvertFrom-Json).version; commit=$env:GITHUB_SHA; platform="windows-x64"; validationMode="focused-desktop-no-http3"; baseline="v1.19.2"; baselineCommit="dd3187fcfab45cad89fb95ad1cb24c3edd2c6365"; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); noHttp3Tests="passed"; noHttp3GuiTests="passed"; releaseScopeTests="passed"; priorChecks="skipped-per-user"; liveYouTubeVerified=$false} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
+          @{version=(Get-Content -Encoding utf8 package.json | ConvertFrom-Json).version; commit=$env:GITHUB_SHA; platform="windows-x64"; validationMode="focused-desktop-v18-restore"; baseline="v1.19.3"; baselineCommit="2d11e5043fa403fbe373feb7c168e490f4ef0b69"; downloadBaseline="v1.18.0"; downloadBaselineCommit="1756c8dec1cb6e655fd486ab4a55fcc35641fd74"; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); v18RestoreTests="passed"; v18RestoreGuiTests="passed"; releaseScopeTests="passed"; priorChecks="skipped-per-user"; liveYouTubeVerified=$false} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
 
       - name: Publish both products in one release
         env:

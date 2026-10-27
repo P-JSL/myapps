@@ -1,4 +1,8 @@
-# 현재 릴리스 1.19.3: Windows 앱 HTTP/3 제거
+# 현재 릴리스 1.19.4: 1.18 다운로드 경로 복원·로그 유지
+
+1.18의 yt-dlp 다운로드·FFmpeg 병합 경로와 런타임을 복원하고 실행 로그를 유지합니다. **새 복원 경로·로그 유지·GUI·배포 범위만 검사하고 이전 검사는 반복하지 않습니다.** [변경·검사 범위](DESKTOP_1_19_4.ko.md), `release-validation.json`, `reports/validation-1.19.4/`를 기준으로 합니다.
+
+# 1.19.3: Windows 앱 HTTP/3 제거 이력
 
 HTTP/3 연결과 설정을 제거하고 HTTP/2·HTTP/1.1 및 기존 병렬·속도 제한·복구·로그 기능을 유지합니다. **HTTP/3 제거·설정·배포 범위의 새 검사만 실행하고 이전 검사는 건너뜁니다.** [변경·검사 범위](DESKTOP_1_19_3.ko.md), `release-validation.json`, `reports/validation-1.19.3/`를 기준으로 합니다.
 

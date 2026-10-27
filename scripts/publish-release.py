@@ -35,6 +35,15 @@ NO_HTTP3_VERSION = '1.19.3'
 NO_HTTP3_MODE = 'focused-desktop-no-http3'
 NO_HTTP3_BASELINE = 'v1.19.2'
 NO_HTTP3_BASELINE_COMMIT = 'dd3187fcfab45cad89fb95ad1cb24c3edd2c6365'
+V18_RESTORE_VERSION = '1.19.4'
+V18_RESTORE_MODE = 'focused-desktop-v18-restore'
+V18_RESTORE_BASELINE = 'v1.19.3'
+V18_RESTORE_BASELINE_COMMIT = '2d11e5043fa403fbe373feb7c168e490f4ef0b69'
+V18_DOWNLOAD_BASELINE = 'v1.18.0'
+V18_DOWNLOAD_BASELINE_COMMIT = '1756c8dec1cb6e655fd486ab4a55fcc35641fd74'
+# Canonical SHA-256 of that commit's complete inputs array; no Git history is
+# needed on the Windows runner to enforce the exact restored runtime pins.
+V18_RUNTIME_INPUTS_SHA256 = '0b1a0aac4c30abddc20788194cf53ece5a2a23038b6b60c6a52dca2f059e2501'
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -82,7 +91,9 @@ def validate():
                 for required in ('My Video App.exe', 'desktop/main.py', 'desktop/engine.py', 'runtime/python/pythonw.exe', 'runtime/deno.exe', 'runtime/ffmpeg/ffmpeg.exe', 'runtime/ffmpeg/ffprobe.exe'):
                     if 'MyVideoApp/' + required not in names:
                         raise ValueError('Desktop runtime missing: ' + required)
-                if version == CONCURRENCY_VERSION:
+                if version == V18_RESTORE_VERSION:
+                    validate_v18_restore_runtime(archive, names, manifest)
+                elif version == CONCURRENCY_VERSION:
                     for required in ('desktop/concurrency.py', 'runtime/python/python.exe'):
                         if 'MyVideoApp/' + required not in names:
                             raise ValueError('Desktop concurrency runtime missing: ' + required)
@@ -91,7 +102,7 @@ def validate():
                                      'runtime/python/python.exe', 'runtime/python/Lib/site-packages/curl_cffi/__init__.py'):
                         if 'MyVideoApp/' + required not in names:
                             raise ValueError('Desktop transport runtime missing: ' + required)
-                if version in (ACTIVITY_VERSION, NO_HTTP3_VERSION):
+                if version in (ACTIVITY_VERSION, NO_HTTP3_VERSION, V18_RESTORE_VERSION):
                     required = 'desktop/activity.py'
                     if 'MyVideoApp/' + required not in names:
                         raise ValueError('Desktop activity logging module missing: ' + required)
@@ -99,6 +110,49 @@ def validate():
                             or hashlib.sha256(archive.read('MyVideoApp/' + required)).hexdigest() != sources[required]):
                         raise ValueError('Desktop activity logging source identity is missing or stale.')
     return version, hashes
+
+def validate_v18_restore_runtime(archive, names, manifest):
+    """Bind the restored runtime and every bundled source to the current checkout."""
+    lock = json.loads((ROOT / 'desktop/dependencies-lock.json').read_text(encoding='utf-8'))
+    inputs_sha256 = hashlib.sha256(json.dumps(lock.get('inputs'), ensure_ascii=False,
+                                             sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()
+    if (lock.get('version') != V18_RESTORE_VERSION or 'nativeTransportMatch' in lock
+            or inputs_sha256 != V18_RUNTIME_INPUTS_SHA256
+            or manifest.get('inputs') != lock.get('inputs')
+            or [item.get('id') for item in lock.get('inputs', [])] != [
+                'python', 'yt-dlp', 'yt-dlp-ejs', 'deno', 'pyside6-essentials', 'shiboken6', 'ffmpeg']):
+        raise ValueError('Desktop runtime inputs differ from the restored v1.18 runtime.')
+    files = manifest.get('files')
+    if (not isinstance(files, dict) or not files
+            or set(names) != {'MyVideoApp/' + name for name in files} | {'MyVideoApp/APPMANIFEST.json'}):
+        raise ValueError('Desktop output inventory is missing or stale.')
+    for name, expected in files.items():
+        if hashlib.sha256(archive.read('MyVideoApp/' + name)).hexdigest() != expected:
+            raise ValueError('Desktop output identity is stale: ' + name)
+    sources = manifest['sourceFiles']
+    required = ('desktop/main.py', 'desktop/engine.py', 'desktop/concurrency.py',
+                'desktop/storage.py', 'desktop/theme.py', 'desktop/activity.py', 'desktop/dependencies-lock.json')
+    for name in required:
+        if 'MyVideoApp/' + name not in names:
+            raise ValueError('Desktop restored runtime missing: ' + name)
+        if name not in sources or files.get(name) != sources[name]:
+            raise ValueError('Desktop restored source identity is missing or stale: ' + name)
+    for name in ('runtime/python/python.exe', 'runtime/python/Lib/site-packages/yt_dlp/__init__.py',
+                 'runtime/python/Lib/site-packages/yt_dlp_ejs/__init__.py',
+                 'runtime/python/Lib/site-packages/PySide6/__init__.py',
+                 'runtime/python/Lib/site-packages/shiboken6/__init__.py'):
+        if 'MyVideoApp/' + name not in names:
+            raise ValueError('Desktop restored runtime missing: ' + name)
+    removed = {'desktop/bandwidth.py', 'desktop/transfer.py', 'desktop/transport.py'}
+    if removed.intersection(files) or removed.intersection(sources):
+        raise ValueError('Removed desktop transport source is still bundled.')
+    site_packages = 'MyVideoApp/runtime/python/Lib/site-packages/'
+    for name in names:
+        if name.startswith(site_packages):
+            distribution = name[len(site_packages):].split('/', 1)[0].replace('-', '_').casefold()
+            if any(distribution == package or distribution.startswith((package + '_', package + '.'))
+                   for package in ('curl_cffi', 'cffi', '_cffi_backend', 'certifi', 'pycparser')):
+                raise ValueError('Removed native HTTP runtime is still bundled.')
 
 def validate_transport_report(report):
     """Require the protocol observations emitted by the real loopback suite."""
@@ -119,7 +173,18 @@ def validate_windows_evidence(version, commit, evidence, desktop_sha256,
     if not isinstance(evidence, dict) or any(evidence.get(key) != value for key, value in (
             ('version', version), ('commit', commit), ('platform', 'windows-x64'))):
         raise SystemExit('Actual packaged Windows verification is missing or stale.')
-    if version == NO_HTTP3_VERSION:
+    if version == V18_RESTORE_VERSION:
+        required = {'validationMode': V18_RESTORE_MODE, 'baseline': V18_RESTORE_BASELINE,
+                    'baselineCommit': V18_RESTORE_BASELINE_COMMIT,
+                    'downloadBaseline': V18_DOWNLOAD_BASELINE,
+                    'downloadBaselineCommit': V18_DOWNLOAD_BASELINE_COMMIT,
+                    'desktopSha256': desktop_sha256, 'v18RestoreTests': 'passed',
+                    'v18RestoreGuiTests': 'passed', 'releaseScopeTests': 'passed',
+                    'priorChecks': 'skipped-per-user'}
+        if (any(evidence.get(key) != value for key, value in required.items())
+                or evidence.get('liveYouTubeVerified') is not False):
+            raise SystemExit('Focused desktop v1.18 restore Windows verification is missing or stale.')
+    elif version == NO_HTTP3_VERSION:
         required = {'validationMode': NO_HTTP3_MODE, 'baseline': NO_HTTP3_BASELINE,
                     'baselineCommit': NO_HTTP3_BASELINE_COMMIT, 'desktopSha256': desktop_sha256,
                     'noHttp3Tests': 'passed', 'noHttp3GuiTests': 'passed',
@@ -286,8 +351,15 @@ def main():
     no_http3_notes = ('- **HTTP/3 제거:** 데스크톱 앱의 HTTP/3 전송과 관련 설정을 제거했습니다. HTTP/2·HTTP/1.1 전송, 병렬 다운로드, 속도 제한, 실행·활동 로그는 유지합니다.\n'
                       '- **검증 범위:** 새 HTTP/3 제거·설정 GUI·릴리스 범위 검사만 실행했습니다. 이전 검사는 사용자 요청으로 건너뛰었으며 '
                       '실제 YouTube 다운로드는 재검증하지 않았습니다. YouTube 다운로드 성능 향상을 보장하지 않습니다.\n') if version == NO_HTTP3_VERSION else ''
+    v18_restore_notes = ('- **다운로드 구조 복원:** v1.18.0의 yt-dlp 다운로드·FFmpeg 변환 구조와 런타임을 복원했습니다. '
+                         '실행·활동 로그와 안전한 작업·조각 동시성 관리는 유지합니다.\n'
+                         '- **업데이트:** **새 폴더에 ZIP 전체 압축 해제** 후 실행하세요. 설치 폴더 밖의 사용자 DB·실행 로그·기본 저장 폴더 설정은 유지됩니다. '
+                         '출처를 확인할 수 없는 이전 네이티브 전송 임시 완성 파일은 한 번 다시 다운로드할 수 있으며 일반 `.part` 파일의 이어받기는 유지합니다.\n'
+                         '- **검증 범위:** 새 복원·복원 GUI·릴리스 범위 검사와 실제 로컬 미디어 다운로드·변환을 확인했습니다. '
+                         '이전 검사는 사용자 요청으로 건너뛰었으며 실제 YouTube 다운로드는 재검증하지 않았습니다. '
+                         'YouTube 다운로드 속도 향상을 보장하지 않습니다.\n') if version == V18_RESTORE_VERSION else ''
     notes = ('My Video App **' + version + '**\n\n'
-             + concurrency_notes + transport_notes + recovery_notes + activity_notes + no_http3_notes +
+             + concurrency_notes + transport_notes + recovery_notes + activity_notes + no_http3_notes + v18_restore_notes +
              '- **Windows 앱:** `my-video-app-desktop-windows-x64.zip` 전체 압축 해제 후 `My Video App.exe` 실행. '
              'YouTube·최고 화질·MP3/M4A·병합·대기열·기록·설정. Python·yt-dlp·Deno·FFmpeg·Qt 내장. 별도 도우미 등록·API 키 불필요.\n'
              '- **Chrome 확장:** `my-video-app-extension.zip`. **YouTube 제외**, 일반 미디어·HLS/DASH·로컬 도구 유지.\n'

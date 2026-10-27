@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "name": "My Video App",
-  "version": "1.19.3",
+  "version": "1.19.4",
   "platform": "win32-x64",
   "artifact": "artifacts/my-video-app-desktop-windows-x64.zip",
-  "sha256": "b0d1a36f71bcf375df1228a22635d9cac3c8789f33d42f63e1e3dca45d99f81d",
-  "size": 250084423,
-  "sizeMiB": 238.5,
-  "files": 3332,
-  "uncompressedBytes": 639200255,
-  "uncompressedMiB": 609.59,
+  "sha256": "2fb6e36bfc04068a3fe29ccaa6f08518de47ab1e67cd5be5448e419115d83768",
+  "size": 247543816,
+  "sizeMiB": 236.08,
+  "files": 3225,
+  "uncompressedBytes": 633338339,
+  "uncompressedMiB": 604,
   "versions": {
     "python": "3.13.17",
     "yt-dlp": "2026.10.21",
@@ -17,23 +17,11 @@
     "deno": "2.9.8",
     "pyside6-essentials": "6.12.0",
     "shiboken6": "6.12.0",
-    "curl-cffi": "0.17.0",
-    "cffi": "2.1.1",
-    "certifi": "2026.10.23",
-    "pycparser": "3.12",
     "ffmpeg": "9.0.2-36-g6882969ce9"
   },
-  "validationMode": "focused-desktop-no-http3",
-  "nativeTransportMatch": {
-    "wheel": "curl_cffi-0.17.0-cp310-abi3-win_amd64.whl",
-    "wheel_member": "curl_cffi.libs/libcurl-impersonate-ae864b926b0a86bfa3b18a664407a1ab.dll",
-    "archive_member": "lib/libcurl-impersonate.dll",
-    "size": 4113920,
-    "sha256": "ae864b926b0a86bfa3b18a664407a1abb71c31a30c317d938f8c88537d044e45",
-    "identical": true,
-    "sourceArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
-    "sourceArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c"
-  },
+  "validationMode": "focused-desktop-v18-restore",
+  "downloadBaseline": "v1.18.0",
+  "downloadBaselineCommit": "1756c8dec1cb6e655fd486ab4a55fcc35641fd74",
   "validation": {
     "performedDuringBuild": [
       "Pinned input sizes and SHA-256",
@@ -44,12 +32,12 @@
     "windowsExecutionPerformed": false,
     "priorChecks": "skipped-per-user",
     "liveYouTubeVerified": false,
-    "packagedRuntimeExecution": "Windows CI runs only new HTTP/3 removal including actual native HTTP/1.1 loopback, related GUI and release scope"
+    "packagedRuntimeExecution": "Windows CI runs only new v18 restore including actual yt-dlp/FFmpeg loopback, related GUI/log preservation and release scope"
   },
   "launcher": {
     "path": "/workspace/myapps/desktop/launcher/MyVideoApp.exe",
     "size": 8192,
-    "sha256": "51a680b94ad1e251c2536744709c1ca52e56291c4307047d4f9b9f9d580cdf70",
+    "sha256": "5e2109ad9deb62e87065bc48c08871fe0bf0ca7a6b8db2b2ad07f51a20f6093c",
     "machine": "AMD64",
     "format": "PE32+",
     "subsystem": "Windows GUI",

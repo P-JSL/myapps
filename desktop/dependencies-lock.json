@@ -71,54 +71,6 @@
       "requiresPython": "<3.16,>=3.10"
     },
     {
-      "id": "curl-cffi",
-      "version": "0.17.0",
-      "filename": "curl_cffi-0.17.0-cp310-abi3-win_amd64.whl",
-      "url": "https://files.pythonhosted.org/packages/a1/9f/e860ed1a3fc55c06ea2a148613d07342dc6c6ec2844a2f0ee864eb1b19ce/curl_cffi-0.17.0-cp310-abi3-win_amd64.whl",
-      "size": 2108164,
-      "sha256": "4c3993c7df155d622869b82a56adb018440587fd3faffeaf8d01cc016d2e1357",
-      "license": "MIT",
-      "requiresPython": ">=3.10",
-      "metadataUrl": "https://pypi.org/pypi/curl_cffi/0.17.0/json",
-      "sourceUrl": "https://github.com/lexiforest/curl_cffi/tree/v0.17.0"
-    },
-    {
-      "id": "cffi",
-      "version": "2.1.1",
-      "filename": "cffi-2.1.1-cp313-cp313-win_amd64.whl",
-      "url": "https://files.pythonhosted.org/packages/60/a6/8b149b2c3f2e11aaa1618ef64500b45f50f22c57a977a4dff1aff1f91042/cffi-2.1.1-cp313-cp313-win_amd64.whl",
-      "size": 185688,
-      "sha256": "1aa5645c30469b09530c4ebca77ebf8f17618293c58f8549cb1a543a50236e7d",
-      "license": "MIT-0",
-      "requiresPython": ">=3.10",
-      "metadataUrl": "https://pypi.org/pypi/cffi/2.1.1/json",
-      "sourceUrl": "https://pypi.org/project/cffi/2.1.1/"
-    },
-    {
-      "id": "certifi",
-      "version": "2026.10.23",
-      "filename": "certifi-2026.10.23-py3-none-any.whl",
-      "url": "https://files.pythonhosted.org/packages/32/d1/a3652fe2c19134d0d15922177821d863cbd7e842d53a21bbe7e8e3a1b5ac/certifi-2026.10.23-py3-none-any.whl",
-      "size": 135082,
-      "sha256": "e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1",
-      "license": "MPL-2.0",
-      "requiresPython": ">=3.7",
-      "metadataUrl": "https://pypi.org/pypi/certifi/2026.10.23/json",
-      "sourceUrl": "https://pypi.org/project/certifi/2026.10.23/"
-    },
-    {
-      "id": "pycparser",
-      "version": "3.12",
-      "filename": "pycparser-3.12-py3-none-any.whl",
-      "url": "https://files.pythonhosted.org/packages/b6/ae/315bbeee126a769cbde43cf4908acb4b40408d8bf8bbf334dd7368d8dadf/pycparser-3.12-py3-none-any.whl",
-      "size": 62600,
-      "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e",
-      "license": "BSD-3-Clause",
-      "requiresPython": ">=3.11",
-      "metadataUrl": "https://pypi.org/pypi/pycparser/3.12/json",
-      "sourceUrl": "https://pypi.org/project/pycparser/3.12/"
-    },
-    {
       "id": "ffmpeg",
       "version": "9.0.2-36-g6882969ce9",
       "filename": "ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0.zip",
@@ -133,7 +85,7 @@
       "archiveRoot": "ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0"
     }
   ],
-  "version": "1.19.3",
+  "version": "1.19.4",
   "description": "Portable Windows x64 native Qt Widgets application; verified external runtimes only.",
   "notices": [
     {
@@ -164,107 +116,5 @@
       "size": 2777,
       "destination": "licenses/ffmpeg/BUILD-README.md"
     }
-  ],
-  "localNotices": [
-    {
-      "source": "licenses/desktop-transport/LICENSE",
-      "destination": "licenses/curl-native/LICENSE",
-      "size": 1098,
-      "sha256": "8084021a5d87f59b8ab4fe9f288c7eccb2d6435521c898ccc34291323b7076f5",
-      "upstreamArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
-      "upstreamArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c",
-      "upstreamMember": "LICENSE"
-    },
-    {
-      "source": "licenses/desktop-transport/LICENSE_BORINGSSL",
-      "destination": "licenses/curl-native/LICENSE_BORINGSSL",
-      "size": 13115,
-      "sha256": "827c8d8fc207c2392794eef9e00fe246f9f61fdcc132556c275be3dd8c3cd97f",
-      "upstreamArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
-      "upstreamArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c",
-      "upstreamMember": "LICENSE_BORINGSSL"
-    },
-    {
-      "source": "licenses/desktop-transport/LICENSE_BROTLI",
-      "destination": "licenses/curl-native/LICENSE_BROTLI",
-      "size": 1084,
-      "sha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94",
-      "upstreamArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
-      "upstreamArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c",
-      "upstreamMember": "LICENSE_BROTLI"
-    },
-    {
-      "source": "licenses/desktop-transport/LICENSE_CARES",
-      "destination": "licenses/curl-native/LICENSE_CARES",
-      "size": 1211,
-      "sha256": "460f5e768fda3752ca2169a95df062578a10fb126bfd65f3b9b1a1bed2f84807",
-      "upstreamArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
-      "upstreamArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c",
-      "upstreamMember": "LICENSE_CARES"
-    },
-    {
-      "source": "licenses/desktop-transport/LICENSE_CURL",
-      "destination": "licenses/curl-native/LICENSE_CURL",
-      "size": 1088,
-      "sha256": "82f2f4427d6545ee5aaac4f0b80428da6cc8ba41c2cf5da3a03680ec327b9681",
-      "upstreamArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
-      "upstreamArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c",
-      "upstreamMember": "LICENSE_CURL"
-    },
-    {
-      "source": "licenses/desktop-transport/LICENSE_NGHTTP2",
-      "destination": "licenses/curl-native/LICENSE_NGHTTP2",
-      "size": 1156,
-      "sha256": "6b94f3abc1aabd0c72a7c7d92a77f79dda7c8a0cb3df839a97890b4116a2de2a",
-      "upstreamArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
-      "upstreamArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c",
-      "upstreamMember": "LICENSE_NGHTTP2"
-    },
-    {
-      "source": "licenses/desktop-transport/LICENSE_NGHTTP3",
-      "destination": "licenses/curl-native/LICENSE_NGHTTP3",
-      "size": 1081,
-      "sha256": "58cc3fc8c6d6cb2485ab35eb5918e849b5bf1e56522974e106d7a39a88d61dcd",
-      "upstreamArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
-      "upstreamArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c",
-      "upstreamMember": "LICENSE_NGHTTP3"
-    },
-    {
-      "source": "licenses/desktop-transport/LICENSE_NGTCP2",
-      "destination": "licenses/curl-native/LICENSE_NGTCP2",
-      "size": 1080,
-      "sha256": "542dd526d2ea23565f0571cc68df6f05ed11248a90ff0f32de19d8ba589db513",
-      "upstreamArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
-      "upstreamArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c",
-      "upstreamMember": "LICENSE_NGTCP2"
-    },
-    {
-      "source": "licenses/desktop-transport/LICENSE_ZLIB",
-      "destination": "licenses/curl-native/LICENSE_ZLIB",
-      "size": 1002,
-      "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243",
-      "upstreamArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
-      "upstreamArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c",
-      "upstreamMember": "LICENSE_ZLIB"
-    },
-    {
-      "source": "licenses/desktop-transport/LICENSE_ZSTD",
-      "destination": "licenses/curl-native/LICENSE_ZSTD",
-      "size": 1549,
-      "sha256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8",
-      "upstreamArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
-      "upstreamArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c",
-      "upstreamMember": "LICENSE_ZSTD"
-    }
-  ],
-  "nativeTransportMatch": {
-    "wheel": "curl_cffi-0.17.0-cp310-abi3-win_amd64.whl",
-    "wheel_member": "curl_cffi.libs/libcurl-impersonate-ae864b926b0a86bfa3b18a664407a1ab.dll",
-    "archive_member": "lib/libcurl-impersonate.dll",
-    "size": 4113920,
-    "sha256": "ae864b926b0a86bfa3b18a664407a1abb71c31a30c317d938f8c88537d044e45",
-    "identical": true,
-    "sourceArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
-    "sourceArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c"
-  }
+  ]
 }

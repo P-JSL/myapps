@@ -55,26 +55,6 @@ except ImportError:
     _storage_spec.loader.exec_module(_storage_module)
     Storage = _storage_module.Storage
 
-try:
-    from .bandwidth import BandwidthCancelled, PROCESS_BANDWIDTH
-    from .transport import NativeTransport
-    from .transfer import TransferCancelled, TransferError, TransferFileError, download_file
-except ImportError:
-    # Metadata workers use -I and therefore have no sibling import directory.
-    for _name in ("bandwidth", "transport", "transfer"):
-        if _name not in sys.modules:
-            _spec = importlib.util.spec_from_file_location(_name, Path(__file__).absolute().with_name(_name + ".py"))
-            _module = importlib.util.module_from_spec(_spec)
-            sys.modules[_name] = _module
-            _spec.loader.exec_module(_module)
-    NativeTransport = sys.modules["transport"].NativeTransport
-    BandwidthCancelled = sys.modules["bandwidth"].BandwidthCancelled
-    PROCESS_BANDWIDTH = sys.modules["bandwidth"].PROCESS_BANDWIDTH
-    TransferCancelled = sys.modules["transfer"].TransferCancelled
-    TransferError = sys.modules["transfer"].TransferError
-    TransferFileError = sys.modules["transfer"].TransferFileError
-    download_file = sys.modules["transfer"].download_file
-
 YT_DLP_VERSION = "2026.10.21"
 EJS_VERSION = "0.8.0"
 DENO_VERSION = "2.9.8"
@@ -118,9 +98,6 @@ class DownloadProgress:
     title: str = ""
     filepath: str | None = None
     message: str = ""
-    transport: str | None = None
-    connections: int | None = None
-    transfer_mode: str | None = None
 
 
 @dataclass(frozen=True)
@@ -409,11 +386,6 @@ class Engine:
         self._settings_lock = threading.Lock()
         settings = self.store.settings()
         self._concurrency_setting = normalize_concurrency(settings.get("concurrent_downloads"))
-        self._parallel_downloads = settings["parallel_downloads"]
-        self._speed_limit_enabled = settings["speed_limit_enabled"]
-        self._speed_limit_kib = settings["speed_limit_kib"]
-        self.bandwidth = PROCESS_BANDWIDTH
-        self.bandwidth.configure(self._speed_limit_enabled, self._speed_limit_kib)
         self._progress_local = threading.local()
 
     def _log(self, event, *, error=None, **fields):
@@ -459,14 +431,6 @@ class Engine:
             self.store.save_settings(values)
             if "concurrent_downloads" in values:
                 self._concurrency_setting = normalize_concurrency(values["concurrent_downloads"])
-            if "parallel_downloads" in values:
-                self._parallel_downloads = values["parallel_downloads"]
-            if "speed_limit_enabled" in values or "speed_limit_kib" in values:
-                if "speed_limit_enabled" in values:
-                    self._speed_limit_enabled = values["speed_limit_enabled"]
-                if "speed_limit_kib" in values:
-                    self._speed_limit_kib = values["speed_limit_kib"]
-                self.bandwidth.configure(self._speed_limit_enabled, self._speed_limit_kib)
 
     @contextmanager
     def _resource(self, resource: str, cancel: threading.Event, units=1):
@@ -556,17 +520,18 @@ class Engine:
 
     def _options(self, deno: Path, progress=None, *, fragment_workers: int = 1,
                  cancel: threading.Event | None = None) -> dict:
-        def retry_sleep(attempt):
-            delay = min(8, 2 ** max(0, min(3, attempt - 1)))
-            local = getattr(self, "_progress_local", None)
-            self._log("download.retry", job_id=getattr(local, "job_id", None),
-                      stage=getattr(local, "stage", None), attempt=attempt, delay=delay)
-            if cancel is None:
-                return delay
-            if cancel.wait(delay):
-                raise DownloadCancelled("다운로드를 취소했습니다.")
-            # The delay already elapsed through the cancellable event; yt-dlp
-            # must not sleep for it a second time.
+        local = getattr(self, "_progress_local", None)
+        retry_job_id = getattr(local, "job_id", None)
+        retry_stage = getattr(local, "stage", None)
+
+        def retry_sleep(n):
+            # yt-dlp calls retry callbacks with n= (zero based). Keep the
+            # v1.18 default of no retry delay while recording the attempt.
+            # Fragment callbacks may run without the job thread's local state.
+            self._log("download.retry", job_id=retry_job_id,
+                      stage=retry_stage, attempt=n + 1, delay=0)
+            if cancel is not None:
+                _check_cancel(cancel)
             return 0
 
         return {"quiet": True, "no_warnings": True, "logger": _SilentLogger(), "noplaylist": True,
@@ -874,12 +839,7 @@ class Engine:
         directory = None
         leases = ExitStack()
         published = None
-        native_transport = None
         error_phase = "미디어 준비"
-        compatibility_used = False
-        transfer_fields = {"transport": None, "connections": None, "transfer_mode": None}
-        observed_protocols: set[str] = set()
-        parallel_connections = 0
         progress_lock = threading.RLock()
         with self._lock:
             if job_id in self._active:
@@ -912,9 +872,9 @@ class Engine:
                 if stage != last_log_stage or now - last_log_time >= 5:
                     last_log_stage, last_log_time = stage, now
                     self._log("download.progress", job_id=job_id, stage=stage,
-                              **{key: value for key, value in {**transfer_fields, **fields}.items()
-                                 if key in ("percent", "downloaded", "total", "speed", "eta", "transport", "connections", "transfer_mode")})
-                progress(DownloadProgress(stage=stage, title=title, **{**transfer_fields, **fields}))
+                              **{key: value for key, value in fields.items()
+                                 if key in ("percent", "downloaded", "total", "speed", "eta")})
+                progress(DownloadProgress(stage=stage, title=title, **fields))
 
         self._progress_local.emit = emit
         self._progress_local.job_id = job_id
@@ -933,22 +893,12 @@ class Engine:
             track_index = 0
             tracks = []
             totals: list[int | None] = []
-            legacy_downloaded = 0
 
-            def hook(value, *, charge_bandwidth=True):
-                nonlocal legacy_downloaded
+            def hook(value):
                 with progress_lock:
                     _check_cancel(cancel)
                     downloaded_value = _number(value.get("downloaded_bytes"))
                     downloaded = int(downloaded_value if downloaded_value is not None else _number(value.get("total_bytes")) or 0)
-                    if charge_bandwidth:
-                        delta = max(0, downloaded - legacy_downloaded)
-                        legacy_downloaded = max(legacy_downloaded, downloaded)
-                        try:
-                            if delta:
-                                self.bandwidth.consume(delta, cancel)
-                        except BandwidthCancelled:
-                            raise DownloadCancelled("다운로드를 취소했습니다.") from None
                     current_total = _number(value.get("total_bytes")) or _number(value.get("total_bytes_estimate"))
                     if current_total:
                         totals[track_index] = int(current_total)
@@ -957,26 +907,6 @@ class Engine:
                     percent = min(100.0, overall / total * 100) if total else None
                     emit("downloading", percent=percent, downloaded=overall, total=total,
                          speed=_number(value.get("speed")), eta=_number(value.get("eta")), message="미디어를 다운로드하고 있습니다.")
-
-            def negotiated(protocol):
-                # Only values reported by a completed protocol negotiation may
-                # enter progress or history.
-                if protocol in ("h2", "http/1.1"):
-                    with progress_lock:
-                        observed_protocols.add(protocol)
-                        transfer_fields["transport"] = protocol
-
-            def transfer_mode(mode):
-                if mode in ("parallel", "single"):
-                    with progress_lock:
-                        transfer_fields["transfer_mode"] = mode
-
-            def connections(count):
-                nonlocal parallel_connections
-                if type(count) is int and 1 <= count <= 4:
-                    with progress_lock:
-                        transfer_fields["connections"] = count
-                        parallel_connections = max(parallel_connections, count)
 
             with self._resource("metadata", cancel):
                 with self._activity_phase("preparation", job_id=job_id, stage="preparing", state=activity_state):
@@ -990,118 +920,76 @@ class Engine:
             # Resume only the same immutable YouTube video and selected format identities.
             identity = [{key: track.get(key) for key in ("format_id", "ext", "filesize")} for track in tracks]
             fingerprint = hashlib.sha256(json.dumps([info.get("id"), identity], sort_keys=True).encode()).hexdigest()
+            selection = "yt-dlp-v18:" + fingerprint
             identity_path = directory / "selection.json"
             resume = False
+            legacy_selection = False
             if youtube and identity_path.is_file() and not identity_path.is_symlink():
                 try:
-                    resume = identity_path.read_text(encoding="ascii") == fingerprint
+                    previous_selection = identity_path.read_text(encoding="ascii")
+                    legacy_selection = previous_selection == fingerprint
+                    resume = legacy_selection or previous_selection == selection
                 except OSError:
                     pass
             if not resume:
                 self._clean_owned(directory, job_id, request_digest)
-            identity_path.write_text(fingerprint, encoding="ascii")
+            elif legacy_selection:
+                # The removed native transfer wrote its unfinished ranges to the
+                # final source name. yt-dlp would accept that name as complete
+                # without a request. Old selections cannot prove its provenance,
+                # so restart those owned finals once; keep yt-dlp .part state.
+                for index, track in enumerate(tracks):
+                    existing = directory / f"source-{index}.{track['ext']}"
+                    if os.path.lexists(existing):
+                        attributes = existing.lstat()
+                        if not stat.S_ISREG(attributes.st_mode) or getattr(attributes, "st_file_attributes", 0) & 0x400:
+                            raise EngineError("임시 다운로드 파일이 안전하지 않습니다. 다른 저장 폴더를 선택하세요.")
+                        existing.unlink()
+            # Write after old finals are removed so an interrupted migration is
+            # repeated safely. Future matching retries use v1.18 continuedl.
+            identity_path.write_text(selection, encoding="ascii")
             sources = []
-            for track_index, track in enumerate(tracks):
-                _check_cancel(cancel)
-                with self._activity_phase("track", job_id=job_id, stage="downloading", state=activity_state,
-                                          track_index=track_index, track_count=len(tracks),
-                                          track_kind="video" if _has_video(track) else "audio") as track_activity:
-                    track_label = "영상" if _has_video(track) else "오디오"
-                    error_phase = track_label + " 다운로드"
-                    path = directory / f"source-{track_index}.{track['ext']}"
-                    # __postprocessors, webpage data and metadata are deliberately not handed to dl().
-                    item = {**track, "id": info.get("id", job_id), "title": title,
-                            "http_headers": track.get("http_headers") or info.get("http_headers") or {}}
-                    direct = track.get("protocol") in ("http", "https") and not track.get("fragments")
-                    # Preserve the old downloader's resumable layout. The native
-                    # transfer owns only files it creates exclusively for this run.
-                    legacy_resume = resume and (os.path.lexists(path) or os.path.lexists(str(path) + ".part"))
-                    if legacy_resume:
-                        reused_bytes = 0
-                        for existing in (path, Path(str(path) + ".part")):
-                            if os.path.lexists(existing):
-                                attributes = existing.lstat()
-                                if not stat.S_ISREG(attributes.st_mode) or getattr(attributes, "st_file_attributes", 0) & 0x400:
-                                    raise EngineError("임시 다운로드 파일이 안전하지 않습니다. 다른 저장 폴더를 선택하세요.")
-                                reused_bytes = max(reused_bytes, attributes.st_size)
-                        self._log("track.reused", job_id=job_id, stage="downloading", track_index=track_index,
-                                  track_kind="video" if _has_video(track) else "audio", resume=True, byte_count=reused_bytes)
-                    if direct and not legacy_resume:
-                        with self._settings_lock:
-                            workers = min(4, self.resources.capacities["network"]) if self._parallel_downloads else 1
-                        if native_transport is None:
-                            native_transport = leases.enter_context(NativeTransport(max_connections=4,
-                                                                                  bandwidth_limiter=self.bandwidth))
-                        started = time.monotonic()
-
-                        def native_progress(downloaded, total):
-                            elapsed = time.monotonic() - started
-                            speed = downloaded / elapsed if elapsed > 0 else None
-                            hook({"downloaded_bytes": downloaded, "total_bytes": total, "speed": speed,
-                                  "eta": (total - downloaded) / speed if total and speed else None}, charge_bandwidth=False)
-
-                        try:
-                            download_file(track["url"], path, transport=native_transport, resources=self.resources,
-                                          cancel=cancel, workers=workers, headers=item["http_headers"], progress=native_progress,
-                                          protocol=negotiated, mode=transfer_mode, connections=connections,
-                                          on_wait=lambda: emit("waiting", message="네트워크 다운로드 순서를 기다리고 있습니다."))
-                        except TransferCancelled:
-                            raise DownloadCancelled("다운로드를 취소했습니다.") from None
-                        except TransferError as error:
-                            if not error.compatibility_fallback:
-                                raise
-                            self._log("transfer.fallback", error=error, level="WARNING", job_id=job_id,
-                                      stage="downloading", track_index=track_index, reason="compatibility")
-                            _check_cancel(cancel)
-                            # transfer.py removes only its failed, exclusively owned
-                            # file before returning. Never overwrite a surviving or
-                            # externally replaced path during compatibility recovery.
-                            if os.path.lexists(path) or os.path.lexists(str(path) + ".part"):
-                                raise EngineError("실패한 임시 파일을 정리하지 못했습니다. 앱을 닫은 뒤 다시 시도하세요.") from None
-                            compatibility_used = True
-                            legacy_downloaded = 0
-                            with progress_lock:
-                                transfer_fields.update(transport=None, connections=1, transfer_mode="single")
-                            emit("downloading", downloaded=completed_bytes,
-                                 total=sum(totals) if all(value is not None for value in totals) else None,
-                                 message=track_label + " 연결이 끊겨 호환 전송으로 한 번 복구하고 있습니다.")
-                            options = self._options(deno, hook, fragment_workers=1, cancel=cancel)
-                            options.update(retries=0, fragment_retries=0, extractor_retries=0)
-                            try:
-                                with self._resource("network", cancel, 1):
-                                    with module.YoutubeDL(options) as downloader:
-                                        success = downloader.dl(str(path), item)
-                            except (DownloadCancelled, OSError):
-                                raise
-                            except Exception:
-                                _check_cancel(cancel)
-                                raise EngineError("연결이 중단되었고 호환 전송으로도 복구하지 못했습니다. 잠시 후 다시 시도하세요.") from None
-                        else:
-                            success = True
-                    else:
-                        with progress_lock:
-                            transfer_fields.update(transport=None, connections=None, transfer_mode=None)
+            # Sequential tracks share only this job's yt-dlp request handlers.
+            # dl() creates a new FileDownloader for each track, so its fragment
+            # count must match that track's network lease before the call.
+            with module.YoutubeDL(self._options(deno, hook, cancel=cancel)) as downloader:
+                for track_index, track in enumerate(tracks):
+                    _check_cancel(cancel)
+                    with self._activity_phase("track", job_id=job_id, stage="downloading", state=activity_state,
+                                              track_index=track_index, track_count=len(tracks),
+                                              track_kind="video" if _has_video(track) else "audio") as track_activity:
+                        track_label = "영상" if _has_video(track) else "오디오"
+                        error_phase = track_label + " 다운로드"
+                        path = directory / f"source-{track_index}.{track['ext']}"
+                        # __postprocessors, webpage data and metadata are deliberately not handed to dl().
+                        item = {**track, "id": info.get("id", job_id), "title": title,
+                                "http_headers": track.get("http_headers") or info.get("http_headers") or {}}
+                        if resume and (os.path.lexists(path) or os.path.lexists(str(path) + ".part")):
+                            reused_bytes = 0
+                            for existing in (path, Path(str(path) + ".part")):
+                                if os.path.lexists(existing):
+                                    attributes = existing.lstat()
+                                    if not stat.S_ISREG(attributes.st_mode) or getattr(attributes, "st_file_attributes", 0) & 0x400:
+                                        raise EngineError("임시 다운로드 파일이 안전하지 않습니다. 다른 저장 폴더를 선택하세요.")
+                                    reused_bytes = max(reused_bytes, attributes.st_size)
+                            self._log("track.reused", job_id=job_id, stage="downloading", track_index=track_index,
+                                      track_kind="video" if _has_video(track) else "audio", resume=True, byte_count=reused_bytes)
                         workers = self._fragment_workers(track)
-                        legacy_downloaded = path.stat().st_size if path.is_file() else 0
-                        if legacy_resume and not legacy_downloaded:
-                            partial = Path(str(path) + ".part")
-                            if partial.is_file():
-                                legacy_downloaded = partial.stat().st_size
+                        downloader.params["concurrent_fragment_downloads"] = workers
                         with self._resource("network", cancel, workers):
-                            with module.YoutubeDL(self._options(deno, hook, fragment_workers=workers, cancel=cancel)) as downloader:
-                                success = downloader.dl(str(path), item)
-                    if not (success[0] if isinstance(success, tuple) else success) or not path.is_file() or path.is_symlink():
-                        raise EngineError("다운로드가 끝나지 않았습니다. 다시 시도하면 새 원본을 확인하고 안전하게 이어받습니다.")
-                    with self._resource("processing", cancel):
-                        error_phase = track_label + " 파일 검사"
-                        with self._activity_phase("probe", job_id=job_id, stage="probing", state=activity_state,
-                                                  track_index=track_index):
-                            self._probe(path, ffprobe, cancel)
-                    completed_bytes += path.stat().st_size
-                    activity_state["downloaded"] = completed_bytes
-                    totals[track_index] = path.stat().st_size
-                    track_activity["byte_count"] = totals[track_index]
-                    sources.append(path)
+                            success = downloader.dl(str(path), item)
+                        if not (success[0] if isinstance(success, tuple) else success) or not path.is_file() or path.is_symlink():
+                            raise EngineError("다운로드가 끝나지 않았습니다. 다시 시도하면 새 원본을 확인하고 안전하게 이어받습니다.")
+                        with self._resource("processing", cancel):
+                            error_phase = track_label + " 파일 검사"
+                            with self._activity_phase("probe", job_id=job_id, stage="probing", state=activity_state,
+                                                      track_index=track_index):
+                                self._probe(path, ffprobe, cancel)
+                        completed_bytes += path.stat().st_size
+                        activity_state["downloaded"] = completed_bytes
+                        totals[track_index] = path.stat().st_size
+                        track_activity["byte_count"] = totals[track_index]
+                        sources.append(path)
             _check_cancel(cancel)
             self.store.update(job_id, stage="processing")
             emit("processing", downloaded=completed_bytes, total=completed_bytes, message="오디오를 변환하고 있습니다." if request.output in ("mp3", "m4a") else "미디어 저장 형식을 준비하고 있습니다.")
@@ -1136,14 +1024,6 @@ class Engine:
                             scan_activity["outcome"] = "not_supported"
                         elif message != "저장하고 Microsoft Defender 검사를 마쳤습니다.":
                             scan_activity["outcome"] = "unavailable"
-            if observed_protocols:
-                names = {"h2": "HTTP/2", "http/1.1": "HTTP/1.1"}
-                summary = " · ".join(names[value] for value in ("h2", "http/1.1") if value in observed_protocols)
-                if parallel_connections > 1:
-                    summary += f" · 파일당 최대 {parallel_connections}개 병렬 요청"
-                message += " " + summary + "."
-            if compatibility_used:
-                message += " 연결이 중단된 트랙을 호환 전송으로 복구했습니다."
             self.store.update(job_id, stage="complete", filepath=str(published), message=message)
             self._clean_owned(directory, job_id, request_digest, remove=True)
             emit("complete", percent=100.0, downloaded=completed_bytes, total=completed_bytes, filepath=str(published), message=message)
@@ -1164,7 +1044,7 @@ class Engine:
                     self._clean_owned(directory, job_id, request_digest, remove=True)
                 emit("cancelled", message=message)
                 raise DownloadCancelled(message) from None
-            if isinstance(error, (OSError, TransferFileError)):
+            if isinstance(error, OSError):
                 if error.errno == errno.ENOSPC or getattr(error, "winerror", None) == 112:
                     detail = "저장 공간이 부족합니다. 다운로드 폴더와 임시 파일이 있는 드라이브를 확인하세요."
                 elif error.errno in (errno.EACCES, errno.EPERM) or getattr(error, "winerror", None) in (5, 32, 33):
@@ -1173,7 +1053,7 @@ class Engine:
                     detail = "저장 경로가 너무 깁니다. 더 짧은 다운로드 폴더를 선택하세요."
                 else:
                     detail = "파일을 읽거나 기록하지 못했습니다. 다운로드 폴더와 드라이브 상태를 확인하세요."
-            elif isinstance(error, (EngineError, TransferError)):
+            elif isinstance(error, EngineError):
                 detail = str(error)
             elif isinstance(error, MemoryError):
                 detail = "사용 가능한 메모리가 부족합니다. 동시 다운로드 수를 줄여 다시 시도하세요."

@@ -1,0 +1,19 @@
+test_audio_failure_does_not_publish_and_preserves_error_logging (__main__.RestoreTests.test_audio_failure_does_not_publish_and_preserves_error_logging) ... ok
+test_cancel_during_audio_cleans_owned_files_and_logs_cancelled (__main__.RestoreTests.test_cancel_during_audio_cleans_owned_files_and_logs_cancelled) ... ok
+test_direct_http_media_uses_same_yt_dlp_path_without_fallback (__main__.RestoreTests.test_direct_http_media_uses_same_yt_dlp_path_without_fallback) ... ok
+test_engine_has_no_native_transport_or_bandwidth_routing (__main__.RestoreTests.test_engine_has_no_native_transport_or_bandwidth_routing) ... ok
+test_existing_preferences_and_finished_history_survive_migration (__main__.RestoreTests.test_existing_preferences_and_finished_history_survive_migration) ... ok
+test_incomplete_track_cannot_reach_merge_or_publication (__main__.RestoreTests.test_incomplete_track_cannot_reach_merge_or_publication) ... ok
+test_job_reuses_session_and_resets_fragment_limit_for_each_track (__main__.RestoreTests.test_job_reuses_session_and_resets_fragment_limit_for_each_track) ... ok
+test_new_v18_selection_retry_retains_completed_final_and_standard_partial (__main__.RestoreTests.test_new_v18_selection_retry_retains_completed_final_and_standard_partial) ... ok
+test_old_native_final_is_discarded_once_without_losing_standard_partial (__main__.RestoreTests.test_old_native_final_is_discarded_once_without_losing_standard_partial) ... ok
+test_options_keep_v18_retries_and_cancellable_keyword_callback (__main__.RestoreTests.test_options_keep_v18_retries_and_cancellable_keyword_callback) ... ok
+test_simultaneous_jobs_have_separate_sessions_and_progress_hooks (__main__.RestoreTests.test_simultaneous_jobs_have_separate_sessions_and_progress_hooks) ... ok
+test_success_activity_has_all_phases_and_safe_operational_details (__main__.RestoreTests.test_success_activity_has_all_phases_and_safe_operational_details) ... ok
+test_video_audio_complete_once_in_order_and_keep_output_bytes (__main__.RestoreTests.test_video_audio_complete_once_in_order_and_keep_output_bytes) ... ok
+test_owned_loopback_uses_actual_yt_dlp_ffmpeg_and_preserves_streams (__main__._RealDownloadChecks.test_owned_loopback_uses_actual_yt_dlp_ffmpeg_and_preserves_streams) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 2.066s
+
+OK

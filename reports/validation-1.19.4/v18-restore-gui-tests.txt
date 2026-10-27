@@ -1,0 +1,16 @@
+test_event_loop_failure_keeps_writer_and_store_lock_through_worker_flush (__main__.RestoreGuiTests.test_event_loop_failure_keeps_writer_and_store_lock_through_worker_flush) ... ok
+test_existing_folder_history_and_unrelated_preferences_survive_restart (__main__.RestoreGuiTests.test_existing_folder_history_and_unrelated_preferences_survive_restart) ... ok
+test_folder_selection_and_request_keep_v18_options (__main__.RestoreGuiTests.test_folder_selection_and_request_keep_v18_options) ... ok
+test_log_page_navigation_theme_and_readable_filtered_copy_remain (__main__.RestoreGuiTests.test_log_page_navigation_theme_and_readable_filtered_copy_remain) ... ok
+test_log_viewer_stays_bounded_and_folder_open_uses_log_directory (__main__.RestoreGuiTests.test_log_viewer_stays_bounded_and_folder_open_uses_log_directory) ... ok
+test_queue_cancel_retry_and_shutdown_keep_activity_events (__main__.RestoreGuiTests.test_queue_cancel_retry_and_shutdown_keep_activity_events) ... ok
+test_retained_preferences_persist_without_consuming_legacy_keys (__main__.RestoreGuiTests.test_retained_preferences_persist_without_consuming_legacy_keys) ... ok
+test_second_instance_never_opens_writer (__main__.RestoreGuiTests.test_second_instance_never_opens_writer) ... ok
+test_selected_app_release_and_v18_settings_only (__main__.RestoreGuiTests.test_selected_app_release_and_v18_settings_only) ... ok
+test_session_hooks_and_one_failed_shutdown_remain (__main__.RestoreGuiTests.test_session_hooks_and_one_failed_shutdown_remain) ... ok
+test_v18_progress_fields_and_live_card_statistics (__main__.RestoreGuiTests.test_v18_progress_fields_and_live_card_statistics) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 1.145s
+
+OK

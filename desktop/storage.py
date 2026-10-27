@@ -60,9 +60,10 @@ class Storage:
                 CREATE INDEX IF NOT EXISTS jobs_updated ON jobs(updated_at DESC);
                 PRAGMA user_version=1;
             """)
-            # This transport preference no longer exists. Remove only its
-            # legacy row; repeated startup leaves every other preference alone.
-            database.execute("DELETE FROM preferences WHERE key='http3_enabled'")
+            # Removed transport controls must not affect the restored downloader.
+            # Preserve every other preference and all history on existing installs.
+            database.execute("DELETE FROM preferences WHERE key IN "
+                             "('http3_enabled','parallel_downloads','speed_limit_enabled','speed_limit_kib')")
             # An earlier application process may have stopped without a final callback.
             database.execute("UPDATE jobs SET stage='error', message='이전 실행이 중단되었습니다. 다시 시도하면 안전하게 이어받습니다.' "
                              "WHERE stage IN ('queued','downloading','processing')")
@@ -81,7 +82,8 @@ class Storage:
     def settings(self) -> dict:
         with self.lock, self.connect() as database:
             values = {}
-            for row in database.execute("SELECT key,value FROM preferences WHERE key <> 'http3_enabled'"):
+            for row in database.execute("SELECT key,value FROM preferences WHERE key NOT IN "
+                                        "('http3_enabled','parallel_downloads','speed_limit_enabled','speed_limit_kib')"):
                 try:
                     values[row["key"]] = json.loads(row["value"])
                 except (ValueError, TypeError):
@@ -90,17 +92,10 @@ class Storage:
                     continue
             values["concurrent_downloads"] = normalize_concurrency(values.get("concurrent_downloads"))
             values["host_concurrent_downloads"] = normalize_host_concurrency(values.get("host_concurrent_downloads"))
-            for key in ("parallel_downloads",):
-                # Existing installations receive the new defaults, while stored
-                # booleans keep the user's explicit choice.
-                values[key] = values[key] if type(values.get(key)) is bool else True
-            values["speed_limit_enabled"] = values["speed_limit_enabled"] if type(values.get("speed_limit_enabled")) is bool else False
-            rate = values.get("speed_limit_kib")
-            values["speed_limit_kib"] = rate if type(rate) is int and 64 <= rate <= 1048576 else 10240
             return values
 
     def save_settings(self, values: dict):
-        allowed = {"download_folder", "folder_confirmed", "theme", "concurrent_downloads", "host_concurrent_downloads", "scan_after_download", "quality", "output", "parallel_downloads", "speed_limit_enabled", "speed_limit_kib"}
+        allowed = {"download_folder", "folder_confirmed", "theme", "concurrent_downloads", "host_concurrent_downloads", "scan_after_download", "quality", "output"}
         clean = {key: value for key, value in values.items() if key in allowed}
         if "download_folder" in clean and not isinstance(clean["download_folder"], str):
             raise ValueError("Download folder must be a path.")
@@ -112,13 +107,6 @@ class Storage:
             raise ValueError("Choose one to sixteen simultaneous downloads per host.")
         if "scan_after_download" in clean and type(clean["scan_after_download"]) is not bool:
             raise ValueError("Invalid scan preference.")
-        for key in ("parallel_downloads",):
-            if key in clean and type(clean[key]) is not bool:
-                raise ValueError("Invalid transport preference.")
-        if "speed_limit_enabled" in clean and type(clean["speed_limit_enabled"]) is not bool:
-            raise ValueError("Invalid speed limit preference.")
-        if "speed_limit_kib" in clean and (type(clean["speed_limit_kib"]) is not int or not 64 <= clean["speed_limit_kib"] <= 1048576):
-            raise ValueError("Choose a speed limit from 64 to 1048576 KiB/s.")
         if "folder_confirmed" in clean and type(clean["folder_confirmed"]) is not bool:
             raise ValueError("Invalid folder confirmation.")
         if "quality" in clean and clean["quality"] not in ("highest", "2160", "1440", "1080", "720", "480"):
