@@ -1,39 +1,38 @@
 {
   "schemaVersion": 1,
-  "release": "1.19.1",
+  "release": "1.19.2",
   "status": "passed",
-  "validationMode": "focused-download-recovery",
-  "baseline": "v1.19.0",
-  "baselineCommit": "b09935f7d1ce9fe6f4003bce4d8a87d8e09d826a",
-  "date": "2026-10-27",
-  "timezone": "Asia/Seoul",
+  "generatedAt": "2026-10-27T12:17:37.255Z",
+  "validationMode": "focused-desktop-activity",
+  "baseline": "v1.19.1",
+  "baselineCommit": "c9d79dc393b76554d2b2144a52ae5085f11e0f54",
   "userRequestedSkipPreviousChecks": true,
   "priorChecks": "skipped-per-user",
   "liveYouTubeVerified": false,
-  "reportedVideoId": "LghCA95RphM",
-  "reportedFileInspected": false,
   "checks": {
-    "recovery": 13,
-    "releaseScope": 7,
-    "total": 20,
     "build": "passed",
-    "typecheck": "skipped-per-user"
+    "activity": 24,
+    "activityGui": 14,
+    "releaseScope": 10
   },
-  "buildSha256": "6616cf84e6484748082d1f50a41d54f5d030dc2a00ddd5fc09d9067ad18a241a",
+  "buildSha256": "fd1e2a8caacc8e04598e3dc1ec4384ae5882f8daf139c4a750622a1e95de2ba2",
   "sourceSha256": {
+    "desktop/activity.py": "f2b042d920375ab51c5a42beb3a356087c0fed7875963192534f446c504c4092",
     "desktop/bandwidth.py": "c74f9a357b6b32ca3a296e23d739e872b02e1936be0b8fa0bc5d01613d6d4b2e",
     "desktop/concurrency.py": "8d149124f8f12899622838909e87cae9fe831f4da7f367ddd315cf831030e162",
-    "desktop/dependencies-lock.json": "3c8edd9223e027140ad0ad2655d1be16de04daf1c106f9afcc6d3ea20f0ed332",
-    "desktop/engine.py": "c48b6c579c90e826b5a617ebfd190a92bedb298d195072ba99613392bbdb1e32",
+    "desktop/dependencies-lock.json": "e0afa82d6893fa12aa5d6bc9e9063a57e8ee024bbcb3965e71cf8eef05f50e51",
+    "desktop/engine.py": "daf94208fe4f470f0169922efde766135dfe0f93bc7e615ed700d88f934a9eda",
     "desktop/launcher/build.py": "4902f425398b11e24a3b6b3c6fc8ebfe63b605b2c73b45b0470830a62caa3285",
     "desktop/launcher/launcher.c": "019910f3f2a0f464ed9d99a302fb68ffa99333d711ed625879824dd0e3585637",
-    "desktop/launcher/launcher.manifest": "56959ab537ef1716e3ab6a99b5d878a4eb9dce634400b20c1151de4a3bf4d126",
-    "desktop/launcher/launcher.rc": "9b0b6eeaa6d6e1b127fbafe6d5e31f1270c790772760f31b6ec2bae14deb388f",
+    "desktop/launcher/launcher.manifest": "35eefb9e45aac5be1eb9e48d08b6e8087cefae728f545b47cff7fb64995fe278",
+    "desktop/launcher/launcher.rc": "5f2a2d767acb8ff735323a587b610c7d39034855a42d41515f56428e5caa792a",
     "desktop/launcher/test_launcher.py": "7cc241f34c0d64eb5871e8b1b08901484c149230186b08376b291bc4cdb00552",
     "desktop/launcher/toolchain-lock.json": "e30a59ade77d6a2cd4c84296004617f840809e557430c445050e79d94149751f",
     "desktop/launcher/verify_pe.py": "ef29dabcff593ac562301ef7f35535bbb831f727f66676ec0b381eacc3ecfd70",
-    "desktop/main.py": "e3e598e72da9a1aa64db0252930899519d456660333571df4946d06d682d5e58",
+    "desktop/main.py": "9a6a92a07e18c385bcb4d32cdeb3daf9f8bc32f84d63717d8955a6f85e145bda",
     "desktop/storage.py": "dfa9d30d16841e9a2d93fb6e8b8df9888ba92f607fc05eda0f5f4e23bb4d0e27",
+    "desktop/test_activity.py": "9bb75e45350689dba31704fd93c0aa5f61154aab1c0586e48b895a53f2962fd7",
+    "desktop/test_activity_gui.py": "804f2f6dac47f9692e9eaac2bf4a391236c839023e57d746f94508a6dc433890",
     "desktop/test_bandwidth.py": "2c6e2b873b829ea1fb7ce727d6d34ce8a826350779b0d172f47cb019357716ab",
     "desktop/test_concurrency.py": "7563318557fad7acfd4f87f1ebb513178aa365b7c5a96e027f1543261361aef4",
     "desktop/test_concurrency_gui.py": "5e7767d9d6b1145faee88f06ee37e175493fd40f5876e490362cd41ff36d6651",
@@ -56,15 +55,15 @@
     "native/test_internal_scan.py": "1f6bf1e60fe50fc4f00ae3dc2a0cb1c6037122e41a170c8ac70284511c2ee4b9",
     "native/test_windows_antivirus.py": "bd64dfa7b0f374602374eefd46b655779bcbdea46d5187e75ff38aaef8ec84fb",
     "native/windows_antivirus.py": "d31d257a74e3f4f676f82ad7f5b2f0d4a04172d72af52fe8cb40999b83c30c88",
-    "package-lock.json": "c9b83586054bec16468f1142b7780315c226cbc496c8d1db46dfa192f68c5cb8",
-    "package.json": "19be676f0effe39b58ae085f9f1a92f38d293d86199b465575f25798559a14d1",
+    "package-lock.json": "bf90d799213a5cd113a0d7a77b64d68de490e25cd8df59f006d4059ea743e8b8",
+    "package.json": "8c1e365381b9f218c9c7056e17ceefa7e716e15ece713cea9e6e1c91e444e84f",
     "scripts/archive.py": "7d79bf3eb2e930b68193fdc7ba82bb31caf1190b95aeeb5aa3c0d4f9d01f6388",
     "scripts/audit-dependencies.mjs": "986733aa350a0ab382270e16cf992375193554cf32c9073fee3e36cb8c7a376c",
     "scripts/audit-source.mjs": "790b84d7be982dc1af0bf16149d25052f6b1c8e1a74c571f986d13f3852ae23f",
     "scripts/benchmark-native.py": "91da1493e146253925494991f952e76eaa2daa7b6a4eb37819e2be9b822dccef",
     "scripts/benchmark-security.mjs": "7b8f2ed9740502bf2c4ac27d27a8827fcebacd44a425a6fb5316fc047e7c1d54",
     "scripts/benchmark.mjs": "9953ff872a0cc2139864c98a2655fb4b46c741cd0e810dbf5990946be01efa3c",
-    "scripts/build-desktop.py": "04863bab8943292c707a10d318b79afccf673e1e4cbf5720b39218d411434a63",
+    "scripts/build-desktop.py": "0547146d84501a45733c5c1fbdf0f8f4edbf70c92a48431a78b476bb70332973",
     "scripts/build-local.mjs": "37d29c7b99e1f3bbf3ff81fc43c44b52916ca5d4540f110c9637bb1f593d2610",
     "scripts/build.mjs": "6fc094bb2411a4eb531fb602ab55587d5d1849d6cb76e94e9bd80cc2b8b4a460",
     "scripts/encrypt-source.mjs": "c85c9d89423c0c4d7d4bf896e4d5b37311b1d9879ae33c858becaa2fcc4ac666",
@@ -75,9 +74,9 @@
     "scripts/lib/engine-cipher.mjs": "86d5ecd6bbe240cbebf869144d5609944162053fb725f64dac0b91a802071906",
     "scripts/lib/protect-build.mjs": "f7ba19ec5edd1adcb821d744dee56cd8e7f5d77c711cc10c8814a0da1a49a5c5",
     "scripts/lib/release-safety.mjs": "f2aa593317defaf3cb8d3a12f3014e6725c948a9b86a62d351236d82fd79870c",
-    "scripts/package.mjs": "a440d6d4837b793b479343f26ea0841f756b6da08ea3f74475911466af29439d",
+    "scripts/package.mjs": "6f39495c994bbdd565d85f39567f5d0b14214548f6c43077c8cb55feef611c87",
     "scripts/project.mjs": "eba685b7486bd16b789ea1ce5c57c37f604d2eed1ff8f88905cf2ae589eaf66f",
-    "scripts/publish-release.py": "ecd16ebdec9f0af99a0827bd274dbfa674e06ae10bd2201c6998f0aced798473",
+    "scripts/publish-release.py": "0f45b6460cd448fa3e63889e375b4f6861bf1c7ba25cade4cc0623c117db48a0",
     "scripts/test-native.mjs": "df51aab957aec7d02e8f577783a8c94d356e1ccebca8cb2dda093504a72e3282",
     "src/data/database.ts": "9ad2a7536462d778885eecc1340fb649437fd4f3fe6791869dfd1e7b50a26cf5",
     "src/local/antivirus.ts": "93f0e263b6de9e885b4b220cfcc9edf8cebc84ee505560db67fc59bb39bb6e3f",
@@ -171,6 +170,7 @@
     "tests/queue-privacy.test.ts": "067fd865093d6da4bd27fde290e9236096885485f83cf1a01f8c6d3562ac732d",
     "tests/release-safety.test.mjs": "1709938412c9b0670a376ea2863db1bf06bcb166771a1c6715b7244863bc510e",
     "tests/security-runtime.test.ts": "63777d2928c72248107c1b342e71d7b3096705daf33a85b2f197ca1a37ffc664",
+    "tests/test_activity_release.py": "f252762468687d9cfe5639130fa90eda9441351281d3670c34f2276f0dfcdb2e",
     "tests/test_concurrency_release.py": "ff4cbdd868eadc4fd8dae225c9beffa2af9c97b309168a09cfe4588ca8878b82",
     "tests/test_desktop_bundle.py": "dfdd8e49dca0ab5925ea0b7299ae6f65d5adb79ebb18bea22371ede7a4d096d2",
     "tests/test_download_recovery_release.py": "77398b76d1373656a0e56783786cbf81f788fa3593f41157d0db0aaf3eded658",
@@ -185,24 +185,25 @@
     "tsconfig.json": "a447c838b1d18d1c8500c2dc125198660e6a600dde1bceed697a58c186758529"
   },
   "logSha256": {
-    "reports/validation-1.19.1/desktop-build.txt": "76b473b67fa652441f7b273017cbe475114878d9cd54f7994755dd5cf00a16c6",
-    "reports/validation-1.19.1/download-recovery-tests.txt": "bb2f7eb96db435de4333cf1ea1694775eacf6462ce074a4c906724e474467d4f",
-    "reports/validation-1.19.1/extension-build.txt": "3d6f3b5b896b2685c6b8fe7aa95336fe91f9f4f131038d96f2be2d2c8cbb6efd",
-    "reports/validation-1.19.1/launcher-build.txt": "21b817f46cc36435463ee4299273057c95487752f1e7f06ec889b074cd115b32",
-    "reports/validation-1.19.1/release-recovery-tests.txt": "347c2b07fc6af2546ce3cbe40b9aaf37a1a5b3a29df1cfe55e14d59d0d40357a"
+    "reports/validation-1.19.2/activity-tests.txt": "e9592875da6fa2cad445659370a709d1f9a9c536214e4298e858aa6f242a459a",
+    "reports/validation-1.19.2/activity-gui-tests.txt": "c20b1d10b1d3d6b7991912f0c19475b6767a9299c201e15ad71c046ae3b56f0a",
+    "reports/validation-1.19.2/release-activity-tests.txt": "385a2b61de0197214f25ea958cf0ff03ea5a74bfafc4e2eca386269046f22e5b",
+    "reports/validation-1.19.2/extension-build.txt": "3db805fa72c7ccd41637bcb53b295e42edc309ab3ceefa774b28801fc1cd64f2",
+    "reports/validation-1.19.2/launcher-build.txt": "2628bf45695a854333a6ae1b67b1cdae1aa93ed44ae62e0ef61ebba88b17b04a",
+    "reports/validation-1.19.2/desktop-build.txt": "21a25c9fe14edb2e9bd4ab7fe1ae2c48f83b8d9db9687aa61cbacbe480364a4c"
   },
   "desktop": {
     "schemaVersion": 1,
     "name": "My Video App",
-    "version": "1.19.1",
+    "version": "1.19.2",
     "platform": "win32-x64",
     "artifact": "artifacts/my-video-app-desktop-windows-x64.zip",
-    "sha256": "fd9f634c72f0ab37e2e96208748198efc0ace625ec0a173bf9d1edafcb6e6764",
-    "size": 250071083,
-    "sizeMiB": 238.49,
-    "files": 3331,
-    "uncompressedBytes": 639152042,
-    "uncompressedMiB": 609.54,
+    "sha256": "4b1f145da6ca52bfe22a832f0c15512b264458616b76a0e2cac6d6cd842426dd",
+    "size": 250084510,
+    "sizeMiB": 238.5,
+    "files": 3332,
+    "uncompressedBytes": 639200723,
+    "uncompressedMiB": 609.59,
     "versions": {
       "python": "3.13.17",
       "yt-dlp": "2026.10.21",
@@ -216,7 +217,7 @@
       "pycparser": "3.12",
       "ffmpeg": "9.0.2-36-g6882969ce9"
     },
-    "validationMode": "focused-download-recovery",
+    "validationMode": "focused-desktop-activity",
     "nativeTransportMatch": {
       "wheel": "curl_cffi-0.17.0-cp310-abi3-win_amd64.whl",
       "wheel_member": "curl_cffi.libs/libcurl-impersonate-ae864b926b0a86bfa3b18a664407a1ab.dll",
@@ -237,12 +238,12 @@
       "windowsExecutionPerformed": false,
       "priorChecks": "skipped-per-user",
       "liveYouTubeVerified": false,
-      "packagedRuntimeExecution": "Windows CI runs only recovery regression and recovery release scope"
+      "packagedRuntimeExecution": "Windows CI runs only new activity, activity GUI and activity release scope"
     },
     "launcher": {
       "path": "/workspace/myapps/desktop/launcher/MyVideoApp.exe",
       "size": 8192,
-      "sha256": "22d7ff0ba65e766f8042437b0986804e7136b1e1033d76b7068f9a15a4a78860",
+      "sha256": "59f491d1641ef0dee6fc114b899f047b12fc78e561b021975d4f914d846e8cc2",
       "machine": "AMD64",
       "format": "PE32+",
       "subsystem": "Windows GUI",
@@ -262,24 +263,25 @@
   },
   "scope": {
     "real": [
-      "Engine/transfer/SQLite",
-      "Owned temporary file and completed video reuse",
-      "Actual FFmpeg/ffprobe merge",
-      "Original video and audio stream SHA-256 comparison"
+      "UTF-8 local JSONL logger and owned temporary files",
+      "Rotation, concurrent events and memory fallback",
+      "Real Engine/SQLite lifecycle with controlled owned input",
+      "Qt logging page and application lifecycle/error hooks"
     ],
     "replacedBoundaries": [
       "Metadata extraction",
-      "HTTP responses including Range rejection and network interruption",
-      "Compatibility downloader network"
+      "Network and media processors in new logging fixtures",
+      "OS UI error dialogs in lifecycle fixtures"
     ],
-    "regressions": [
-      "94.37% video-to-audio boundary",
-      "Range probe403 ordinaryGET recovery",
-      "Audio-only one-time fallback",
-      "Completed video reuse on retry",
-      "Specific HTTP/space/permission errors",
-      "Integrity/cancellation/ownership protections"
-    ]
+    "newChecks": [
+      "Structured metadata privacy and safe error codes",
+      "Sampled progress and fail-safe logging",
+      "Bounded recent records and warning/error filtering",
+      "Readable Korean GUI, copy filtered JSONL, folder action",
+      "Application start/ready/shutdown and worker-before-unlock lifetime",
+      "Commit/version/platform/package-bound release evidence"
+    ],
+    "visualReview": "Light and dark logging page with synthetic records"
   },
   "windowsVerification": {
     "localExecution": false,
@@ -288,15 +290,21 @@
     "evidence": "Release WINDOWS-VALIDATION.json"
   },
   "skipped": [
-    "all previous1.19 89tests",
-    "HTTP3/proxy/TLS suites",
-    "bandwidth and throughput suites",
-    "full GUI/browser/antivirus/codec/algorithm suites",
-    "dependency audits and TypeScript typecheck"
+    "All existing tests, including 1.19.1 download recovery",
+    "Previous HTTP/3, proxy/TLS, range, bandwidth and throughput suites",
+    "Previous whole GUI/browser/antivirus/codec/algorithm suites",
+    "Dependency audits and TypeScript typecheck"
   ],
-  "releaseScopeEncodingCheck": "python3 -I -B -X warn_default_encoding -W error::EncodingWarning tests/test_download_recovery_release.py -v",
-  "followUp": {
-    "changed": "Release test explicitly reads UTF-8 source files on Windows CP1252",
-    "rerun": "Only the seven release-scope checks; product recovery code and thirteen recovery checks unchanged"
+  "privacy": {
+    "rawUrls": false,
+    "authenticationValues": false,
+    "exceptionMessages": false,
+    "tracebackLocals": false,
+    "automaticUpload": false
+  },
+  "retention": {
+    "fileBytes": 2097152,
+    "backupFiles": 4,
+    "guiRecentLimit": 500
   }
 }

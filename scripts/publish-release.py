@@ -27,6 +27,10 @@ RECOVERY_VERSION = '1.19.1'
 RECOVERY_MODE = 'focused-download-recovery'
 RECOVERY_BASELINE = 'v1.19.0'
 RECOVERY_BASELINE_COMMIT = 'b09935f7d1ce9fe6f4003bce4d8a87d8e09d826a'
+ACTIVITY_VERSION = '1.19.2'
+ACTIVITY_MODE = 'focused-desktop-activity'
+ACTIVITY_BASELINE = 'v1.19.1'
+ACTIVITY_BASELINE_COMMIT = 'c9d79dc393b76554d2b2144a52ae5085f11e0f54'
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -39,7 +43,7 @@ def validate():
     version = json.loads((ROOT / 'package.json').read_text(encoding='utf-8'))['version']
     if not re.fullmatch(r'\d+\.\d+\.\d+', version):
         raise ValueError('A stable numeric version is required.')
-    checksums = dict(line.split()[::-1] for line in (ROOT / 'artifacts/SHA256SUMS').read_text().splitlines() if line.strip())
+    checksums = dict(line.split()[::-1] for line in (ROOT / 'artifacts/SHA256SUMS').read_text(encoding='utf-8').splitlines() if line.strip())
     hashes = {}
     for name in ASSETS:
         asset = ROOT / 'artifacts' / name
@@ -78,11 +82,18 @@ def validate():
                     for required in ('desktop/concurrency.py', 'runtime/python/python.exe'):
                         if 'MyVideoApp/' + required not in names:
                             raise ValueError('Desktop concurrency runtime missing: ' + required)
-                elif version in (TRANSPORT_VERSION, RECOVERY_VERSION):
+                elif version in (TRANSPORT_VERSION, RECOVERY_VERSION, ACTIVITY_VERSION):
                     for required in ('desktop/concurrency.py', 'desktop/transport.py', 'desktop/transfer.py', 'desktop/bandwidth.py',
                                      'runtime/python/python.exe', 'runtime/python/Lib/site-packages/curl_cffi/__init__.py'):
                         if 'MyVideoApp/' + required not in names:
                             raise ValueError('Desktop transport runtime missing: ' + required)
+                if version == ACTIVITY_VERSION:
+                    required = 'desktop/activity.py'
+                    if 'MyVideoApp/' + required not in names:
+                        raise ValueError('Desktop activity logging module missing: ' + required)
+                    if (required not in sources
+                            or hashlib.sha256(archive.read('MyVideoApp/' + required)).hexdigest() != sources[required]):
+                        raise ValueError('Desktop activity logging source identity is missing or stale.')
     return version, hashes
 
 def validate_transport_report(report):
@@ -104,7 +115,15 @@ def validate_windows_evidence(version, commit, evidence, desktop_sha256,
     if not isinstance(evidence, dict) or any(evidence.get(key) != value for key, value in (
             ('version', version), ('commit', commit), ('platform', 'windows-x64'))):
         raise SystemExit('Actual packaged Windows verification is missing or stale.')
-    if version == RECOVERY_VERSION:
+    if version == ACTIVITY_VERSION:
+        required = {'validationMode': ACTIVITY_MODE, 'baseline': ACTIVITY_BASELINE,
+                    'baselineCommit': ACTIVITY_BASELINE_COMMIT, 'desktopSha256': desktop_sha256,
+                    'activityTests': 'passed', 'activityGuiTests': 'passed',
+                    'releaseScopeTests': 'passed', 'priorChecks': 'skipped-per-user'}
+        if (any(evidence.get(key) != value for key, value in required.items())
+                or evidence.get('liveYouTubeVerified') is not False):
+            raise SystemExit('Focused desktop activity Windows verification is missing or stale.')
+    elif version == RECOVERY_VERSION:
         required = {'validationMode': RECOVERY_MODE, 'baseline': RECOVERY_BASELINE,
                     'baselineCommit': RECOVERY_BASELINE_COMMIT, 'desktopSha256': desktop_sha256,
                     'recoveryTests': 'passed', 'releaseScopeTests': 'passed',
@@ -246,8 +265,14 @@ def main():
                       '- **오류 구분:** 오디오·영상·검사·병합 단계와 HTTP 상태를 표시하고 실제 용량 부족·권한 오류를 구분합니다.\n'
                       '- **검증 범위:** 이번 복구 경로와 실제 로컬 영상·음성 병합만 재검증했습니다. 이전 검사는 건너뛰었으며 '
                       '제보된 실제 YouTube 서버 다운로드는 검증하지 않았습니다.\n') if version == RECOVERY_VERSION else ''
+    activity_notes = ('- **실행·활동 로그:** 앱 실행부터 정상 종료·오류까지 기록하며 사이드바의 **실행 로그** 메뉴에서 확인할 수 있습니다.\n'
+                      '- **로그 위치·보관:** `%LOCALAPPDATA%\\MyVideoApp\\Desktop\\logs\\activity.jsonl`에 UTF-8로 저장합니다. '
+                      '파일당 2MiB, 현재 로그와 이전 로그 4개까지 약 10MiB로 자동 순환합니다. '
+                      '원시 URL·쿠키·인증 헤더·추출기 진단 등 민감한 정보는 기록하지 않습니다.\n'
+                      '- **검증 범위:** 새 활동 로그·로그 GUI·릴리스 범위 검사만 실행했습니다. 이전 검사는 사용자 요청으로 모두 건너뛰었으며 '
+                      '실제 YouTube 다운로드는 재검증하지 않았습니다.\n') if version == ACTIVITY_VERSION else ''
     notes = ('My Video App **' + version + '**\n\n'
-             + concurrency_notes + transport_notes + recovery_notes +
+             + concurrency_notes + transport_notes + recovery_notes + activity_notes +
              '- **Windows 앱:** `my-video-app-desktop-windows-x64.zip` 전체 압축 해제 후 `My Video App.exe` 실행. '
              'YouTube·최고 화질·MP3/M4A·병합·대기열·기록·설정. Python·yt-dlp·Deno·FFmpeg·Qt 내장. 별도 도우미 등록·API 키 불필요.\n'
              '- **Chrome 확장:** `my-video-app-extension.zip`. **YouTube 제외**, 일반 미디어·HLS/DASH·로컬 도구 유지.\n'

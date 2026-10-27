@@ -1,0 +1,15 @@
+test_accepts_only_new_activity_evidence_without_previous_reports (__main__.ActivityReleaseTests.test_accepts_only_new_activity_evidence_without_previous_reports) ... ok
+test_activity_evidence_is_bound_to_commit_version_platform_and_archive (__main__.ActivityReleaseTests.test_activity_evidence_is_bound_to_commit_version_platform_and_archive) ... ok
+test_build_requires_activity_module_before_packaging (__main__.ActivityReleaseTests.test_build_requires_activity_module_before_packaging) ... ok
+test_every_activity_evidence_field_is_required (__main__.ActivityReleaseTests.test_every_activity_evidence_field_is_required) ... ok
+test_packager_binds_activity_scope_to_current_sources_and_new_checks_only (__main__.ActivityReleaseTests.test_packager_binds_activity_scope_to_current_sources_and_new_checks_only) ... ok
+test_publisher_accepts_packaged_activity_with_current_source_identity (__main__.ActivityReleaseTests.test_publisher_accepts_packaged_activity_with_current_source_identity) ... ok
+test_publisher_refuses_to_move_existing_activity_tag_for_different_content (__main__.ActivityReleaseTests.test_publisher_refuses_to_move_existing_activity_tag_for_different_content) ... ok
+test_publisher_requires_activity_module_and_its_packaged_source_identity (__main__.ActivityReleaseTests.test_publisher_requires_activity_module_and_its_packaged_source_identity) ... ok
+test_workflow_runs_exactly_three_new_suites_with_bundled_isolated_python (__main__.ActivityReleaseTests.test_workflow_runs_exactly_three_new_suites_with_bundled_isolated_python) ... ok
+test_wrong_scope_or_unperformed_activity_checks_are_rejected (__main__.ActivityReleaseTests.test_wrong_scope_or_unperformed_activity_checks_are_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.009s
+
+OK

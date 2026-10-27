@@ -12,6 +12,7 @@ on:
       - tests/test_transport_release.py
       - tests/desktop_transport_server.py
       - tests/requirements-desktop-transport.lock
+      - tests/test_activity_release.py
       - artifacts/my-video-app-extension.zip
       - artifacts/my-video-app-source.zip
       - artifacts/SHA256SUMS
@@ -49,18 +50,20 @@ jobs:
       - name: Build the pinned portable Windows app
         run: python -B scripts/build-desktop.py
 
-      - name: Verify only the affected download recovery path
+      - name: Verify only the new desktop activity logging scope
         shell: pwsh
         run: |
-          Expand-Archive -LiteralPath artifacts/my-video-app-desktop-windows-x64.zip -DestinationPath "$env:RUNNER_TEMP/myvideoapp-recovery"
-          $appRoot = "$env:RUNNER_TEMP/myvideoapp-recovery/MyVideoApp"
+          Expand-Archive -LiteralPath artifacts/my-video-app-desktop-windows-x64.zip -DestinationPath "$env:RUNNER_TEMP/myvideoapp-activity"
+          $appRoot = "$env:RUNNER_TEMP/myvideoapp-activity/MyVideoApp"
           $python = "$appRoot/runtime/python/python.exe"
-          & $python -I -B tests/test_download_recovery_release.py -v
+          & $python -I -B tests/test_activity_release.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B desktop/test_download_recovery.py --app-root "$appRoot" -v
+          & $python -I -B desktop/test_activity.py --app-root "$appRoot" -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          # Earlier protocol, bandwidth, GUI and whole-application suites stay skipped.
-          @{version=(Get-Content package.json | ConvertFrom-Json).version; commit=$env:GITHUB_SHA; platform="windows-x64"; validationMode="focused-download-recovery"; baseline="v1.19.0"; baselineCommit="b09935f7d1ce9fe6f4003bce4d8a87d8e09d826a"; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); recoveryTests="passed"; releaseScopeTests="passed"; priorChecks="skipped-per-user"; liveYouTubeVerified=$false} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
+          & $python -I -B desktop/test_activity_gui.py --app-root "$appRoot" -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # All previous suites stay skipped at the user's request.
+          @{version=(Get-Content -Encoding utf8 package.json | ConvertFrom-Json).version; commit=$env:GITHUB_SHA; platform="windows-x64"; validationMode="focused-desktop-activity"; baseline="v1.19.1"; baselineCommit="c9d79dc393b76554d2b2144a52ae5085f11e0f54"; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); activityTests="passed"; activityGuiTests="passed"; releaseScopeTests="passed"; priorChecks="skipped-per-user"; liveYouTubeVerified=$false} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
 
       - name: Publish both products in one release
         env:

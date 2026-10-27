@@ -1,0 +1,19 @@
+test_already_running_never_opens_log_writer (__main__.ActivityGuiTests.test_already_running_never_opens_log_writer) ... ok
+test_engine_without_activity_still_opens (__main__.ActivityGuiTests.test_engine_without_activity_still_opens) ... ok
+test_error_filter_and_copy_use_only_visible_records (__main__.ActivityGuiTests.test_error_filter_and_copy_use_only_visible_records) ... ok
+test_event_loop_failure_keeps_lock_until_cancelled_workers_finish (__main__.ActivityGuiTests.test_event_loop_failure_keeps_lock_until_cancelled_workers_finish) ... ok
+test_fourth_navigation_and_bounded_readonly_plain_text (__main__.ActivityGuiTests.test_fourth_navigation_and_bounded_readonly_plain_text) ... ok
+test_initialization_failure_records_shutdown_and_releases_lock (__main__.ActivityGuiTests.test_initialization_failure_records_shutdown_and_releases_lock) ... ok
+test_missing_previous_shutdown_warns_and_clean_shutdown_does_not (__main__.ActivityGuiTests.test_missing_previous_shutdown_warns_and_clean_shutdown_does_not) ... ok
+test_open_folder_targets_local_log_directory (__main__.ActivityGuiTests.test_open_folder_targets_local_log_directory) ... ok
+test_queue_cancel_retry_and_shutdown_events (__main__.ActivityGuiTests.test_queue_cancel_retry_and_shutdown_events) ... ok
+test_readable_start_and_compact_typed_diagnostics_keep_one_block (__main__.ActivityGuiTests.test_readable_start_and_compact_typed_diagnostics_keep_one_block) ... ok
+test_refresh_button_and_visible_only_timer (__main__.ActivityGuiTests.test_refresh_button_and_visible_only_timer) ... ok
+test_session_hooks_capture_restore_and_failed_shutdown (__main__.ActivityGuiTests.test_session_hooks_capture_restore_and_failed_shutdown) ... ok
+test_storage_failure_is_visible_even_without_records (__main__.ActivityGuiTests.test_storage_failure_is_visible_even_without_records) ... ok
+test_ui_and_worker_failures_are_safe_and_diagnostic (__main__.ActivityGuiTests.test_ui_and_worker_failures_are_safe_and_diagnostic) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 1.459s
+
+OK

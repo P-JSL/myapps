@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "name": "My Video App",
-  "version": "1.19.1",
+  "version": "1.19.2",
   "platform": "win32-x64",
   "artifact": "artifacts/my-video-app-desktop-windows-x64.zip",
-  "sha256": "fd9f634c72f0ab37e2e96208748198efc0ace625ec0a173bf9d1edafcb6e6764",
-  "size": 250071083,
-  "sizeMiB": 238.49,
-  "files": 3331,
-  "uncompressedBytes": 639152042,
-  "uncompressedMiB": 609.54,
+  "sha256": "4b1f145da6ca52bfe22a832f0c15512b264458616b76a0e2cac6d6cd842426dd",
+  "size": 250084510,
+  "sizeMiB": 238.5,
+  "files": 3332,
+  "uncompressedBytes": 639200723,
+  "uncompressedMiB": 609.59,
   "versions": {
     "python": "3.13.17",
     "yt-dlp": "2026.10.21",
@@ -23,7 +23,7 @@
     "pycparser": "3.12",
     "ffmpeg": "9.0.2-36-g6882969ce9"
   },
-  "validationMode": "focused-download-recovery",
+  "validationMode": "focused-desktop-activity",
   "nativeTransportMatch": {
     "wheel": "curl_cffi-0.17.0-cp310-abi3-win_amd64.whl",
     "wheel_member": "curl_cffi.libs/libcurl-impersonate-ae864b926b0a86bfa3b18a664407a1ab.dll",
@@ -44,12 +44,12 @@
     "windowsExecutionPerformed": false,
     "priorChecks": "skipped-per-user",
     "liveYouTubeVerified": false,
-    "packagedRuntimeExecution": "Windows CI runs only recovery regression and recovery release scope"
+    "packagedRuntimeExecution": "Windows CI runs only new activity, activity GUI and activity release scope"
   },
   "launcher": {
     "path": "/workspace/myapps/desktop/launcher/MyVideoApp.exe",
     "size": 8192,
-    "sha256": "22d7ff0ba65e766f8042437b0986804e7136b1e1033d76b7068f9a15a4a78860",
+    "sha256": "59f491d1641ef0dee6fc114b899f047b12fc78e561b021975d4f914d846e8cc2",
     "machine": "AMD64",
     "format": "PE32+",
     "subsystem": "Windows GUI",

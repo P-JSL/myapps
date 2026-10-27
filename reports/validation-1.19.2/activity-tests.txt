@@ -1,0 +1,29 @@
+test_error_filter_skips_info_parsing_and_accepts_noncompact_records (__main__.ActivityLogTests.test_error_filter_skips_info_parsing_and_accepts_noncompact_records) ... ok
+test_exception_never_formats_unknown_exception (__main__.ActivityLogTests.test_exception_never_formats_unknown_exception) ... ok
+test_exception_preserves_codes_and_safe_frames_without_raw_message (__main__.ActivityLogTests.test_exception_preserves_codes_and_safe_frames_without_raw_message) ... ok
+test_multiple_threads_write_one_complete_record_per_emit (__main__.ActivityLogTests.test_multiple_threads_write_one_complete_record_per_emit) ... ok
+test_numeric_fields_reject_nonfinite_wrong_types_and_unbounded_values (__main__.ActivityLogTests.test_numeric_fields_reject_nonfinite_wrong_types_and_unbounded_values) ... ok
+test_post_initialization_write_failure_preserves_recent_records (__main__.ActivityLogTests.test_post_initialization_write_failure_preserves_recent_records) ... ok
+test_recent_caps_large_requested_result (__main__.ActivityLogTests.test_recent_caps_large_requested_result) ... ok
+test_recent_limit_and_warning_error_filter (__main__.ActivityLogTests.test_recent_limit_and_warning_error_filter) ... ok
+test_recent_results_are_independent_copies (__main__.ActivityLogTests.test_recent_results_are_independent_copies) ... ok
+test_recent_tolerates_invalid_utf8_oversized_truncated_and_forged_rows (__main__.ActivityLogTests.test_recent_tolerates_invalid_utf8_oversized_truncated_and_forged_rows) ... ok
+test_rotation_has_bounded_files_complete_json_and_valid_utf8 (__main__.ActivityLogTests.test_rotation_has_bounded_files_complete_json_and_valid_utf8) ... ok
+test_schema_sessions_and_persistence (__main__.ActivityLogTests.test_schema_sessions_and_persistence) ... ok
+test_unavailable_directory_has_safe_warning_and_memory_fallback (__main__.ActivityLogTests.test_unavailable_directory_has_safe_warning_and_memory_fallback) ... ok
+test_whitelist_rejects_urls_nested_fields_and_hostile_values (__main__.ActivityLogTests.test_whitelist_rejects_urls_nested_fields_and_hostile_values) ... ok
+test_cancellation_records_terminal_state_and_cleans_owned_media (__main__.EngineActivityTests.test_cancellation_records_terminal_state_and_cleans_owned_media) ... ok
+test_default_engine_runs_without_creating_log_directory (__main__.EngineActivityTests.test_default_engine_runs_without_creating_log_directory) ... ok
+test_error_preserves_diagnostic_code_without_exception_args (__main__.EngineActivityTests.test_error_preserves_diagnostic_code_without_exception_args) ... ok
+test_history_write_failure_is_logged_before_job_registration (__main__.EngineActivityTests.test_history_write_failure_is_logged_before_job_registration) ... ok
+test_injected_logger_exception_cannot_interrupt_download (__main__.EngineActivityTests.test_injected_logger_exception_cannot_interrupt_download) ... ok
+test_invalid_request_is_logged_before_job_registration (__main__.EngineActivityTests.test_invalid_request_is_logged_before_job_registration) ... ok
+test_log_write_failure_during_download_does_not_change_result (__main__.EngineActivityTests.test_log_write_failure_during_download_does_not_change_result) ... ok
+test_metadata_validation_failure_is_logged_before_extraction (__main__.EngineActivityTests.test_metadata_validation_failure_is_logged_before_extraction) ... ok
+test_success_records_lifecycle_tracks_and_sampled_progress (__main__.EngineActivityTests.test_success_records_lifecycle_tracks_and_sampled_progress) ... ok
+test_unavailable_log_does_not_change_successful_download (__main__.EngineActivityTests.test_unavailable_log_does_not_change_successful_download) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 0.132s
+
+OK

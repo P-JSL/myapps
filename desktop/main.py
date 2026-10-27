@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass, field
 from datetime import datetime
+import json
 import os
 from pathlib import Path
 import sys
@@ -29,13 +30,13 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import (
     QAction, QColor, QCloseEvent, QDesktopServices, QDragEnterEvent, QDropEvent,
-    QFont, QFontMetrics, QIcon, QKeySequence, QPainter, QPainterPath, QPalette,
+    QFont, QFontDatabase, QFontMetrics, QIcon, QKeySequence, QPainter, QPainterPath, QPalette,
     QPen, QPixmap, QShortcut,
 )
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton,
-    QScrollArea, QSizePolicy, QSpinBox, QStackedWidget, QVBoxLayout, QWidget,
+    QPlainTextEdit, QScrollArea, QSizePolicy, QSpinBox, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 try:
@@ -44,6 +45,7 @@ try:
     )
     from .theme import DARK, LIGHT, stylesheet
     from .storage import default_data_dir
+    from .activity import ActivityLog
     from .concurrency import (
         MAX_CONCURRENT_DOWNLOADS, MAX_HOST_DOWNLOADS, effective_concurrency,
         normalize_concurrency, normalize_host_concurrency, source_key,
@@ -54,13 +56,14 @@ except ImportError:
     )
     from theme import DARK, LIGHT, stylesheet
     from storage import default_data_dir
+    from activity import ActivityLog
     from concurrency import (
         MAX_CONCURRENT_DOWNLOADS, MAX_HOST_DOWNLOADS, effective_concurrency,
         normalize_concurrency, normalize_host_concurrency, source_key,
     )
 
 
-VERSION = "1.19.1"
+VERSION = "1.19.2"
 APP_ROOT = Path(__file__).resolve().parent.parent
 ACTIVE_STAGES = {"queued", "preparing", "waiting", "downloading", "processing", "scanning"}
 STAGE_NAMES = {
@@ -70,6 +73,175 @@ STAGE_NAMES = {
     "scanning": "보안 검사 중", "complete": "완료", "completed": "완료",
     "cancelled": "취소됨", "error": "실패", "interrupted": "중단됨", "failed": "실패",
 }
+_ACTIVITY_EVENT_NAMES = {
+    "activity.unknown": "기타 실행 기록", "activity.unavailable": "로그 저장 불가",
+    "app.start": "앱 시작", "app.ready": "앱 준비 완료", "app.shutdown": "앱 종료",
+    "app.previous_unclean": "이전 실행의 종료 기록 없음", "app.initialization_failed": "앱 초기화 실패",
+    "app.event_loop_failed": "앱 실행 오류", "app.unhandled_exception": "처리되지 않은 앱 오류",
+    "app.thread_exception": "백그라운드 작업 오류", "queue.add": "다운로드 대기열 추가",
+    "queue.cancelled": "대기 중인 다운로드 취소", "queue": "다운로드 대기열 추가",
+    "cancel": "다운로드 취소 요청", "retry": "다운로드 재시도 요청", "queued_cancel": "대기 중인 다운로드 취소",
+    "download.queued": "다운로드 대기", "download.requested": "다운로드 요청",
+    "download.started": "다운로드 시작", "download.retry": "다운로드 재시도",
+    "download.retry_requested": "다운로드 재시도 요청", "download.cancel_requested": "다운로드 취소 요청",
+    "download.progress": "다운로드 진행", "download.completed": "다운로드 완료",
+    "download.cancelled": "다운로드 취소", "download.failed": "다운로드 실패", "download.finished": "다운로드 작업 종료",
+    "preparation.begin": "다운로드 준비 시작", "preparation.end": "다운로드 준비 완료",
+    "extraction.begin": "영상 정보 확인 시작", "extraction.end": "영상 정보 확인 완료",
+    "track.begin": "트랙 수신 시작", "track.end": "트랙 수신 완료", "track.reused": "저장된 트랙 재사용",
+    "probe.begin": "미디어 확인 시작", "probe.end": "미디어 확인 완료",
+    "processing.begin": "파일 처리 시작", "processing.end": "파일 처리 완료",
+    "publish.begin": "최종 파일 저장 시작", "publish.end": "최종 파일 저장 완료",
+    "scan.begin": "보안 검사 시작", "scan.end": "보안 검사 완료", "transfer.fallback": "수신 방식 변경",
+    "settings.save_failed": "설정 저장 실패", "history.read_failed": "다운로드 기록 읽기 실패",
+    "worker.failed": "다운로드 작업 오류", "storage.failed": "로컬 저장소 오류",
+    "metadata.requested": "영상 정보 요청", "metadata.completed": "영상 정보 확인 완료",
+    "metadata.failed": "영상 정보 확인 실패", "metadata.cancelled": "영상 정보 확인 취소",
+}
+_ACTIVITY_VALUE_NAMES = {
+    "youtube": "YouTube", "direct": "직접 주소", "highest": "최고 화질", "original": "원본",
+    "video": "영상", "audio": "오디오", "single": "단일", "parallel": "병렬",
+    "convert": "변환", "merge": "병합", "remux": "컨테이너 변경", "success": "성공", "failed": "실패",
+    "clean": "정상", "complete": "완료", "cancelled": "취소", "skipped": "생략", "unavailable": "사용 불가",
+    "not_supported": "지원되지 않음", "missing_shutdown": "이전 종료 기록 없음", "compatibility": "호환성 처리",
+    "requested": "사용자 요청", "validation": "검증", "storage": "저장소", "active": "진행 중",
+    "mismatch": "불일치", "unsupported_platform": "지원되지 않는 운영체제", "defender_unavailable": "Defender 사용 불가",
+    "add": "추가", "cancel": "취소", "retry": "재시도", "remove": "삭제", "save": "저장",
+    "start": "시작", "shutdown": "종료", "extracting": "영상 정보 확인", "probing": "미디어 확인", "publishing": "최종 파일 저장",
+    **STAGE_NAMES,
+}
+_ACTIVITY_DETAIL_NAMES = {
+    "error_type": "오류", "http_status": "HTTP", "errno": "OS", "winerror": "Windows",
+    "transport_code": "전송 코드", "returncode": "프로세스 코드", "attempt": "시도",
+    "source_kind": "종류", "quality": "화질", "output": "형식", "container": "컨테이너", "track_kind": "트랙",
+    "transport": "연결", "transfer_mode": "수신", "operation": "처리", "phase": "단계", "outcome": "결과",
+    "reason": "사유", "action": "동작", "downloaded": "수신", "total": "전체", "bytes": "크기", "byte_count": "크기",
+    "track_index": "트랙 번호", "track_count": "트랙 수", "connections": "연결 수", "count": "개수",
+    "active_count": "진행", "queued_count": "대기", "pid": "프로세스", "duration_ms": "소요", "duration": "소요",
+    "percent": "진행률", "speed": "속도", "eta": "남은 시간", "delay": "대기 시간", "scan": "보안 검사",
+    "retry": "재시도", "reused": "재사용", "resume": "이어받기", "published": "최종 저장", "compatibility_used": "호환성 처리",
+}
+
+
+def _activity_literal(value: Any, limit: int = 80) -> str:
+    """Keep one bounded plain-text line even for unfamiliar diagnostic codes."""
+    return "".join(character if character.isprintable() else " " for character in str(value))[:limit]
+
+
+def activity_line(record: dict) -> str:
+    """Present safe diagnostic fields without repeating the JSON envelope."""
+    try:
+        timestamp = datetime.fromisoformat(str(record.get("timestamp", "")).replace("Z", "+00:00"))
+        timestamp_text = timestamp.astimezone().strftime("%m-%d %H:%M:%S")
+    except (ValueError, TypeError, OSError):
+        timestamp_text = "시간 없음"
+    level = {"DEBUG": "상세", "INFO": "정보", "WARNING": "주의", "ERROR": "오류", "CRITICAL": "심각"}.get(record.get("level"), "정보")
+    event = _activity_literal(record.get("event", "activity.unknown"), 64)
+    parts = [f"{timestamp_text} [{level}] {_ACTIVITY_EVENT_NAMES.get(event, event)}"]
+    if record.get("job_id"):
+        parts.append("작업 " + _activity_literal(record["job_id"], 8))
+    elif event in {"app.start", "app.shutdown"} and record.get("session"):
+        parts.append("실행 " + _activity_literal(record["session"], 8))
+    detail = record.get("detail") if isinstance(record.get("detail"), dict) else {}
+    if record.get("stage"):
+        stage = _activity_literal(record["stage"], 32)
+        parts.append("단계 " + _ACTIVITY_VALUE_NAMES.get(stage, stage))
+    for key, title in _ACTIVITY_DETAIL_NAMES.items():
+        if key not in detail:
+            continue
+        value = detail[key]
+        if type(value) is bool:
+            formatted = "켬" if value else "끔"
+        elif type(value) in (int, float):
+            formatted = (format_bytes(value) if key in {"downloaded", "total", "bytes", "byte_count"} else
+                         format_bytes(value) + "/s" if key == "speed" else
+                         f"{value:g} ms" if key == "duration_ms" else f"{value:g}초" if key in {"duration", "eta", "delay"} else
+                         f"{value:g}%" if key == "percent" else f"{value:g}")
+        else:
+            literal = _activity_literal(value)
+            formatted = _ACTIVITY_VALUE_NAMES.get(literal, literal)
+        parts.append(f"{title} {formatted}")
+    trace = detail.get("traceback")
+    if isinstance(trace, list) and trace:
+        frames = []
+        for frame in trace[-2:]:
+            if isinstance(frame, dict):
+                frames.append(f"{_activity_literal(frame.get('file', ''), 32)}:{_activity_literal(frame.get('line', ''), 8)}"
+                              f" {_activity_literal(frame.get('function', ''), 40)}")
+        if frames:
+            parts.append("위치 " + " ← ".join(frames))
+    return " · ".join(parts)
+
+
+def _activity_emit(activity, event: str, **fields) -> None:
+    """Diagnostics must never interrupt a user action or shutdown."""
+    if activity is not None:
+        try:
+            activity.emit(event, **fields)
+        except Exception:
+            pass
+
+
+def _activity_exception(activity, event: str, error: BaseException, **fields) -> None:
+    if activity is not None:
+        try:
+            activity.exception(event, error, **fields)
+        except Exception:
+            pass
+
+
+class ActivitySession:
+    """Own one lifecycle and temporarily preserve the process exception hooks."""
+    def __init__(self, activity):
+        self.activity = activity
+        self.failed = False
+        self._closed = False
+        self._started = time.monotonic()
+        self._sys_hook = sys.excepthook
+        self._thread_hook = threading.excepthook
+
+    def start(self):
+        try:
+            previous = [record for record in self.activity.recent(limit=500)
+                        if record.get("session") != self.activity.session_id]
+            if previous:
+                last_session = previous[-1].get("session")
+                if last_session and not any(record.get("event") == "app.shutdown"
+                                            and record.get("session") == last_session for record in previous):
+                    _activity_emit(self.activity, "app.previous_unclean", level="WARNING", reason="missing_shutdown")
+        except Exception:
+            pass
+        _activity_emit(self.activity, "app.start", pid=os.getpid())
+        sys.excepthook = self._unhandled
+        threading.excepthook = self._thread_unhandled
+
+    def _unhandled(self, error_type, error, traceback):
+        self.capture("app.unhandled_exception", error)
+        self._sys_hook(error_type, error, traceback)
+
+    def _thread_unhandled(self, arguments):
+        self.capture("app.thread_exception", arguments.exc_value)
+        self._thread_hook(arguments)
+
+    def ready(self):
+        _activity_emit(self.activity, "app.ready")
+
+    def capture(self, event: str, error: BaseException):
+        self.failed = True
+        _activity_exception(self.activity, event, error)
+
+    def close(self):
+        if self._closed:
+            return
+        self._closed = True
+        sys.excepthook = self._sys_hook
+        threading.excepthook = self._thread_hook
+        _activity_emit(self.activity, "app.shutdown", outcome="failed" if self.failed else "clean",
+                       duration_ms=round((time.monotonic() - self._started) * 1000))
+        try:
+            self.activity.close()
+        except Exception:
+            pass
 
 
 def colors() -> dict[str, str]:
@@ -428,7 +600,9 @@ class DownloadWorker(QRunnable):
             self.signals.failed.emit(self.item.job_id, str(exc) or "다운로드를 취소했습니다.", True)
         except EngineError as exc:
             self.signals.failed.emit(self.item.job_id, str(exc), False)
-        except Exception:
+        except Exception as exc:
+            _activity_exception(getattr(self.engine, "activity", None), "worker.failed", exc,
+                                job_id=self.item.job_id, stage=self.item.stage)
             self.signals.failed.emit(
                 self.item.job_id, "다운로드를 완료하지 못했습니다. 저장 폴더와 인터넷 연결을 확인하고 다시 시도하세요.", False)
         finally:
@@ -570,6 +744,7 @@ class MainWindow(QMainWindow):
     def __init__(self, engine: Engine | None = None):
         super().__init__()
         self.engine = engine if engine is not None else Engine(APP_ROOT)
+        self.activity = getattr(self.engine, "activity", None)
         self.preferences = self.engine.settings()
         self.dark = self.preferences.get("theme", "light") == "dark"
         app = QApplication.instance()
@@ -629,6 +804,11 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(self._build_downloads())
         self.pages.addWidget(self._build_history())
         self.pages.addWidget(self._build_settings())
+        self.pages.addWidget(self._build_activity())
+        self.activity_timer = QTimer(self)
+        self.activity_timer.setInterval(2000)
+        self.activity_timer.timeout.connect(self._refresh_visible_activity)
+        self.pages.currentChanged.connect(self._activity_page_changed)
         workspace_layout.addWidget(self.pages, 1)
         self.toast = label("", "Toast", True)
         self.toast.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -663,7 +843,8 @@ class MainWindow(QMainWindow):
         self.nav_group = QButtonGroup(self)
         self.nav_group.setExclusive(True)
         self.nav_buttons = []
-        for index, (text, icon_name) in enumerate((("다운로드", "download"), ("다운로드 기록", "history"), ("설정", "settings"))):
+        for index, (text, icon_name) in enumerate((("다운로드", "download"), ("다운로드 기록", "history"),
+                                                  ("설정", "settings"), ("실행 로그", "file"))):
             nav = button(f"  {text}", "Nav", icon_name)
             nav.setCheckable(True)
             nav.setIconSize(QSize(20, 20))
@@ -1010,11 +1191,122 @@ class MainWindow(QMainWindow):
         content.addStretch()
         return page
 
+    def _build_activity(self) -> QWidget:
+        page = QWidget()
+        content = QVBoxLayout(page)
+        content.setContentsMargins(0, 0, 0, 0)
+        content.setSpacing(16)
+        self._page_heading(content, "실행 로그", "앱의 시작과 종료, 다운로드 단계와 오류를 확인하세요.")
+        content.addWidget(label("로그는 이 PC에만 약 10 MiB까지 보관됩니다. 서명된 다운로드 주소와 인증 정보는 기록하지 않습니다.", "Small", True))
+        self.activity_path = label(str(self.activity.path) if self.activity is not None else "로그 경로를 사용할 수 없습니다.", "Small", True)
+        self.activity_path.setAccessibleName("실행 로그 파일 경로")
+        self.activity_path.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        content.addWidget(self.activity_path)
+        controls = row()
+        self.activity_errors_only = QCheckBox("주의·오류만 표시")
+        self.activity_errors_only.setAccessibleName("실행 로그 주의·오류만 표시")
+        self.activity_errors_only.toggled.connect(self._refresh_activity)
+        controls.addWidget(self.activity_errors_only)
+        controls.addStretch()
+        self.activity_refresh = button("새로고침", "", "refresh")
+        self.activity_refresh.clicked.connect(self._refresh_activity)
+        controls.addWidget(self.activity_refresh)
+        self.activity_copy = button("표시된 로그 복사", "", "clipboard")
+        self.activity_copy.setToolTip("현재 필터의 전체 진단 기록을 JSON 형식으로 복사")
+        self.activity_copy.clicked.connect(self._copy_activity)
+        self.activity_copy.setEnabled(False)
+        controls.addWidget(self.activity_copy)
+        self.activity_open_folder = button("로그 폴더 열기", "Quiet", "folder")
+        self.activity_open_folder.clicked.connect(self._open_activity_folder)
+        self.activity_open_folder.setEnabled(self.activity is not None)
+        controls.addWidget(self.activity_open_folder)
+        content.addLayout(controls)
+        self.activity_status = label("실행 로그 페이지를 열면 최근 항목을 표시합니다.", "Small", True)
+        self.activity_status.setAccessibleName("실행 로그 저장 상태")
+        content.addWidget(self.activity_status)
+        self.activity_viewer = QPlainTextEdit()
+        self.activity_viewer.setReadOnly(True)
+        self.activity_viewer.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
+        self.activity_viewer.setMaximumBlockCount(500)
+        self.activity_viewer.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.activity_viewer.setAccessibleName("최근 실행 로그, 최대 500개")
+        self.activity_viewer.setMinimumHeight(230)
+        content.addWidget(self.activity_viewer, 1)
+        self._activity_records = []
+        self._activity_copy_text = ""
+        return page
+
+    @Slot()
+    def _refresh_activity(self, *_):
+        records = []
+        read_failed = False
+        if self.activity is not None:
+            try:
+                records = self.activity.recent(limit=500, errors_only=self.activity_errors_only.isChecked())
+            except Exception:
+                read_failed = True
+        self._activity_records = records[-500:]
+        # Keep the complete sanitized records for diagnostics, while each visible
+        # block leads with the event and its useful operational fields.
+        self._activity_copy_text = "\n".join(json.dumps(record, ensure_ascii=False) for record in self._activity_records)
+        text = "\n".join(activity_line(record) for record in self._activity_records)
+        if text != self.activity_viewer.toPlainText():
+            at_end = self.activity_viewer.verticalScrollBar().value() >= self.activity_viewer.verticalScrollBar().maximum()
+            self.activity_viewer.setPlainText(text)
+            if at_end:
+                self.activity_viewer.verticalScrollBar().setValue(self.activity_viewer.verticalScrollBar().maximum())
+        self.activity_copy.setEnabled(bool(text))
+        unavailable = self.activity is None or not getattr(self.activity, "available", False)
+        if unavailable or read_failed:
+            failure = getattr(self.activity, "failure", "") if self.activity is not None else ""
+            warning = "실행 로그를 저장하거나 읽지 못하고 있습니다. 로컬 저장소의 권한과 디스크 공간을 확인해 주세요."
+            self.activity_status.setText(warning + (f" {failure}" if failure else "")
+                                         + (f" · 표시 가능한 항목 {len(records)}개" if records else ""))
+            self.activity_status.setObjectName("Error")
+        else:
+            self.activity_status.setText(f"최근 {len(records):,}개 항목 · 최대 500개 표시" if records else
+                                         "표시할 주의·오류가 없습니다." if self.activity_errors_only.isChecked() else "아직 실행 로그가 없습니다.")
+            self.activity_status.setObjectName("Small")
+        self.activity_status.style().unpolish(self.activity_status)
+        self.activity_status.style().polish(self.activity_status)
+
+    def _copy_activity(self):
+        QApplication.clipboard().setText(self._activity_copy_text)
+
+    def _open_activity_folder(self):
+        if self.activity is not None:
+            self.open_folder(str(self.activity.directory))
+
+    def _activity_page_changed(self, index: int):
+        if index == 3:
+            self._refresh_activity()
+        self._sync_activity_timer()
+
+    def _sync_activity_timer(self):
+        if not hasattr(self, "activity_timer"):
+            return
+        if self.pages.currentIndex() == 3 and self.isVisible() and not self._closing:
+            self.activity_timer.start()
+        else:
+            self.activity_timer.stop()
+
+    def _refresh_visible_activity(self):
+        if self.pages.currentIndex() == 3 and self.isVisible() and not self._closing:
+            self._refresh_activity()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._sync_activity_timer()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self._sync_activity_timer()
+
     def _bind_shortcuts(self):
         self.shortcuts = []
         for key, callback in (("Ctrl+L", self.focus_url), ("Ctrl+,", lambda: self.navigate(2)),
                               ("Alt+1", lambda: self.navigate(0)), ("Alt+2", lambda: self.navigate(1)),
-                              ("Alt+3", lambda: self.navigate(2))):
+                              ("Alt+3", lambda: self.navigate(2)), ("Alt+4", lambda: self.navigate(3))):
             shortcut = QShortcut(QKeySequence(key), self)
             shortcut.activated.connect(callback)
             self.shortcuts.append(shortcut)
@@ -1023,7 +1315,7 @@ class MainWindow(QMainWindow):
     def navigate(self, index: int):
         self.pages.setCurrentIndex(index)
         self.nav_buttons[index].setChecked(True)
-        self.breadcrumb.setText("내 작업 공간  /  " + ("다운로드", "다운로드 기록", "설정")[index])
+        self.breadcrumb.setText("내 작업 공간  /  " + ("다운로드", "다운로드 기록", "설정", "실행 로그")[index])
         for i, nav in enumerate(self.nav_buttons):
             nav.setIcon(make_icon(nav.property("iconName"), "accent_text" if i == index else "muted"))
         if index == 1:
@@ -1110,6 +1402,7 @@ class MainWindow(QMainWindow):
         self.cards[job_id] = widget
         self.queue_layout.addWidget(widget)
         self.pending.append(job_id)
+        _activity_emit(self.activity, "queue.add", job_id=job_id, stage="queued", queued_count=len(self.pending))
         self._refresh_counts()
         self._pump_queue()
         QTimer.singleShot(0, lambda: self.download_scroll.ensureWidgetVisible(widget, 0, 18))
@@ -1207,10 +1500,13 @@ class MainWindow(QMainWindow):
     @Slot(str)
     def cancel_download(self, job_id: str):
         item = self.items.get(job_id)
-        if not item:
+        if not item or item.cancel.is_set():
             return
+        queued = job_id in self.pending
+        _activity_emit(self.activity, "queue.cancelled" if queued else "download.cancel_requested",
+                       job_id=job_id, stage=item.stage)
         item.cancel.set()
-        if job_id in self.pending:
+        if queued:
             self.pending.remove(job_id)
             item.stage = "cancelled"
             item.message = "시작하기 전에 취소했습니다."
@@ -1219,6 +1515,7 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def retry_download(self, job_id: str):
+        _activity_emit(self.activity, "download.retry_requested", job_id=job_id)
         try:
             item = self.items.get(job_id)
             if item:
@@ -1234,7 +1531,8 @@ class MainWindow(QMainWindow):
         except (EngineError, ValueError) as exc:
             self.notify(str(exc) or "새 영상 주소를 입력한 뒤 다시 시작해 주세요.")
             self.focus_url()
-        except Exception:
+        except Exception as exc:
+            _activity_exception(self.activity, "worker.failed", exc, job_id=job_id, action="retry")
             self.notify("기록의 주소로 다시 시작할 수 없습니다. 새 영상 주소를 입력해 주세요.")
             self.focus_url()
 
@@ -1297,7 +1595,8 @@ class MainWindow(QMainWindow):
         self.preferences.update(values)
         try:
             self.engine.save_settings(values)
-        except Exception:
+        except Exception as exc:
+            _activity_exception(self.activity, "settings.save_failed", exc)
             if hasattr(self, "toast"):
                 self.notify("설정을 저장하지 못했습니다. 앱의 저장 공간을 확인해 주세요.")
 
@@ -1323,6 +1622,10 @@ class MainWindow(QMainWindow):
                             (QPalette.ColorRole.HighlightedText, c["white"])):
             palette.setColor(role, QColor(value))
         app.setPalette(palette)
+        self.activity_viewer.setStyleSheet(
+            f"QPlainTextEdit {{ background:{c['surface']}; color:{c['text']}; "
+            f"border:1px solid {c['line']}; border-radius:8px; padding:8px; "
+            f"selection-background-color:{c['accent']}; selection-color:{c['white']}; }}")
         for widget in self.findChildren(QPushButton):
             name = widget.property("iconName")
             if name:
@@ -1371,7 +1674,8 @@ class MainWindow(QMainWindow):
     def _refresh_history(self):
         try:
             self._history_rows = self.engine.history()
-        except Exception:
+        except Exception as exc:
+            _activity_exception(self.activity, "history.read_failed", exc)
             self._history_rows = []
             if hasattr(self, "toast"):
                 self.notify("다운로드 기록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.")
@@ -1495,11 +1799,7 @@ class MainWindow(QMainWindow):
             if dialog.clickedButton() != stop:
                 event.ignore()
                 return
-            self._closing = True
-            for item in self.items.values():
-                if item.stage in ACTIVE_STAGES:
-                    item.cancel.set()
-            self.pending.clear()
+            self.cancel_for_shutdown()
             self.notify("진행 중인 작업을 정리하고 있습니다. 잠시 후 자동으로 종료됩니다.")
             self.setEnabled(False)
             event.ignore()
@@ -1507,7 +1807,16 @@ class MainWindow(QMainWindow):
         if self._closing and self.workers:
             event.ignore()
             return
+        self.cancel_for_shutdown()
         event.accept()
+
+    def cancel_for_shutdown(self):
+        """Also runs for app.quit(), which bypasses the window close dialog."""
+        self._closing = True
+        self.activity_timer.stop()
+        for job_id in list(self.pending) + list(self.workers):
+            self.cancel_download(job_id)
+        self.pending.clear()
 
 
 def acquire_app_lock(data_dir: Path | None = None) -> QLockFile | None:
@@ -1543,30 +1852,59 @@ def main(argv: list[str] | None = None) -> int:
     font = QFont("Segoe UI" if sys.platform == "win32" else "Noto Sans CJK KR")
     font.setPointSize(10)
     app.setFont(font)
+    instance_lock = None
+    session = None
+    window = None
     try:
         data_dir = Path(args.data_dir if args.data_dir is not None else default_data_dir()).expanduser().resolve()
         instance_lock = acquire_app_lock(data_dir)
         if instance_lock is None:
             QMessageBox.information(None, "MyVideoApp가 실행 중입니다", "MyVideoApp가 이미 실행 중입니다.\n작업 표시줄에서 열려 있는 앱 창을 확인해 주세요.")
             return 0
-        window = MainWindow(Engine(APP_ROOT, data_dir=data_dir))
+        # Rotation and retained-session inspection begin only after ownership of
+        # the local store is established. A second instance never opens a writer.
+        activity = ActivityLog(data_dir, version=VERSION)
+        session = ActivitySession(activity)
+        session.start()
+        window = MainWindow(Engine(APP_ROOT, data_dir=data_dir, activity=activity))
     except Exception as exc:
+        if session is not None:
+            session.capture("app.initialization_failed", exc)
+            session.close()
+        if instance_lock is not None:
+            instance_lock.unlock()
         if args.smoke_test:
-            print(f"Unable to initialize desktop application: {exc}", file=sys.stderr)
+            print(f"Unable to initialize desktop application ({type(exc).__name__}).", file=sys.stderr)
             return 1
         QMessageBox.critical(None, "MyVideoApp를 시작할 수 없습니다", "앱의 로컬 저장소 또는 구성 파일을 준비할 수 없습니다.\n앱 폴더의 쓰기 권한과 디스크 공간을 확인해 주세요.")
         return 1
-    window.show()
-    if args.screenshot:
-        def capture():
-            args.screenshot.parent.mkdir(parents=True, exist_ok=True)
-            window.grab().save(str(args.screenshot))
-        QTimer.singleShot(500, capture)
-    if args.smoke_test:
-        QTimer.singleShot(1000, app.quit)
     try:
+        window.show()
+        app.aboutToQuit.connect(window.cancel_for_shutdown)
+        session.ready()
+        if args.screenshot:
+            def capture():
+                args.screenshot.parent.mkdir(parents=True, exist_ok=True)
+                window.grab().save(str(args.screenshot))
+            QTimer.singleShot(500, capture)
+        if args.smoke_test:
+            QTimer.singleShot(1000, app.quit)
         return app.exec()
+    except Exception as exc:
+        session.capture("app.event_loop_failed", exc)
+        if args.smoke_test:
+            print(f"Desktop event loop failed ({type(exc).__name__}).", file=sys.stderr)
+        else:
+            QMessageBox.critical(None, "MyVideoApp 실행 오류", "앱 실행 중 오류가 발생했습니다. 실행 로그를 확인한 뒤 다시 시작해 주세요.")
+        return 1
     finally:
+        window.cancel_for_shutdown()
+        if window.workers:
+            # app.quit() and an exceptional event-loop exit bypass the normal
+            # close callbacks. Keep both the store lock and writer until every
+            # cancelled worker has emitted its final activity records.
+            window.pool.waitForDone()
+        session.close()
         instance_lock.unlock()
 
 
