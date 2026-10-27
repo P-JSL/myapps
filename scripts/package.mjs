@@ -14,7 +14,14 @@ const concurrencyMode = report.validationMode === 'focused-desktop-concurrency';
 const transportMode = report.validationMode === 'focused-desktop-transport';
 const recoveryMode = report.validationMode === 'focused-download-recovery';
 const activityMode = report.validationMode === 'focused-desktop-activity';
-if (activityMode) {
+const noHttp3Mode = report.validationMode === 'focused-desktop-no-http3';
+if (noHttp3Mode) {
+  assert.equal(version, '1.19.3');
+  assert.equal(report.baseline, 'v1.19.2');
+  assert.equal(report.baselineCommit, 'dd3187fcfab45cad89fb95ad1cb24c3edd2c6365');
+  assert.equal(report.priorChecks, 'skipped-per-user');
+  assert.equal(report.liveYouTubeVerified, false);
+} else if (activityMode) {
   assert.equal(version, '1.19.2');
   assert.equal(report.baseline, 'v1.19.1');
   assert.equal(report.baselineCommit, 'c9d79dc393b76554d2b2144a52ae5085f11e0f54');
@@ -43,7 +50,7 @@ if (activityMode) {
   assert.equal(version, '1.17.0', 'Architecture validation belongs to release 1.17.0');
   assert.equal(report.validationMode, 'focused-architecture-change');
 }
-if (activityMode || recoveryMode || transportMode || concurrencyMode) {
+if (noHttp3Mode || activityMode || recoveryMode || transportMode || concurrencyMode) {
   // Read-only source comparisons preserve the requested desktop-only scope.
   const extensionScope = spawnSync('git', ['diff', '--name-only', report.baselineCommit, '--', 'src', 'native', 'tsconfig.json', ':(exclude)src/local/manifest.json'], { encoding: 'utf8' });
   assert.equal(extensionScope.status, 0, extensionScope.stderr || extensionScope.error?.message);
@@ -58,10 +65,10 @@ if (activityMode || recoveryMode || transportMode || concurrencyMode) {
 }
 assert.equal(report.userRequestedSkipPreviousChecks, true, 'Focused validation must record the requested scope');
 assert.deepEqual(await sourceIdentity(), report.sourceSha256, 'Source inventory or contents changed since focused validation');
-for (const name of activityMode ? ['activity', 'activityGui', 'releaseScope'] : recoveryMode ? ['recovery', 'releaseScope'] : transportMode ? ['bandwidth', 'transfer', 'transport', 'engineTransport', 'releaseScope'] : concurrencyMode ? ['concurrency', 'concurrencyGui', 'releaseScope'] : ['extension', 'engine', 'gui', 'bundle', 'launcher']) {
+for (const name of noHttp3Mode ? ['noHttp3', 'noHttp3Gui', 'releaseScope'] : activityMode ? ['activity', 'activityGui', 'releaseScope'] : recoveryMode ? ['recovery', 'releaseScope'] : transportMode ? ['bandwidth', 'transfer', 'transport', 'engineTransport', 'releaseScope'] : concurrencyMode ? ['concurrency', 'concurrencyGui', 'releaseScope'] : ['extension', 'engine', 'gui', 'bundle', 'launcher']) {
   assert(Number.isInteger(report.checks?.[name]) && report.checks[name] > 0, `Successful focused ${name} checks required`);
 }
-for (const name of (activityMode || recoveryMode || transportMode || concurrencyMode) ? ['build'] : ['typecheck', 'build']) assert.equal(report.checks?.[name], 'passed', `Successful ${name} required`);
+for (const name of (noHttp3Mode || activityMode || recoveryMode || transportMode || concurrencyMode) ? ['build'] : ['typecheck', 'build']) assert.equal(report.checks?.[name], 'passed', `Successful ${name} required`);
 assert(Object.keys(report.logSha256 ?? {}).length > 0, 'Validation log hashes required');
 for (const [name, digest] of Object.entries(report.logSha256)) {
   assert(name.startsWith('reports/') && !name.split('/').includes('..') && !name.includes('\\'), 'Validation logs must be local report paths');
@@ -92,10 +99,10 @@ with ZipFile(root/'artifacts/my-video-app-desktop-windows-x64.zip') as bundle:
     for name, digest in manifest['files'].items():
         assert hashlib.sha256(bundle.read('MyVideoApp/'+name)).hexdigest()==digest, 'Desktop output changed: '+name
     assert manifest['sourceFiles'], 'Desktop source inventory required'
-    if manifest['version']=='1.19.0':
+    if manifest['version'] in ('1.19.0', '1.19.3'):
         for required in ('desktop/bandwidth.py', 'desktop/transfer.py', 'desktop/transport.py', 'runtime/python/Lib/site-packages/curl_cffi/__init__.py'):
             assert 'MyVideoApp/'+required in names, 'Desktop transport runtime missing: '+required
-    if manifest['version']=='1.19.2':
+    if manifest['version'] in ('1.19.2', '1.19.3'):
         required='desktop/activity.py'
         assert 'MyVideoApp/'+required in names, 'Desktop activity logging module missing'
         assert required in manifest['sourceFiles'], 'Desktop activity source identity missing'

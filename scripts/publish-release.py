@@ -31,6 +31,10 @@ ACTIVITY_VERSION = '1.19.2'
 ACTIVITY_MODE = 'focused-desktop-activity'
 ACTIVITY_BASELINE = 'v1.19.1'
 ACTIVITY_BASELINE_COMMIT = 'c9d79dc393b76554d2b2144a52ae5085f11e0f54'
+NO_HTTP3_VERSION = '1.19.3'
+NO_HTTP3_MODE = 'focused-desktop-no-http3'
+NO_HTTP3_BASELINE = 'v1.19.2'
+NO_HTTP3_BASELINE_COMMIT = 'dd3187fcfab45cad89fb95ad1cb24c3edd2c6365'
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -82,12 +86,12 @@ def validate():
                     for required in ('desktop/concurrency.py', 'runtime/python/python.exe'):
                         if 'MyVideoApp/' + required not in names:
                             raise ValueError('Desktop concurrency runtime missing: ' + required)
-                elif version in (TRANSPORT_VERSION, RECOVERY_VERSION, ACTIVITY_VERSION):
+                elif version in (TRANSPORT_VERSION, RECOVERY_VERSION, ACTIVITY_VERSION, NO_HTTP3_VERSION):
                     for required in ('desktop/concurrency.py', 'desktop/transport.py', 'desktop/transfer.py', 'desktop/bandwidth.py',
                                      'runtime/python/python.exe', 'runtime/python/Lib/site-packages/curl_cffi/__init__.py'):
                         if 'MyVideoApp/' + required not in names:
                             raise ValueError('Desktop transport runtime missing: ' + required)
-                if version == ACTIVITY_VERSION:
+                if version in (ACTIVITY_VERSION, NO_HTTP3_VERSION):
                     required = 'desktop/activity.py'
                     if 'MyVideoApp/' + required not in names:
                         raise ValueError('Desktop activity logging module missing: ' + required)
@@ -115,7 +119,15 @@ def validate_windows_evidence(version, commit, evidence, desktop_sha256,
     if not isinstance(evidence, dict) or any(evidence.get(key) != value for key, value in (
             ('version', version), ('commit', commit), ('platform', 'windows-x64'))):
         raise SystemExit('Actual packaged Windows verification is missing or stale.')
-    if version == ACTIVITY_VERSION:
+    if version == NO_HTTP3_VERSION:
+        required = {'validationMode': NO_HTTP3_MODE, 'baseline': NO_HTTP3_BASELINE,
+                    'baselineCommit': NO_HTTP3_BASELINE_COMMIT, 'desktopSha256': desktop_sha256,
+                    'noHttp3Tests': 'passed', 'noHttp3GuiTests': 'passed',
+                    'releaseScopeTests': 'passed', 'priorChecks': 'skipped-per-user'}
+        if (any(evidence.get(key) != value for key, value in required.items())
+                or evidence.get('liveYouTubeVerified') is not False):
+            raise SystemExit('Focused desktop HTTP/3 removal Windows verification is missing or stale.')
+    elif version == ACTIVITY_VERSION:
         required = {'validationMode': ACTIVITY_MODE, 'baseline': ACTIVITY_BASELINE,
                     'baselineCommit': ACTIVITY_BASELINE_COMMIT, 'desktopSha256': desktop_sha256,
                     'activityTests': 'passed', 'activityGuiTests': 'passed',
@@ -271,8 +283,11 @@ def main():
                       '원시 URL·쿠키·인증 헤더·추출기 진단 등 민감한 정보는 기록하지 않습니다.\n'
                       '- **검증 범위:** 새 활동 로그·로그 GUI·릴리스 범위 검사만 실행했습니다. 이전 검사는 사용자 요청으로 모두 건너뛰었으며 '
                       '실제 YouTube 다운로드는 재검증하지 않았습니다.\n') if version == ACTIVITY_VERSION else ''
+    no_http3_notes = ('- **HTTP/3 제거:** 데스크톱 앱의 HTTP/3 전송과 관련 설정을 제거했습니다. HTTP/2·HTTP/1.1 전송, 병렬 다운로드, 속도 제한, 실행·활동 로그는 유지합니다.\n'
+                      '- **검증 범위:** 새 HTTP/3 제거·설정 GUI·릴리스 범위 검사만 실행했습니다. 이전 검사는 사용자 요청으로 건너뛰었으며 '
+                      '실제 YouTube 다운로드는 재검증하지 않았습니다. YouTube 다운로드 성능 향상을 보장하지 않습니다.\n') if version == NO_HTTP3_VERSION else ''
     notes = ('My Video App **' + version + '**\n\n'
-             + concurrency_notes + transport_notes + recovery_notes + activity_notes +
+             + concurrency_notes + transport_notes + recovery_notes + activity_notes + no_http3_notes +
              '- **Windows 앱:** `my-video-app-desktop-windows-x64.zip` 전체 압축 해제 후 `My Video App.exe` 실행. '
              'YouTube·최고 화질·MP3/M4A·병합·대기열·기록·설정. Python·yt-dlp·Deno·FFmpeg·Qt 내장. 별도 도우미 등록·API 키 불필요.\n'
              '- **Chrome 확장:** `my-video-app-extension.zip`. **YouTube 제외**, 일반 미디어·HLS/DASH·로컬 도구 유지.\n'

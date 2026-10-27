@@ -259,7 +259,7 @@ def build_bundle(root, lock_path, cache, output, offline=False):
     for name in ("main.py", "engine.py", "README.ko.md", "THIRD_PARTY_NOTICES.md"):
         if "desktop/" + name not in plan:
             raise ValueError(f"Missing desktop application source: {name}")
-    if app_version == "1.19.2" and "desktop/activity.py" not in plan:
+    if app_version in ("1.19.2", "1.19.3") and "desktop/activity.py" not in plan:
         raise ValueError("Missing desktop activity logging source: activity.py")
     launcher = root / "desktop/launcher/MyVideoApp.exe"
     if launcher.is_symlink() or not launcher.is_file():

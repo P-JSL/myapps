@@ -1,0 +1,21 @@
+test_accepts_new_scope_without_historical_protocol_reports (__main__.NoHttp3ReleaseTests.test_accepts_new_scope_without_historical_protocol_reports) ... ok
+test_build_requires_activity_module_before_packaging_1_19_3 (__main__.NoHttp3ReleaseTests.test_build_requires_activity_module_before_packaging_1_19_3) ... ok
+test_every_no_http3_evidence_field_is_required (__main__.NoHttp3ReleaseTests.test_every_no_http3_evidence_field_is_required) ... ok
+test_evidence_is_bound_to_version_commit_platform_and_current_archive (__main__.NoHttp3ReleaseTests.test_evidence_is_bound_to_version_commit_platform_and_current_archive) ... ok
+test_existing_identical_release_skips_without_tag_or_asset_mutation (__main__.NoHttp3ReleaseTests.test_existing_identical_release_skips_without_tag_or_asset_mutation) ... ok
+test_existing_no_http3_release_rejects_mismatched_asset_digest (__main__.NoHttp3ReleaseTests.test_existing_no_http3_release_rejects_mismatched_asset_digest) ... ok
+test_existing_no_http3_tag_cannot_move_for_changed_product (__main__.NoHttp3ReleaseTests.test_existing_no_http3_tag_cannot_move_for_changed_product) ... ok
+test_new_publication_uses_only_new_evidence_and_describes_limited_scope (__main__.NoHttp3ReleaseTests.test_new_publication_uses_only_new_evidence_and_describes_limited_scope) ... ok
+test_no_http3_release_retains_transport_and_other_required_runtimes (__main__.NoHttp3ReleaseTests.test_no_http3_release_retains_transport_and_other_required_runtimes) ... ok
+test_old_test_results_do_not_substitute_for_new_test_results (__main__.NoHttp3ReleaseTests.test_old_test_results_do_not_substitute_for_new_test_results) ... ok
+test_packager_requires_positive_new_checks_and_current_source_zip_identity (__main__.NoHttp3ReleaseTests.test_packager_requires_positive_new_checks_and_current_source_zip_identity) ... ok
+test_publisher_accepts_preserved_activity_module_with_current_identity (__main__.NoHttp3ReleaseTests.test_publisher_accepts_preserved_activity_module_with_current_identity) ... ok
+test_publisher_requires_activity_module_and_current_packaged_source (__main__.NoHttp3ReleaseTests.test_publisher_requires_activity_module_and_current_packaged_source) ... ok
+test_workflow_runs_exactly_three_new_suites_with_isolated_bundled_python (__main__.NoHttp3ReleaseTests.test_workflow_runs_exactly_three_new_suites_with_isolated_bundled_python) ... ok
+test_workflow_writes_only_current_scope_evidence_after_success (__main__.NoHttp3ReleaseTests.test_workflow_writes_only_current_scope_evidence_after_success) ... ok
+test_wrong_scope_baseline_skipped_tests_and_live_claims_are_rejected (__main__.NoHttp3ReleaseTests.test_wrong_scope_baseline_skipped_tests_and_live_claims_are_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.025s
+
+OK

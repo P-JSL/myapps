@@ -1,36 +1,37 @@
 {
   "schemaVersion": 1,
-  "release": "1.19.2",
+  "release": "1.19.3",
   "status": "passed",
-  "generatedAt": "2026-10-27T12:17:37.255Z",
-  "validationMode": "focused-desktop-activity",
-  "baseline": "v1.19.1",
-  "baselineCommit": "c9d79dc393b76554d2b2144a52ae5085f11e0f54",
+  "generatedAt": "2026-10-27T12:44:33.165Z",
+  "validationMode": "focused-desktop-no-http3",
+  "baseline": "v1.19.2",
+  "baselineCommit": "dd3187fcfab45cad89fb95ad1cb24c3edd2c6365",
   "userRequestedSkipPreviousChecks": true,
   "priorChecks": "skipped-per-user",
   "liveYouTubeVerified": false,
+  "publicWANBenchmarked": false,
   "checks": {
     "build": "passed",
-    "activity": 24,
-    "activityGui": 14,
-    "releaseScope": 10
+    "noHttp3": 9,
+    "noHttp3Gui": 8,
+    "releaseScope": 16
   },
-  "buildSha256": "fd1e2a8caacc8e04598e3dc1ec4384ae5882f8daf139c4a750622a1e95de2ba2",
+  "buildSha256": "58cb384e5ed1a7e9f0c57ee102a7e02f04e8211045364fec2bc4cee669975964",
   "sourceSha256": {
     "desktop/activity.py": "f2b042d920375ab51c5a42beb3a356087c0fed7875963192534f446c504c4092",
     "desktop/bandwidth.py": "c74f9a357b6b32ca3a296e23d739e872b02e1936be0b8fa0bc5d01613d6d4b2e",
     "desktop/concurrency.py": "8d149124f8f12899622838909e87cae9fe831f4da7f367ddd315cf831030e162",
-    "desktop/dependencies-lock.json": "e0afa82d6893fa12aa5d6bc9e9063a57e8ee024bbcb3965e71cf8eef05f50e51",
-    "desktop/engine.py": "daf94208fe4f470f0169922efde766135dfe0f93bc7e615ed700d88f934a9eda",
+    "desktop/dependencies-lock.json": "8e61676bb68680b91ef3079940d720860abeec35219d4e5cf0f1aeceaba3b22b",
+    "desktop/engine.py": "c1a530b70268841a478049cc11982c49e76af74def1b71a7fdb30861d6108ce2",
     "desktop/launcher/build.py": "4902f425398b11e24a3b6b3c6fc8ebfe63b605b2c73b45b0470830a62caa3285",
     "desktop/launcher/launcher.c": "019910f3f2a0f464ed9d99a302fb68ffa99333d711ed625879824dd0e3585637",
-    "desktop/launcher/launcher.manifest": "35eefb9e45aac5be1eb9e48d08b6e8087cefae728f545b47cff7fb64995fe278",
-    "desktop/launcher/launcher.rc": "5f2a2d767acb8ff735323a587b610c7d39034855a42d41515f56428e5caa792a",
+    "desktop/launcher/launcher.manifest": "c0eb5dc2ea96450b42676b72b2ea5ed52613670cb2801717bf07978b3f708875",
+    "desktop/launcher/launcher.rc": "5eb0f9a7d018b272cb27aad7b7f7f3a0075584966b965b97f10d02c28c4d944d",
     "desktop/launcher/test_launcher.py": "7cc241f34c0d64eb5871e8b1b08901484c149230186b08376b291bc4cdb00552",
     "desktop/launcher/toolchain-lock.json": "e30a59ade77d6a2cd4c84296004617f840809e557430c445050e79d94149751f",
     "desktop/launcher/verify_pe.py": "ef29dabcff593ac562301ef7f35535bbb831f727f66676ec0b381eacc3ecfd70",
-    "desktop/main.py": "9a6a92a07e18c385bcb4d32cdeb3daf9f8bc32f84d63717d8955a6f85e145bda",
-    "desktop/storage.py": "dfa9d30d16841e9a2d93fb6e8b8df9888ba92f607fc05eda0f5f4e23bb4d0e27",
+    "desktop/main.py": "0233d4499082c364364349c1626915f938ba5790ee3be57262d22fdef6e45378",
+    "desktop/storage.py": "a48e12bd16d31956cd4fbaab24241fce789e714fcaebbe7ad1768c2a892695fc",
     "desktop/test_activity.py": "9bb75e45350689dba31704fd93c0aa5f61154aab1c0586e48b895a53f2962fd7",
     "desktop/test_activity_gui.py": "804f2f6dac47f9692e9eaac2bf4a391236c839023e57d746f94508a6dc433890",
     "desktop/test_bandwidth.py": "2c6e2b873b829ea1fb7ce727d6d34ce8a826350779b0d172f47cb019357716ab",
@@ -39,13 +40,15 @@
     "desktop/test_download_recovery.py": "1203281608f9392b74f5b32a2e32da18c526b21140fe0dfc82742077ed2bb309",
     "desktop/test_engine.py": "899c820ecb43d5af71da7e3b3a4a07c6276d45e721f34e138d6784b9f72379ef",
     "desktop/test_gui.py": "37499eecef5598d0f1b3f533fe8086435a058c2e0a9dd90d0aa46197e67fb767",
+    "desktop/test_no_http3.py": "7845c4db6b9ee3016c0328dbf4bb75db7291b30b0bd7bbdcffc872e3b51fbced",
+    "desktop/test_no_http3_gui.py": "b4a4a2f449c2523e5af92fc56f6833d89a5ddecb6e16c345ad0cf830eb26f55c",
     "desktop/test_runtime.py": "e7130c2178e2b6288b2bd8f65bb6690f21d212ae2b767a9341140707d46ff494",
     "desktop/test_transfer.py": "2c3189360d97dd6e60433a37f52152bfaf5ad2dae8a21f52b99667d2a518e92b",
     "desktop/test_transport.py": "ebc405d63955cfdc1c01b76c1c18cea16bcb4b8cdfe63ac0a54db3393e842852",
     "desktop/test_transport_engine.py": "6be28e951b538715e618b5224a7842ef1bda44e28a22eea7b2477ecbb9be9701",
     "desktop/theme.py": "f42192f55ee2d660d1aa2ef78b3f3987cfa1ce069fa1b52e70ef270997a5d295",
-    "desktop/transfer.py": "3df5b17671e4496f11a6c64c7fbcf60a5e7233eb0e731028b4a91eab5c8061ef",
-    "desktop/transport.py": "856418152a8e7d638cf165716c7b78bc6d2bc9f47fb03a0ef6fd11143b4ad233",
+    "desktop/transfer.py": "4c131c21a597771ac72ab58469154af70e444216a8fe233d37d0222b5b9ddd58",
+    "desktop/transport.py": "d3ee877beb9e5a4495e33bd2b0f6da9b101f702453c0502175a85ad35b5dc339",
     "native/antivirus_host.py": "5c555bf12109fdf7fef83de4d1be95613777cc1b5cc95f1700961894ccd6c17c",
     "native/install.py": "29fb91151ace9eafe0fb04508cffb33b4fa28fa31176ffb5fa65f9b6eb0b3c6e",
     "native/internal_scan.py": "7ea25bb21ff73c0055beba1d85f351389d737f02587189c91f84129754c7d6f7",
@@ -55,15 +58,15 @@
     "native/test_internal_scan.py": "1f6bf1e60fe50fc4f00ae3dc2a0cb1c6037122e41a170c8ac70284511c2ee4b9",
     "native/test_windows_antivirus.py": "bd64dfa7b0f374602374eefd46b655779bcbdea46d5187e75ff38aaef8ec84fb",
     "native/windows_antivirus.py": "d31d257a74e3f4f676f82ad7f5b2f0d4a04172d72af52fe8cb40999b83c30c88",
-    "package-lock.json": "bf90d799213a5cd113a0d7a77b64d68de490e25cd8df59f006d4059ea743e8b8",
-    "package.json": "8c1e365381b9f218c9c7056e17ceefa7e716e15ece713cea9e6e1c91e444e84f",
+    "package-lock.json": "630eb1887cff5cac16d39fd7506eae80240df331ad682f79e28aa5882271edc1",
+    "package.json": "9a966eadb622f9e93d0ce245740b7e7adfa06c0afdec94a3b8a4455a395b5d46",
     "scripts/archive.py": "7d79bf3eb2e930b68193fdc7ba82bb31caf1190b95aeeb5aa3c0d4f9d01f6388",
     "scripts/audit-dependencies.mjs": "986733aa350a0ab382270e16cf992375193554cf32c9073fee3e36cb8c7a376c",
     "scripts/audit-source.mjs": "790b84d7be982dc1af0bf16149d25052f6b1c8e1a74c571f986d13f3852ae23f",
     "scripts/benchmark-native.py": "91da1493e146253925494991f952e76eaa2daa7b6a4eb37819e2be9b822dccef",
     "scripts/benchmark-security.mjs": "7b8f2ed9740502bf2c4ac27d27a8827fcebacd44a425a6fb5316fc047e7c1d54",
     "scripts/benchmark.mjs": "9953ff872a0cc2139864c98a2655fb4b46c741cd0e810dbf5990946be01efa3c",
-    "scripts/build-desktop.py": "0547146d84501a45733c5c1fbdf0f8f4edbf70c92a48431a78b476bb70332973",
+    "scripts/build-desktop.py": "45bea6a89793c89559a0664856464f31d547b9cf389ad7b5d48a5370ef9d89f7",
     "scripts/build-local.mjs": "37d29c7b99e1f3bbf3ff81fc43c44b52916ca5d4540f110c9637bb1f593d2610",
     "scripts/build.mjs": "6fc094bb2411a4eb531fb602ab55587d5d1849d6cb76e94e9bd80cc2b8b4a460",
     "scripts/encrypt-source.mjs": "c85c9d89423c0c4d7d4bf896e4d5b37311b1d9879ae33c858becaa2fcc4ac666",
@@ -74,9 +77,9 @@
     "scripts/lib/engine-cipher.mjs": "86d5ecd6bbe240cbebf869144d5609944162053fb725f64dac0b91a802071906",
     "scripts/lib/protect-build.mjs": "f7ba19ec5edd1adcb821d744dee56cd8e7f5d77c711cc10c8814a0da1a49a5c5",
     "scripts/lib/release-safety.mjs": "f2aa593317defaf3cb8d3a12f3014e6725c948a9b86a62d351236d82fd79870c",
-    "scripts/package.mjs": "6f39495c994bbdd565d85f39567f5d0b14214548f6c43077c8cb55feef611c87",
+    "scripts/package.mjs": "0f37adc68f31a2a9dd07d739d375949309d99d1ee8ae42800ec2e742c9f26f85",
     "scripts/project.mjs": "eba685b7486bd16b789ea1ce5c57c37f604d2eed1ff8f88905cf2ae589eaf66f",
-    "scripts/publish-release.py": "0f45b6460cd448fa3e63889e375b4f6861bf1c7ba25cade4cc0623c117db48a0",
+    "scripts/publish-release.py": "f6d3fd1b2d325f796f0d5fa26dbb4ca81ab4747013f1911de1da3000333b5f31",
     "scripts/test-native.mjs": "df51aab957aec7d02e8f577783a8c94d356e1ccebca8cb2dda093504a72e3282",
     "src/data/database.ts": "9ad2a7536462d778885eecc1340fb649437fd4f3fe6791869dfd1e7b50a26cf5",
     "src/local/antivirus.ts": "93f0e263b6de9e885b4b220cfcc9edf8cebc84ee505560db67fc59bb39bb6e3f",
@@ -174,6 +177,7 @@
     "tests/test_concurrency_release.py": "ff4cbdd868eadc4fd8dae225c9beffa2af9c97b309168a09cfe4588ca8878b82",
     "tests/test_desktop_bundle.py": "dfdd8e49dca0ab5925ea0b7299ae6f65d5adb79ebb18bea22371ede7a4d096d2",
     "tests/test_download_recovery_release.py": "77398b76d1373656a0e56783786cbf81f788fa3593f41157d0db0aaf3eded658",
+    "tests/test_no_http3_release.py": "1580c64a9d097f4278b59e634b3a47c0b1ff72b5d3a15a3ed26fb0c43bf36ddd",
     "tests/test_publish_release.py": "896a2cd9f100574a09328d1437bb8046c88ef93bf73385257a58ee34a2059635",
     "tests/test_runtime_paths.py": "a282e6765e5ebd4ff837f1646795c8c9f50e89718840d638e2b1a3d8cf501ad6",
     "tests/test_transport_release.py": "baa27f19276fdf37213f1a991e76f228ef00d6dcff485d7008349669715be61a",
@@ -185,24 +189,24 @@
     "tsconfig.json": "a447c838b1d18d1c8500c2dc125198660e6a600dde1bceed697a58c186758529"
   },
   "logSha256": {
-    "reports/validation-1.19.2/activity-tests.txt": "e9592875da6fa2cad445659370a709d1f9a9c536214e4298e858aa6f242a459a",
-    "reports/validation-1.19.2/activity-gui-tests.txt": "c20b1d10b1d3d6b7991912f0c19475b6767a9299c201e15ad71c046ae3b56f0a",
-    "reports/validation-1.19.2/release-activity-tests.txt": "385a2b61de0197214f25ea958cf0ff03ea5a74bfafc4e2eca386269046f22e5b",
-    "reports/validation-1.19.2/extension-build.txt": "3db805fa72c7ccd41637bcb53b295e42edc309ab3ceefa774b28801fc1cd64f2",
-    "reports/validation-1.19.2/launcher-build.txt": "2628bf45695a854333a6ae1b67b1cdae1aa93ed44ae62e0ef61ebba88b17b04a",
-    "reports/validation-1.19.2/desktop-build.txt": "21a25c9fe14edb2e9bd4ab7fe1ae2c48f83b8d9db9687aa61cbacbe480364a4c"
+    "reports/validation-1.19.3/no-http3-tests.txt": "71fcbe65f2f845650292e1b81a3e3d2d49721bc731ef24809495c2d14bdaef18",
+    "reports/validation-1.19.3/no-http3-gui-tests.txt": "f63b6c88befd9aee8f56d8c929792033837d3539de4d8e1ca27469fbae10c658",
+    "reports/validation-1.19.3/release-no-http3-tests.txt": "793c72bb6f8a23d04567ba1fa323fe360e562f9ad40951be0fffd25651cb6ef1",
+    "reports/validation-1.19.3/extension-build.txt": "3db805fa72c7ccd41637bcb53b295e42edc309ab3ceefa774b28801fc1cd64f2",
+    "reports/validation-1.19.3/launcher-build.txt": "249cc106fe4fbfddae8a5035e58703ed3613b37354c22ba5a7083705bb8dc600",
+    "reports/validation-1.19.3/desktop-build.txt": "b2b42cf936f95d2a5ed31bbd30ed31ebcb62845e25370b0b5d4f5556b0e25f09"
   },
   "desktop": {
     "schemaVersion": 1,
     "name": "My Video App",
-    "version": "1.19.2",
+    "version": "1.19.3",
     "platform": "win32-x64",
     "artifact": "artifacts/my-video-app-desktop-windows-x64.zip",
-    "sha256": "4b1f145da6ca52bfe22a832f0c15512b264458616b76a0e2cac6d6cd842426dd",
-    "size": 250084510,
+    "sha256": "b0d1a36f71bcf375df1228a22635d9cac3c8789f33d42f63e1e3dca45d99f81d",
+    "size": 250084423,
     "sizeMiB": 238.5,
     "files": 3332,
-    "uncompressedBytes": 639200723,
+    "uncompressedBytes": 639200255,
     "uncompressedMiB": 609.59,
     "versions": {
       "python": "3.13.17",
@@ -217,7 +221,7 @@
       "pycparser": "3.12",
       "ffmpeg": "9.0.2-36-g6882969ce9"
     },
-    "validationMode": "focused-desktop-activity",
+    "validationMode": "focused-desktop-no-http3",
     "nativeTransportMatch": {
       "wheel": "curl_cffi-0.17.0-cp310-abi3-win_amd64.whl",
       "wheel_member": "curl_cffi.libs/libcurl-impersonate-ae864b926b0a86bfa3b18a664407a1ab.dll",
@@ -238,12 +242,12 @@
       "windowsExecutionPerformed": false,
       "priorChecks": "skipped-per-user",
       "liveYouTubeVerified": false,
-      "packagedRuntimeExecution": "Windows CI runs only new activity, activity GUI and activity release scope"
+      "packagedRuntimeExecution": "Windows CI runs only new HTTP/3 removal including actual native HTTP/1.1 loopback, related GUI and release scope"
     },
     "launcher": {
       "path": "/workspace/myapps/desktop/launcher/MyVideoApp.exe",
       "size": 8192,
-      "sha256": "59f491d1641ef0dee6fc114b899f047b12fc78e561b021975d4f914d846e8cc2",
+      "sha256": "51a680b94ad1e251c2536744709c1ca52e56291c4307047d4f9b9f9d580cdf70",
       "machine": "AMD64",
       "format": "PE32+",
       "subsystem": "Windows GUI",
@@ -262,49 +266,53 @@
     }
   },
   "scope": {
-    "real": [
-      "UTF-8 local JSONL logger and owned temporary files",
-      "Rotation, concurrent events and memory fallback",
-      "Real Engine/SQLite lifecycle with controlled owned input",
-      "Qt logging page and application lifecycle/error hooks"
+    "changed": [
+      "Native requests explicitly select V2TLS, never V3",
+      "Removed obsolete HTTP/3 capability/preference/UI",
+      "Existing preference migration preserves other preferences and history",
+      "Only HTTP/2 and HTTP/1.1 active progress callbacks"
     ],
-    "replacedBoundaries": [
-      "Metadata extraction",
-      "Network and media processors in new logging fixtures",
-      "OS UI error dialogs in lifecycle fixtures"
+    "preserved": [
+      "Parallel/range download algorithm and resource budgets",
+      "Bandwidth settings and application-wide limiter",
+      "TLS/proxy/header validation and cancellation",
+      "Recovery/reuse, media processing, security scan, activity logs",
+      "Historical HTTP/3 activity records",
+      "Extension functionality, fixed runtime versions and notices"
     ],
-    "newChecks": [
-      "Structured metadata privacy and safe error codes",
-      "Sampled progress and fail-safe logging",
-      "Bounded recent records and warning/error filtering",
-      "Readable Korean GUI, copy filtered JSONL, folder action",
-      "Application start/ready/shutdown and worker-before-unlock lifetime",
-      "Commit/version/platform/package-bound release evidence"
+    "realLocal": [
+      "Response configuration and actual protocol mapping paths",
+      "Engine/storage/SQLite with controlled media processing",
+      "Qt settings/progress cards/historical log viewer"
     ],
-    "visualReview": "Light and dark logging page with synthetic records"
+    "replacedLocalBoundaries": [
+      "Native curl backend in option tests",
+      "Metadata/network/media executables in Engine fixtures"
+    ],
+    "realWindowsRequired": "Actual bundled curl_cffi HTTP/1.1 loopback via --real-http1; ten core checks, eight GUI checks, sixteen release checks"
   },
   "windowsVerification": {
     "localExecution": false,
     "requiredBeforePublication": true,
     "newSuitesOnly": true,
-    "evidence": "Release WINDOWS-VALIDATION.json"
+    "evidence": "Release WINDOWS-VALIDATION.json",
+    "additionalCoreCheck": "Required native HTTP/1.1 loopback, no skips accepted"
+  },
+  "providedLogSummary": {
+    "records": 67,
+    "allInfo": true,
+    "terminalEventPresent": false,
+    "videoSeconds": 91.579,
+    "audioObservedProtocol": "h3",
+    "audioObservedSpeedKiBPerSecond": 30,
+    "audioObservationSeconds": 160,
+    "rawLogIncluded": false,
+    "causationEstablished": false
   },
   "skipped": [
-    "All existing tests, including 1.19.1 download recovery",
-    "Previous HTTP/3, proxy/TLS, range, bandwidth and throughput suites",
-    "Previous whole GUI/browser/antivirus/codec/algorithm suites",
-    "Dependency audits and TypeScript typecheck"
-  ],
-  "privacy": {
-    "rawUrls": false,
-    "authenticationValues": false,
-    "exceptionMessages": false,
-    "tracebackLocals": false,
-    "automaticUpload": false
-  },
-  "retention": {
-    "fileBytes": 2097152,
-    "backupFiles": 4,
-    "guiRecentLimit": 500
-  }
+    "All previous suites including HTTP/3, full transport, bandwidth and recovery",
+    "Previous activity/whole GUI/browser/antivirus/codec/algorithm suites",
+    "Dependency audits and TypeScript typecheck",
+    "Actual YouTube speed comparison and public WAN benchmark"
+  ]
 }

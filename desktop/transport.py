@@ -134,7 +134,7 @@ def _validate_url(url):
 
 
 class NativeTransport:
-    """A bounded, thread-safe curl easy-handle pool with HTTP/3 TCP fallback.
+    """A bounded, thread-safe curl easy-handle pool using HTTP/2 or HTTP/1.1.
 
     ``timeout`` on open bounds connection/header waits and read inactivity, not
     the duration of the complete media download. Proxy environment variables are
@@ -142,10 +142,9 @@ class NativeTransport:
     for both the origin and HTTPS proxy.
     """
 
-    def __init__(self, http3_enabled=True, max_connections=4, ca_file=None, bandwidth_limiter=None):
+    def __init__(self, max_connections=4, ca_file=None, bandwidth_limiter=None):
         if type(max_connections) is not int or not 1 <= max_connections <= 64:
             raise ValueError("max_connections must be between 1 and 64.")
-        self.http3_enabled = bool(http3_enabled)
         self.max_connections = max_connections
         self.ca_file = str(ca_file) if ca_file is not None else None
         self.bandwidth_limiter = bandwidth_limiter
@@ -364,7 +363,7 @@ class Response:
             return
         backend = self._transport._backend
         version = int(self._handle.getinfo(backend.CurlInfo.HTTP_VERSION))
-        protocol = {30: "h3", 3: "h2", 2: "http/1.1", 1: "http/1.0"}.get(version)
+        protocol = {3: "h2", 2: "http/1.1", 1: "http/1.0"}.get(version)
         if protocol is None or not 100 <= self._header_status <= 599:
             raise TransportError("The media response is invalid.", retryable=False)
         effective = self._handle.getinfo(backend.CurlInfo.EFFECTIVE_URL)
@@ -444,7 +443,7 @@ class Response:
         settings = (
             (option.URL, self._request_url),
             (option.HTTPGET, 1),
-            (option.HTTP_VERSION, backend.CurlHttpVersion.V3 if self._transport.http3_enabled else backend.CurlHttpVersion.V2TLS),
+            (option.HTTP_VERSION, backend.CurlHttpVersion.V2TLS),
             (option.FOLLOWLOCATION, 1),
             (option.MAXREDIRS, 10),
             (option.PROTOCOLS_STR, "http,https"),

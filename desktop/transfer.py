@@ -46,7 +46,7 @@ CHUNK_BYTES = 4 * 1024 * 1024
 PARALLEL_THRESHOLD = 8 * 1024 * 1024
 MAX_WORKERS = 4
 _MAX_INTEGER = (1 << 63) - 1
-_PROTOCOLS = frozenset(("h3", "h2", "http/1.1"))
+_PROTOCOLS = frozenset(("h2", "http/1.1"))
 
 
 class TransferError(Exception):

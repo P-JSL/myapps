@@ -63,7 +63,7 @@ except ImportError:
     )
 
 
-VERSION = "1.19.2"
+VERSION = "1.19.3"
 APP_ROOT = Path(__file__).resolve().parent.parent
 ACTIVE_STAGES = {"queued", "preparing", "waiting", "downloading", "processing", "scanning"}
 STAGE_NAMES = {
@@ -720,7 +720,7 @@ class JobCard(QFrame):
                 total, downloaded = getattr(p, "total", None), getattr(p, "downloaded", 0)
                 volume = f"{format_bytes(downloaded)} / {format_bytes(total)}" if total else format_bytes(downloaded)
                 speed = getattr(p, "speed", None)
-                details = {"h3": "HTTP/3", "h2": "HTTP/2", "http/1.1": "HTTP/1.1"}.get(getattr(p, "transport", None), "")
+                details = {"h2": "HTTP/2", "http/1.1": "HTTP/1.1"}.get(getattr(p, "transport", None), "")
                 count = getattr(p, "connections", None)
                 mode = getattr(p, "transfer_mode", None)
                 if mode == "parallel" and type(count) is int and 1 < count <= 4:
@@ -1132,12 +1132,6 @@ class MainWindow(QMainWindow):
         self.parallel_checkbox.toggled.connect(lambda enabled: self._save_preferences(parallel_downloads=enabled))
         layout.addWidget(self.parallel_checkbox)
         layout.addWidget(label("서버가 지원하면 파일 하나를 최대 4개 요청으로 나눠 받습니다. 지원하지 않으면 한 번에 받습니다.", "Small", True))
-        self.http3_checkbox = ScanSwitch("HTTP/3 우선 연결")
-        self.http3_checkbox.setChecked(self.preferences.get("http3_enabled", True) is True)
-        self.http3_checkbox.setAccessibleName("HTTP/3 우선 연결 사용")
-        self.http3_checkbox.toggled.connect(lambda enabled: self._save_preferences(http3_enabled=enabled))
-        layout.addWidget(self.http3_checkbox)
-        layout.addWidget(label("서버와 네트워크가 지원하면 HTTP/3로 연결합니다. 연결할 수 없으면 HTTP/2 또는 HTTP/1.1을 사용합니다.", "Small", True))
         divider = QFrame()
         divider.setObjectName("Divider")
         divider.setFixedHeight(1)

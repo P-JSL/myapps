@@ -1,0 +1,14 @@
+test_engine_calls_native_transport_without_the_removed_argument (__main__.EngineProtocolTests.test_engine_calls_native_transport_without_the_removed_argument) ... ok
+test_engine_ignores_unsupported_http3_progress_and_summary (__main__.EngineProtocolTests.test_engine_ignores_unsupported_http3_progress_and_summary) ... ok
+test_actual_http2_and_http1_protocol_mappings_are_preserved (__main__.NativeConfigurationTests.test_actual_http2_and_http1_protocol_mappings_are_preserved) ... ok
+test_http_and_https_always_use_v2tls_without_a_v3_enum (__main__.NativeConfigurationTests.test_http_and_https_always_use_v2tls_without_a_v3_enum) ... ok
+test_removed_capability_cannot_be_enabled_by_a_constructor_argument (__main__.NativeConfigurationTests.test_removed_capability_cannot_be_enabled_by_a_constructor_argument) ... ok
+test_unexpected_http3_result_cannot_be_published (__main__.NativeConfigurationTests.test_unexpected_http3_result_cannot_be_published) ... ok
+test_legacy_values_are_ignored_on_reads_and_cannot_be_saved (__main__.PreferenceMigrationTests.test_legacy_values_are_ignored_on_reads_and_cannot_be_saved) ... ok
+test_startup_removes_only_the_legacy_key_and_is_idempotent (__main__.PreferenceMigrationTests.test_startup_removes_only_the_legacy_key_and_is_idempotent) ... ok
+test_transfer_callbacks_report_only_http2_or_http11 (__main__.TransferProtocolTests.test_transfer_callbacks_report_only_http2_or_http11) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.020s
+
+OK

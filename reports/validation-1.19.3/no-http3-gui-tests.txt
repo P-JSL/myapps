@@ -1,0 +1,13 @@
+test_download_form_and_four_page_navigation_remain (__main__.NoHttp3GuiTests.test_download_form_and_four_page_navigation_remain) ... ok
+test_live_legacy_transport_has_no_http3_label (__main__.NoHttp3GuiTests.test_live_legacy_transport_has_no_http3_label) ... ok
+test_native_http11_progress_keeps_single_request_and_indeterminate_progress (__main__.NoHttp3GuiTests.test_native_http11_progress_keeps_single_request_and_indeterminate_progress) ... ok
+test_native_http2_progress_keeps_parallel_speed_and_percent (__main__.NoHttp3GuiTests.test_native_http2_progress_keeps_parallel_speed_and_percent) ... ok
+test_obsolete_true_is_never_read_or_written_by_remaining_settings (__main__.NoHttp3GuiTests.test_obsolete_true_is_never_read_or_written_by_remaining_settings) ... ok
+test_parallel_speed_concurrency_and_scan_controls_remain (__main__.NoHttp3GuiTests.test_parallel_speed_concurrency_and_scan_controls_remain) ... ok
+test_recorded_old_h3_activity_remains_readable_and_copyable (__main__.NoHttp3GuiTests.test_recorded_old_h3_activity_remains_readable_and_copyable) ... ok
+test_settings_have_no_http3_checkbox_or_explanation (__main__.NoHttp3GuiTests.test_settings_have_no_http3_checkbox_or_explanation) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.746s
+
+OK

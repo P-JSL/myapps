@@ -410,7 +410,6 @@ class Engine:
         settings = self.store.settings()
         self._concurrency_setting = normalize_concurrency(settings.get("concurrent_downloads"))
         self._parallel_downloads = settings["parallel_downloads"]
-        self._http3_enabled = settings["http3_enabled"]
         self._speed_limit_enabled = settings["speed_limit_enabled"]
         self._speed_limit_kib = settings["speed_limit_kib"]
         self.bandwidth = PROCESS_BANDWIDTH
@@ -462,8 +461,6 @@ class Engine:
                 self._concurrency_setting = normalize_concurrency(values["concurrent_downloads"])
             if "parallel_downloads" in values:
                 self._parallel_downloads = values["parallel_downloads"]
-            if "http3_enabled" in values:
-                self._http3_enabled = values["http3_enabled"]
             if "speed_limit_enabled" in values or "speed_limit_kib" in values:
                 if "speed_limit_enabled" in values:
                     self._speed_limit_enabled = values["speed_limit_enabled"]
@@ -963,8 +960,8 @@ class Engine:
 
             def negotiated(protocol):
                 # Only values reported by a completed protocol negotiation may
-                # enter progress or history; settings never imply HTTP/3 use.
-                if protocol in ("h3", "h2", "http/1.1"):
+                # enter progress or history.
+                if protocol in ("h2", "http/1.1"):
                     with progress_lock:
                         observed_protocols.add(protocol)
                         transfer_fields["transport"] = protocol
@@ -1032,9 +1029,8 @@ class Engine:
                     if direct and not legacy_resume:
                         with self._settings_lock:
                             workers = min(4, self.resources.capacities["network"]) if self._parallel_downloads else 1
-                            http3_enabled = self._http3_enabled
                         if native_transport is None:
-                            native_transport = leases.enter_context(NativeTransport(http3_enabled=http3_enabled, max_connections=4,
+                            native_transport = leases.enter_context(NativeTransport(max_connections=4,
                                                                                   bandwidth_limiter=self.bandwidth))
                         started = time.monotonic()
 
@@ -1141,8 +1137,8 @@ class Engine:
                         elif message != "저장하고 Microsoft Defender 검사를 마쳤습니다.":
                             scan_activity["outcome"] = "unavailable"
             if observed_protocols:
-                names = {"h3": "HTTP/3", "h2": "HTTP/2", "http/1.1": "HTTP/1.1"}
-                summary = " · ".join(names[value] for value in ("h3", "h2", "http/1.1") if value in observed_protocols)
+                names = {"h2": "HTTP/2", "http/1.1": "HTTP/1.1"}
+                summary = " · ".join(names[value] for value in ("h2", "http/1.1") if value in observed_protocols)
                 if parallel_connections > 1:
                     summary += f" · 파일당 최대 {parallel_connections}개 병렬 요청"
                 message += " " + summary + "."
