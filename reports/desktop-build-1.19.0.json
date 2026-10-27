@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "name": "My Video App",
+  "version": "1.19.0",
+  "platform": "win32-x64",
+  "artifact": "artifacts/my-video-app-desktop-windows-x64.zip",
+  "sha256": "7d460f16ff84287622071a6680c5f2cdc870df5da864479db65765c3348ef3c9",
+  "size": 250069299,
+  "sizeMiB": 238.48,
+  "files": 3331,
+  "uncompressedBytes": 639145622,
+  "uncompressedMiB": 609.54,
+  "versions": {
+    "python": "3.13.17",
+    "yt-dlp": "2026.10.21",
+    "yt-dlp-ejs": "0.8.0",
+    "deno": "2.9.8",
+    "pyside6-essentials": "6.12.0",
+    "shiboken6": "6.12.0",
+    "curl-cffi": "0.17.0",
+    "cffi": "2.1.1",
+    "certifi": "2026.10.23",
+    "pycparser": "3.12",
+    "ffmpeg": "9.0.2-36-g6882969ce9"
+  },
+  "validationMode": "focused-desktop-transport",
+  "nativeTransportMatch": {
+    "wheel": "curl_cffi-0.17.0-cp310-abi3-win_amd64.whl",
+    "wheel_member": "curl_cffi.libs/libcurl-impersonate-ae864b926b0a86bfa3b18a664407a1ab.dll",
+    "archive_member": "lib/libcurl-impersonate.dll",
+    "size": 4113920,
+    "sha256": "ae864b926b0a86bfa3b18a664407a1abb71c31a30c317d938f8c88537d044e45",
+    "identical": true,
+    "sourceArchiveUrl": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
+    "sourceArchiveSha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c"
+  },
+  "validation": {
+    "performedDuringBuild": [
+      "Pinned input sizes and SHA-256",
+      "Local notice identities",
+      "Per-output SHA-256 and current application source identity",
+      "Required runtime files and native AMD64 PE headers"
+    ],
+    "windowsExecutionPerformed": false,
+    "priorChecks": "skipped-per-user",
+    "liveYouTubeVerified": false,
+    "publicWANBenchmarked": false,
+    "packagedRuntimeExecution": "Windows CI requires only the five new transport/bandwidth/integration/release suites"
+  },
+  "launcher": {
+    "path": "/workspace/myapps/desktop/launcher/MyVideoApp.exe",
+    "size": 8192,
+    "sha256": "450de335337049cda55692779f10bc7f64cee789bcecb91ea31853463668d431",
+    "machine": "AMD64",
+    "format": "PE32+",
+    "subsystem": "Windows GUI",
+    "imports": [
+      "KERNEL32.dll",
+      "USER32.dll"
+    ],
+    "crt_dependency": false,
+    "dotnet_dependency": false,
+    "aslr": true,
+    "high_entropy_aslr": true,
+    "dep": true,
+    "resources": true,
+    "windows_execution_tested": false,
+    "compiler": "Zig 0.17.0"
+  }
+}

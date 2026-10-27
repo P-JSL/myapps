@@ -60,7 +60,7 @@ except ImportError:
     )
 
 
-VERSION = "1.19.0"
+VERSION = "1.19.1"
 APP_ROOT = Path(__file__).resolve().parent.parent
 ACTIVE_STAGES = {"queued", "preparing", "waiting", "downloading", "processing", "scanning"}
 STAGE_NAMES = {

@@ -12,7 +12,14 @@ assert.equal(report.release, version, 'Validation belongs to another release');
 assert.equal(report.status, 'passed', 'Successful focused validation required');
 const concurrencyMode = report.validationMode === 'focused-desktop-concurrency';
 const transportMode = report.validationMode === 'focused-desktop-transport';
-if (transportMode) {
+const recoveryMode = report.validationMode === 'focused-download-recovery';
+if (recoveryMode) {
+  assert.equal(version, '1.19.1');
+  assert.equal(report.baseline, 'v1.19.0');
+  assert.equal(report.baselineCommit, 'b09935f7d1ce9fe6f4003bce4d8a87d8e09d826a');
+  assert.equal(report.priorChecks, 'skipped-per-user');
+  assert.equal(report.liveYouTubeVerified, false);
+} else if (transportMode) {
   assert.equal(version, '1.19.0', 'Desktop transport scope belongs to release 1.19.0');
   assert.equal(report.baseline, 'v1.18.0', 'Desktop transport baseline is fixed');
   assert.equal(report.baselineCommit, '1756c8dec1cb6e655fd486ab4a55fcc35641fd74', 'Desktop transport baseline commit is fixed');
@@ -29,7 +36,7 @@ if (transportMode) {
   assert.equal(version, '1.17.0', 'Architecture validation belongs to release 1.17.0');
   assert.equal(report.validationMode, 'focused-architecture-change');
 }
-if (transportMode || concurrencyMode) {
+if (recoveryMode || transportMode || concurrencyMode) {
   // Read-only source comparisons preserve the requested desktop-only scope.
   const extensionScope = spawnSync('git', ['diff', '--name-only', report.baselineCommit, '--', 'src', 'native', 'tsconfig.json', ':(exclude)src/local/manifest.json'], { encoding: 'utf8' });
   assert.equal(extensionScope.status, 0, extensionScope.stderr || extensionScope.error?.message);
@@ -44,10 +51,10 @@ if (transportMode || concurrencyMode) {
 }
 assert.equal(report.userRequestedSkipPreviousChecks, true, 'Focused validation must record the requested scope');
 assert.deepEqual(await sourceIdentity(), report.sourceSha256, 'Source inventory or contents changed since focused validation');
-for (const name of transportMode ? ['bandwidth', 'transfer', 'transport', 'engineTransport', 'releaseScope'] : concurrencyMode ? ['concurrency', 'concurrencyGui', 'releaseScope'] : ['extension', 'engine', 'gui', 'bundle', 'launcher']) {
+for (const name of recoveryMode ? ['recovery', 'releaseScope'] : transportMode ? ['bandwidth', 'transfer', 'transport', 'engineTransport', 'releaseScope'] : concurrencyMode ? ['concurrency', 'concurrencyGui', 'releaseScope'] : ['extension', 'engine', 'gui', 'bundle', 'launcher']) {
   assert(Number.isInteger(report.checks?.[name]) && report.checks[name] > 0, `Successful focused ${name} checks required`);
 }
-for (const name of (transportMode || concurrencyMode) ? ['build'] : ['typecheck', 'build']) assert.equal(report.checks?.[name], 'passed', `Successful ${name} required`);
+for (const name of (recoveryMode || transportMode || concurrencyMode) ? ['build'] : ['typecheck', 'build']) assert.equal(report.checks?.[name], 'passed', `Successful ${name} required`);
 assert(Object.keys(report.logSha256 ?? {}).length > 0, 'Validation log hashes required');
 for (const [name, digest] of Object.entries(report.logSha256)) {
   assert(name.startsWith('reports/') && !name.split('/').includes('..') && !name.includes('\\'), 'Validation logs must be local report paths');

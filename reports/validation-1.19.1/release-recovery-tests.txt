@@ -1,0 +1,12 @@
+test_accepts_only_the_new_recovery_evidence_without_old_protocol_proof (__main__.RecoveryReleaseTests.test_accepts_only_the_new_recovery_evidence_without_old_protocol_proof) ... ok
+test_evidence_is_bound_to_commit_version_platform_and_package (__main__.RecoveryReleaseTests.test_evidence_is_bound_to_commit_version_platform_and_package) ... ok
+test_existing_version_tags_are_not_moved_by_the_publisher (__main__.RecoveryReleaseTests.test_existing_version_tags_are_not_moved_by_the_publisher) ... ok
+test_missing_required_recovery_proof_is_rejected (__main__.RecoveryReleaseTests.test_missing_required_recovery_proof_is_rejected) ... ok
+test_packager_checks_recovery_source_identity_and_new_scope_only (__main__.RecoveryReleaseTests.test_packager_checks_recovery_source_identity_and_new_scope_only) ... ok
+test_previous_full_transport_scope_cannot_be_reused (__main__.RecoveryReleaseTests.test_previous_full_transport_scope_cannot_be_reused) ... ok
+test_workflow_executes_exactly_two_affected_suites_with_bundled_python (__main__.RecoveryReleaseTests.test_workflow_executes_exactly_two_affected_suites_with_bundled_python) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.001s
+
+OK

@@ -1,0 +1,8 @@
+{
+  "output": "/workspace/myapps/artifacts/my-video-app-desktop-windows-x64.zip",
+  "version": "1.19.1",
+  "sha256": "fd9f634c72f0ab37e2e96208748198efc0ace625ec0a173bf9d1edafcb6e6764",
+  "size": 250071083,
+  "files": 3331,
+  "uncompressedBytes": 639152042
+}

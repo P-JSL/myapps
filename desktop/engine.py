@@ -9,6 +9,7 @@ from __future__ import annotations
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 import hashlib
+import errno
 import importlib.metadata
 import importlib.util
 import io
@@ -54,7 +55,7 @@ except ImportError:
 try:
     from .bandwidth import BandwidthCancelled, PROCESS_BANDWIDTH
     from .transport import NativeTransport
-    from .transfer import TransferCancelled, download_file
+    from .transfer import TransferCancelled, TransferError, TransferFileError, download_file
 except ImportError:
     # Metadata workers use -I and therefore have no sibling import directory.
     for _name in ("bandwidth", "transport", "transfer"):
@@ -67,6 +68,8 @@ except ImportError:
     BandwidthCancelled = sys.modules["bandwidth"].BandwidthCancelled
     PROCESS_BANDWIDTH = sys.modules["bandwidth"].PROCESS_BANDWIDTH
     TransferCancelled = sys.modules["transfer"].TransferCancelled
+    TransferError = sys.modules["transfer"].TransferError
+    TransferFileError = sys.modules["transfer"].TransferFileError
     download_file = sys.modules["transfer"].download_file
 
 YT_DLP_VERSION = "2026.10.21"
@@ -789,6 +792,8 @@ class Engine:
         leases = ExitStack()
         published = None
         native_transport = None
+        error_phase = "미디어 준비"
+        compatibility_used = False
         transfer_fields = {"transport": None, "connections": None, "transfer_mode": None}
         observed_protocols: set[str] = set()
         parallel_connections = 0
@@ -894,6 +899,8 @@ class Engine:
             sources = []
             for track_index, track in enumerate(tracks):
                 _check_cancel(cancel)
+                track_label = "영상" if _has_video(track) else "오디오"
+                error_phase = track_label + " 다운로드"
                 path = directory / f"source-{track_index}.{track['ext']}"
                 # __postprocessors, webpage data and metadata are deliberately not handed to dl().
                 item = {**track, "id": info.get("id", job_id), "title": title,
@@ -930,7 +937,35 @@ class Engine:
                                       on_wait=lambda: emit("waiting", message="네트워크 다운로드 순서를 기다리고 있습니다."))
                     except TransferCancelled:
                         raise DownloadCancelled("다운로드를 취소했습니다.") from None
-                    success = True
+                    except TransferError as error:
+                        if not error.compatibility_fallback:
+                            raise
+                        _check_cancel(cancel)
+                        # transfer.py removes only its failed, exclusively owned
+                        # file before returning. Never overwrite a surviving or
+                        # externally replaced path during compatibility recovery.
+                        if os.path.lexists(path) or os.path.lexists(str(path) + ".part"):
+                            raise EngineError("실패한 임시 파일을 정리하지 못했습니다. 앱을 닫은 뒤 다시 시도하세요.") from None
+                        compatibility_used = True
+                        legacy_downloaded = 0
+                        with progress_lock:
+                            transfer_fields.update(transport=None, connections=1, transfer_mode="single")
+                        emit("downloading", downloaded=completed_bytes,
+                             total=sum(totals) if all(value is not None for value in totals) else None,
+                             message=track_label + " 연결이 끊겨 호환 전송으로 한 번 복구하고 있습니다.")
+                        options = self._options(deno, hook, fragment_workers=1, cancel=cancel)
+                        options.update(retries=0, fragment_retries=0, extractor_retries=0)
+                        try:
+                            with self._resource("network", cancel, 1):
+                                with module.YoutubeDL(options) as downloader:
+                                    success = downloader.dl(str(path), item)
+                        except (DownloadCancelled, OSError):
+                            raise
+                        except Exception:
+                            _check_cancel(cancel)
+                            raise EngineError("연결이 중단되었고 호환 전송으로도 복구하지 못했습니다. 잠시 후 다시 시도하세요.") from None
+                    else:
+                        success = True
                 else:
                     with progress_lock:
                         transfer_fields.update(transport=None, connections=None, transfer_mode=None)
@@ -946,6 +981,7 @@ class Engine:
                 if not (success[0] if isinstance(success, tuple) else success) or not path.is_file() or path.is_symlink():
                     raise EngineError("다운로드가 끝나지 않았습니다. 다시 시도하면 새 원본을 확인하고 안전하게 이어받습니다.")
                 with self._resource("processing", cancel):
+                    error_phase = track_label + " 파일 검사"
                     self._probe(path, ffprobe, cancel)
                 completed_bytes += path.stat().st_size
                 totals[track_index] = path.stat().st_size
@@ -959,13 +995,16 @@ class Engine:
                     raise EngineError("임시 출력 파일이 안전하지 않습니다. 다른 저장 폴더를 선택하세요.")
                 prepared.unlink()
             with self._resource("processing", cancel):
+                error_phase = "영상·오디오 병합" if len(sources) > 1 else "미디어 변환"
                 self._process(sources, tracks, prepared, request.output, ffmpeg, cancel)
                 self._probe(prepared, ffprobe, cancel)
             _check_cancel(cancel)
+            error_phase = "최종 파일 저장"
             published = self._publish(prepared, folder, title, container)
             self.store.update(job_id, filepath=str(published))
             message = "저장했습니다."
             if request.scan:
+                error_phase = "보안 검사"
                 emit("scanning", filepath=str(published), message="Microsoft Defender로 저장한 파일을 검사하고 있습니다.")
                 with self._resource("scan", cancel):
                     message = self._scan(published, cancel)
@@ -975,6 +1014,8 @@ class Engine:
                 if parallel_connections > 1:
                     summary += f" · 파일당 최대 {parallel_connections}개 병렬 요청"
                 message += " " + summary + "."
+            if compatibility_used:
+                message += " 연결이 중단된 트랙을 호환 전송으로 복구했습니다."
             self.store.update(job_id, stage="complete", filepath=str(published), message=message)
             self._clean_owned(directory, job_id, request_digest, remove=True)
             emit("complete", percent=100.0, downloaded=completed_bytes, total=completed_bytes, filepath=str(published), message=message)
@@ -994,7 +1035,22 @@ class Engine:
                     self._clean_owned(directory, job_id, request_digest, remove=True)
                 emit("cancelled", message=message)
                 raise DownloadCancelled(message) from None
-            message = str(error) if isinstance(error, EngineError) else "다운로드에 실패했습니다. 공개 주소, 인터넷 연결, 남은 저장 공간을 확인하고 다시 시도하세요."
+            if isinstance(error, (OSError, TransferFileError)):
+                if error.errno == errno.ENOSPC or getattr(error, "winerror", None) == 112:
+                    detail = "저장 공간이 부족합니다. 다운로드 폴더와 임시 파일이 있는 드라이브를 확인하세요."
+                elif error.errno in (errno.EACCES, errno.EPERM) or getattr(error, "winerror", None) in (5, 32, 33):
+                    detail = "파일 접근 권한이 없거나 다른 프로그램이 파일을 사용 중입니다."
+                elif error.errno == errno.ENAMETOOLONG or getattr(error, "winerror", None) == 206:
+                    detail = "저장 경로가 너무 깁니다. 더 짧은 다운로드 폴더를 선택하세요."
+                else:
+                    detail = "파일을 읽거나 기록하지 못했습니다. 다운로드 폴더와 드라이브 상태를 확인하세요."
+            elif isinstance(error, (EngineError, TransferError)):
+                detail = str(error)
+            elif isinstance(error, MemoryError):
+                detail = "사용 가능한 메모리가 부족합니다. 동시 다운로드 수를 줄여 다시 시도하세요."
+            else:
+                detail = "처리 중 예기치 않은 오류가 발생했습니다. 다시 시도하세요. (DOWNLOAD_INTERNAL)"
+            message = error_phase + " 실패: " + detail
             self.store.update(job_id, stage="error", message=message)
             emit("error", filepath=str(published) if published else None, message=message)
             raise EngineError(message) from None

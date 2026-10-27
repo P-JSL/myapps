@@ -49,33 +49,18 @@ jobs:
       - name: Build the pinned portable Windows app
         run: python -B scripts/build-desktop.py
 
-      - name: Verify only the new packaged desktop transport scope
+      - name: Verify only the affected download recovery path
         shell: pwsh
         run: |
-          Expand-Archive -LiteralPath artifacts/my-video-app-desktop-windows-x64.zip -DestinationPath "$env:RUNNER_TEMP/myvideoapp-transport"
-          $appRoot = "$env:RUNNER_TEMP/myvideoapp-transport/MyVideoApp"
+          Expand-Archive -LiteralPath artifacts/my-video-app-desktop-windows-x64.zip -DestinationPath "$env:RUNNER_TEMP/myvideoapp-recovery"
+          $appRoot = "$env:RUNNER_TEMP/myvideoapp-recovery/MyVideoApp"
           $python = "$appRoot/runtime/python/python.exe"
-          $dependencyRoot = "$env:RUNNER_TEMP/myvideoapp-transport-fixtures"
-          # Only local TLS/QUIC servers use these fixture packages. The client
-          # transport must import the actual application's bundled curl_cffi.
-          & $python -I -B -m pip install --require-hashes --no-deps --only-binary=:all: --target "$dependencyRoot" -r tests/requirements-desktop-transport.lock
+          & $python -I -B tests/test_download_recovery_release.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $env:QT_QPA_PLATFORM = "offscreen"
-          & $python -I -B tests/test_transport_release.py -v
+          & $python -I -B desktop/test_download_recovery.py --app-root "$appRoot" -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B desktop/test_bandwidth.py --app-root "$appRoot" -v
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B desktop/test_transfer.py --app-root "$appRoot" --dependency-root "$dependencyRoot" -v
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B desktop/test_transport.py --app-root "$appRoot" --dependency-root "$dependencyRoot" --report artifacts/DESKTOP-TRANSPORT-TESTS.json -v
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B desktop/test_transport_engine.py --app-root "$appRoot" -v
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $transportProof = Get-Content artifacts/DESKTOP-TRANSPORT-TESTS.json | ConvertFrom-Json
-          $expectedProtocols = @("h3", "h2", "http/1.1")
-          if ($transportProof.status -ne "passed" -or @($transportProof.protocols).Count -ne 3 -or @($expectedProtocols | Where-Object { $_ -notin $transportProof.protocols }).Count -ne 0) { throw "Actual packaged HTTP/3, HTTP/2 and HTTP/1.1 loopback proof is required" }
-          # Prior checks are deliberately skipped at the user's request.
-          @{version=(Get-Content package.json | ConvertFrom-Json).version; commit=$env:GITHUB_SHA; platform="windows-x64"; validationMode="focused-desktop-transport"; baseline="v1.18.0"; baselineCommit="1756c8dec1cb6e655fd486ab4a55fcc35641fd74"; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); bandwidthTests="passed"; rangeTests="passed"; transportTests="passed"; engineTransportTests="passed"; releaseScopeTests="passed"; actualProtocols=@($transportProof.protocols); transportReportSha256=(Get-FileHash artifacts/DESKTOP-TRANSPORT-TESTS.json -Algorithm SHA256).Hash.ToLowerInvariant(); priorChecks="skipped-per-user"; liveYouTubeVerified=$false; publicWANBenchmarked=$false} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
+          # Earlier protocol, bandwidth, GUI and whole-application suites stay skipped.
+          @{version=(Get-Content package.json | ConvertFrom-Json).version; commit=$env:GITHUB_SHA; platform="windows-x64"; validationMode="focused-download-recovery"; baseline="v1.19.0"; baselineCommit="b09935f7d1ce9fe6f4003bce4d8a87d8e09d826a"; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); recoveryTests="passed"; releaseScopeTests="passed"; priorChecks="skipped-per-user"; liveYouTubeVerified=$false} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
 
       - name: Publish both products in one release
         env:

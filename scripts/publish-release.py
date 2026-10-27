@@ -23,6 +23,10 @@ TRANSPORT_BASELINE = 'v1.18.0'
 TRANSPORT_BASELINE_COMMIT = '1756c8dec1cb6e655fd486ab4a55fcc35641fd74'
 TRANSPORT_REPORT = 'DESKTOP-TRANSPORT-TESTS.json'
 TRANSPORT_PROTOCOLS = frozenset(('h3', 'h2', 'http/1.1'))
+RECOVERY_VERSION = '1.19.1'
+RECOVERY_MODE = 'focused-download-recovery'
+RECOVERY_BASELINE = 'v1.19.0'
+RECOVERY_BASELINE_COMMIT = 'b09935f7d1ce9fe6f4003bce4d8a87d8e09d826a'
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -74,7 +78,7 @@ def validate():
                     for required in ('desktop/concurrency.py', 'runtime/python/python.exe'):
                         if 'MyVideoApp/' + required not in names:
                             raise ValueError('Desktop concurrency runtime missing: ' + required)
-                elif version == TRANSPORT_VERSION:
+                elif version in (TRANSPORT_VERSION, RECOVERY_VERSION):
                     for required in ('desktop/concurrency.py', 'desktop/transport.py', 'desktop/transfer.py', 'desktop/bandwidth.py',
                                      'runtime/python/python.exe', 'runtime/python/Lib/site-packages/curl_cffi/__init__.py'):
                         if 'MyVideoApp/' + required not in names:
@@ -100,7 +104,15 @@ def validate_windows_evidence(version, commit, evidence, desktop_sha256,
     if not isinstance(evidence, dict) or any(evidence.get(key) != value for key, value in (
             ('version', version), ('commit', commit), ('platform', 'windows-x64'))):
         raise SystemExit('Actual packaged Windows verification is missing or stale.')
-    if version == TRANSPORT_VERSION:
+    if version == RECOVERY_VERSION:
+        required = {'validationMode': RECOVERY_MODE, 'baseline': RECOVERY_BASELINE,
+                    'baselineCommit': RECOVERY_BASELINE_COMMIT, 'desktopSha256': desktop_sha256,
+                    'recoveryTests': 'passed', 'releaseScopeTests': 'passed',
+                    'priorChecks': 'skipped-per-user'}
+        if (any(evidence.get(key) != value for key, value in required.items())
+                or evidence.get('liveYouTubeVerified') is not False):
+            raise SystemExit('Focused download recovery Windows verification is missing or stale.')
+    elif version == TRANSPORT_VERSION:
         validate_transport_report(transport_report)
         if not isinstance(transport_report_sha256, str) or not re.fullmatch('[0-9a-f]{64}', transport_report_sha256):
             raise SystemExit('Actual packaged transport protocol proof hash is missing.')
@@ -229,8 +241,13 @@ def main():
                        '원시 결과는 `DESKTOP-TRANSPORT-TESTS.json`, 연결된 SHA-256은 `WINDOWS-VALIDATION.json`과 첨부 목록에 있습니다.\n'
                        '- **검증 범위:** 새 속도 제한·Range·전송·엔진 통합·릴리스 범위 검사만 실행했습니다. 이전 검사는 사용자 요청으로 건너뛰었습니다. '
                        '처리량 벤치마크는 통제된 로컬 조건이며 인터넷 속도를 보장하지 않습니다. 실제 YouTube 다운로드와 공용 WAN 벤치마크는 확인하지 않았습니다.\n') if version == TRANSPORT_VERSION else ''
+    recovery_notes = ('- **완료 직전 실패 복구:** Range 확인 요청을 거부하는 서버는 쓰기 전 일반 GET으로 전환합니다. '
+                      '일시적인 연결 중단은 실패한 트랙만 한 번 호환 전송으로 복구하며 이미 받은 영상은 유지합니다.\n'
+                      '- **오류 구분:** 오디오·영상·검사·병합 단계와 HTTP 상태를 표시하고 실제 용량 부족·권한 오류를 구분합니다.\n'
+                      '- **검증 범위:** 이번 복구 경로와 실제 로컬 영상·음성 병합만 재검증했습니다. 이전 검사는 건너뛰었으며 '
+                      '제보된 실제 YouTube 서버 다운로드는 검증하지 않았습니다.\n') if version == RECOVERY_VERSION else ''
     notes = ('My Video App **' + version + '**\n\n'
-             + concurrency_notes + transport_notes +
+             + concurrency_notes + transport_notes + recovery_notes +
              '- **Windows 앱:** `my-video-app-desktop-windows-x64.zip` 전체 압축 해제 후 `My Video App.exe` 실행. '
              'YouTube·최고 화질·MP3/M4A·병합·대기열·기록·설정. Python·yt-dlp·Deno·FFmpeg·Qt 내장. 별도 도우미 등록·API 키 불필요.\n'
              '- **Chrome 확장:** `my-video-app-extension.zip`. **YouTube 제외**, 일반 미디어·HLS/DASH·로컬 도구 유지.\n'

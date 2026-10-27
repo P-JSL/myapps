@@ -52,6 +52,27 @@ _PROTOCOLS = frozenset(("h3", "h2", "http/1.1"))
 class TransferError(Exception):
     """A fixed, safe download error suitable for display in the application."""
 
+    def __init__(self, message, *, compatibility_fallback=False):
+        super().__init__(message)
+        self.compatibility_fallback = bool(compatibility_fallback)
+
+
+class TransferHTTPError(TransferError):
+    """Only the public status code is retained, never response bodies or URLs."""
+
+    def __init__(self, status):
+        self.status = status
+        super().__init__(f"서버가 다운로드 요청을 거부했습니다 (HTTP {status}).")
+
+
+class TransferFileError(TransferError):
+    """Preserve only numeric OS diagnostics for the engine's safe classification."""
+
+    def __init__(self, error):
+        self.errno = error.errno
+        self.winerror = getattr(error, "winerror", None)
+        super().__init__("다운로드 파일을 읽거나 기록하지 못했습니다.")
+
 
 class TransferCancelled(TransferError):
     pass
@@ -273,7 +294,7 @@ def download_file(url, destination, *, transport, resources, cancel, workers=4,
                         raise _TransientError(delay)
                     raise TransferError("서버가 긴 대기를 요청했습니다. 잠시 후 다시 시도하세요.")
                 if status not in (200, 206):
-                    raise TransferError("서버가 다운로드 요청을 거부했습니다.")
+                    raise TransferHTTPError(status)
                 yield response
 
     def retry(work, *, single=False, committed=None):
@@ -287,7 +308,8 @@ def download_file(url, destination, *, transport, resources, cancel, workers=4,
                 _check(combined)
                 retryable = isinstance(error, _TransientError) or error.retryable
                 if attempt == 2 or not retryable or (single and completed) or (committed is not None and committed()):
-                    raise TransferError("다운로드 연결이 중단되었습니다. 다시 시도하세요.") from None
+                    raise TransferError("다운로드 연결이 중단되었습니다. 다시 시도하세요.",
+                                        compatibility_fallback=isinstance(error, TransportError) and error.retryable) from None
                 delay = error.delay if isinstance(error, _TransientError) else None
                 if delay is None:
                     delay = min(5.0, 0.3 * (2 ** attempt) * random.uniform(0.8, 1.2))
@@ -374,7 +396,14 @@ def download_file(url, destination, *, transport, resources, cancel, workers=4,
 
     try:
         writer = _OwnedFile(destination, combined)
-        result = retry(probe, single=True)
+        try:
+            result = retry(probe, single=True)
+        except TransferHTTPError as error:
+            # Some media endpoints reject Range even though ordinary GET is
+            # permitted. No bytes were committed: use a fresh whole response.
+            if error.status not in (400, 403, 405, 416) or completed:
+                raise
+            result = None
         if isinstance(result, TransferResult):
             _check(combined)
             writer.close()
@@ -468,7 +497,9 @@ def download_file(url, destination, *, transport, resources, cancel, workers=4,
             raise TransferCancelled("다운로드를 취소했습니다.") from None
         if isinstance(error, TransferError):
             raise error from None
-        raise TransferError("다운로드 파일을 저장하지 못했습니다. 다시 시도하세요.") from None
+        if isinstance(error, OSError):
+            raise TransferFileError(error) from None
+        raise TransferError("미디어 전송 처리 중 오류가 발생했습니다. 다시 시도하세요. (TRANSFER_INTERNAL)") from None
 
 
 # Package imports and the isolated Windows worker share public type identities.
@@ -476,6 +507,8 @@ _this_module = sys.modules[__name__]
 _shared_module = sys.modules.setdefault("_myvideoapp_transfer", _this_module)
 if _shared_module is not _this_module:
     TransferError = _shared_module.TransferError
+    TransferHTTPError = _shared_module.TransferHTTPError
+    TransferFileError = _shared_module.TransferFileError
     TransferCancelled = _shared_module.TransferCancelled
     TransferResult = _shared_module.TransferResult
     download_file = _shared_module.download_file
