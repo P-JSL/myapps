@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "release": "1.19.3",
   "status": "passed",
-  "generatedAt": "2026-10-27T12:44:33.165Z",
+  "generatedAt": "2026-10-27T12:53:37.809Z",
   "validationMode": "focused-desktop-no-http3",
   "baseline": "v1.19.2",
   "baselineCommit": "dd3187fcfab45cad89fb95ad1cb24c3edd2c6365",
@@ -41,7 +41,7 @@
     "desktop/test_engine.py": "899c820ecb43d5af71da7e3b3a4a07c6276d45e721f34e138d6784b9f72379ef",
     "desktop/test_gui.py": "37499eecef5598d0f1b3f533fe8086435a058c2e0a9dd90d0aa46197e67fb767",
     "desktop/test_no_http3.py": "7845c4db6b9ee3016c0328dbf4bb75db7291b30b0bd7bbdcffc872e3b51fbced",
-    "desktop/test_no_http3_gui.py": "b4a4a2f449c2523e5af92fc56f6833d89a5ddecb6e16c345ad0cf830eb26f55c",
+    "desktop/test_no_http3_gui.py": "0e45b4ceaeb6f54215429302f29ee15cf650468e15f83d13f1c2508cc755d03d",
     "desktop/test_runtime.py": "e7130c2178e2b6288b2bd8f65bb6690f21d212ae2b767a9341140707d46ff494",
     "desktop/test_transfer.py": "2c3189360d97dd6e60433a37f52152bfaf5ad2dae8a21f52b99667d2a518e92b",
     "desktop/test_transport.py": "ebc405d63955cfdc1c01b76c1c18cea16bcb4b8cdfe63ac0a54db3393e842852",
@@ -194,7 +194,8 @@
     "reports/validation-1.19.3/release-no-http3-tests.txt": "793c72bb6f8a23d04567ba1fa323fe360e562f9ad40951be0fffd25651cb6ef1",
     "reports/validation-1.19.3/extension-build.txt": "3db805fa72c7ccd41637bcb53b295e42edc309ab3ceefa774b28801fc1cd64f2",
     "reports/validation-1.19.3/launcher-build.txt": "249cc106fe4fbfddae8a5035e58703ed3613b37354c22ba5a7083705bb8dc600",
-    "reports/validation-1.19.3/desktop-build.txt": "b2b42cf936f95d2a5ed31bbd30ed31ebcb62845e25370b0b5d4f5556b0e25f09"
+    "reports/validation-1.19.3/desktop-build.txt": "b2b42cf936f95d2a5ed31bbd30ed31ebcb62845e25370b0b5d4f5556b0e25f09",
+    "reports/validation-1.19.3/no-http3-gui-path-test.txt": "944b6ec28b0ed374034650e21f208950b39bfc51e11982a8d14412ec9d9e4a82"
   },
   "desktop": {
     "schemaVersion": 1,
@@ -314,5 +315,21 @@
     "Previous activity/whole GUI/browser/antivirus/codec/algorithm suites",
     "Dependency audits and TypeScript typecheck",
     "Actual YouTube speed comparison and public WAN benchmark"
-  ]
+  ],
+  "followUp": {
+    "failedWindowsCommit": "f9956a1c0cf50c693e0ad3b643fb3b3c331db725",
+    "source": "User-provided Actions log",
+    "passedWindowsAttempt": {
+      "noHttp3": 10,
+      "includingRealNativeHttp1": true,
+      "releaseScope": 16,
+      "noHttp3Gui": 7
+    },
+    "failedCase": "GUI folder comparison of equivalent Windows long/8.3 paths",
+    "fix": "Compare actual folder identity with Path.samefile",
+    "rerunLocally": "Only the corrected GUI test, one passed; no previous suites repeated",
+    "productCodeChanged": false,
+    "desktopRebuilt": false,
+    "finalWindowsEvidenceRequired": true
+  }
 }

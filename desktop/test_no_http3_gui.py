@@ -172,7 +172,7 @@ class NoHttp3GuiTests(unittest.TestCase):
         self.assertEqual({self.window.quality_combo.itemData(index)
                           for index in range(self.window.quality_combo.count())},
                          {"highest", "2160", "1440", "1080", "720", "480"})
-        self.assertEqual(self.window.settings_folder.text(), str(self.destination))
+        self.assertTrue(Path(self.window.settings_folder.text()).samefile(self.destination))
         self.assertTrue(self.window.activity_viewer.isReadOnly())
         self.assertEqual(self.window.activity_viewer.maximumBlockCount(), 500)
 

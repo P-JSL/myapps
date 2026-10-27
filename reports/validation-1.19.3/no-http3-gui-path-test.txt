@@ -1,0 +1,6 @@
+test_download_form_and_four_page_navigation_remain (__main__.NoHttp3GuiTests.test_download_form_and_four_page_navigation_remain) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.080s
+
+OK
