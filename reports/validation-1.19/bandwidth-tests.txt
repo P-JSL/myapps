@@ -1,0 +1,14 @@
+test_already_cancelled_event_rejects_even_when_disabled (__main__.BandwidthTests.test_already_cancelled_event_rejects_even_when_disabled) ... ok
+test_cancelled_waiter_exits_promptly_without_changing_other_callers (__main__.BandwidthTests.test_cancelled_waiter_exits_promptly_without_changing_other_callers) ... ok
+test_default_off_and_strict_configuration (__main__.BandwidthTests.test_default_off_and_strict_configuration) ... ok
+test_large_reservation_takes_fair_chunk_turns (__main__.BandwidthTests.test_large_reservation_takes_fair_chunk_turns) ... ok
+test_live_rate_change_discards_old_wait_and_uses_new_rate (__main__.BandwidthTests.test_live_rate_change_discards_old_wait_and_uses_new_rate) ... ok
+test_package_and_isolated_imports_share_process_limiter_and_exception (__main__.BandwidthTests.test_package_and_isolated_imports_share_process_limiter_and_exception) ... ok
+test_reapplying_same_configuration_does_not_grant_a_new_burst (__main__.BandwidthTests.test_reapplying_same_configuration_does_not_grant_a_new_burst) ... ok
+test_turning_limit_off_wakes_existing_waiter_immediately (__main__.BandwidthTests.test_turning_limit_off_wakes_existing_waiter_immediately) ... ok
+test_two_downloads_share_one_rate_and_one_initial_burst (__main__.BandwidthTests.test_two_downloads_share_one_rate_and_one_initial_burst) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 6.241s
+
+OK

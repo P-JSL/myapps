@@ -5,3 +5,5 @@
 *.bin -text
 *.wasm -text
 *.mp4 -text
+# Preserve upstream license bytes referenced by the runtime SHA-256 lock.
+/licenses/desktop-transport/LICENSE* -text

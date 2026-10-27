@@ -1,0 +1,17 @@
+test_cancel_during_retry_after_returns_tokens_promptly (__main__.TransferTests.test_cancel_during_retry_after_returns_tokens_promptly) ... ok
+test_cancel_while_global_budget_is_full_leaves_no_waiter (__main__.TransferTests.test_cancel_while_global_budget_is_full_leaves_no_waiter) ... ok
+test_controlled_per_connection_rate_limit_benchmark (__main__.TransferTests.test_controlled_per_connection_rate_limit_benchmark) ... DESKTOP_TRANSFER_BENCHMARK {"fixture": "loopback HTTP/1.1", "measurements": [{"bytes": 16777339, "mib_per_second": 3.8967, "mode": "single", "peak_body_requests": 1, "seconds": 4.106033, "workers": 1}, {"bytes": 16777339, "mib_per_second": 14.4634, "mode": "parallel", "peak_body_requests": 4, "seconds": 1.106246, "workers": 4}], "parallel_speedup": 3.7117, "per_connection_bytes_per_second": 4194304, "scope": "Controlled local origin only; does not predict Internet download speed."}
+ok
+test_controlled_simultaneous_four_file_benchmark (__main__.TransferTests.test_controlled_simultaneous_four_file_benchmark) ... DESKTOP_CONCURRENT_TRANSFER_BENCHMARK {"concurrent_measurements": [{"aggregate_mib_per_second": 15.5649, "all_hashes_valid": true, "files": 4, "peak_body_requests": 4, "peak_range_body_requests": 0, "per_file_workers": 1, "seconds": 4.111844, "total_bytes": 67109356}, {"aggregate_mib_per_second": 52.8964, "all_hashes_valid": true, "files": 4, "peak_body_requests": 16, "peak_range_body_requests": 16, "per_file_workers": 4, "seconds": 1.209921, "total_bytes": 67109356}], "concurrent_parallel_speedup": 3.3984, "global_network_budget": 16}
+ok
+test_four_files_share_global_sixteen_request_budget (__main__.TransferTests.test_four_files_share_global_sixteen_request_budget) ... ok
+test_ignored_range_reuses_one_full_response_without_corruption (__main__.TransferTests.test_ignored_range_reuses_one_full_response_without_corruption) ... ok
+test_invalid_partial_responses_never_publish_a_file (__main__.TransferTests.test_invalid_partial_responses_never_publish_a_file) ... ok
+test_missing_or_weak_etag_falls_back_to_fresh_full_response (__main__.TransferTests.test_missing_or_weak_etag_falls_back_to_fresh_full_response) ... ok
+test_real_four_range_download_has_exact_hash_and_monotonic_progress (__main__.TransferTests.test_real_four_range_download_has_exact_hash_and_monotonic_progress) ... ok
+test_transient_503_and_429_retry_then_produce_exact_file (__main__.TransferTests.test_transient_503_and_429_retry_then_produce_exact_file) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 21.686s
+
+OK

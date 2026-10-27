@@ -1,0 +1,20 @@
+test_cancel_closes_an_active_native_stream (__main__.NativeTransportTests.test_cancel_closes_an_active_native_stream) ... ok
+test_cancel_during_stalled_headers_is_prompt (__main__.NativeTransportTests.test_cancel_during_stalled_headers_is_prompt) ... ok
+test_cancelling_a_native_rate_wait_is_prompt (__main__.NativeTransportTests.test_cancelling_a_native_rate_wait_is_prompt) ... ok
+test_closing_one_response_preserves_another_stream (__main__.NativeTransportTests.test_closing_one_response_preserves_another_stream) ... ok
+test_disabling_limit_releases_a_live_native_stream (__main__.NativeTransportTests.test_disabling_limit_releases_a_live_native_stream) ... ok
+test_four_real_streams_can_be_consumed_concurrently (__main__.NativeTransportTests.test_four_real_streams_can_be_consumed_concurrently) ... ok
+test_four_streams_share_one_payload_rate (__main__.NativeTransportTests.test_four_streams_share_one_payload_rate) ... ok
+test_http1_stream_is_exact_and_reports_actual_protocol (__main__.NativeTransportTests.test_http1_stream_is_exact_and_reports_actual_protocol) ... ok
+test_http2_uses_verified_trusted_ca (__main__.NativeTransportTests.test_http2_uses_verified_trusted_ca) ... ok
+test_http3_honors_inherited_connect_proxy_with_auth_and_no_quic_bypass (__main__.NativeTransportTests.test_http3_honors_inherited_connect_proxy_with_auth_and_no_quic_bypass) ... ok
+test_http3_unavailable_falls_back_to_real_http2 (__main__.NativeTransportTests.test_http3_unavailable_falls_back_to_real_http2) ... ok
+test_http3_uses_verified_trusted_ca_and_real_quic (__main__.NativeTransportTests.test_http3_uses_verified_trusted_ca_and_real_quic) ... ok
+test_https_redirect_cannot_downgrade_to_http (__main__.NativeTransportTests.test_https_redirect_cannot_downgrade_to_http) ... ok
+test_unicode_ca_paths_verify_http2_and_http3 (__main__.NativeTransportTests.test_unicode_ca_paths_verify_http2_and_http3) ... ok
+test_unknown_ca_is_rejected_for_http2_and_http3 (__main__.NativeTransportTests.test_unknown_ca_is_rejected_for_http2_and_http3) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 51.771s
+
+OK

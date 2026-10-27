@@ -1,8 +1,10 @@
-# My Video App 1.18.0
+# My Video App 1.19.0
 
 **Chrome 확장과 Windows 데스크톱 앱을 함께 제공합니다. YouTube는 Windows 앱에서 다운로드합니다.**
 
 Windows 앱에서 **최대 16개 동시 다운로드**와 사이트별 작업 수를 설정할 수 있습니다. 앱 계정·구독·API 키는 필요하지 않습니다. 1.17에서 분리한 Chrome 확장과 Windows 앱의 지원 범위를 유지합니다.
+
+**1.19에서는 대용량 직접 파일의 분할 전송과 HTTP/3 우선 연결을 추가했습니다.** HTTP/3가 가능하지 않으면 HTTP/2·HTTP/1.1로 폴백하며 실제 협상한 프로토콜만 표시합니다. 두 기능과 **앱 전체 다운로드 속도 제한**을 설정에서 ON/OFF할 수 있습니다. 속도 제한은 기본 OFF입니다.
 
 ## 다운로드
 
@@ -15,7 +17,7 @@ Windows 앱에서 **최대 16개 동시 다운로드**와 사이트별 작업 �
 | [전체 소스 ZIP](artifacts/my-video-app-source.zip) | 확장·앱·빌드 스크립트·의존성 잠금·검사 코드 |
 | [확장 백신 도우미](artifacts/my-video-app-antivirus-helper.zip) | Chrome 확장의 선택적 로컬 백신 연동. 데스크톱 앱의 YouTube에는 필요하지 않음 |
 
-**Windows 앱 ZIP은 약 236MiB로 GitHub 일반 Git 파일 제한(100MiB)을 넘으므로 Release에 보관합니다.** 저장소의 [Downloads 폴더](Downloads/)에는 실제 ZIP을 내려받는 링크를 제공합니다. [배포 워크플로](.github/workflows/release.yml)가 버전·코드·고정 의존성으로 앱을 빌드하고 확장 ZIP과 함께 게시합니다. 비공개 저장소의 Release는 권한 있는 계정으로 로그인해야 접근할 수 있습니다.
+**Windows 앱 ZIP은 GitHub 일반 Git 파일 제한(100MiB)을 넘으므로 Release에 보관합니다.** 저장소의 [Downloads 폴더](Downloads/)에는 실제 ZIP을 내려받는 링크를 제공합니다. [배포 워크플로](.github/workflows/release.yml)가 버전·코드·고정 의존성으로 앱을 빌드하고 확장 ZIP과 함께 게시합니다. 비공개 저장소의 Release는 권한 있는 계정으로 로그인해야 접근할 수 있습니다.
 
 ![Windows 앱 밝은 화면](reports/screenshots/desktop-light.png)
 
@@ -31,6 +33,10 @@ Windows 앱에서 **최대 16개 동시 다운로드**와 사이트별 작업 �
 **설정 → 동시 다운로드**에서 자동(PC의 논리 CPU 수에 따라 2~4개) 또는 1~16개를 선택하세요. **같은 사이트 동시 다운로드**는 기본 4개이며 1~16개로 바꿀 수 있습니다. 예를 들어 YouTube 영상 8개를 동시에 진행하려면 두 설정을 모두 8개 이상으로 지정합니다. 기존에 저장한 1개·2개 설정은 유지합니다. 수를 낮춰도 진행 중인 다운로드는 취소하지 않고 완료 후 새 제한을 적용합니다.
 
 조각 다운로드의 전체 예산과 영상 분석·변환·백신 검사 수를 별도로 제한합니다. 작업 수를 늘려도 서버·회선·디스크의 한계를 넘는 속도 향상을 보장하지는 않습니다. [설계와 논문·프로그램 조사](reports/DESKTOP_CONCURRENCY_RESEARCH.ko.md)를 참고하세요.
+
+큰 직접 파일은 서버가 바이트 범위와 강한 ETag를 지원할 때 최대 4개 요청으로 나눠 받습니다. **4개 파일 동시 다운로드의 로컬 속도 제한 시험에서는 분할 전송으로 합계 속도가 약 3.4배 증가했습니다.** 인터넷·YouTube에서 같은 향상을 보장하는 결과는 아닙니다. [시험 조건과 결과](reports/desktop-transfer.json) · [HTTP/3·범위 요청 설계 근거](reports/DESKTOP_TRANSPORT_RESEARCH.ko.md)
+
+**설정 → 다운로드 속도 제한**에서 ON/OFF와 합계 상한(KiB/s)을 지정합니다. 기본 OFF, 저장된 기본 상한은 10,240KiB/s(10MiB/s)이며 진행 중에도 변경할 수 있습니다. 파일별 상한이 아니라 앱 전체의 미디어 데이터 합계에 적용합니다.
 
 ## Chrome 확장 설치
 
@@ -68,9 +74,9 @@ python3 desktop/launcher/build.py --fetch-toolchain
 python3 -B scripts/build-desktop.py
 ```
 
-데스크톱 실행 파일은 Windows x64용입니다. **1.18에서는 요청에 따라 이전에 수행한 검사를 모두 건너뛰고 동시 다운로드 변경에 대한 신규 검사만 실행합니다.** 실제 YouTube 서버를 이용한 속도 측정은 수행하지 않습니다. 빌드의 의존성 해시 확인과 압축 파일 생성은 그대로 수행합니다.
+데스크톱 실행 파일은 Windows x64용입니다. **1.19에서는 이전에 수행한 검사를 건너뛰고 새 전송·HTTP/3·통합 경로와 배포 범위만 검사합니다.** 인증서를 검증한 로컬 HTTP/3·HTTP/2 서버에서 실제 전송을 확인하며, 실제 YouTube 서버를 이용한 속도 측정은 수행하지 않습니다. 빌드의 의존성 해시 확인과 압축 파일 생성은 그대로 수행합니다.
 
-[1.18 변경과 검사 범위](reports/DESKTOP_1_18.ko.md) · [1.17 검사 보고서](reports/DESKTOP_1_17.ko.md) · [저작권·제3자 고지](THIRD_PARTY_NOTICES.md) · [데스크톱 고지](desktop/THIRD_PARTY_NOTICES.md)
+[1.19 변경과 검사 범위](reports/DESKTOP_1_19.ko.md) · [1.18 변경과 검사 범위](reports/DESKTOP_1_18.ko.md) · [저작권·제3자 고지](THIRD_PARTY_NOTICES.md) · [데스크톱 고지](desktop/THIRD_PARTY_NOTICES.md)
 
 ## 버전별 패치 내역
 
@@ -78,6 +84,7 @@ python3 -B scripts/build-desktop.py
 
 | 버전 | 주요 변경 | 관련 문서 |
 | --- | --- | --- |
+| **1.19.0** | 데스크톱의 공개 직접 미디어에 HTTP/3 우선 연결과 HTTP/2·HTTP/1.1 폴백, 강한 ETag·범위를 검증하는 최대 4개 분할 전송, 유한 스트리밍 큐·연결 재사용·제한 재시도 추가. 앱 전체 속도 제한 ON/OFF·상한 실시간 변경, 전송 가속·HTTP/3 설정, 실제 프로토콜 표시와 신규 로컬 전송 시험 | [변경·검사 범위](reports/DESKTOP_1_19.ko.md) · [조사](reports/DESKTOP_TRANSPORT_RESEARCH.ko.md) |
 | **1.18.0** | 데스크톱 동시 다운로드 최대 16개, 자동 2~4개, 사이트별 제한 설정과 작업 배분. 조각 다운로드·메타데이터 분석·변환·백신 검사를 별도 자원 예산으로 제어하고 진행률 알림을 줄여 UI 부하 완화. 이전 검사는 건너뛰고 신규 동시성 검사만 수행 | [변경·검사 범위](reports/DESKTOP_1_18.ko.md) · [조사와 설계](reports/DESKTOP_CONCURRENCY_RESEARCH.ko.md) |
 | **1.17.0** | 확장의 YouTube 기능 제거. yt-dlp·EJS·Deno·FFmpeg·Python·Qt를 내장한 Windows GUI 앱 추가. 대기열·최고 화질·오디오 저장·취소/재시도·SQLite·테마·폴더 설정, 확장과 앱을 같은 Release에 게시 | [검사 범위](reports/DESKTOP_1_17.ko.md) · [앱 사용법](desktop/README.ko.md) |
 | 1.16.0 | YouTube 공개 단일 영상·Shorts의 최고 제공 화질·MP3/M4A 저장 추가. 별도 로컬 yt-dlp/Deno 도우미로 주소 추출 후 기존 브라우저에서 MP4/WebM/MKV 병합·자동 저장·보안 검사 수행. 취소·만료 주소 재추출·시크릿 분리와 별도 도우미 ZIP·Release 첨부 추가 | [YouTube 분석과 검증](reports/YOUTUBE.ko.md) · [도우미 설치](native/YOUTUBE.ko.md) |

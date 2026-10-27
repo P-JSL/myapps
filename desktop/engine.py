@@ -51,6 +51,24 @@ except ImportError:
     _storage_spec.loader.exec_module(_storage_module)
     Storage = _storage_module.Storage
 
+try:
+    from .bandwidth import BandwidthCancelled, PROCESS_BANDWIDTH
+    from .transport import NativeTransport
+    from .transfer import TransferCancelled, download_file
+except ImportError:
+    # Metadata workers use -I and therefore have no sibling import directory.
+    for _name in ("bandwidth", "transport", "transfer"):
+        if _name not in sys.modules:
+            _spec = importlib.util.spec_from_file_location(_name, Path(__file__).absolute().with_name(_name + ".py"))
+            _module = importlib.util.module_from_spec(_spec)
+            sys.modules[_name] = _module
+            _spec.loader.exec_module(_module)
+    NativeTransport = sys.modules["transport"].NativeTransport
+    BandwidthCancelled = sys.modules["bandwidth"].BandwidthCancelled
+    PROCESS_BANDWIDTH = sys.modules["bandwidth"].PROCESS_BANDWIDTH
+    TransferCancelled = sys.modules["transfer"].TransferCancelled
+    download_file = sys.modules["transfer"].download_file
+
 YT_DLP_VERSION = "2026.10.21"
 EJS_VERSION = "0.8.0"
 DENO_VERSION = "2.9.8"
@@ -94,6 +112,9 @@ class DownloadProgress:
     title: str = ""
     filepath: str | None = None
     message: str = ""
+    transport: str | None = None
+    connections: int | None = None
+    transfer_mode: str | None = None
 
 
 @dataclass(frozen=True)
@@ -377,7 +398,14 @@ class Engine:
         self._private_urls: dict[str, str] = {}
         self.resources = resources if resources is not None else PROCESS_RESOURCES
         self._settings_lock = threading.Lock()
-        self._concurrency_setting = normalize_concurrency(self.store.settings().get("concurrent_downloads"))
+        settings = self.store.settings()
+        self._concurrency_setting = normalize_concurrency(settings.get("concurrent_downloads"))
+        self._parallel_downloads = settings["parallel_downloads"]
+        self._http3_enabled = settings["http3_enabled"]
+        self._speed_limit_enabled = settings["speed_limit_enabled"]
+        self._speed_limit_kib = settings["speed_limit_kib"]
+        self.bandwidth = PROCESS_BANDWIDTH
+        self.bandwidth.configure(self._speed_limit_enabled, self._speed_limit_kib)
         self._progress_local = threading.local()
 
     def history(self) -> list[dict]:
@@ -391,6 +419,16 @@ class Engine:
             self.store.save_settings(values)
             if "concurrent_downloads" in values:
                 self._concurrency_setting = normalize_concurrency(values["concurrent_downloads"])
+            if "parallel_downloads" in values:
+                self._parallel_downloads = values["parallel_downloads"]
+            if "http3_enabled" in values:
+                self._http3_enabled = values["http3_enabled"]
+            if "speed_limit_enabled" in values or "speed_limit_kib" in values:
+                if "speed_limit_enabled" in values:
+                    self._speed_limit_enabled = values["speed_limit_enabled"]
+                if "speed_limit_kib" in values:
+                    self._speed_limit_kib = values["speed_limit_kib"]
+                self.bandwidth.configure(self._speed_limit_enabled, self._speed_limit_kib)
 
     @contextmanager
     def _resource(self, resource: str, cancel: threading.Event, units=1):
@@ -478,7 +516,18 @@ class Engine:
                 raise EngineError("내장 미디어 실행기 버전이 일치하지 않습니다. 데스크톱 ZIP 전체를 다시 압축 해제하세요.")
         return yt_dlp, deno, ffmpeg, ffprobe
 
-    def _options(self, deno: Path, progress=None, *, fragment_workers: int = 1) -> dict:
+    def _options(self, deno: Path, progress=None, *, fragment_workers: int = 1,
+                 cancel: threading.Event | None = None) -> dict:
+        def retry_sleep(attempt):
+            delay = min(8, 2 ** max(0, min(3, attempt - 1)))
+            if cancel is None:
+                return delay
+            if cancel.wait(delay):
+                raise DownloadCancelled("다운로드를 취소했습니다.")
+            # The delay already elapsed through the cancellable event; yt-dlp
+            # must not sleep for it a second time.
+            return 0
+
         return {"quiet": True, "no_warnings": True, "logger": _SilentLogger(), "noplaylist": True,
                 "ignoreconfig": True, "cachedir": False, "cookiefile": None, "cookiesfrombrowser": None,
                 "usenetrc": False, "netrc_location": None, "username": None, "password": None,
@@ -487,6 +536,7 @@ class Engine:
                 "ffmpeg_location": str(self.app_root / "runtime" / "ffmpeg"),
                 "progress_hooks": [progress] if progress is not None else [],
                 "socket_timeout": 15, "retries": 3, "fragment_retries": 3, "extractor_retries": 2,
+                "retry_sleep_functions": {kind: retry_sleep for kind in ("http", "fragment", "extractor")},
                 "concurrent_fragment_downloads": fragment_workers, "continuedl": True, "nopart": False,
                 "overwrites": False, "keep_fragments": False, "skip_unavailable_fragments": False,
                 "hls_prefer_native": True, "allow_unplayable_formats": False,
@@ -738,6 +788,11 @@ class Engine:
         directory = None
         leases = ExitStack()
         published = None
+        native_transport = None
+        transfer_fields = {"transport": None, "connections": None, "transfer_mode": None}
+        observed_protocols: set[str] = set()
+        parallel_connections = 0
+        progress_lock = threading.RLock()
         with self._lock:
             if job_id in self._active:
                 raise EngineError("이 다운로드는 이미 진행 중입니다.")
@@ -755,9 +810,10 @@ class Engine:
             self._private_urls[job_id] = url
 
         def emit(stage, **fields):
-            if stage != "waiting":
-                self._progress_local.stage = stage
-            progress(DownloadProgress(stage=stage, title=title, **fields))
+            with progress_lock:
+                if stage != "waiting":
+                    self._progress_local.stage = stage
+                progress(DownloadProgress(stage=stage, title=title, **{**transfer_fields, **fields}))
 
         self._progress_local.emit = emit
         try:
@@ -770,18 +826,50 @@ class Engine:
             track_index = 0
             tracks = []
             totals: list[int | None] = []
+            legacy_downloaded = 0
 
-            def hook(value):
-                _check_cancel(cancel)
-                downloaded = int(_number(value.get("downloaded_bytes")) or _number(value.get("total_bytes")) or 0)
-                current_total = _number(value.get("total_bytes")) or _number(value.get("total_bytes_estimate"))
-                if current_total:
-                    totals[track_index] = int(current_total)
-                total = sum(totals) if totals and all(item is not None for item in totals) else None
-                overall = completed_bytes + downloaded
-                percent = min(100.0, overall / total * 100) if total else None
-                emit("downloading", percent=percent, downloaded=overall, total=total,
-                     speed=_number(value.get("speed")), eta=_number(value.get("eta")), message="미디어를 다운로드하고 있습니다.")
+            def hook(value, *, charge_bandwidth=True):
+                nonlocal legacy_downloaded
+                with progress_lock:
+                    _check_cancel(cancel)
+                    downloaded_value = _number(value.get("downloaded_bytes"))
+                    downloaded = int(downloaded_value if downloaded_value is not None else _number(value.get("total_bytes")) or 0)
+                    if charge_bandwidth:
+                        delta = max(0, downloaded - legacy_downloaded)
+                        legacy_downloaded = max(legacy_downloaded, downloaded)
+                        try:
+                            if delta:
+                                self.bandwidth.consume(delta, cancel)
+                        except BandwidthCancelled:
+                            raise DownloadCancelled("다운로드를 취소했습니다.") from None
+                    current_total = _number(value.get("total_bytes")) or _number(value.get("total_bytes_estimate"))
+                    if current_total:
+                        totals[track_index] = int(current_total)
+                    total = sum(totals) if totals and all(item is not None for item in totals) else None
+                    overall = completed_bytes + downloaded
+                    percent = min(100.0, overall / total * 100) if total else None
+                    emit("downloading", percent=percent, downloaded=overall, total=total,
+                         speed=_number(value.get("speed")), eta=_number(value.get("eta")), message="미디어를 다운로드하고 있습니다.")
+
+            def negotiated(protocol):
+                # Only values reported by a completed protocol negotiation may
+                # enter progress or history; settings never imply HTTP/3 use.
+                if protocol in ("h3", "h2", "http/1.1"):
+                    with progress_lock:
+                        observed_protocols.add(protocol)
+                        transfer_fields["transport"] = protocol
+
+            def transfer_mode(mode):
+                if mode in ("parallel", "single"):
+                    with progress_lock:
+                        transfer_fields["transfer_mode"] = mode
+
+            def connections(count):
+                nonlocal parallel_connections
+                if type(count) is int and 1 <= count <= 4:
+                    with progress_lock:
+                        transfer_fields["connections"] = count
+                        parallel_connections = max(parallel_connections, count)
 
             with self._resource("metadata", cancel):
                 module, deno, ffmpeg, ffprobe = self._dependencies(youtube, cancel)
@@ -810,10 +898,51 @@ class Engine:
                 # __postprocessors, webpage data and metadata are deliberately not handed to dl().
                 item = {**track, "id": info.get("id", job_id), "title": title,
                         "http_headers": track.get("http_headers") or info.get("http_headers") or {}}
-                workers = self._fragment_workers(track)
-                with self._resource("network", cancel, workers):
-                    with module.YoutubeDL(self._options(deno, hook, fragment_workers=workers)) as downloader:
-                        success = downloader.dl(str(path), item)
+                direct = track.get("protocol") in ("http", "https") and not track.get("fragments")
+                # Preserve the old downloader's resumable layout. The native
+                # transfer owns only files it creates exclusively for this run.
+                legacy_resume = resume and (os.path.lexists(path) or os.path.lexists(str(path) + ".part"))
+                if legacy_resume:
+                    for existing in (path, Path(str(path) + ".part")):
+                        if os.path.lexists(existing):
+                            attributes = existing.lstat()
+                            if not stat.S_ISREG(attributes.st_mode) or getattr(attributes, "st_file_attributes", 0) & 0x400:
+                                raise EngineError("임시 다운로드 파일이 안전하지 않습니다. 다른 저장 폴더를 선택하세요.")
+                if direct and not legacy_resume:
+                    with self._settings_lock:
+                        workers = min(4, self.resources.capacities["network"]) if self._parallel_downloads else 1
+                        http3_enabled = self._http3_enabled
+                    if native_transport is None:
+                        native_transport = leases.enter_context(NativeTransport(http3_enabled=http3_enabled, max_connections=4,
+                                                                              bandwidth_limiter=self.bandwidth))
+                    started = time.monotonic()
+
+                    def native_progress(downloaded, total):
+                        elapsed = time.monotonic() - started
+                        speed = downloaded / elapsed if elapsed > 0 else None
+                        hook({"downloaded_bytes": downloaded, "total_bytes": total, "speed": speed,
+                              "eta": (total - downloaded) / speed if total and speed else None}, charge_bandwidth=False)
+
+                    try:
+                        download_file(track["url"], path, transport=native_transport, resources=self.resources,
+                                      cancel=cancel, workers=workers, headers=item["http_headers"], progress=native_progress,
+                                      protocol=negotiated, mode=transfer_mode, connections=connections,
+                                      on_wait=lambda: emit("waiting", message="네트워크 다운로드 순서를 기다리고 있습니다."))
+                    except TransferCancelled:
+                        raise DownloadCancelled("다운로드를 취소했습니다.") from None
+                    success = True
+                else:
+                    with progress_lock:
+                        transfer_fields.update(transport=None, connections=None, transfer_mode=None)
+                    workers = self._fragment_workers(track)
+                    legacy_downloaded = path.stat().st_size if path.is_file() else 0
+                    if legacy_resume and not legacy_downloaded:
+                        partial = Path(str(path) + ".part")
+                        if partial.is_file():
+                            legacy_downloaded = partial.stat().st_size
+                    with self._resource("network", cancel, workers):
+                        with module.YoutubeDL(self._options(deno, hook, fragment_workers=workers, cancel=cancel)) as downloader:
+                            success = downloader.dl(str(path), item)
                 if not (success[0] if isinstance(success, tuple) else success) or not path.is_file() or path.is_symlink():
                     raise EngineError("다운로드가 끝나지 않았습니다. 다시 시도하면 새 원본을 확인하고 안전하게 이어받습니다.")
                 with self._resource("processing", cancel):
@@ -840,6 +969,12 @@ class Engine:
                 emit("scanning", filepath=str(published), message="Microsoft Defender로 저장한 파일을 검사하고 있습니다.")
                 with self._resource("scan", cancel):
                     message = self._scan(published, cancel)
+            if observed_protocols:
+                names = {"h3": "HTTP/3", "h2": "HTTP/2", "http/1.1": "HTTP/1.1"}
+                summary = " · ".join(names[value] for value in ("h3", "h2", "http/1.1") if value in observed_protocols)
+                if parallel_connections > 1:
+                    summary += f" · 파일당 최대 {parallel_connections}개 병렬 요청"
+                message += " " + summary + "."
             self.store.update(job_id, stage="complete", filepath=str(published), message=message)
             self._clean_owned(directory, job_id, request_digest, remove=True)
             emit("complete", percent=100.0, downloaded=completed_bytes, total=completed_bytes, filepath=str(published), message=message)

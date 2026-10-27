@@ -10,6 +10,11 @@ recorded in `licenses/dependencies-lock.json` and `APPMANIFEST.json`.
 | yt-dlp | 2026.10.21 | Unlicense; original package metadata and license files remain in `runtime/python/Lib/site-packages/yt_dlp-*.dist-info/`. |
 | yt-dlp EJS | 0.8.0 | Unlicense, MIT and ISC; all wheel metadata/notices are preserved beside the package. |
 | Deno | 2.9.8 | MIT; original distribution metadata/license files are in `licenses/deno/`. |
+| curl_cffi | 0.17.0 | MIT; original wheel license and metadata retained. Browser impersonation is not enabled by this application. |
+| libcurl native transport | curl-impersonate 2.3.1 / libcurl 8.23.0 | curl/MIT and bundled dependency notices in `licenses/curl-native/`. The shipped Windows DLL matches the upstream 2.3.1 release byte for byte; see the pinned identity in `licenses/dependencies-lock.json`. |
+| cffi | 2.1.1 | MIT-0; original license and wheel metadata retained. |
+| certifi | 2026.10.23 | MPL-2.0; CA certificates and original license retained. |
+| pycparser | 3.12 | BSD-3-Clause; original license and wheel metadata retained. |
 | PySide6 Essentials and shiboken6 | 6.12.0 | Open-source LGPL-3.0-only, GPL-2.0-only or GPL-3.0-only, as stated by the original wheel METADATA. Original license files/dist-info remain beside the packages. |
 | Qt libraries and plugins shipped by PySide6 | 6.12.0 | Applicable Qt and third-party licenses; see the Qt source trees and original wheel notices. LGPL-3.0, GPL-3.0 and GPL-2.0 texts are supplied in `licenses/qt/`. |
 | FFmpeg / ffprobe, BtbN stable 9.0 branch | 9.0.2-36-g6882969ce9 | LGPL-3.0-or-later and included third-party licenses. Original `LICENSE.txt`, documentation and presets are in `licenses/ffmpeg/`. |
@@ -50,3 +55,11 @@ require separate Qt Addons or database client installations. The exact omitted
 groups are recorded in `APPMANIFEST.json`. This Qt Widgets application uses none
 of them. Wheel data files that are unnecessary for execution are
 retained under `licenses/<component>/wheel-data/`.
+
+Native transport corresponding sources and notices:
+<https://github.com/lexiforest/curl_cffi/tree/v0.17.0> and
+<https://github.com/lexiforest/curl-impersonate/tree/v2.3.1>.
+The exact native source-release archive URL, SHA-256, DLL match and notice
+member identities are recorded in `licenses/dependencies-lock.json`.
+BoringSSL, Brotli, c-ares, curl, nghttp2, nghttp3, ngtcp2, zlib and zstd
+license files from that matching release are included without modification.

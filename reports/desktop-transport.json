@@ -1,0 +1,11 @@
+{
+  "protocols": [
+    "h2",
+    "h3",
+    "http/1.1"
+  ],
+  "tests": 15,
+  "status": "passed",
+  "scope": "Loopback TLS verified against a fixture CA; HTTP/1.1, HTTP/2 and QUIC HTTP/3 origins.",
+  "liveYouTubeVerified": false
+}

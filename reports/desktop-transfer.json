@@ -1,0 +1,55 @@
+{
+  "fixture": "loopback HTTP/1.1",
+  "measurements": [
+    {
+      "bytes": 16777339,
+      "mib_per_second": 3.8967,
+      "mode": "single",
+      "peak_body_requests": 1,
+      "seconds": 4.106033,
+      "workers": 1
+    },
+    {
+      "bytes": 16777339,
+      "mib_per_second": 14.4634,
+      "mode": "parallel",
+      "peak_body_requests": 4,
+      "seconds": 1.106246,
+      "workers": 4
+    }
+  ],
+  "parallel_speedup": 3.7117,
+  "per_connection_bytes_per_second": 4194304,
+  "scope": "Controlled local origin only; does not predict Internet download speed.",
+  "concurrent_measurements": [
+    {
+      "aggregate_mib_per_second": 15.5649,
+      "all_hashes_valid": true,
+      "files": 4,
+      "peak_body_requests": 4,
+      "peak_range_body_requests": 0,
+      "per_file_workers": 1,
+      "seconds": 4.111844,
+      "total_bytes": 67109356
+    },
+    {
+      "aggregate_mib_per_second": 52.8964,
+      "all_hashes_valid": true,
+      "files": 4,
+      "peak_body_requests": 16,
+      "peak_range_body_requests": 16,
+      "per_file_workers": 4,
+      "seconds": 1.209921,
+      "total_bytes": 67109356
+    }
+  ],
+  "concurrent_parallel_speedup": 3.3984,
+  "global_network_budget": 16,
+  "executionEnvironment": {
+    "platform": "Linux",
+    "python": "3.12.14",
+    "curlCffi": "0.17.0",
+    "publicWANBenchmarked": false
+  },
+  "sourceLog": "reports/validation-1.19/transfer-tests.txt"
+}

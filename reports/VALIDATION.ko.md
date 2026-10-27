@@ -1,6 +1,10 @@
-# 현재 릴리스 1.18.0: 데스크톱 동시 다운로드 확대
+# 현재 릴리스 1.19.0: 전송 가속·HTTP/3·속도 제한
 
-**이전 검사는 사용자 요청에 따라 모두 건너뛰었습니다.** 이번에는 새 동시성 엔진 14개·GUI 9개·배포 범위 15개, 총 38개의 신규 검사만 실행합니다. Linux의 검사는 완료했으며 Windows 배포 작업은 실제 패키지의 Python·Qt에서 같은 신규 범위를 실행한 뒤 게시하도록 구성했습니다. 자세한 내용은 [1.18 변경·검사 범위](DESKTOP_1_18.ko.md), [조사 자료](DESKTOP_CONCURRENCY_RESEARCH.ko.md), `release-validation.json`을 참고하세요. 실제 YouTube 처리량·회선 속도는 측정하지 않았습니다.
+새 직접 전송·강한 범위 검증·실제 TLS/QUIC 프로토콜·프록시·앱 전체 속도 제한과 통합/배포 경로만 검사합니다. **기존 검사는 모두 건너뛰었습니다.** 최신 결과는 [1.19 보고서](DESKTOP_1_19.ko.md), `release-validation.json`, `desktop-transfer.json`, `desktop-transport.json`을 참고하세요. 로컬 속도 제한 서버의 결과를 인터넷 성능으로 일반화하지 않습니다.
+
+# 1.18.0: 데스크톱 동시 다운로드 확대 이력
+
+**이전 검사는 사용자 요청에 따라 모두 건너뛰었습니다.** 당시 동시성 엔진 14개·GUI 9개·배포 범위 15개, 총 38개의 신규 검사만 실행했습니다. 자세한 내용은 [1.18 변경·검사 범위](DESKTOP_1_18.ko.md), [조사 자료](DESKTOP_CONCURRENCY_RESEARCH.ko.md), `release-validation-1.18.0.json`을 참고하세요. 실제 YouTube 처리량·회선 속도는 측정하지 않았습니다.
 
 # 1.17.0: 확장과 Windows 앱 분리 이력
 

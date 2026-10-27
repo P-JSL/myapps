@@ -17,6 +17,12 @@ CONCURRENCY_VERSION = '1.18.0'
 CONCURRENCY_MODE = 'focused-desktop-concurrency'
 CONCURRENCY_BASELINE = 'v1.17.0'
 CONCURRENCY_BASELINE_COMMIT = '252b452da32f16dc81cb36cca94231879d43c5f1'
+TRANSPORT_VERSION = '1.19.0'
+TRANSPORT_MODE = 'focused-desktop-transport'
+TRANSPORT_BASELINE = 'v1.18.0'
+TRANSPORT_BASELINE_COMMIT = '1756c8dec1cb6e655fd486ab4a55fcc35641fd74'
+TRANSPORT_REPORT = 'DESKTOP-TRANSPORT-TESTS.json'
+TRANSPORT_PROTOCOLS = frozenset(('h3', 'h2', 'http/1.1'))
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -68,14 +74,55 @@ def validate():
                     for required in ('desktop/concurrency.py', 'runtime/python/python.exe'):
                         if 'MyVideoApp/' + required not in names:
                             raise ValueError('Desktop concurrency runtime missing: ' + required)
+                elif version == TRANSPORT_VERSION:
+                    for required in ('desktop/concurrency.py', 'desktop/transport.py', 'desktop/transfer.py', 'desktop/bandwidth.py',
+                                     'runtime/python/python.exe', 'runtime/python/Lib/site-packages/curl_cffi/__init__.py'):
+                        if 'MyVideoApp/' + required not in names:
+                            raise ValueError('Desktop transport runtime missing: ' + required)
     return version, hashes
 
-def validate_windows_evidence(version, commit, evidence, desktop_sha256):
-    """Keep the original 1.17 proof separate from the requested 1.18 scope."""
+def validate_transport_report(report):
+    """Require the protocol observations emitted by the real loopback suite."""
+    if (not isinstance(report, dict) or report.get('status') != 'passed'
+            or report.get('liveYouTubeVerified') is not False):
+        raise SystemExit('Actual packaged transport protocol proof is missing or failed.')
+    protocols = report.get('protocols')
+    if (not isinstance(protocols, list) or len(protocols) != len(TRANSPORT_PROTOCOLS)
+            or not all(isinstance(protocol, str) for protocol in protocols)
+            or set(protocols) != TRANSPORT_PROTOCOLS):
+        raise SystemExit('Actual packaged transport protocol proof must observe HTTP/3, HTTP/2, and HTTP/1.1.')
+    if not isinstance(report.get('tests'), int) or isinstance(report['tests'], bool) or report['tests'] <= 0:
+        raise SystemExit('Actual packaged transport protocol proof has no successful tests.')
+
+def validate_windows_evidence(version, commit, evidence, desktop_sha256,
+                              transport_report=None, transport_report_sha256=None):
+    """Each version keeps its own explicitly authorized verification scope."""
     if not isinstance(evidence, dict) or any(evidence.get(key) != value for key, value in (
             ('version', version), ('commit', commit), ('platform', 'windows-x64'))):
         raise SystemExit('Actual packaged Windows verification is missing or stale.')
-    if version == CONCURRENCY_VERSION:
+    if version == TRANSPORT_VERSION:
+        validate_transport_report(transport_report)
+        if not isinstance(transport_report_sha256, str) or not re.fullmatch('[0-9a-f]{64}', transport_report_sha256):
+            raise SystemExit('Actual packaged transport protocol proof hash is missing.')
+        required = {
+            'validationMode': TRANSPORT_MODE,
+            'baseline': TRANSPORT_BASELINE,
+            'baselineCommit': TRANSPORT_BASELINE_COMMIT,
+            'desktopSha256': desktop_sha256,
+            'bandwidthTests': 'passed',
+            'rangeTests': 'passed',
+            'transportTests': 'passed',
+            'engineTransportTests': 'passed',
+            'releaseScopeTests': 'passed',
+            'actualProtocols': transport_report['protocols'],
+            'transportReportSha256': transport_report_sha256,
+            'priorChecks': 'skipped-per-user',
+        }
+        if (any(evidence.get(key) != value for key, value in required.items())
+                or evidence.get('liveYouTubeVerified') is not False
+                or evidence.get('publicWANBenchmarked') is not False):
+            raise SystemExit('Focused desktop transport Windows verification is missing, stale, or has the wrong scope.')
+    elif version == CONCURRENCY_VERSION:
         required = {
             'validationMode': CONCURRENCY_MODE,
             'baseline': CONCURRENCY_BASELINE,
@@ -103,7 +150,15 @@ def main():
         raise SystemExit('Invalid release commit.')
     evidence_path = ROOT / 'artifacts/WINDOWS-VALIDATION.json'
     evidence = json.loads(evidence_path.read_text(encoding='utf-8-sig'))
-    validate_windows_evidence(version, commit, evidence, hashes[ASSETS[1]])
+    transport_report_path = ROOT / 'artifacts' / TRANSPORT_REPORT
+    if version == TRANSPORT_VERSION:
+        transport_report = json.loads(transport_report_path.read_text(encoding='utf-8-sig'))
+        transport_report_sha256 = sha256(transport_report_path)
+        validate_windows_evidence(version, commit, evidence, hashes[ASSETS[1]],
+                                  transport_report, transport_report_sha256)
+        hashes[TRANSPORT_REPORT] = transport_report_sha256
+    else:
+        validate_windows_evidence(version, commit, evidence, hashes[ASSETS[1]])
     hashes[evidence_path.name] = sha256(evidence_path)
     tag, repository = 'v' + version, os.environ['GITHUB_REPOSITORY']
     def api(path):
@@ -156,7 +211,7 @@ def main():
             published_assets = release.get('assets')
             if not isinstance(published_assets, list):
                 raise SystemExit('Existing release assets are not verifiable.')
-            for name in ASSETS:
+            for name in (hashes if version == TRANSPORT_VERSION else ASSETS):
                 matches = [asset for asset in published_assets if asset.get('name') == name]
                 if len(matches) != 1 or matches[0].get('digest') != 'sha256:' + hashes[name]:
                     raise SystemExit('Existing release asset digest differs: ' + name)
@@ -169,8 +224,13 @@ def main():
                          '호스트당 기본 4개(1~16개 설정), 전체 조각 예산 16개, 동시 변환 2개와 FFmpeg 스레드 2개로 리소스를 제한합니다.\n'
                          '- **검증 범위:** 새 동시성·동시성 GUI·릴리스 범위 검사만 실행했습니다. '
                          '이전 검사는 사용자 요청으로 건너뛰었으며 실제 YouTube 다운로드는 확인하지 않았습니다.\n') if version == CONCURRENCY_VERSION else ''
+    transport_notes = ('- **직접 미디어 전송:** 강한 Range 검증자가 있는 파일만 병렬로 전송하며 HTTP/3 연결이 불가능하면 HTTP/2·HTTP/1.1로 대체합니다. 다운로드 속도 제한을 설정에서 켜거나 끌 수 있습니다.\n'
+                       '- **실제 관측 프로토콜:** ' + ', '.join(evidence['actualProtocols']) + '. 내장 Windows 런타임으로 TLS 루프백 서버를 확인했습니다. '
+                       '원시 결과는 `DESKTOP-TRANSPORT-TESTS.json`, 연결된 SHA-256은 `WINDOWS-VALIDATION.json`과 첨부 목록에 있습니다.\n'
+                       '- **검증 범위:** 새 속도 제한·Range·전송·엔진 통합·릴리스 범위 검사만 실행했습니다. 이전 검사는 사용자 요청으로 건너뛰었습니다. '
+                       '처리량 벤치마크는 통제된 로컬 조건이며 인터넷 속도를 보장하지 않습니다. 실제 YouTube 다운로드와 공용 WAN 벤치마크는 확인하지 않았습니다.\n') if version == TRANSPORT_VERSION else ''
     notes = ('My Video App **' + version + '**\n\n'
-             + concurrency_notes +
+             + concurrency_notes + transport_notes +
              '- **Windows 앱:** `my-video-app-desktop-windows-x64.zip` 전체 압축 해제 후 `My Video App.exe` 실행. '
              'YouTube·최고 화질·MP3/M4A·병합·대기열·기록·설정. Python·yt-dlp·Deno·FFmpeg·Qt 내장. 별도 도우미 등록·API 키 불필요.\n'
              '- **Chrome 확장:** `my-video-app-extension.zip`. **YouTube 제외**, 일반 미디어·HLS/DASH·로컬 도구 유지.\n'
@@ -182,6 +242,8 @@ def main():
         body = Path(temporary) / 'notes.md'
         body.write_text(notes, encoding='utf-8')
         assets = [str(artifacts / name) for name in ASSETS] + [str(evidence_path), str(sums)]
+        if version == TRANSPORT_VERSION:
+            assets.append(str(transport_report_path))
         def gh(*args):
             subprocess.run(['gh', *args], check=True, cwd=ROOT, shell=False)
         if release is None:

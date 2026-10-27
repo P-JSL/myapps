@@ -87,10 +87,17 @@ class Storage:
                     continue
             values["concurrent_downloads"] = normalize_concurrency(values.get("concurrent_downloads"))
             values["host_concurrent_downloads"] = normalize_host_concurrency(values.get("host_concurrent_downloads"))
+            for key in ("parallel_downloads", "http3_enabled"):
+                # Existing installations receive the new defaults, while stored
+                # booleans keep the user's explicit choice.
+                values[key] = values[key] if type(values.get(key)) is bool else True
+            values["speed_limit_enabled"] = values["speed_limit_enabled"] if type(values.get("speed_limit_enabled")) is bool else False
+            rate = values.get("speed_limit_kib")
+            values["speed_limit_kib"] = rate if type(rate) is int and 64 <= rate <= 1048576 else 10240
             return values
 
     def save_settings(self, values: dict):
-        allowed = {"download_folder", "folder_confirmed", "theme", "concurrent_downloads", "host_concurrent_downloads", "scan_after_download", "quality", "output"}
+        allowed = {"download_folder", "folder_confirmed", "theme", "concurrent_downloads", "host_concurrent_downloads", "scan_after_download", "quality", "output", "parallel_downloads", "http3_enabled", "speed_limit_enabled", "speed_limit_kib"}
         clean = {key: value for key, value in values.items() if key in allowed}
         if "download_folder" in clean and not isinstance(clean["download_folder"], str):
             raise ValueError("Download folder must be a path.")
@@ -102,6 +109,13 @@ class Storage:
             raise ValueError("Choose one to sixteen simultaneous downloads per host.")
         if "scan_after_download" in clean and type(clean["scan_after_download"]) is not bool:
             raise ValueError("Invalid scan preference.")
+        for key in ("parallel_downloads", "http3_enabled"):
+            if key in clean and type(clean[key]) is not bool:
+                raise ValueError("Invalid transport preference.")
+        if "speed_limit_enabled" in clean and type(clean["speed_limit_enabled"]) is not bool:
+            raise ValueError("Invalid speed limit preference.")
+        if "speed_limit_kib" in clean and (type(clean["speed_limit_kib"]) is not int or not 64 <= clean["speed_limit_kib"] <= 1048576):
+            raise ValueError("Choose a speed limit from 64 to 1048576 KiB/s.")
         if "folder_confirmed" in clean and type(clean["folder_confirmed"]) is not bool:
             raise ValueError("Invalid folder confirmation.")
         if "quality" in clean and clean["quality"] not in ("highest", "2160", "1440", "1080", "720", "480"):

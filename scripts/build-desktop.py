@@ -23,7 +23,8 @@ import zipfile
 
 
 PREFIX = "MyVideoApp/"
-INPUT_IDS = ("python", "yt-dlp", "yt-dlp-ejs", "deno", "pyside6-essentials", "shiboken6", "ffmpeg")
+INPUT_IDS = ("python", "yt-dlp", "yt-dlp-ejs", "deno", "pyside6-essentials", "shiboken6",
+             "curl-cffi", "cffi", "certifi", "pycparser", "ffmpeg")
 MAX_FILES = 30_000
 MAX_FILE_BYTES = 300 * 1024 * 1024
 MAX_TOTAL_BYTES = 1200 * 1024 * 1024
@@ -79,7 +80,7 @@ def load_lock(path):
         raise ValueError("Desktop lock must specify an application version")
     inputs = lock.get("inputs")
     if not isinstance(inputs, list) or [item.get("id") for item in inputs] != list(INPUT_IDS):
-        raise ValueError("Desktop lock must contain the seven pinned runtime inputs in order")
+        raise ValueError("Desktop lock must contain the pinned runtime inputs in order")
     seen = set()
     for item in inputs + lock.get("notices", []):
         if (not re.fullmatch(r"[0-9a-f]{64}", item.get("sha256", ""))
@@ -106,6 +107,12 @@ def load_lock(path):
     ffmpeg = inputs[-1]
     if safe_name(ffmpeg.get("archiveRoot", "")) != ffmpeg["filename"][:-4]:
         raise ValueError("FFmpeg archive root does not match its pinned ZIP")
+    for item in lock.get("localNotices", []):
+        if (not safe_name(item["source"]).startswith("licenses/")
+                or not safe_name(item["destination"]).startswith("licenses/")
+                or not re.fullmatch(r"[0-9a-f]{64}", item.get("sha256", ""))
+                or type(item.get("size")) is not int or not 0 < item["size"] <= MAX_FILE_BYTES):
+            raise ValueError("Invalid local runtime notice identity")
     return lock
 
 
@@ -265,6 +272,13 @@ def build_bundle(root, lock_path, cache, output, offline=False):
         add(name, source.stat().st_size, source)
     for item, path in notices:
         add(item["destination"], item["size"], path)
+    for item in lock.get("localNotices", []):
+        source = root / item["source"]
+        if (source.is_symlink() or not source.is_file() or source.stat().st_size != item["size"]
+                or sha256_file(source) != item["sha256"]):
+            raise ValueError("Local runtime notice is missing or changed")
+        add(item["destination"], item["size"], source)
+        source_hashes[item["source"]] = item["sha256"]
     source_notice = canonical_json(lock)
     add("licenses/dependencies-lock.json", len(source_notice), source_notice)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -302,6 +316,9 @@ def build_bundle(root, lock_path, cache, output, offline=False):
             "runtime/python/Lib/ssl.py", "runtime/python/DLLs/_ssl.pyd",
             "runtime/ffmpeg/ffmpeg.exe", "runtime/ffmpeg/ffprobe.exe", "licenses/ffmpeg/LICENSE.txt",
             "runtime/python/Lib/site-packages/yt_dlp/__init__.py", "runtime/python/Lib/site-packages/yt_dlp_ejs/__init__.py",
+            "runtime/python/Lib/site-packages/curl_cffi/__init__.py", "runtime/python/Lib/site-packages/certifi/cacert.pem",
+            "runtime/python/Lib/site-packages/curl_cffi/_wrapper.pyd",
+            "runtime/python/Lib/site-packages/_cffi_backend.cp313-win_amd64.pyd",
             "runtime/python/Lib/site-packages/PySide6/__init__.py", "runtime/python/Lib/site-packages/shiboken6/__init__.py",
             "runtime/python/Lib/site-packages/PySide6/QtCore.pyd", "runtime/python/Lib/site-packages/PySide6/QtGui.pyd",
             "runtime/python/Lib/site-packages/PySide6/QtWidgets.pyd", "runtime/python/Lib/site-packages/PySide6/plugins/platforms/qwindows.dll",
@@ -310,6 +327,10 @@ def build_bundle(root, lock_path, cache, output, offline=False):
         )
         if any(name not in plan for name in required):
             raise ValueError("Pinned desktop runtime archives are incomplete")
+        native_member = lock.get("nativeTransportMatch", {}).get("wheel_member")
+        if (not isinstance(native_member, str)
+                or "runtime/python/Lib/site-packages/" + safe_name(native_member) not in plan):
+            raise ValueError("Pinned native HTTP transport library is missing")
 
         def open_source(source):
             if isinstance(source, Path):
@@ -320,6 +341,9 @@ def build_bundle(root, lock_path, cache, output, offline=False):
             return archive.open(info)
 
         checked = ["My Video App.exe", "runtime/python/python.exe", "runtime/python/pythonw.exe", "runtime/deno.exe", "runtime/ffmpeg/ffmpeg.exe", "runtime/ffmpeg/ffprobe.exe", "runtime/python/Lib/site-packages/PySide6/QtWidgets.pyd"]
+        checked.extend(["runtime/python/Lib/site-packages/curl_cffi/_wrapper.pyd",
+                        "runtime/python/Lib/site-packages/_cffi_backend.cp313-win_amd64.pyd",
+                        "runtime/python/Lib/site-packages/" + native_member])
         for name in checked:
             with open_source(plan[name][1]) as source:
                 validate_pe(source, name)

@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-27",
+  "version": "1.19.0",
+  "viewport": [
+    1220,
+    860
+  ],
+  "screenshot": "reports/screenshots/desktop-transport-settings.png",
+  "checks": {
+    "parallel_checkbox": {
+      "fullyVisible": true,
+      "enabled": true,
+      "rect": [
+        25,
+        130,
+        873,
+        36
+      ]
+    },
+    "http3_checkbox": {
+      "fullyVisible": true,
+      "enabled": true,
+      "rect": [
+        25,
+        224,
+        873,
+        36
+      ]
+    },
+    "speed_limit_checkbox": {
+      "fullyVisible": true,
+      "enabled": true,
+      "rect": [
+        25,
+        339,
+        691,
+        36
+      ]
+    },
+    "speed_limit_spin": {
+      "fullyVisible": true,
+      "enabled": true,
+      "rect": [
+        728,
+        342,
+        170,
+        29
+      ],
+      "heightAfterStyling": 44
+    },
+    "combinedLimitHint": {
+      "fullyVisible": true,
+      "text": "앱에서 받는 모든 파일의 합산 속도를 제한합니다. 변경 사항은 진행 중인 다운로드에도 바로 적용됩니다. 1 MiB/s = 1024 KiB/s."
+    }
+  },
+  "scope": "Only changed settings rendered; no previous GUI suite run.",
+  "styleRefresh": "Current1.19 theme with matching field height; changed settings only."
+}

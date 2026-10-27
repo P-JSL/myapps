@@ -11,33 +11,43 @@ const report = await json('reports/release-validation.json');
 assert.equal(report.release, version, 'Validation belongs to another release');
 assert.equal(report.status, 'passed', 'Successful focused validation required');
 const concurrencyMode = report.validationMode === 'focused-desktop-concurrency';
-if (concurrencyMode) {
+const transportMode = report.validationMode === 'focused-desktop-transport';
+if (transportMode) {
+  assert.equal(version, '1.19.0', 'Desktop transport scope belongs to release 1.19.0');
+  assert.equal(report.baseline, 'v1.18.0', 'Desktop transport baseline is fixed');
+  assert.equal(report.baselineCommit, '1756c8dec1cb6e655fd486ab4a55fcc35641fd74', 'Desktop transport baseline commit is fixed');
+  assert.equal(report.priorChecks, 'skipped-per-user', 'Previous checks must be recorded as skipped');
+  assert.equal(report.liveYouTubeVerified, false, 'Focused transport checks do not establish live YouTube behavior');
+  assert.equal(report.publicWANBenchmarked, false, 'Controlled loopback throughput does not establish public WAN performance');
+} else if (concurrencyMode) {
   assert.equal(version, '1.18.0', 'Desktop concurrency scope belongs to release 1.18.0');
   assert.equal(report.baseline, 'v1.17.0', 'Desktop concurrency baseline is fixed');
   assert.equal(report.baselineCommit, '252b452da32f16dc81cb36cca94231879d43c5f1', 'Desktop concurrency baseline commit is fixed');
   assert.equal(report.priorChecks, 'skipped-per-user', 'Previous checks must be recorded as skipped');
   assert.equal(report.liveYouTubeVerified, false, 'Focused concurrency checks do not establish live YouTube behavior');
-  // These are read-only scope checks, not reruns of the previous extension suite.
+} else {
+  assert.equal(version, '1.17.0', 'Architecture validation belongs to release 1.17.0');
+  assert.equal(report.validationMode, 'focused-architecture-change');
+}
+if (transportMode || concurrencyMode) {
+  // Read-only source comparisons preserve the requested desktop-only scope.
   const extensionScope = spawnSync('git', ['diff', '--name-only', report.baselineCommit, '--', 'src', 'native', 'tsconfig.json', ':(exclude)src/local/manifest.json'], { encoding: 'utf8' });
   assert.equal(extensionScope.status, 0, extensionScope.stderr || extensionScope.error?.message);
-  assert.equal(extensionScope.stdout.trim(), '', 'Focused desktop concurrency scope requires unchanged extension sources');
+  assert.equal(extensionScope.stdout.trim(), '', 'Focused desktop scope requires unchanged extension sources');
   const baselineManifest = spawnSync('git', ['show', `${report.baselineCommit}:src/local/manifest.json`], { encoding: 'utf8' });
   assert.equal(baselineManifest.status, 0, baselineManifest.stderr || baselineManifest.error?.message);
   const beforeManifest = JSON.parse(baselineManifest.stdout), currentManifest = await json('src/local/manifest.json');
   assert.equal(currentManifest.version, version, 'Extension source version metadata is stale');
   assert.equal(currentManifest.version_name, beforeManifest.version_name.replace(beforeManifest.version, version), 'Only the extension version label may change');
   for (const key of ['version', 'version_name']) { delete beforeManifest[key]; delete currentManifest[key]; }
-  assert.deepEqual(currentManifest, beforeManifest, 'Only extension version metadata may change in the desktop concurrency scope');
-} else {
-  assert.equal(version, '1.17.0', 'Architecture validation belongs to release 1.17.0');
-  assert.equal(report.validationMode, 'focused-architecture-change');
+  assert.deepEqual(currentManifest, beforeManifest, 'Only extension version metadata may change in the focused desktop scope');
 }
 assert.equal(report.userRequestedSkipPreviousChecks, true, 'Focused validation must record the requested scope');
 assert.deepEqual(await sourceIdentity(), report.sourceSha256, 'Source inventory or contents changed since focused validation');
-for (const name of concurrencyMode ? ['concurrency', 'concurrencyGui', 'releaseScope'] : ['extension', 'engine', 'gui', 'bundle', 'launcher']) {
+for (const name of transportMode ? ['bandwidth', 'transfer', 'transport', 'engineTransport', 'releaseScope'] : concurrencyMode ? ['concurrency', 'concurrencyGui', 'releaseScope'] : ['extension', 'engine', 'gui', 'bundle', 'launcher']) {
   assert(Number.isInteger(report.checks?.[name]) && report.checks[name] > 0, `Successful focused ${name} checks required`);
 }
-for (const name of concurrencyMode ? ['build'] : ['typecheck', 'build']) assert.equal(report.checks?.[name], 'passed', `Successful ${name} required`);
+for (const name of (transportMode || concurrencyMode) ? ['build'] : ['typecheck', 'build']) assert.equal(report.checks?.[name], 'passed', `Successful ${name} required`);
 assert(Object.keys(report.logSha256 ?? {}).length > 0, 'Validation log hashes required');
 for (const [name, digest] of Object.entries(report.logSha256)) {
   assert(name.startsWith('reports/') && !name.split('/').includes('..') && !name.includes('\\'), 'Validation logs must be local report paths');
@@ -68,6 +78,9 @@ with ZipFile(root/'artifacts/my-video-app-desktop-windows-x64.zip') as bundle:
     for name, digest in manifest['files'].items():
         assert hashlib.sha256(bundle.read('MyVideoApp/'+name)).hexdigest()==digest, 'Desktop output changed: '+name
     assert manifest['sourceFiles'], 'Desktop source inventory required'
+    if manifest['version']=='1.19.0':
+        for required in ('desktop/bandwidth.py', 'desktop/transfer.py', 'desktop/transport.py', 'runtime/python/Lib/site-packages/curl_cffi/__init__.py'):
+            assert 'MyVideoApp/'+required in names, 'Desktop transport runtime missing: '+required
     for name, digest in manifest['sourceFiles'].items():
         path=PurePosixPath(name)
         assert not path.is_absolute() and '..' not in path.parts and '\\\\' not in name, 'Unsafe desktop source path'

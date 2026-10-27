@@ -1,0 +1,17 @@
+{
+  "sourceRelease": "curl-impersonate v2.3.1",
+  "archive": {
+    "url": "https://github.com/lexiforest/curl-impersonate/releases/download/v2.3.1/libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
+    "filename": "libcurl-impersonate-v2.3.1.x86_64-win32.tar.gz",
+    "size": 7114105,
+    "sha256": "22753b8eaeb2d69fa4272e0b8282106e6d411195e6515399a21767c26750a64c"
+  },
+  "runtimeMatch": {
+    "wheel": "curl_cffi-0.17.0-cp310-abi3-win_amd64.whl",
+    "wheel_member": "curl_cffi.libs/libcurl-impersonate-ae864b926b0a86bfa3b18a664407a1ab.dll",
+    "archive_member": "lib/libcurl-impersonate.dll",
+    "size": 4113920,
+    "sha256": "ae864b926b0a86bfa3b18a664407a1abb71c31a30c317d938f8c88537d044e45",
+    "identical": true
+  }
+}
