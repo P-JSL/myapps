@@ -207,3 +207,26 @@ npm run verify
 ```
 
 **측정표:** 네트워크·FFmpeg·OPFS·SQLite 각 ms, throughput MB/s, 전체 처리 p50/p95, 정상 완료율, 작업 취소 지연, 최고 RSS/JS heap, 출력 SHA-256, 실제 파일 재생 여부. **반려:** DRM/인증 우회 경로 신설, URL/쿠키 로그 유출, 안전검사 생략, Range·ETag 무결성 변경, 부분 파일 정상 완료, 데이터베이스 기록 복구 실패, 오래된 실행 파일 혼입.
+
+
+## 9.6 추가 보완 과제 — 중단 복구·개인정보 안전 진단·실측 근거 (2026-11-11)
+
+기존 IMP-M01~M07은 전송·FFmpeg·저장소 처리량과 CI 범위를 다룹니다. 추가로 **실제 재시작 복원**, **진단 로그의 민감정보 배제**, **마이크로벤치마크와 실제 다운로드 속도의 구분**을 독립 작업으로 정의합니다.
+
+### IMP-M08 · 다운로드 실패·프로세스 중단 후 복구 계약을 릴리스 시험에 연결 (P1)
+
+- **확인 근거:** [desktop/storage.py L43-L69](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/desktop/storage.py#L43-L69)는 SQLite WAL과 재시작 시 미완료 작업을 오류 상태로 표시합니다. [desktop/test_download_recovery.py L1-L7](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/desktop/test_download_recovery.py#L1-L7)에는 실제 SQLite·임시 파일·게시 경계를 사용하는 집중 복구 테스트가 있습니다.
+- **개선 절차:** 동일 URL의 2트랙 다운로드를 네트워크 503·오디오만 실패·사용자 취소·프로세스 강제 종료·재시작 순서로 테스트하고 임시 파일 소유권과 최종 파일 단 한 번 게시 조건을 검증합니다. Windows 배포본 기준 입력/설정/상태 스냅샷은 개인 URL과 쿠키를 마스킹합니다. SQLite 손상, 원격 파일 변경/ETag 실패는 안전한 재시도만 허용합니다.
+- **합격/원복:** 미완료 작업을 완료로 표시하지 않음, 원본과 최종 파일 SHA 일치, 다른 작업의 취소/롤백 전파 없음, 재시작 후 SQLite 기록 정합성 유지. 관련 테스트는 패키지 내 Python과 검증된 실행 경로에서 수행하고 테스트 이력에 근거를 남깁니다.
+
+### IMP-M09 · 개인정보 보호형 이벤트 로그의 운영 기준선 (P2 보안/효율)
+
+- **확인 근거:** [desktop/activity.py L1-L5, L115-L125, L171-L214](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/desktop/activity.py#L115-L125)는 사용자 URL·제목·경로·헤더·예외 원문을 기록하지 않도록 제한하고, JSONL 회전과 메모리 fallback을 구현합니다.
+- **개선 절차:** 다운로드 작업 100건/동시 1·4·16건에서 이벤트 수, 초당 로그 용량, 로테이션 횟수, 이벤트 기록 누적 ms를 측정합니다. 로그 비활성화 대신 진행 이벤트 중복 빈도를 조절하되 시작·완료·실패·취소와 보안 판정 이벤트를 반드시 보존합니다. 운영자 매뉴얼에 %LOCALAPPDATA%\\MyVideoApp\\Desktop\\logs의 접근 권한·백업·사용자 제공 시 익명화 정책을 명시합니다.
+- **합격/원복:** [desktop/test_activity.py](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/desktop/test_activity.py)와 [tests/test_activity_release.py](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/tests/test_activity_release.py) 통과, URL/쿠키/원문 제목의 로그 유출 0건. 기록 실패가 다운로드 실패로 전파되지 않는 기존 fallback 유지.
+
+### IMP-M10 · 기존 벤치마크 활용 및 실제 다운로드/FFmpeg E2E 성능 분리 (P1 측정)
+
+- **확인 근거:** [scripts/benchmark.mjs L9-L40](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/scripts/benchmark.mjs#L9-L40)은 작업을 순차 실행하고 각 비교 결과·소스 SHA를 묶어 보관합니다. [scripts/benchmark-native.py](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/scripts/benchmark-native.py)의 안전 파일 복사 실험은 실제 백신 속도 측정이 아닙니다. [tests/parallel-download.test.ts](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/tests/parallel-download.test.ts)는 Range/ETag/취소·조각 응답을 시험합니다.
+- **개선 절차:** npm run bench:algorithms로 JS 알고리즘 기준선을 보관하되 전체 다운로드/변환 속도 향상이라고 표기하지 않습니다. 별도 로컬 테스트 서버에서 64 MiB/1 GiB, Range 지원·미지원·변경 ETag, HTTP 429, 느린 sink 조합을 구성하여 네트워크 수신·OPFS 쓰기·FFmpeg 변환·안전 검사 각각의 p50/p95·MB/s·RSS를 기록합니다. 외부 영상 사이트 실측은 정책/네트워크 영향이 커서 재현 가능한 합격 수치로 사용하지 않습니다.
+- **합격/원복:** 네트워크 프로토콜 정보, 요청 retry 제한, MIME 검사·SHA 결과·저장 파일 일치, 사용자 취소 후 자원 반환을 보존합니다. CPU만 빨라졌는데 메모리·디스크 사용량이 크게 늘었다면 별도 승인 필요.
