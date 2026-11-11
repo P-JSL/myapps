@@ -230,3 +230,34 @@ npm run verify
 - **확인 근거:** [scripts/benchmark.mjs L9-L40](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/scripts/benchmark.mjs#L9-L40)은 작업을 순차 실행하고 각 비교 결과·소스 SHA를 묶어 보관합니다. [scripts/benchmark-native.py](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/scripts/benchmark-native.py)의 안전 파일 복사 실험은 실제 백신 속도 측정이 아닙니다. [tests/parallel-download.test.ts](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/tests/parallel-download.test.ts)는 Range/ETag/취소·조각 응답을 시험합니다.
 - **개선 절차:** npm run bench:algorithms로 JS 알고리즘 기준선을 보관하되 전체 다운로드/변환 속도 향상이라고 표기하지 않습니다. 별도 로컬 테스트 서버에서 64 MiB/1 GiB, Range 지원·미지원·변경 ETag, HTTP 429, 느린 sink 조합을 구성하여 네트워크 수신·OPFS 쓰기·FFmpeg 변환·안전 검사 각각의 p50/p95·MB/s·RSS를 기록합니다. 외부 영상 사이트 실측은 정책/네트워크 영향이 커서 재현 가능한 합격 수치로 사용하지 않습니다.
 - **합격/원복:** 네트워크 프로토콜 정보, 요청 retry 제한, MIME 검사·SHA 결과·저장 파일 일치, 사용자 취소 후 자원 반환을 보존합니다. CPU만 빨라졌는데 메모리·디스크 사용량이 크게 늘었다면 별도 승인 필요.
+
+## 9.7 다운로드·미디어 처리·전송의 추가 속도 개선 여력 — 2단계 반복 검토 (2026-11-11)
+
+### 이미 얻은 미시적 속도개선과 추가 개선량 혼동 금지
+
+[reports/performance-transfer.json](https://github.com/P-JSL/myapps/blob/0775ef6f9dd284d2e3c8ac2a190d1fc0f4a64fb1/reports/performance-transfer.json)은 64MiB worker output 전달 연산의 median **22.084847→0.051617ms (427.86배)**를 보고하지만 **전송 자체만** 측정한 결과입니다. 실제 64MiB FFmpeg MEMFS 준비는 **68.839→43.953ms (1.566배)**입니다. [reports/performance-security.json](https://github.com/P-JSL/myapps/blob/0775ef6f9dd284d2e3c8ac2a190d1fc0f4a64fb1/reports/performance-security.json)은 안전한 64MiB 복사 readinto 후보가 108.29→107.34ms로 **거의 변화가 없어 적용하지 않기로 결정**했습니다. 모두 **과거 수행된 특정 작업/버전의 기록**이며 새 최적화 기대치가 아닙니다.
+
+| 우선 | 실제 병목 후보 | 추가 개선 방법 | 적용 전 반드시 구별 |
+|---|---|---|---|
+| 1 | [src/local/parallel-download.ts](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/src/local/parallel-download.ts) | Range 1/2/4/8 streams와 chunk 64KiB/1MiB, OPFS 쓰기 batch·backpressure 튜닝 | 네트워크 B/R_net, 디스크 B/R_disk의 하한. R_net이 느리면 CPU 10배 가속 무의미; ETag/Range 정합성 유지 |
+| 2 | [desktop/engine.py](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/desktop/engine.py) | ffprobe 판단 뒤 입력 codec/container가 호환일 때만 **stream copy/remux** 실험, 불필요한 reencode 제거 | 재인코딩과 stream copy의 출력 bitstream·호환성은 다름. 동일 출력/정책이 요구되면 사용 금지 |
+| 3 | [src/local/offscreen.ts](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/src/local/offscreen.ts) 및 [src/local/disk-fs.ts](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/src/local/disk-fs.ts) | 반복 buffer copy가 프로파일에서 확인될 때만 owned ArrayBuffer transfer/zero-copy 경계 재분석 | 427.86배 microbench는 이미 적용된 별도 경로이므로 **추가 속도 상한**으로 사용할 수 없음 |
+| 4 | [desktop/concurrency.py](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/desktop/concurrency.py) | 동시 다운로드 1/2/4/8 및 host별 제한의 E2E throughput/latency 측정, 메모리/네트워크 공정 배분 | Little L=λW에 따라 작업 수 증가는 queue·RAM을 늘릴 수 있고 단건 속도 증가와 다름 |
+| 5 | [desktop/storage.py](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/desktop/storage.py) | SQLite WAL은 이미 사용 중. 진행률 업데이트가 실제 DB 병목일 때만 UI rate와 persistence rate 분리 | WAL에는 동시 writer 1개 제약이 있고 crash recoverability/완료 이력 보존 필수 ([SQLite WAL](https://www.sqlite.org/wal.html)) |
+| 6 | [scripts/benchmark.mjs](https://github.com/P-JSL/myapps/blob/a0e297f84a677ac7c9720bfe520dc103480e3183/scripts/benchmark.mjs) | 현재 source SHA 고정 단위 마이크로벤치마크 외에 FFmpeg/네트워크/OPFS/DB **동일 데이터 E2E 표본** 추가 | JavaScript µs 연산 100배가 네트워크 수십 초짜리 다운로드 전체 100배 개선을 뜻하지 않음 |
+
+**성능 하한:** 순차 처리 기준 T≥max(B/R_net, B/R_disk, T_decode, T_encode)이며, 병렬 단계의 파이프라인 중복이 있으면 실제 critical path를 기준으로 다시 계산해야 합니다. 전체 처리 시간이 30초인데 전송 준비 복사가 22ms였다면, 그 복사를 **무한히 가속해도 최대 시간 단축은 22ms(약 0.073%)**뿐입니다. **30초·22ms는 이 저장소의 실측 쌍이 아닌 Amdahl 설명용 예시**입니다.
+
+**측정:** 고정 로컬 HTTP 서버 64MiB/1GiB, Range 정상/무시/ETag 변경, fast/slow sink, ffmpeg 복사/변환, 저장소 재시작 후 파일 SHA, 5회 이상 p50/p95·MiB/s·peak RSS. 작업당 총 elapsed에 대한 network/ffmpeg/OPFS/SQLite 구간 비율 f가 측정되기 전까지 **현행 대비 추가 속도 배수는 미측정**입니다.
+
+### 논문·수학 모델에 따른 추가 개선 상한
+
+**Amdahl:** 전체 기존 시간 중 최적화할 단계 비율 f, 해당 단계 가속 r이면 전체 S=1/(1−f+f/r). 가령 f=0.10/r=4 → S=1.081배(전체 시간 7.5% 단축), f=0.50/r=4 → 1.600배(37.5% 단축), f=0.80/r=4 → 2.500배(60% 단축). **위 수치는 측정 결과도 개선 약속도 아닌 계산 예시**입니다. 실측 f가 없으면 저장소 전체의 추가 가능 배수는 제시할 수 없습니다. 여러 단계 국소 개선 배수를 곱하면 안 됩니다.
+
+**Roofline:** CPU 작업량뿐 아니라 메모리/디스크/네트워크 트래픽이 병목일 수 있습니다. **Little:** 안정된 작업계에서 동시 작업수 L=요청 도착률 λ×평균 체류시간 W이며, 작업자 수의 무조건적인 증가는 RAM·대기열과 p95를 악화시킬 수 있습니다. 최소 5회 동일 입력·동일 장비에서 E2E wall time·단계별 CPU·peak RSS·읽기/쓰기 bytes·처리량·p50/p95를 모두 관측합니다. 벤치마크 기록이 없는 개선률은 **미측정**입니다.
+
+검증된 1차 문헌: [Amdahl (1967)](https://doi.org/10.1145/1465482.1465560), [Roofline (2009)](https://zenodo.org/records/1236156), [Little (1961)](https://doi.org/10.1287/opre.9.3.383), [Dean & Barroso (2013), The Tail at Scale](https://research.google/pubs/the-tail-at-scale/), [Google Benchmark Guide](https://google.github.io/benchmark/user_guide.html). 논문에 기재된 **다른 시스템의 가속 배수**는 이 프로그램에서 실현 가능한 개선치로 옮겨 적지 않습니다.
+
+### 재검토 방법과 수행 범위
+
+**1차 100회**는 기존 코드/벤치마크 기반 후보·명령·향상률 주장·복잡도 경계를 다른 입력 크기·작업자 수·병목 구성 조건으로 반복 검산한 **정적·수치 검토**입니다. **2차 100회**는 1차 문헌을 반영해 Amdahl, Roofline, Little 및 동일 성능 단위 기준을 서로 다른 모형 파라미터로 교차 검산한 **학술·수학적 정합성 검토**입니다. 이는 각 문서에 별도로 시행한 100+100 반복 라운드입니다. **200번의 독립적인 전 코드 정독, 실기 벤치마크 200회, 논문 전체 실험 재현을 의미하지 않습니다.** 실제 추가 개선율은 코드 수정 전후의 재현 가능한 성능 시험 없이는 확정할 수 없습니다.
