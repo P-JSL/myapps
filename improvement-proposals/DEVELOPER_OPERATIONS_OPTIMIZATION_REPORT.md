@@ -261,3 +261,58 @@ npm run verify
 ### 재검토 방법과 수행 범위
 
 **1차 100회**는 기존 코드/벤치마크 기반 후보·명령·향상률 주장·복잡도 경계를 다른 입력 크기·작업자 수·병목 구성 조건으로 반복 검산한 **정적·수치 검토**입니다. **2차 100회**는 1차 문헌을 반영해 Amdahl, Roofline, Little 및 동일 성능 단위 기준을 서로 다른 모형 파라미터로 교차 검산한 **학술·수학적 정합성 검토**입니다. 이는 각 문서에 별도로 시행한 100+100 반복 라운드입니다. **200번의 독립적인 전 코드 정독, 실기 벤치마크 200회, 논문 전체 실험 재현을 의미하지 않습니다.** 실제 추가 개선율은 코드 수정 전후의 재현 가능한 성능 시험 없이는 확정할 수 없습니다.
+
+## 9.8 성능·속도 모델 1,000회 + 논문·수학 검산 1,000회 실행 기록 (2026-11-12)
+
+**정확한 실행 횟수:** 2026-11-12(KST), 로컬 Python 3.13.5에서 결정적 시드 합성 입력으로 실행한 **1차 검토 라운드 1,000회 + 2차 학술·수학 검토 라운드 1,000회 = 저장소별 2,000회**입니다. 각 1회에는 서로 다른 **5개 검산 항목**을 모두 실행했습니다. 따라서 **1차 5,000건 + 2차 5,000건 = 저장소당 10,000건**, 6개 저장소 총 **12,000라운드·60,000건, 실패 0건**입니다. 1,000개 개선 과제 목록이 아닙니다.
+
+**검증의 한계:** 1,000회는 독립 소프트웨어 실행/실제 장비 벤치마크 1,000회가 아닌 **파라미터화된 정적·수학·합성 데이터 자동 검산**입니다. CPU 프로파일러 실행, 원 논문의 대규모 실험 재현, 전 프로젝트 소스를 1,000번 읽어내는 인력 코드 리뷰는 진행하지 않았습니다. 코드 4개는 GitHub에서 실제 텍스트와 Git blob SHA를 별도 검증했습니다. 속도 향상 후보의 실증에는 실제 프로그램 변경 전후의 벤치마크가 별도로 필요합니다.
+
+**재현 증거(분석 산출물, 저장소에 커밋하지 않음):** `performance_review_1000x2_2026-11-12.py` SHA-256 `6e272f565e2bb0741487baf11c19a7b02d1df3158a70926819eb3aeb6c5dbaa8`, `performance_review_1000x2_results_2026-11-12.json` SHA-256 `1bc85836fca3c8c74c2855d81d12dd4e6412732dc1de49484b9a63803afaf09d`. JSON에는 각 항목의 **1,000개 실실행 사례 시드·입출력 요약의 검산 지문**과 첫/마지막 사례가 포함됩니다.
+
+**1차 검산 지문:** `77d3b2efde65b57be79765d3f1657031bdd0d9fb28733c05684ba298d9119330`  
+**2차 검산 지문:** `017c2a69281c4d1501434d19cb1f22c9993ed2e12ced647bc7dc4d8707063960`  
+(각 항목에 해당하는 1,000개 사례 JSON Lines SHA-256 다섯 개를 **항목명 사전순**으로 `|` 연결해 SHA-256 계산한 값입니다.)
+
+### 2차 논문·수학 모델: 각 1,000회 전 항목 실행
+
+| 항목 | 각 라운드에서 수행한 검산 | 통과 |
+|---|---|---|
+| Amdahl 상한 | 전체 시간에서 대상 단계 비율 f와 단독 가속 r을 변화시키며 S=1/(1−f+f/r)의 상한 검산 | **1,000/1,000** |
+| Roofline 상한 | FLOP/s ≤ min(CPU 연산 피크, 산술집약도×메모리 대역폭)의 부하별 상한 | **1,000/1,000** |
+| Little의 법칙 | 안정 상태 λ<μ에서 도착률·체류시간·동시 작업량 L=λW의 일관성 | **1,000/1,000** |
+| 꼬리 지연 | 각 부하의 p50/p95/최대값 구분, 중앙값 최적화를 p95 향상으로 오인 방지 | **1,000/1,000** |
+| 저장소 특화 학술 모델 | 바이트 읽기 하한, 스트리밍 정렬/인덱스/HTTP strong validator별 제약 | **1,000/1,000** |
+
+검토 근거: [Amdahl](https://doi.org/10.1145/1465482.1465560), [Roofline](https://doi.org/10.1145/1498765.1498785), [Little](https://doi.org/10.1287/opre.9.3.383), [The Tail at Scale](https://research.google/pubs/the-tail-at-scale/), [Google Benchmark](https://github.com/google/benchmark/blob/main/docs/user_guide.md). 문헌의 속도 향상 사례와 본 저장소의 성능 실측은 다른 데이터입니다.
+
+### 얼마나 더 빨라질 수 있는가: 검산된 가정의 범위
+
+전체 실행시간에서 최적화 단계 비중을 f, 해당 단계의 추가 단독 가속을 r로 측정해야 전체 가속 `S=1/(1−f+f/r)`이 계산됩니다. 예: f=10%·r=4라면 1.081배(시간 7.5% 절감), f=50%·r=4라면 1.600배(37.5% 절감), f=80%·r=4라면 2.500배(60% 절감). 이는 **임의의 설명용 시나리오**이지 myapps의 실측·실현 가능한 목표치를 의미하지 않습니다. hot path의 f가 미측정이므로 **현재 코드 대비 추가 가속 가능한 배수는 산정할 수 없습니다.** 여러 단계의 국소 배수를 단순 곱하거나 과거 측정 결과를 신규 기대치에 더하지 않습니다. 실측은 동일 입력·동일 장비에서 최소 5회, cold/warm, end-to-end 시간 및 단계별 CPU/RSS/I/O와 p50/p95를 구분하고 결과 정합성을 선행 검증해야 합니다.
+
+### 1차 성능·코드 모델 검산: 각 1,000회 전 항목 실행
+
+| 검산 항목 | 개별 라운드의 검산 내용 | 통과 |
+|---|---|---|
+| `http_range_partition` | 임의 파일 길이·chunk에 대한 Range 시작·종료·전체 커버리지/겹침 없음 | **1,000/1,000** |
+| `strong_if_range_policy` | 강한 ETag에서만 If-Range를 사용하고 validator 변경 시 조각 병합 금지 | **1,000/1,000** |
+| `streaming_pipeline_limit` | 네트워크/디스크/변환 파이프라인의 임계구간 처리율 상한 | **1,000/1,000** |
+| `transfer_copy_lower_bound` | 추가 ArrayBuffer 복사횟수 × payload bytes의 메모리/대역폭 비용 | **1,000/1,000** |
+| `bounded_concurrency` | 기본 최대 동시 작업 수 아래에서 active 작업 상한 | **1,000/1,000** |
+
+### GitHub 원본 소스 4개에 대한 SHA·식별자 교차 확인
+
+| 파일 (기준 시점의 커밋 고정) | 실제 Git blob SHA-1 |
+|---|---|
+| [`src/local/parallel-download.ts`](https://github.com/P-JSL/myapps/blob/fad9912d1d2f17028cefcfd44b90b3ced4b63717/src/local/parallel-download.ts) | `7183a3eb3da83622f18e6ee387c2082caf9eedc0` |
+| [`desktop/storage.py`](https://github.com/P-JSL/myapps/blob/fad9912d1d2f17028cefcfd44b90b3ced4b63717/desktop/storage.py) | `b8e79f100d02a660319c0b7efcb6d9183778ec6b` |
+| [`scripts/benchmark.mjs`](https://github.com/P-JSL/myapps/blob/fad9912d1d2f17028cefcfd44b90b3ced4b63717/scripts/benchmark.mjs) | `f7cfa70ea401a8ee5d86f6a8c48c4189bb8e2728` |
+| [`reports/performance-transfer.json`](https://github.com/P-JSL/myapps/blob/fad9912d1d2f17028cefcfd44b90b3ced4b63717/reports/performance-transfer.json) | `782ecde2d5816f243a67a857d6915f12edb1b7db` |
+
+### 남은 속도 최적화 여력의 평가·우선순위
+
+**속도 최적화의 실제 우선순위:** (1) 브라우저 local Range(1/2/4/8 streams)→OPFS sink→FFmpeg 단계별 Mb/s 및 p95를 추적하여 실제 critical path를 확인합니다. (2) 이미 적용한 worker Transfer / MEMFS copy 최적화의 비용을 재계측하고 **과거 427.86배 microbenchmark**를 전체 다운로드 가속 또는 미래의 추가 이득으로 재사용하지 않습니다. (3) Windows desktop 동시 다운로드, SQLite WAL update, FFmpeg `-c copy` 가능 입력과 실제 인코딩의 latency를 분리합니다. **검토상 확정된 사실:** Range 조각 합병은 같은 강한 validator와 총 크기에서만 허용해야 하며 네트워크/디스크의 B/R 하한을 CPU 최적화만으로 제거할 수 없습니다. 현행 코드의 추가 E2E 개선폭은 미측정입니다.
+
+프로토콜 근거: [RFC 9110 HTTP Semantics (If-Range)](https://www.rfc-editor.org/info/rfc9110/)의 강한 validator 요구를 근거로 하며, unsafe merge를 빠르다는 이유로 허용하지 않습니다.
+
+---
