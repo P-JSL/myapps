@@ -2,9 +2,9 @@
 
 **저장소:** [P-JSL/myapps](https://github.com/P-JSL/myapps)  
 **소스 분석 기준:** `main` / [`a0e297f84a677ac7c9720bfe520dc103480e3183`](https://github.com/P-JSL/myapps/commit/a0e297f84a677ac7c9720bfe520dc103480e3183)  
-**보고서 작성일:** 2026-11-11 (KST)  
+**보고서 초판:** 2026-11-11 (KST) · **교차 검증 갱신:** 2026-11-12 (KST)  
 **대상:** 개발자 · 운영자 · 릴리스 담당자  
-**개선 후보:** 7개 (우선순위·수정 위치·구현·검증·원복 기준 포함)  
+**누적 기존 IMP 개선 과제:** 10개 (초판 7개 포함, 별도 비성능 Q 제어/검토 항목 10개)  
 **상태:** 분석·구현 제안만 작성. 실제 소스 최적화·동적 성능 측정·프로그램 배포는 수행하지 않음.  
 > 문서 내 장·절 번호는 원래 6개 저장소 통합 보고서의 번호를 보존한 것입니다. 코드 근거 링크는 작성 시점의 커밋으로 고정했습니다.
 
@@ -371,3 +371,49 @@ A lens can be **useful**, **indirect**, or **not-relevant**. Inapplicable ideas 
 Additional original references: [RFC 9110 strong range validators](https://www.rfc-editor.org/rfc/rfc9110.html), [Netflix delay-based concurrency limit design](https://github.com/Netflix/concurrency-limits), [SQLite WAL write semantics](https://sqlite.org/wal.html), [web.dev INP](https://web.dev/articles/inp).
 
 **Mandatory adoption protocol:** compare baseline and prototype with the exact same input/source hashes, OS, CPU, build flags and dataset, alternating baseline/candidate at least five complete runs each; report cold/warm end-to-end time, p50/p95, bytes read/written, peak RSS/JS heap, and output equivalence. Numerical asymptotic improvements and reference papers do **not** establish achievable speedups before full execution. **No whole-program prospective speedup is quantified** because the cost share of the relevant hot path has not been profiled.
+
+## 9.10 NON-PERFORMANCE QUALITY / SECURITY / RELIABILITY REVIEW — 1,000 + 1,000 scenario screenings (2026-11-12)
+
+### Method and evidence boundary
+
+On 2026-11-12, a deterministic Python model actually generated **1,000 Phase-I rows** (10 repo-specific controls × 10 failure types × 10 operating environments) and **1,000 Phase-II rows** (10 controls × 10 different assurance methods × 10 quality attributes) for **each repository**. Across six repositories: **12,000 separate screening combinations**. A second script execution reproduced the same summary SHA-256. This **does not** mean 12,000 program runs, 12,000 independent code reviews, 12,000 demonstrated vulnerabilities or 12,000 passing security tests. Synthetic scenario classifications prioritize design/test work only.
+
+Phase I failures: invalid input, corruption, denied permissions, concurrent changes, interrupted operation, stale version, authentication/transport error, untrusted content, platform incompatibility and partial write/restore. Phase II techniques: QuickCheck-style property testing, metamorphic tests, state-machine checks, fault injection, STRIDE, NIST SSDF, OWASP ASVS 5.0, SLSA provenance, WCAG 2.2, and differential engine/output parity. Inapplicable methods are marked **not relevant**, not forcibly applied.
+
+Evidence package, produced separately from GitHub: `review_nonperformance_1000x2.py` SHA-256 `3168cd9f7c938c391ff057280fab9a88fd61b86d42b5fba732d564627d22c5da`; summary `summary_6repos_nonperformance.json` SHA-256 `e823ec751b255943238598c3a4289f67482d3d8019d5b8bb3e443425a157131b`. Each stored JSONL contains 1,000 canonical decision rows. No application code was changed or executed by these document-only commits. 'Existing' describes a targeted code safeguard; it does not certify the wider threat.
+
+Quality references, **not project certifications**: [ISO/IEC 25010:2023](https://www.iso.org/standard/78176.html), [NIST SP 800-218](https://csrc.nist.gov/pubs/sp/800/218/final), [OWASP ASVS 5.0](https://asvs.owasp.org/), [SLSA v1.2](https://slsa.dev/spec/v1.2/provenance), [WCAG 2.2](https://www.w3.org/TR/WCAG22/), [Claessen & Hughes 2000](https://doi.org/10.1145/351240.351266).
+
+### 2,000 evaluated matrix cells, not a defect count
+
+- Phase I: 790 lower-priority, 110 existing-guard exercises, 100 new test proposals. Every category total is **1,000**.
+- Phase II: 56 recommended, 475 context-dependent, 469 not relevant. Every category total is **1,000**. A **not relevant** standard was not applied to an unrelated feature.
+- Screening counts **do not measure completeness, live security, or feature quality**. Repeat appearances of an existing issue across 100 input environments represent **one issue × 100 test situations**, not 100 defects.
+
+| ID | Quality contract | Current source assessment | Checked file | Scenario for a real test | Acceptance gate |
+|---|---|---|---|---|---|
+| Q-M01 | Ranged HTTP identity | **existing** | [`src/local/parallel-download.ts`](https://github.com/P-JSL/myapps/blob/261ac7c0122cf5e136d28f576eba657a60882ee9/src/local/parallel-download.ts) | Bad 206, wrong range, changed strong ETag | Reject incompatible chunks; never publish mixed media |
+| Q-M02 | Cancellation and partial outputs | **proposal** | [`desktop/engine.py`](https://github.com/P-JSL/myapps/blob/261ac7c0122cf5e136d28f576eba657a60882ee9/desktop/engine.py) | Disk full, cancel, process exit, failed ffmpeg | No corrupt completed media or unrelated job rollback |
+| Q-M03 | SQLite WAL job state | **existing** | [`desktop/storage.py`](https://github.com/P-JSL/myapps/blob/261ac7c0122cf5e136d28f576eba657a60882ee9/desktop/storage.py) | Restart while job is incomplete | No incorrectly completed job; recoverable status |
+| Q-M04 | Independent video/audio recovery | **existing** | [`desktop/test_download_recovery.py`](https://github.com/P-JSL/myapps/blob/261ac7c0122cf5e136d28f576eba657a60882ee9/desktop/test_download_recovery.py) | Audio fallback and original successful video | Preserve valid video bytes; recover only failed track |
+| Q-M05 | Broad extension host permissions | **proposal** | [`src/local/manifest.json`](https://github.com/P-JSL/myapps/blob/261ac7c0122cf5e136d28f576eba657a60882ee9/src/local/manifest.json) | Compromised media site, unexpected subframe | Document wide permissions; minimize where practical and test same features |
+| Q-M06 | Native Messaging opt-in | **proposal** | [`src/local/manifest.json`](https://github.com/P-JSL/myapps/blob/261ac7c0122cf5e136d28f576eba657a60882ee9/src/local/manifest.json) | Untrusted native helper or permission denial | Native Messaging remains optional, no silent native installation |
+| Q-M07 | Private activity events | **existing** | [`desktop/activity.py`](https://github.com/P-JSL/myapps/blob/261ac7c0122cf5e136d28f576eba657a60882ee9/desktop/activity.py) | Video URL, cookie, title or path in exception/log | No raw sensitive values in JSONL, rotation and fallback clear |
+| Q-M08 | Pinned FFmpeg/yt-dlp versions | **existing** | [`desktop/engine.py`](https://github.com/P-JSL/myapps/blob/261ac7c0122cf5e136d28f576eba657a60882ee9/desktop/engine.py) | Version drift/installer partial upgrade | Explicit mismatch failure and verified release composition |
+| Q-M09 | Antivirus fail-closed handling | **proposal** | [`src/local/antivirus.ts`](https://github.com/P-JSL/myapps/blob/261ac7c0122cf5e136d28f576eba657a60882ee9/src/local/antivirus.ts) | Scanner refusal, timeout, malware verdict | No automated safety bypass or falsely clean status |
+| Q-M10 | Keyboard/status accessibility | **proposal** | [`src/local/ui.ts`](https://github.com/P-JSL/myapps/blob/261ac7c0122cf5e136d28f576eba657a60882ee9/src/local/ui.ts) | Large download queue, errors and retry | Status/focus/screen-reader announcements preserved |
+
+### Contradiction reconciliation — report versus source and related repositories
+
+1. There are two independent products: **Chrome extension** and **Python Windows desktop app**. Chrome background/OPFS state and desktop SQLite are **not interchangeable stores**.
+2. `src/local/manifest.json:44-53` declares broad HTTP(S) host permissions and all-frame content script. This is a **confirmed permission scope**, not proof that a vulnerability has been exploited.
+3. Desktop `activity.jsonl` is **2MiB + up to four rotations** (`desktop/activity.py:118`); this is not the session-resetting `log/session.log` from `gacha_pickup_calculator`.
+4. The report's old initial IMP count 7 has increased to **10 IMP-M numbered items**; the Q-M matrix adds existing safeguards and separate test opportunities, not ten confirmed vulnerabilities.
+
+### What to implement or verify next
+
+- **P0:** no false-success result, no unauthenticated destructive mutation, no silent corruption, unsafe archive publication or source-index mix-up. Treat confirmed mismatches as open until a source fix passes CI.
+- **P1:** state-machine and fault-injection tests for cancel/restart/concurrency, source hash, update/provenance, permission denial and recovery. Separate existing guards from uncovered edge cases.
+- **P2:** accessibility and support diagnostics, parity, maintainability and release documentation. For Windows and Chrome UI, verify the real interaction, not only DOM presence.
+- Code changes, deployment and real fault-injection tests **have not been performed** in this report-only update. Preserve existing interface, journal and fail-closed contracts before approval.
+
