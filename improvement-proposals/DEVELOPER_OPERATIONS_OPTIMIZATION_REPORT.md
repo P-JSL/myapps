@@ -316,3 +316,58 @@ npm run verify
 프로토콜 근거: [RFC 9110 HTTP Semantics (If-Range)](https://www.rfc-editor.org/info/rfc9110/)의 강한 validator 요구를 근거로 하며, unsafe merge를 빠르다는 이유로 허용하지 않습니다.
 
 ---
+
+## 9.9 DIVERSE PERFORMANCE REVIEW — 1,000 feasibility + 1,000 cross-disciplinary evaluations (2026-11-12)
+
+### 1,000 rounds mean **1,000 combinations**, not 1,000 new features
+
+Actual deterministic Python screening performed: **10 existing-code-anchored approaches × 10 workloads × 10 distinct feasibility constraints = 1,000 tuples**, plus **10 approaches × 10 workloads × 10 distinct research lenses = 1,000 tuples**. Every combination is unique within its phase; 2,000 evaluated tuples per repository, 12,000 across all six. A second execution reproduced the summary digest. `run_diverse_1000.py` SHA-256 `caecadb0696142bca8de43e1ae440152015459e8e90e8c418e9909c8a1b82de9`, summary `summary_6repos.json` SHA-256 `23e3ab0a3a456c954dc7f42a0df115dd9ad26fb81b6aa73c4b74850121fd98d0`. Workload axes: short cold, small warm, standard, high count, repeated, long RTT, memory pressure, UI churn, slow disk, 16-worker contention. Constraint axes: exact outputs, new dependencies, portability, memory headroom, tail latency, cold path, cancellation, crash recovery, throughput, additional I/O.
+
+**Validation boundaries:** These are **synthetic design-feasibility calculations and mathematical-relevance checks**, not 2,000 actual executable/CPU benchmarks, 2,000 source diff manual reviews, or 2,000 novel papers read. Status labels are screening outcomes **not verification of implementation or achieved speed**. The rows and hashes can be reproduced with the separately provided evidence ZIP; audit source is not committed to this code repository.
+
+### Ten new viewpoints beyond the older Amdahl / Roofline / Little-only treatment
+
+1. [Parallel work/span and work stealing](https://doi.org/10.1145/324133.324234)
+2. [Cache-oblivious locality](https://www.fftw.org/~athena/abstracts/abstract12.html)
+3. [Amortization of repeated work](https://en.wikipedia.org/wiki/Amortized_analysis)
+4. [Bloom false-positive negative-filter](https://doi.org/10.1145/362686.362692)
+5. [Roaring bitmap intersection](https://doi.org/10.1002/spe.2402)
+6. [Boyer–Moore pattern matching](https://doi.org/10.1145/359842.359859)
+7. [Paired common-random-number experiments](https://doi.org/10.1287/mnsc.41.12.1935)
+8. [Bandwidth-delay product and strong Range](https://www.rfc-editor.org/rfc/rfc9110.html)
+9. [Top-Down microarchitecture bottlenecks](https://doi.org/10.1109/ISPASS.2014.6844459)
+10. [Browser INP interaction latency](https://web.dev/articles/inp)
+
+A lens can be **useful**, **indirect**, or **not-relevant**. Inapplicable ideas are explicitly rejected for an approach: e.g., Roaring is not a proof of benefit for tiny ephemeral filters; Bloom can reject absent keys but positive results require exact verification; CRN affects *experiment variance*, not application throughput; the bandwidth-delay product is only relevant to transport; INP is not a video encoding speed measurement. Additional math conditions: work/span lower bound T_P ≥ max(T₁/P, T∞), precompute amortization only when repeats × saved-query-work > setup, Bloom false positive probability approximately (1−e^(−kn/m))^k under ideal assumptions, and HTTP pipeline BDP = RTT × goodput.
+
+### Review matrix result (not a measured performance success rate)
+
+| Phase | Model classifications (sum 1,000) |
+|---|---|
+| Engineering constraints | prototype-after-profiling 45; conditional-prototype 378; guard-required 75; low-priority 293; measure-first 9; reject-contract-change 100; existing-not-additional 100 |
+| Research relevance | useful 200; indirect 360; not-relevant 440 |
+
+**Engineering evidence SHA-256:** `67946ff68f1e54ff65f575ed5e8f0482fa5342930549f6a28b2b36882e447bcc`. **Theory-relevance evidence SHA-256:** `d92dfb8257c3348bdff26c8c558f810d09c0ef4cc94d68eabc3bcf1c27408687`. Hashes are for each 1,000-row canonical JSON list of method/workload/lens outcomes.
+
+### Different solution approaches: does the code permit a safe experiment?
+
+| ID | Technique | Checked source anchor | Feasibility | Necessary workload | What can invalidate this approach |
+|---|---|---|---|---|---|
+| M-ALT-01 | BDP-aware bounded HTTP Range windows | [`src/local/parallel-download.ts`](https://github.com/P-JSL/myapps/blob/dd7cd12b3470a082f1bdf4aab63d7fed0c644779/src/local/parallel-download.ts) | **Conditional** | High RTT and stable total/strong ETag | Existing Range logic must not merge mismatched responses |
+| M-ALT-02 | Adjacent OPFS write coalescing | [`src/local/disk-fs.ts`](https://github.com/P-JSL/myapps/blob/dd7cd12b3470a082f1bdf4aab63d7fed0c644779/src/local/disk-fs.ts) | **Conditional** | Disk syscall/sink overhead dominates | Out-of-order part offsets and memory cap enforced |
+| M-ALT-03 | Owned ArrayBuffer transfer copies | [`src/local/stream-worker.ts`](https://github.com/P-JSL/myapps/blob/dd7cd12b3470a082f1bdf4aab63d7fed0c644779/src/local/stream-worker.ts) | **Already partly optimized** | Only when new profile shows accidental copy | Past 427.86× *micro* speedup is not future total speedup |
+| M-ALT-04 | Container-compatible FFmpeg stream copy | [`desktop/engine.py`](https://github.com/P-JSL/myapps/blob/dd7cd12b3470a082f1bdf4aab63d7fed0c644779/desktop/engine.py) | **Conditional** | True codec/container compatibility, no required transform | Remux differs from transcode; output validation needed |
+| M-ALT-05 | FFmpeg WASM memory reuse | [`src/local/offscreen.ts`](https://github.com/P-JSL/myapps/blob/dd7cd12b3470a082f1bdf4aab63d7fed0c644779/src/local/offscreen.ts) | **Conditional** | Startup allocation/GC dominates many jobs | Isolation between jobs, peak heap and abort safety |
+| M-ALT-06 | Latency-based bounded concurrency control | [`desktop/concurrency.py`](https://github.com/P-JSL/myapps/blob/dd7cd12b3470a082f1bdf4aab63d7fed0c644779/desktop/concurrency.py) | **Conditional** | Variable server throttling or bursty latency | Respect absolute worker/host limits and retry cap |
+| M-ALT-07 | Terminal-durable SQLite progress coalescing | [`desktop/storage.py`](https://github.com/P-JSL/myapps/blob/dd7cd12b3470a082f1bdf4aab63d7fed0c644779/desktop/storage.py) | **Conditional** | Very frequent transient progress updates | Terminal states must commit immediately; WAL is already used |
+| M-ALT-08 | DOM row reuse for chooser | [`src/local/ui.ts`](https://github.com/P-JSL/myapps/blob/dd7cd12b3470a082f1bdf4aab63d7fed0c644779/src/local/ui.ts) | **Prototype after profiling** | Large repeated list updates cause long frame | Preserve selected media and validation labels |
+| M-ALT-09 | Short-lived source metadata memoization | [`desktop/engine.py`](https://github.com/P-JSL/myapps/blob/dd7cd12b3470a082f1bdf4aab63d7fed0c644779/desktop/engine.py) | **Conditional** | Same immutable URL fetched repeatedly | Signed URL expiration and source changes invalidate reuse |
+| M-ALT-10 | Unlimited parallel Range workers | [`src/local/parallel-download.ts`](https://github.com/P-JSL/myapps/blob/dd7cd12b3470a082f1bdf4aab63d7fed0c644779/src/local/parallel-download.ts) | ****Reject**** | No safe benefit under bounded server/network budget | Throttle amplification, heap growth and corruption risk |
+
+### Recommended order and decision gates
+
+**Ranked experiments:** (1) controlled local HTTP test at RTT=5/50/250 ms for 1/2/4/8 bounded streams, strict validator and time-to-complete; (2) OPFS sink write-call count vs backpressure and peak heap; (3) FFmpeg remux vs reencode only after codec compatibility; (4) SQLite transient progress update rate with crash tests. HTTP request count, JavaScript copy microbench, FFmpeg stage, and end-to-end download are **different denominators**. The already-applied 427.86× single worker-transfer microbenchmark must not be counted as new future performance.
+
+Additional original references: [RFC 9110 strong range validators](https://www.rfc-editor.org/rfc/rfc9110.html), [Netflix delay-based concurrency limit design](https://github.com/Netflix/concurrency-limits), [SQLite WAL write semantics](https://sqlite.org/wal.html), [web.dev INP](https://web.dev/articles/inp).
+
+**Mandatory adoption protocol:** compare baseline and prototype with the exact same input/source hashes, OS, CPU, build flags and dataset, alternating baseline/candidate at least five complete runs each; report cold/warm end-to-end time, p50/p95, bytes read/written, peak RSS/JS heap, and output equivalence. Numerical asymptotic improvements and reference papers do **not** establish achievable speedups before full execution. **No whole-program prospective speedup is quantified** because the cost share of the relevant hot path has not been profiled.
