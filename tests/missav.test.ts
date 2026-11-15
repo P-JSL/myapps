@@ -60,6 +60,12 @@ test('support reference player alternative CDN hosts without allowing arbitrary 
   ]) assert.equal(missavMediaURL(url), undefined, url);
 });
 
+test('extract CDN UUID from known packed player payload only', () => {
+  const packed = 'm3u8|1234567890ab|abcd|5678|1234|a1b2c3d4|com|surrit|https';
+  assert.deepEqual(missavPlaylistURLs(page, [packed]), [playlist]);
+  assert.deepEqual(missavPlaylistURLs(page, [packed.replace('surrit', 'othercdn')]), []);
+});
+
 test('avoid unrelated UUID matches and unknown scripts', () => {
   assert.deepEqual(missavPlaylistURLs(page, ['const campaign = "' + uuid + '";']), []);
   assert.deepEqual(missavPlaylistURLs(page, [
