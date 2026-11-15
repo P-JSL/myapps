@@ -1,4 +1,4 @@
-name: Publish MissAV Chrome extension patch
+name: Publish two Chrome extension variants (standard and MissAV)
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-missav-chrome-v1.19.4-missav.1
+  group: release-missav-chrome-v1.19.4-missav.2
   cancel-in-progress: false
 
 jobs:
@@ -25,7 +25,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install pinned Node.js 24
+      - name: Set up pinned Node.js 24
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
@@ -34,18 +34,51 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Validate TypeScript and unchanged extension behavior
+      - name: Verify TypeScript, source policy, and tests
         run: |
           npm run typecheck
           npm run check:source
           npm test
 
-      - name: Build current Chrome extension and source archives
+      - name: Build STANDARD extension from untouched pre-MissAV detector
+        env:
+          MY_VIDEO_APP_EXTENSION_VARIANT: standard
         run: |
           npm run build
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          build = json.loads(Path('reports/build.json').read_text(encoding='utf-8'))
+          item = next(e for e in build['entries'] if e['logicalOutput'] == 'local/collect.js')
+          assert item['inputs'] == ['src/local/collect-standard.ts', 'src/local/model.ts',
+                                   'src/local/transport.ts', 'src/security/validation.ts',
+                                   'src/shared/filename.ts', 'src/local/antivirus.ts',
+                                   'src/security/internal-scan.ts'] or (
+              'src/local/collect-standard.ts' in item['inputs']
+              and 'src/local/collect.ts' not in item['inputs']
+              and 'src/local/missav.ts' not in item['inputs']
+          ), 'Standard build includes MissAV detection logic'
+          PY
           python3 -B scripts/archive.py
+          mv artifacts/my-video-app-extension.zip artifacts/my-video-app-extension-standard.zip
 
-      - name: Verify patch payload and checksums
+      - name: Build MISSAV extension with video request discovery
+        env:
+          MY_VIDEO_APP_EXTENSION_VARIANT: missav
+        run: |
+          npm run build
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          build = json.loads(Path('reports/build.json').read_text(encoding='utf-8'))
+          item = next(e for e in build['entries'] if e['logicalOutput'] == 'local/collect.js')
+          assert 'src/local/collect.ts' in item['inputs'], 'MissAV collector not bundled'
+          assert 'src/local/missav.ts' in item['inputs'], 'MissAV URL extractor not bundled'
+          PY
+          python3 -B scripts/archive.py
+          mv artifacts/my-video-app-extension.zip artifacts/my-video-app-extension-missav.zip
+
+      - name: Verify the two distinct archives and SHA-256 checksums
         shell: bash
         run: |
           python3 - <<'PY'
@@ -54,63 +87,75 @@ jobs:
           from pathlib import Path
           from zipfile import ZipFile
 
-          manifest_path = 'my-video-app/manifest.json'
-          with ZipFile('artifacts/my-video-app-extension.zip') as bundle:
-              assert bundle.testzip() is None, 'Extension archive failed integrity check'
-              manifest = json.loads(bundle.read(manifest_path))
-              assert manifest['version'] == '1.19.4', 'Unexpected extension package version'
-              script = manifest['content_scripts'][0]['js'][0]
-              assert 'my-video-app/' + script in bundle.namelist(), 'Content script missing'
-          with ZipFile('artifacts/my-video-app-source.zip') as source:
-              assert source.testzip() is None, 'Source archive failed integrity check'
-              assert 'my-video-app-source/src/local/missav.ts' in source.namelist(), 'MissAV source missing'
-
-          build = json.loads(Path('reports/build.json').read_text(encoding='utf-8'))
-          collect = next((item for item in build['entries'] if item['logicalOutput'] == 'local/collect.js'), None)
-          assert collect is not None and 'src/local/missav.ts' in collect['inputs'], 'Built content script omits MissAV'
-          sums = {}
-          for line in Path('artifacts/SHA256SUMS').read_text(encoding='utf-8').splitlines():
-              digest, name = line.split()
-              assert name not in sums, 'Duplicate checksum entry'
-              sums[name] = digest
-          for name in ('my-video-app-extension.zip', 'my-video-app-source.zip', 'my-video-app-antivirus-helper.zip'):
-              digest = hashlib.sha256((Path('artifacts') / name).read_bytes()).hexdigest()
-              assert sums.get(name) == digest, 'Checksum mismatch: ' + name
+          root = Path('artifacts')
+          names = [
+              'my-video-app-extension-standard.zip',
+              'my-video-app-extension-missav.zip',
+              'my-video-app-source.zip',
+              'my-video-app-antivirus-helper.zip',
+          ]
+          fingerprints = {}
+          manifests = []
+          script_sha = []
+          for name in names:
+              path = root / name
+              assert path.is_file() and path.stat().st_size > 0, name
+              with ZipFile(path) as archive:
+                  assert archive.testzip() is None, 'Invalid ZIP: ' + name
+                  if name.startswith('my-video-app-extension-'):
+                      manifest = json.loads(archive.read('my-video-app/manifest.json'))
+                      assert manifest['version'] == '1.19.4'
+                      assert manifest['permissions'] == ['tabs', 'webRequest', 'downloads',
+                          'storage', 'unlimitedStorage', 'offscreen', 'sidePanel',
+                          'notifications', 'contextMenus']
+                      assert 'tabCapture' not in manifest['permissions']
+                      script = 'my-video-app/' + manifest['content_scripts'][0]['js'][0]
+                      script_sha.append(hashlib.sha256(archive.read(script)).hexdigest())
+                      manifests.append(manifest)
+              fingerprints[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+          assert len(script_sha) == 2 and script_sha[0] != script_sha[1], 'Standard/MissAV scripts are identical'
+          assert manifests[0]['host_permissions'] == manifests[1]['host_permissions'], 'Variant changed permissions'
+          sums = root / 'SHA256SUMS-MISSAV.txt'
+          sums.write_text(''.join(digest + '  ' + name + '\n' for name, digest in fingerprints.items()), encoding='utf-8')
+          for name, digest in fingerprints.items():
               print(name, digest)
           PY
 
-      - name: Publish only the MissAV extension patch, preserve Windows latest
+      - name: Publish distinct MissAV and standard ZIPs without changing Windows latest
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          tag='v1.19.4-missav.1'
+          tag='v1.19.4-missav.2'
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $tag already exists; refusing to overwrite it."
+            echo "Release $tag already exists; refusing to overwrite assets."
             exit 1
           fi
           cat > missav-release-notes.md <<'EOF'
-          ## My Video App · MissAV Chrome 확장 패치
+          ## My Video App v1.19.4 · Chrome 확장 선택 다운로드
 
-          - MissAV 미러 사이트의 플레이어 설정에서 UUID와 `surrit.com` HLS 마스터 재생목록을 감지합니다.
-          - 기존 일반 미디어 감지·HLS 다운로드·화질·보안 검사·백신 연동 로직은 유지합니다.
-          - TypeScript 및 기존 테스트를 실행한 뒤 현재 소스에서 Chrome 확장 ZIP과 소스 ZIP을 새로 생성합니다.
-          - Windows 데스크톱 앱은 변경하지 않았습니다. Windows 설치 파일은 정식 v1.19.4 릴리즈를 사용하세요.
-          - 브라우저에서 실제 MissAV CDN의 HTTP 403 응답이 발생하면 다운로드가 실패할 수 있습니다. CDN 제한·DRM 우회 기능은 포함하지 않습니다.
+          두 ZIP은 서로 다른 Chrome 확장 변형이며 **한 가지만 설치**해야 합니다.
 
-          **포함 파일:** `my-video-app-extension.zip`, `my-video-app-source.zip`, `my-video-app-antivirus-helper.zip`, `SHA256SUMS`.
+          - **my-video-app-extension-standard.zip:** MissAV 지원 기능을 추가하지 않은 기존 범용 확장입니다. 원본 감지기와 일반 미디어/HLS/DASH 다운로드를 유지합니다.
+          - **my-video-app-extension-missav.zip:** 기존 기능을 유지하면서 MissAV 미러 플레이어의 UUID, CDN HLS 재생목록, 브라우저가 요청한 HLS 주소를 추가 감지합니다.
+          - **my-video-app-source.zip:** 두 빌드의 소스 코드.
+          - **my-video-app-antivirus-helper.zip:** 선택적 로컬 백신 연동.
+          - **SHA256SUMS-MISSAV.txt:** 4개 ZIP의 SHA-256 체크섬.
 
-          **참고 구현:** https://github.com/nerdnam/missav-dlp-web
+          Windows 데스크톱은 변경하지 않았으며 정식 v1.19.4 릴리즈를 그대로 사용합니다.
+          네트워크 정책·CDN 접근 차단·DRM은 우회하지 않으므로 특정 페이지의 HTTP 403에서는 저장이 실패할 수 있습니다.
+          실제 웹사이트 실재생·다운로드는 이 CI에서 검증하지 않았습니다.
           EOF
           gh release create "$tag" \
-            artifacts/my-video-app-extension.zip \
+            artifacts/my-video-app-extension-standard.zip \
+            artifacts/my-video-app-extension-missav.zip \
             artifacts/my-video-app-source.zip \
             artifacts/my-video-app-antivirus-helper.zip \
-            artifacts/SHA256SUMS \
+            artifacts/SHA256SUMS-MISSAV.txt \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title 'My Video App v1.19.4 · MissAV Chrome 확장 패치 1' \
+            --title 'My Video App v1.19.4 · Standard + MissAV Chrome 확장' \
             --notes-file missav-release-notes.md \
             --latest=false
           gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName,assets,url
