@@ -1,11 +1,13 @@
 import { mediaKind, mediaURL, SCOPE } from './model.ts';
+import { isMissavPage, missavPlaylistURLs } from './missav.ts';
 import { record } from '../security/validation.ts';
 import { resourceTransport, transport, type Transport } from './transport.ts';
 
 const sent = new Map<string, string>();
 const timings = new Map<string, Transport>();
 const candidates = 'video,audio,video source,audio source,a[href]';
-const affected = `${candidates},base`;
+const missavPage = isMissavPage(location.href);
+const affected = `${candidates},base${missavPage ? ',script' : ''}`;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let scannedTitle = document.title;
 let scannedBase = document.baseURI;
@@ -24,6 +26,12 @@ function scan(rescanId?: string) {
       sent.set(url, signature); found.push({ url, title: document.title.slice(0, 200), mime: mime.slice(0, 100), fromElement, ...(protocol ? { observedTransport: protocol } : {}) });
     } catch { /* blob/MSE sources are discovered through network manifests instead. */ }
   };
+  // MissAV exposes the master HLS UUID in its inline player configuration.
+  // Publish that URL through the same validated capture path as other media.
+  if (missavPage) {
+    const scripts = Array.from(document.scripts).slice(0, 256).map(script => script.textContent ?? '');
+    for (const url of missavPlaylistURLs(location.href, scripts)) add(url, 'application/vnd.apple.mpegurl', false);
+  }
   for (const element of document.querySelectorAll(candidates)) {
     if (found.length >= 100) break;
     if (element instanceof HTMLMediaElement) add(element.currentSrc || element.src, '', true);
@@ -62,7 +70,7 @@ new MutationObserver(records => {
   for (const record of records) {
     if (record.type === 'attributes') {
       if (record.target instanceof Element && (record.target.matches(affected) || record.target instanceof HTMLAnchorElement)) { schedule(); return; }
-    } else if (record.target instanceof HTMLMediaElement) { schedule(); return; }
+    } else if (record.target instanceof HTMLMediaElement || (missavPage && record.target instanceof HTMLScriptElement)) { schedule(); return; }
     else for (const changed of [...record.addedNodes, ...record.removedNodes]) {
       if (changed instanceof Element && (changed.matches(affected) || changed.querySelector(affected))) { schedule(); return; }
     }
