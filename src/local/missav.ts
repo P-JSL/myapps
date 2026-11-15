@@ -67,6 +67,7 @@ export function missavPlaylistURLs(pageURL: string, scripts: Iterable<string>, r
     if (++inspected > MAX_SCRIPTS || found.size >= MAX_PLAYLISTS) break;
     if (typeof original !== 'string' || !original || original.length > MAX_SCRIPT_LENGTH) continue;
     const script = unescapePlayerText(original);
+    const before = found.size;
     // Handle full playback URLs, including CDN sub-variants and encoded paths.
     for (const match of script.matchAll(/https:\/\/[^\s"'<>\\]{1,2048}\.m3u8(?:\?[^\s"'<>\\]{0,1024})?/gi)) {
       add(missavMediaURL(match[0]));
@@ -75,14 +76,16 @@ export function missavPlaylistURLs(pageURL: string, scripts: Iterable<string>, r
     for (const match of script.matchAll(CDN_REFERENCE)) {
       add('https://' + match[1]!.toLowerCase() + '/' + match[2]!.toLowerCase() + '/playlist.m3u8');
     }
-    // Reference extractor fallback: UUID immediately before seek in an inline script.
-    for (const match of script.matchAll(UUID_NEAR_SEEK)) {
-      add('https://surrit.com/' + match[1]!.toLowerCase() + '/playlist.m3u8');
-    }
-    // A unique UUID in an otherwise known player script may be dynamically joined.
-    if (/\bseek\b/i.test(script)) {
-      const ids = new Set([...script.matchAll(ANY_UUID)].map(match => match[0].toLowerCase()));
-      if (ids.size === 1) add('https://surrit.com/' + ids.values().next().value! + '/playlist.m3u8');
+    // Only assume the default CDN if this script contained no known CDN host.
+    // Otherwise the same UUID can be published for a wrong host.
+    if (found.size === before) {
+      for (const match of script.matchAll(UUID_NEAR_SEEK)) {
+        add('https://surrit.com/' + match[1]!.toLowerCase() + '/playlist.m3u8');
+      }
+      if (/\bseek\b/i.test(script)) {
+        const ids = new Set([...script.matchAll(ANY_UUID)].map(match => match[0].toLowerCase()));
+        if (ids.size === 1) add('https://surrit.com/' + ids.values().next().value! + '/playlist.m3u8');
+      }
     }
   }
   return [...found];
