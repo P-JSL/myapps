@@ -230,7 +230,18 @@ export async function auditSource(root = repository, catalog = project) {
   }
 
   const owners = new Map(), reachable = new Set();
-  for (const entry of entries) {
+  // Both release variants have independent, valid entry points. Audit the
+  // alternate collector and background runtime as additional graph roots,
+  // without weakening the orphan-module check or shipping duplicate outputs.
+  const otherVariantEntries = entries
+    .filter(entry => ['local/collect.js', 'local/background.js'].includes(entry.output))
+    .map(entry => ({
+      ...entry,
+      input: entry.input.endsWith('-standard.ts')
+        ? entry.input.replace(/-standard\.ts$/, '.ts')
+        : entry.input.replace(/\.ts$/, '-standard.ts'),
+    }));
+  for (const entry of [...entries, ...otherVariantEntries]) {
     const input = relativeName(entry.input, 'Browser entry');
     assert(runtime.has(input), `Browser entry is missing or has no runtime code: ${input}`);
     const seen = new Set();
