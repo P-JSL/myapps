@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/release-missav-extension.yml
       - tests/missav-build.test.ts
+      - scripts/audit-source.mjs
   workflow_dispatch:
 
 permissions:
