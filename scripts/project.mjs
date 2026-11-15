@@ -10,7 +10,7 @@ export const browserEntries = freeze([
     "format": "esm"
   },
   {
-    "input": "src/local/collect.ts",
+    "input": process.env.MY_VIDEO_APP_EXTENSION_VARIANT === "standard" ? "src/local/collect-standard.ts" : "src/local/collect.ts",
     "output": "local/collect.js",
     "format": "iife"
   },
