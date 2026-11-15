@@ -50,7 +50,7 @@ test('support reference player alternative CDN hosts without allowing arbitrary 
     'https://nineyu.com/' + uuid + '/seek',
     'https://fourhoi.store/' + uuid + '/playlist.m3u8',
   ]), ['https://nineyu.com/' + id + '/playlist.m3u8',
-    'https://fourhoi.store/' + uuid + '/playlist.m3u8']);
+    'https://fourhoi.store/' + id + '/playlist.m3u8']);
   for (const url of [
     'https://surrit.com.evil.test/' + uuid + '/playlist.m3u8',
     'http://surrit.com/' + uuid + '/playlist.m3u8',
