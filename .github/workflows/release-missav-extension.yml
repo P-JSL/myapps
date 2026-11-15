@@ -49,15 +49,14 @@ jobs:
           import json
           from pathlib import Path
           build = json.loads(Path('reports/build.json').read_text(encoding='utf-8'))
-          item = next(e for e in build['entries'] if e['logicalOutput'] == 'local/collect.js')
-          assert item['inputs'] == ['src/local/collect-standard.ts', 'src/local/model.ts',
-                                   'src/local/transport.ts', 'src/security/validation.ts',
-                                   'src/shared/filename.ts', 'src/local/antivirus.ts',
-                                   'src/security/internal-scan.ts'] or (
-              'src/local/collect-standard.ts' in item['inputs']
-              and 'src/local/collect.ts' not in item['inputs']
-              and 'src/local/missav.ts' not in item['inputs']
-          ), 'Standard build includes MissAV detection logic'
+          entries = {e['logicalOutput']: e for e in build['entries']}
+          for output, original, patched in (
+              ('local/collect.js', 'src/local/collect-standard.ts', 'src/local/collect.ts'),
+              ('local/background.js', 'src/local/background-standard.ts', 'src/local/background.ts'),
+          ):
+              inputs = entries[output]['inputs']
+              assert original in inputs and patched not in inputs, 'Standard variant runtime mismatch: ' + output
+              assert 'src/local/missav.ts' not in inputs, 'MissAV extractor leaked into standard: ' + output
           PY
           python3 -B scripts/archive.py
           mv artifacts/my-video-app-extension.zip artifacts/my-video-app-extension-standard.zip
@@ -71,9 +70,14 @@ jobs:
           import json
           from pathlib import Path
           build = json.loads(Path('reports/build.json').read_text(encoding='utf-8'))
-          item = next(e for e in build['entries'] if e['logicalOutput'] == 'local/collect.js')
-          assert 'src/local/collect.ts' in item['inputs'], 'MissAV collector not bundled'
-          assert 'src/local/missav.ts' in item['inputs'], 'MissAV URL extractor not bundled'
+          entries = {e['logicalOutput']: e for e in build['entries']}
+          for output, patched, original in (
+              ('local/collect.js', 'src/local/collect.ts', 'src/local/collect-standard.ts'),
+              ('local/background.js', 'src/local/background.ts', 'src/local/background-standard.ts'),
+          ):
+              inputs = entries[output]['inputs']
+              assert patched in inputs and original not in inputs, 'MissAV variant runtime mismatch: ' + output
+              assert 'src/local/missav.ts' in inputs, 'MissAV extractor missing: ' + output
           PY
           python3 -B scripts/archive.py
           mv artifacts/my-video-app-extension.zip artifacts/my-video-app-extension-missav.zip
