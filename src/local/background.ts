@@ -1,4 +1,5 @@
 import { boundedData, record } from '../security/validation.ts';
+import { isMissavPage, missavMediaURL } from './missav.ts';
 import { appStorage } from '../data/database.ts';
 import { offerUpscale, revokeDownloadOffers, authorizeDownloadOffers } from '../upscale/completion.ts';
 import { jobs } from '../upscale/storage.ts';
@@ -551,6 +552,25 @@ chrome.runtime.onMessage.addListener((value: unknown, sender, reply) => {
   void handleLocalMessage(value, sender).then(reply).catch((error: unknown) => reply({ ok: false, error: error instanceof Error ? error.message : '요청 오류' }));
   return true;
 });
+// Capture actual CDN playlist requests from a MissAV tab before HTTP 403
+// responses or missing Content-Type headers hide them from onHeadersReceived.
+// This only identifies the media; it does not bypass CDN access checks.
+chrome.webRequest.onBeforeRequest?.addListener((details): undefined => {
+  if (details.tabId < 0) return undefined;
+  const playlist = missavMediaURL(details.url);
+  if (!playlist) return undefined;
+  const epoch = discoveryEpochs.get(details.tabId) ?? {};
+  discoveryEpochs.set(details.tabId, epoch);
+  void chrome.tabs.get(details.tabId).then(tab => {
+    if (discoveryEpochs.get(details.tabId) === epoch
+      && !!tab.incognito === chrome.extension.inIncognitoContext
+      && typeof tab.url === 'string' && isMissavPage(tab.url)) {
+      add(details.tabId, playlist, 'application/vnd.apple.mpegurl', tab.title ?? '', false);
+    }
+  }).catch(() => {});
+  return undefined;
+}, { urls: ['https://*/*'] });
+
 chrome.webRequest.onHeadersReceived.addListener((details): undefined => {
   if (details.tabId < 0 || details.statusCode < 200 || details.statusCode >= 300) return undefined;
   const type = details.responseHeaders?.find(h => h.name.toLowerCase() === 'content-type')?.value ?? '';
