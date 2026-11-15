@@ -1,0 +1,116 @@
+name: Publish MissAV Chrome extension patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/release-missav-extension.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-missav-chrome-v1.19.4-missav.1
+  cancel-in-progress: false
+
+jobs:
+  extension-release:
+    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out release sources
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Validate TypeScript and unchanged extension behavior
+        run: |
+          npm run typecheck
+          npm run check:source
+          npm test
+
+      - name: Build current Chrome extension and source archives
+        run: |
+          npm run build
+          python3 -B scripts/archive.py
+
+      - name: Verify patch payload and checksums
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          manifest_path = 'my-video-app/manifest.json'
+          with ZipFile('artifacts/my-video-app-extension.zip') as bundle:
+              assert bundle.testzip() is None, 'Extension archive failed integrity check'
+              manifest = json.loads(bundle.read(manifest_path))
+              assert manifest['version'] == '1.19.4', 'Unexpected extension package version'
+              script = manifest['content_scripts'][0]['js'][0]
+              assert 'my-video-app/' + script in bundle.namelist(), 'Content script missing'
+          with ZipFile('artifacts/my-video-app-source.zip') as source:
+              assert source.testzip() is None, 'Source archive failed integrity check'
+              assert 'my-video-app-source/src/local/missav.ts' in source.namelist(), 'MissAV source missing'
+
+          build = json.loads(Path('reports/build.json').read_text(encoding='utf-8'))
+          collect = next((item for item in build['entries'] if item['logicalOutput'] == 'local/collect.js'), None)
+          assert collect is not None and 'src/local/missav.ts' in collect['inputs'], 'Built content script omits MissAV'
+          sums = {}
+          for line in Path('artifacts/SHA256SUMS').read_text(encoding='utf-8').splitlines():
+              digest, name = line.split()
+              assert name not in sums, 'Duplicate checksum entry'
+              sums[name] = digest
+          for name in ('my-video-app-extension.zip', 'my-video-app-source.zip', 'my-video-app-antivirus-helper.zip'):
+              digest = hashlib.sha256((Path('artifacts') / name).read_bytes()).hexdigest()
+              assert sums.get(name) == digest, 'Checksum mismatch: ' + name
+              print(name, digest)
+          PY
+
+      - name: Publish only the MissAV extension patch, preserve Windows latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='v1.19.4-missav.1'
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists; refusing to overwrite it."
+            exit 1
+          fi
+          cat > missav-release-notes.md <<'EOF'
+          ## My Video App · MissAV Chrome 확장 패치
+
+          - MissAV 미러 사이트의 플레이어 설정에서 UUID와 `surrit.com` HLS 마스터 재생목록을 감지합니다.
+          - 기존 일반 미디어 감지·HLS 다운로드·화질·보안 검사·백신 연동 로직은 유지합니다.
+          - TypeScript 및 기존 테스트를 실행한 뒤 현재 소스에서 Chrome 확장 ZIP과 소스 ZIP을 새로 생성합니다.
+          - Windows 데스크톱 앱은 변경하지 않았습니다. Windows 설치 파일은 정식 v1.19.4 릴리즈를 사용하세요.
+          - 브라우저에서 실제 MissAV CDN의 HTTP 403 응답이 발생하면 다운로드가 실패할 수 있습니다. CDN 제한·DRM 우회 기능은 포함하지 않습니다.
+
+          **포함 파일:** `my-video-app-extension.zip`, `my-video-app-source.zip`, `my-video-app-antivirus-helper.zip`, `SHA256SUMS`.
+
+          **참고 구현:** https://github.com/nerdnam/missav-dlp-web
+          EOF
+          gh release create "$tag" \
+            artifacts/my-video-app-extension.zip \
+            artifacts/my-video-app-source.zip \
+            artifacts/my-video-app-antivirus-helper.zip \
+            artifacts/SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title 'My Video App v1.19.4 · MissAV Chrome 확장 패치 1' \
+            --notes-file missav-release-notes.md \
+            --latest=false
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName,assets,url
