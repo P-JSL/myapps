@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/release-missav-extension.yml
+      - tests/missav-build.test.ts
   workflow_dispatch:
 
 permissions:
