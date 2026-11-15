@@ -1,5 +1,5 @@
 import { mediaKind, mediaURL, SCOPE } from './model.ts';
-import { isMissavPage, missavPlaylistURLs } from './missav.ts';
+import { isMissavPage, missavPlaylistURLs, missavMediaURL } from './missav.ts';
 import { record } from '../security/validation.ts';
 import { resourceTransport, transport, type Transport } from './transport.ts';
 
@@ -30,7 +30,10 @@ function scan(rescanId?: string) {
   // Publish that URL through the same validated capture path as other media.
   if (missavPage) {
     const scripts = Array.from(document.scripts).slice(0, 256).map(script => script.textContent ?? '');
-    for (const url of missavPlaylistURLs(location.href, scripts)) add(url, 'application/vnd.apple.mpegurl', false);
+    // Some players use fetched/packed scripts or a MediaSource (blob:) element.
+    // Inspect the actual resource URLs independent of HTTP protocol timing data.
+    const resources = performance.getEntriesByType('resource').slice(-1500).map(entry => entry.name);
+    for (const url of missavPlaylistURLs(location.href, scripts, resources)) add(url, 'application/vnd.apple.mpegurl', false);
   }
   for (const element of document.querySelectorAll(candidates)) {
     if (found.length >= 100) break;
@@ -52,11 +55,16 @@ try {
   new PerformanceObserver(list => {
     let changed = false;
     for (const entry of list.getEntries() as PerformanceResourceTiming[]) {
-      const protocol = transport(entry.nextHopProtocol); if (!protocol) continue;
+      const protocol = transport(entry.nextHopProtocol);
       try {
         const url = mediaURL(entry.name).href;
-        if (timings.get(url) !== protocol && (sent.has(url) || mediaKind(url))) changed = true;
-        timings.set(url, protocol);
+        // MissAV HLS discovery must work when Resource Timing hides ALPN info.
+        const playlist = missavPage ? missavMediaURL(url) : undefined;
+        if (playlist && !sent.has(playlist)) changed = true;
+        if (protocol) {
+          if (timings.get(url) !== protocol && (sent.has(url) || mediaKind(url))) changed = true;
+          timings.set(url, protocol);
+        }
       } catch { /* Ignore non-network resources. */ }
     }
     while (timings.size > 1000) timings.delete(timings.keys().next().value!);
