@@ -76,6 +76,15 @@ export function missavPlaylistURLs(pageURL: string, scripts: Iterable<string>, r
     for (const match of script.matchAll(/https:\/\/[^\s"'<>\\]{1,2048}\.m3u8(?:\?[^\s"'<>\\]{0,1024})?/gi)) {
       add(missavMediaURL(match[0]));
     }
+    // A known packed-player format stores the UUID parts in reverse order.
+    // Accept only the exact five UUID fields to avoid matching unrelated tokens.
+    for (const match of script.matchAll(/m3u8\|([0-9a-f|]{36,100})\|com\|(surrit|nineyu|fourhoi)\|https/gi)) {
+      const fields = match[1]!.split('|').reverse();
+      const packedId = fields.join('-').toLowerCase();
+      if (fields.length === 5 && UUID_RE.test(packedId)) {
+        add('https://' + match[2]!.toLowerCase() + '.com/' + packedId + '/playlist.m3u8');
+      }
+    }
     // MissAV player URLs often contain a CDN UUID /seek path, not a .m3u8 URL.
     for (const match of script.matchAll(CDN_REFERENCE)) {
       add('https://' + match[1]!.toLowerCase() + '/' + match[2]!.toLowerCase() + '/playlist.m3u8');
