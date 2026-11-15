@@ -82,6 +82,6 @@ test('strict bounds prevent scanning excessive inline scripts and resource URLs'
 
 test('observed HLS requests are recognized without nextHopProtocol/ALPN metadata', () => {
   const observed = 'https://surrit.com/' + uuid + '/playlist.m3u8';
-  assert.deepEqual(missavPlaylistURLs(page, [], [observed]), [observed]);
+  assert.deepEqual(missavPlaylistURLs(page, [], [observed]), [playlist]);
   assert.equal(missavMediaURL('https://surrit.com/' + uuid + '/seek'), playlist);
 });
