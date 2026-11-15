@@ -33,6 +33,10 @@ export function missavMediaURL(value: string): string | undefined {
     const id = parts[0];
     if (!id || !UUID_RE.test(id)) return undefined;
     if (/\.m3u8$/i.test(url.pathname)) {
+      // Hex UUID casing is not semantically meaningful. Normalizing it avoids
+      // duplicate cards when the same HLS manifest is seen in scripts and timing.
+      parts[0] = id.toLowerCase();
+      url.pathname = '/' + parts.join('/');
       url.hash = '';
       return url.href;
     }
