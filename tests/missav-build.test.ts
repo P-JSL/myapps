@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { browserEntries } from '../scripts/project.mjs';
+// @ts-expect-error The build catalog is a checked JavaScript module without .d.mts types.
+import { browserEntries as rawEntries } from '../scripts/project.mjs';
+const browserEntries = rawEntries as Array<{ input: string; output: string; format: string }>;
 
 const snapshots = [
   { path: 'src/local/collect-standard.ts', sha: '6ee8b1844b0ecded15a34efadedd42fb2fa4718a' },
