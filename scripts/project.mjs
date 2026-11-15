@@ -5,12 +5,12 @@ function freeze(value) {
 }
 export const browserEntries = freeze([
   {
-    "input": "src/local/background.ts",
+    "input": process.env.MY_VIDEO_APP_EXTENSION_VARIANT === "standard" ? "src/local/background-standard.ts" : "src/local/background.ts",
     "output": "local/background.js",
     "format": "esm"
   },
   {
-    "input": "src/local/collect.ts",
+    "input": process.env.MY_VIDEO_APP_EXTENSION_VARIANT === "standard" ? "src/local/collect-standard.ts" : "src/local/collect.ts",
     "output": "local/collect.js",
     "format": "iife"
   },

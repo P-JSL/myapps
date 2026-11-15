@@ -6,7 +6,7 @@
 
 - **최신 버전:** [v1.19.4 릴리스](https://github.com/P-JSL/myapps/releases/tag/v1.19.4) · [항상 최신 릴리스 보기](https://github.com/P-JSL/myapps/releases/latest)
 - **Windows 앱:** Windows 10/11 x64, 압축 해제 후 바로 실행. Python, yt-dlp, FFmpeg 등 필요 구성요소 포함
-- **Chrome 확장:** [MissAV 감지 패치 v1.19.4-missav.1](https://github.com/P-JSL/myapps/releases/tag/v1.19.4-missav.1) · 개발자 모드에서 압축 해제된 폴더를 로드
+- **Chrome 확장:** [MissAV 지원판 / 일반판 개별 ZIP 선택](https://github.com/P-JSL/myapps/releases/tag/v1.19.4-missav.2) · 개발자 모드로 로드
 - **서비스 계정·구독·API 키:** 프로그램 사용에 필요하지 않음
 
 ## 먼저 어떤 프로그램을 사용해야 하나요?
@@ -29,8 +29,9 @@
 | 파일 | 사용자에게 필요한 내용 |
 | --- | --- |
 | **[Windows 앱 ZIP 다운로드](https://github.com/P-JSL/myapps/releases/latest/download/my-video-app-desktop-windows-x64.zip)** | **my-video-app-desktop-windows-x64.zip**을 전부 풀고 **My Video App.exe** 실행. Windows 10/11 x64, Python·yt-dlp·Deno·FFmpeg·Qt 포함 |
-| **[Chrome 확장 ZIP · MissAV 패치](https://github.com/P-JSL/myapps/releases/download/v1.19.4-missav.1/my-video-app-extension.zip)** | MissAV HLS 감지 및 기존 일반 미디어·HLS/DASH 다운로드 기능. **YouTube 미지원** |
-| [전체 소스 ZIP](https://github.com/P-JSL/myapps/releases/download/v1.19.4-missav.1/my-video-app-source.zip) | 확장·앱·빌드 스크립트·의존성 잠금·검사 코드 |
+| **[Chrome 확장 · MissAV 지원](https://github.com/P-JSL/myapps/releases/download/v1.19.4-missav.2/my-video-app-extension-missav.zip)** | 기존 기능 + MissAV 플레이어/네트워크 HLS 감지. 실제 CDN 403은 지원 불가할 수 있음 |
+| **[Chrome 확장 · 일반판](https://github.com/P-JSL/myapps/releases/download/v1.19.4-missav.2/my-video-app-extension-standard.zip)** | MissAV 전용 코드가 없는 기존 원본 감지·다운로드 로직 |
+| [전체 소스 ZIP](https://github.com/P-JSL/myapps/releases/download/v1.19.4-missav.2/my-video-app-source.zip) | 확장·앱·빌드 스크립트·의존성 잠금·검사 코드 |
 | [확장 백신 도우미](artifacts/my-video-app-antivirus-helper.zip) | Chrome 확장의 선택적 로컬 백신 연동. 데스크톱 앱의 YouTube에는 필요하지 않음 |
 
 **Windows 앱 ZIP은 GitHub 일반 Git 파일 제한(100MiB)을 넘으므로 Release에 보관합니다.** 저장소의 [Downloads 폴더](Downloads/)에는 실제 ZIP을 내려받는 링크를 제공합니다. [배포 워크플로](.github/workflows/release.yml)가 버전·코드·고정 의존성으로 앱을 빌드하고 확장 ZIP과 함께 게시합니다. 비공개 저장소의 Release는 권한 있는 계정으로 로그인해야 접근할 수 있습니다.
@@ -66,9 +67,9 @@
 3. **설정 → 다운로드 저장 폴더**에서 Chrome의 저장 폴더 절대경로를 선택하고 **다운로드 전에 각 파일의 저장 위치 확인을 OFF**로 바꾼 뒤 최초 설정을 완료합니다.
 4. 영상 페이지를 새로고침하고 재생 → 확장 아이콘 → 다운로드.
 
-기존 설치는 같은 폴더에 새 ZIP 내용을 갱신하고 확장을 새로고침하세요. **YouTube 주소·재생 조각은 확장에서 다운로드하지 않으며 Windows 앱으로 안내합니다.** 백신 연동은 ON/OFF할 수 있고, Windows Defender 기본 연동 및 다른 백신 연결은 기존 [안내](native/README.ko.md)를 따릅니다.
+두 Chrome ZIP 중 필요한 **하나만** 설치하세요. 다른 ZIP으로 전환할 때는 기존 확장을 제거하거나 같은 폴더에 교체 후 새로고침하세요. 기존 설치는 같은 폴더에 새 ZIP 내용을 갱신하고 확장을 새로고침하세요. **YouTube 주소·재생 조각은 확장에서 다운로드하지 않으며 Windows 앱으로 안내합니다.** 백신 연동은 ON/OFF할 수 있고, Windows Defender 기본 연동 및 다른 백신 연결은 기존 [안내](native/README.ko.md)를 따릅니다.
 
-**MissAV 미러 사이트:** 페이지 내 플레이어 스크립트에서 공개된 영상 UUID 또는 `surrit.com` 주소를 찾아 HLS 재생목록으로 감지합니다. 기존 Chrome 확장 다운로드·화질·보안 검사 로직을 그대로 사용하며, 재생목록이 없으면 영상을 재생한 뒤 **강제 감지**를 사용하세요. CDN에서 `403`이 발생하거나 접근이 제한된 콘텐츠는 브라우저 확장만으로 다운로드가 되지 않을 수 있습니다. 사이트 접근 제어·DRM을 우회하는 기능은 추가하지 않았습니다.
+**MissAV 지원판만:** 플레이어 스크립트의 UUID 및 `surrit.com` 등 알려진 CDN의 실제 HLS 요청을 확인하여 감지합니다. 일반판에는 MissAV 전용 감지기·백그라운드 기능이 없습니다. 기존 Chrome 확장 다운로드·화질·보안 검사 로직을 그대로 사용하며, 재생목록이 없으면 영상을 재생한 뒤 **강제 감지**를 사용하세요. CDN에서 `403`이 발생하거나 접근이 제한된 콘텐츠는 브라우저 확장만으로 다운로드가 되지 않을 수 있습니다. 사이트 접근 제어·DRM을 우회하는 기능은 추가하지 않았습니다.
 
 ## 실행 로그와 데이터 위치
 
