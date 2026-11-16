@@ -1,40 +1,23 @@
-name: Verify and release MissAV 1.20.1 extension and Windows app
+name: Verify Windows draft without publication
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/release-missav.yml
-      - src/local/**
-      - desktop/**
-      - scripts/build-desktop.py
-      - scripts/release-missav.py
-      - tests/missav*
-      - tests/page-fetch.test.ts
-      - tests/test_missav_release.py
-      - package.json
-      - package-lock.json
   workflow_dispatch:
 
 permissions:
-  contents: write
-
-concurrency:
-  group: release-v1.20.1-preview.1
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  verify-release:
-    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/main'
+  windows-verification:
+    if: github.repository == 'P-JSL/myapps' && startsWith(github.ref, 'refs/heads/codex/windows-verify-')
     runs-on: windows-2025
-    timeout-minutes: 45
+    timeout-minutes: 35
     env:
       PYTHONUTF8: '1'
     defaults:
       run:
         shell: pwsh
     steps:
-      - name: Preserve committed source bytes on Windows
+      - name: Preserve source bytes
         run: git config --global core.autocrlf false
 
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -47,7 +30,7 @@ jobs:
           node-version: '24'
           cache: npm
 
-      - name: Check the changed extension and publication scope
+      - name: Build extension for verification
         run: |
           npm ci --no-audit --no-fund
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -55,77 +38,64 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run check:source
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node --experimental-strip-types --test tests/missav.test.ts tests/missav-collector.test.ts tests/missav-build.test.ts tests/missav-request-url.test.ts tests/missav-context.test.ts tests/page-fetch.test.ts
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -B tests/test_missav_release.py -v
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Build the MissAV extension
-        env:
-          MY_VIDEO_APP_EXTENSION_VARIANT: missav
-        run: |
           npm run build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -B scripts/archive.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Move-Item artifacts/my-video-app-extension.zip artifacts/my-video-app-extension-missav.zip
 
-      - name: Restore the verified runtime archive cache
-        id: runtime-cache
-        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
+      - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
         with:
           path: .cache/desktop-runtime
           key: ${{ runner.os }}-desktop-missav-${{ hashFiles('desktop/dependencies-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-desktop-missav-
 
-      - name: Fetch the pinned baseline binaries and unchanged standard extension
+      - name: Prepare the unpublished Windows build
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          New-Item -ItemType Directory -Force .cache/desktop-runtime | Out-Null
+          New-Item -ItemType Directory -Force .cache/desktop-runtime, artifacts/windows-verification | Out-Null
           if (!(Test-Path .cache/desktop-runtime/my-video-app-desktop-windows-x64.zip)) {
             gh release download v1.19.4 --repo $env:GITHUB_REPOSITORY --dir .cache/desktop-runtime --pattern my-video-app-desktop-windows-x64.zip
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-          gh release download v1.19.4-bundle.1 --repo $env:GITHUB_REPOSITORY --dir artifacts --pattern my-video-app-extension-standard.zip --pattern my-video-app-antivirus-helper.zip --clobber
+          python -B scripts/build-desktop.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Build the pinned Windows package
-        run: python -B scripts/build-desktop.py
-
-      - name: Execute MissAV integration and GUI checks with the bundled Windows Python
-        run: |
-          $testRoot = Join-Path $env:RUNNER_TEMP 'myvideoapp-missav'
+          $testRoot = Join-Path $env:RUNNER_TEMP 'Windows 앱 실행 검사'
           Expand-Archive -LiteralPath artifacts/my-video-app-desktop-windows-x64.zip -DestinationPath $testRoot
-          $appRoot = Join-Path $testRoot 'MyVideoApp'
-          $python = Join-Path $appRoot 'runtime/python/python.exe'
-          & $python -I -B desktop/test_missav.py --app-root $appRoot -v
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B desktop/test_missav_gui.py --app-root $appRoot -v
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Join-Path $appRoot 'runtime/ffmpeg' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          @{version='1.20.1'; commit=$env:GITHUB_SHA; platform='windows-x64'; scope='focused-missav-v121'; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); nativeMissavTests=11; nativeGuiTests=1; previousFullSuites='not repeated per user'; targetFullVideoVerified=$false} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
+          "MYVIDEOAPP_TEST_ROOT=$(Join-Path $testRoot 'MyVideoApp')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Join-Path (Join-Path $testRoot 'MyVideoApp') 'runtime/ffmpeg' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Verify original-page requests with the locked browser and real workers
+      - name: Verify pinned Windows runtime and direct HLS regression
+        run: |
+          $python = Join-Path $env:MYVIDEOAPP_TEST_ROOT 'runtime/python/python.exe'
+          & $python -I -B tests/test_direct_hls.py --app-root $env:MYVIDEOAPP_TEST_ROOT -v 2>&1 | Tee-Object artifacts/windows-verification/direct-hls.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B desktop/test_missav.py --app-root $env:MYVIDEOAPP_TEST_ROOT -v 2>&1 | Tee-Object artifacts/windows-verification/missav-runtime.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B desktop/test_missav_gui.py --app-root $env:MYVIDEOAPP_TEST_ROOT -v 2>&1 | Tee-Object artifacts/windows-verification/gui-smoke.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test the actual installed extension on Windows
         run: |
           node node_modules/playwright-core/cli.js install chromium
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node tests/missav-browser.mjs
+          node tests/missav-installed-browser.mjs 2>&1 | Tee-Object artifacts/windows-verification/installed-extension.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node tests/missav-installed-browser.mjs
+          Copy-Item .cache/missav-installed-browser/INSTALLED-EXTENSION-VALIDATION.json artifacts/windows-verification/
+
+      - name: Operate the native Windows GUI and real download workers
+        run: |
+          $python = Join-Path $env:MYVIDEOAPP_TEST_ROOT 'runtime/python/python.exe'
+          & $python -I -B desktop/test_windows_gui_download.py --app-root $env:MYVIDEOAPP_TEST_ROOT --output artifacts/windows-verification/gui 2>&1 | Tee-Object artifacts/windows-verification/gui-download.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Copy-Item .cache/missav-browser/BROWSER-VALIDATION.json artifacts/BROWSER-VALIDATION.json
-          Copy-Item .cache/missav-installed-browser/INSTALLED-EXTENSION-VALIDATION.json artifacts/INSTALLED-EXTENSION-VALIDATION.json
 
-      - name: Verify all archive hashes and publish the complete preview
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python -B scripts/release-missav.py --artifacts artifacts --publish
-
-      - name: Cache verified dependency archives
-        if: success() && steps.runtime-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
+      - name: Retain private verification evidence only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          path: .cache/desktop-runtime
-          key: ${{ runner.os }}-desktop-missav-${{ hashFiles('desktop/dependencies-lock.json') }}
+          name: windows-verification-${{ github.run_id }}
+          path: |
+            artifacts/windows-verification/*.log
+            artifacts/windows-verification/*.json
+            artifacts/windows-verification/gui/*.png
+            artifacts/windows-verification/gui/*.json
+          retention-days: 7

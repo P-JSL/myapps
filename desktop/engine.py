@@ -600,9 +600,23 @@ class Engine:
             if info.get("id") != urlsplit(url).query.removeprefix("v="):
                 raise EngineError("원본이 요청과 다른 YouTube 동영상을 반환했습니다.")
         else:
-            manifest = any(isinstance(track, dict) and (track.get("manifest_url") == current
-                           or (missav.is_media(current) and track.get("url") == current
-                               and track.get("protocol") in ("m3u8", "m3u8_native"))) for track in formats)
+            manifest = any(isinstance(track, dict) and track.get("manifest_url") == current for track in formats)
+            direct_hls = urlsplit(current).path.lower().endswith(".m3u8") and any(
+                isinstance(track, dict) and track.get("url") == current
+                and track.get("protocol") in ("m3u8", "m3u8_native") for track in formats)
+            if direct_hls and not missav.is_media(current):
+                # Generic marks a media playlist by its own URL, while a master
+                # carries manifest_url. Validate the newly accepted direct body
+                # so encryption and error HTML cannot become supported formats.
+                _check_cancel(cancel)
+                try:
+                    with downloader.urlopen(current) as response:
+                        data = response.read(missav.MAX_MANIFEST + 1)
+                    missav.validate_playlist(data)
+                except missav.MissavError as error:
+                    raise EngineError(str(error)) from None
+                _check_cancel(cancel)
+            manifest = manifest or direct_hls
             if info.get("direct") is not True and not manifest:
                 raise EngineError("웹 페이지 주소입니다. 동영상·오디오·HLS·DASH 미디어 직접 주소를 붙여 넣으세요.")
         info["title"] = _title(page_title or info.get("title"), "YouTube video" if youtube else "Media")
