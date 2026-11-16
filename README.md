@@ -6,7 +6,8 @@
 
 - **최신 버전:** [v1.19.4 릴리스](https://github.com/P-JSL/myapps/releases/tag/v1.19.4) · [항상 최신 릴리스 보기](https://github.com/P-JSL/myapps/releases/latest)
 - **Windows 앱:** Windows 10/11 x64, 압축 해제 후 바로 실행. Python, yt-dlp, FFmpeg 등 필요 구성요소 포함
-- **Chrome 확장:** [MissAV 지원판 / 일반판 개별 ZIP 선택](https://github.com/P-JSL/myapps/releases/tag/v1.19.4-missav.2) · 개발자 모드로 로드
+- **세 가지 설치 파일:** [MissAV 감지 추가판·일반판 확장·Windows 앱 통합 릴리즈](https://github.com/P-JSL/myapps/releases/tag/v1.19.4-bundle.1) · MissAV 감지 추가판의 실제 사이트 다운로드는 미검증
+- **Chrome 확장:** 개발자 모드로 로드. 두 확장 ZIP 중 하나만 설치
 - **서비스 계정·구독·API 키:** 프로그램 사용에 필요하지 않음
 
 ## 먼저 어떤 프로그램을 사용해야 하나요?
@@ -24,17 +25,19 @@
 
 ## 다운로드
 
-**[Downloads 폴더에서 설치 파일 받기](Downloads/)** · [최신 Release 전체 보기](https://github.com/P-JSL/myapps/releases/latest)
+**[세 가지 설치 파일을 한 릴리즈에서 받기](https://github.com/P-JSL/myapps/releases/tag/v1.19.4-bundle.1)** · [Downloads 폴더](Downloads/) · [정식 Windows 릴리즈](https://github.com/P-JSL/myapps/releases/latest)
 
 | 파일 | 사용자에게 필요한 내용 |
 | --- | --- |
-| **[Windows 앱 ZIP 다운로드](https://github.com/P-JSL/myapps/releases/latest/download/my-video-app-desktop-windows-x64.zip)** | **my-video-app-desktop-windows-x64.zip**을 전부 풀고 **My Video App.exe** 실행. Windows 10/11 x64, Python·yt-dlp·Deno·FFmpeg·Qt 포함 |
-| **[Chrome 확장 · MissAV 지원](https://github.com/P-JSL/myapps/releases/download/v1.19.4-missav.2/my-video-app-extension-missav.zip)** | 기존 기능 + MissAV 플레이어/네트워크 HLS 감지. 실제 CDN 403은 지원 불가할 수 있음 |
-| **[Chrome 확장 · 일반판](https://github.com/P-JSL/myapps/releases/download/v1.19.4-missav.2/my-video-app-extension-standard.zip)** | MissAV 전용 코드가 없는 기존 원본 감지·다운로드 로직 |
-| [전체 소스 ZIP](https://github.com/P-JSL/myapps/releases/download/v1.19.4-missav.2/my-video-app-source.zip) | 확장·앱·빌드 스크립트·의존성 잠금·검사 코드 |
+| **[Windows 앱 ZIP 다운로드](https://github.com/P-JSL/myapps/releases/download/v1.19.4-bundle.1/my-video-app-desktop-windows-x64.zip)** | 기존 정식 v1.19.4와 동일한 파일. **ZIP 전체를 새 폴더에 풀고 My Video App.exe 실행.** Windows 앱에는 MissAV 페이지 감지를 추가하지 않음 |
+| **[Chrome 확장 · MissAV 감지 추가판](https://github.com/P-JSL/myapps/releases/download/v1.19.4-bundle.1/my-video-app-extension-missav.zip)** | 기존 기능 + MissAV 플레이어/네트워크 HLS 감지. **실험판: 실제 사이트는 Cloudflare 확인 화면에 막혀 다운로드 성공 미검증** |
+| **[Chrome 확장 · 일반판](https://github.com/P-JSL/myapps/releases/download/v1.19.4-bundle.1/my-video-app-extension-standard.zip)** | MissAV 전용 코드가 없는 기존 원본 감지·다운로드 로직 |
+| [전체 소스 ZIP](https://github.com/P-JSL/myapps/releases/download/v1.19.4-bundle.1/my-video-app-source.zip) | 현재 커밋의 확장·앱·빌드 스크립트·의존성 잠금·검사 코드·사이트 점검 보고서 |
 | [확장 백신 도우미](artifacts/my-video-app-antivirus-helper.zip) | Chrome 확장의 선택적 로컬 백신 연동. 데스크톱 앱의 YouTube에는 필요하지 않음 |
 
 **Windows 앱 ZIP은 GitHub 일반 Git 파일 제한(100MiB)을 넘으므로 Release에 보관합니다.** 저장소의 [Downloads 폴더](Downloads/)에는 실제 ZIP을 내려받는 링크를 제공합니다. [배포 워크플로](.github/workflows/release.yml)가 버전·코드·고정 의존성으로 앱을 빌드하고 확장 ZIP과 함께 게시합니다. 비공개 저장소의 Release는 권한 있는 계정으로 로그인해야 접근할 수 있습니다.
+
+통합 릴리즈는 검증된 기존 설치 파일을 재사용합니다. [원본 버전·검사 범위·실제 사이트 접속 결과](reports/RELEASE_BUNDLE_2026_11_16.ko.md)를 확인하세요. MissAV 추가판이 포함된 통합 릴리즈는 사전 배포로 구분하며 정식 Windows 최신 릴리즈는 유지합니다.
 
 ![Windows 앱 밝은 화면](reports/screenshots/desktop-light.png)
 

@@ -1,0 +1,47 @@
+{
+  "checkedAt": "2026-11-16T05:33:07.972Z",
+  "target": "https://missav123.com/dm48/ko/nhdtc-209-uncensored-leak",
+  "tlsVerification": true,
+  "mode": "Normal headless Chromium through inherited cloud proxy; approved writable NSS execution",
+  "navigationResponses": [
+    {
+      "url": "https://missav123.com/dm48/ko/nhdtc-209-uncensored-leak",
+      "status": 307
+    },
+    {
+      "url": "https://missav123.com/dm48/ko/nhdtc-209-uncensored-leak",
+      "status": 403
+    },
+    {
+      "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/b/turnstile/f/av0/rch/cjjw3/0x4AAAAAAADnPIDROrmt1Wwj/light/fbE/new/normal",
+      "status": 200
+    }
+  ],
+  "mediaResponses": [],
+  "samples": [
+    {
+      "title": "Just a moment...",
+      "url": "https://missav123.com/dm48/ko/nhdtc-209-uncensored-leak",
+      "videos": 0,
+      "challenge": true,
+      "privacyError": false
+    },
+    {
+      "title": "Just a moment...",
+      "url": "https://missav123.com/dm48/ko/nhdtc-209-uncensored-leak",
+      "videos": 0,
+      "challenge": true,
+      "privacyError": false
+    }
+  ],
+  "automaticVerificationCompleted": false,
+  "certificateErrorResolved": true,
+  "targetVideoVerified": false,
+  "httpClient": {
+    "status": 403,
+    "challenge": true,
+    "videoTagCount": 0,
+    "manifestReferenceCount": 0,
+    "tlsVerification": true
+  }
+}
