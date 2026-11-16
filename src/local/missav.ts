@@ -23,20 +23,31 @@ function isCDN(host: string): boolean {
   return /^(?:surrit|nineyu|fourhoi)\.(?:com|store)$/i.test(host.replace(/^www\./i, ''));
 }
 
+export function missavVideoId(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443') || !isCDN(url.hostname)) return;
+    const id = url.pathname.split('/')[1];
+    return id && UUID_RE.test(id) ? id.toLowerCase() : undefined;
+  } catch { return; }
+}
+export function isMissavAssetURL(value: string, manifest: string): boolean {
+  const id = missavVideoId(manifest);
+  return value.length <= 8192 && id !== undefined && missavVideoId(value) === id;
+}
+
 /** Only real, HTTPS CDN URLs can be published through the existing HLS pipeline. */
 export function missavMediaURL(value: string): string | undefined {
   if (typeof value !== 'string' || value.length > 8192) return undefined;
   try {
     const url = new URL(value);
-    if (url.protocol !== 'https:' || url.username || url.password || !isCDN(url.hostname)) return undefined;
+    if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443') || !isCDN(url.hostname)) return undefined;
     const parts = url.pathname.split('/').filter(Boolean);
     const id = parts[0];
     if (!id || !UUID_RE.test(id)) return undefined;
     if (/\.m3u8$/i.test(url.pathname)) {
-      // Hex UUID casing is not semantically meaningful. Normalizing it avoids
-      // duplicate cards when the same HLS manifest is seen in scripts and timing.
-      parts[0] = id.toLowerCase();
-      url.pathname = '/' + parts.join('/');
+      // CDN paths and signed query strings are opaque. Preserve the address
+      // that actually played, including case and repeated path separators.
       url.hash = '';
       return url.href;
     }
@@ -57,24 +68,32 @@ function unescapePlayerText(value: string): string {
  * Read only existing page inline scripts and browser-observed resource URLs.
  * Prefer requested playlists to synthesized masters; do not guess from unrelated UUIDs.
  */
-export function missavPlaylistURLs(pageURL: string, scripts: Iterable<string>, resourceURLs: Iterable<string> = []): string[] {
+export function missavPlaylistCandidates(pageURL: string, scripts: Iterable<string>, resourceURLs: Iterable<string> = []): Array<{ url: string; rank: number }> {
   if (!isMissavPage(pageURL)) return [];
-  const found = new Set<string>();
-  const add = (value: string | undefined) => { if (value && found.size < MAX_PLAYLISTS) found.add(value); };
+  const found = new Map<string, { rank: number; urls: Set<string> }>();
+  const add = (value: string | undefined, rank = 0) => {
+    if (!value) return;
+    const id = new URL(value).pathname.split('/').filter(Boolean)[0]!.toLowerCase();
+    const previous = found.get(id);
+    if (previous && previous.rank > rank) return;
+    if (!previous || previous.rank < rank) found.set(id, { rank, urls: new Set([value]) });
+    else previous.urls.add(value);
+  };
   let inspectedResources = 0;
   for (const url of resourceURLs) {
-    if (++inspectedResources > MAX_RESOURCES || found.size >= MAX_PLAYLISTS) break;
-    add(missavMediaURL(url));
+    if (++inspectedResources > MAX_RESOURCES) break;
+    add(missavMediaURL(url), /\.m3u8(?:[?#]|$)/i.test(url) ? 2 : 0);
   }
   let inspected = 0;
   for (const original of scripts) {
-    if (++inspected > MAX_SCRIPTS || found.size >= MAX_PLAYLISTS) break;
+    if (++inspected > MAX_SCRIPTS) break;
     if (typeof original !== 'string' || !original || original.length > MAX_SCRIPT_LENGTH) continue;
     const script = unescapePlayerText(original);
-    const before = found.size;
+    let knownHost = false;
     // Handle full playback URLs, including CDN sub-variants and encoded paths.
     for (const match of script.matchAll(/https:\/\/[^\s"'<>\\]{1,2048}\.m3u8(?:\?[^\s"'<>\\]{0,1024})?/gi)) {
-      add(missavMediaURL(match[0]));
+      const url = missavMediaURL(match[0]);
+      if (url) { knownHost = true; add(url, 1); }
     }
     // A known packed-player format stores the UUID parts in reverse order.
     // Accept only the exact five UUID fields to avoid matching unrelated tokens.
@@ -82,16 +101,18 @@ export function missavPlaylistURLs(pageURL: string, scripts: Iterable<string>, r
       const fields = match[1]!.split('|').reverse();
       const packedId = fields.join('-').toLowerCase();
       if (fields.length === 5 && UUID_RE.test(packedId)) {
+        knownHost = true;
         add('https://' + match[2]!.toLowerCase() + '.com/' + packedId + '/playlist.m3u8');
       }
     }
     // MissAV player URLs often contain a CDN UUID /seek path, not a .m3u8 URL.
     for (const match of script.matchAll(CDN_REFERENCE)) {
+      knownHost = true;
       add('https://' + match[1]!.toLowerCase() + '/' + match[2]!.toLowerCase() + '/playlist.m3u8');
     }
     // Only assume the default CDN if this script contained no known CDN host.
     // Otherwise the same UUID can be published for a wrong host.
-    if (found.size === before) {
+    if (!knownHost) {
       for (const match of script.matchAll(UUID_NEAR_SEEK)) {
         add('https://surrit.com/' + match[1]!.toLowerCase() + '/playlist.m3u8');
       }
@@ -101,5 +122,8 @@ export function missavPlaylistURLs(pageURL: string, scripts: Iterable<string>, r
       }
     }
   }
-  return [...found];
+  return [...found.values()].sort((a, b) => b.rank - a.rank).flatMap(item => [...item.urls].map(url => ({ url, rank: item.rank }))).slice(0, MAX_PLAYLISTS);
+}
+export function missavPlaylistURLs(pageURL: string, scripts: Iterable<string>, resourceURLs: Iterable<string> = []): string[] {
+  return missavPlaylistCandidates(pageURL, scripts, resourceURLs).map(item => item.url);
 }

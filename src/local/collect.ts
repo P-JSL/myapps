@@ -1,5 +1,6 @@
 import { mediaKind, mediaURL, SCOPE } from './model.ts';
-import { isMissavPage, missavPlaylistURLs, missavMediaURL } from './missav.ts';
+import { isMissavPage, missavPlaylistCandidates, missavMediaURL } from './missav.ts';
+import { installMissavPageFetch } from './missav-relay.ts';
 import { record } from '../security/validation.ts';
 import { resourceTransport, transport, type Transport } from './transport.ts';
 
@@ -7,6 +8,7 @@ const sent = new Map<string, string>();
 const timings = new Map<string, Transport>();
 const candidates = 'video,audio,video source,audio source,a[href]';
 const missavPage = isMissavPage(location.href);
+installMissavPageFetch();
 const affected = `${candidates},base${missavPage ? ',script' : ''}`;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let scannedTitle = document.title;
@@ -15,15 +17,16 @@ let saturated = false;
 function scan(rescanId?: string) {
   scannedTitle = document.title;
   scannedBase = document.baseURI;
-  const found: Array<{ url: string; title: string; mime: string; fromElement: boolean; observedTransport?: Transport }> = [];
-  const add = (value: string, mime: string, fromElement: boolean) => {
+  const found: Array<{ url: string; title: string; mime: string; fromElement: boolean; observedTransport?: Transport; missavRank?: number }> = [];
+  const add = (value: string, mime: string, fromElement: boolean, rank?: number) => {
     try {
       const url = mediaURL(value, location.href).href;
       if (!mediaKind(url, mime, fromElement)) return;
       const protocol = timings.get(url) ?? resourceTransport(url);
-      const signature = `${mime}|${document.title.slice(0, 200)}|${protocol ?? ''}`;
+      const missavRank = rank ?? (missavPage && missavMediaURL(url) === url ? 2 : undefined);
+      const signature = `${mime}|${document.title.slice(0, 200)}|${protocol ?? ''}|${missavRank ?? ''}`;
       if (sent.get(url) === signature) return;
-      sent.set(url, signature); found.push({ url, title: document.title.slice(0, 200), mime: mime.slice(0, 100), fromElement, ...(protocol ? { observedTransport: protocol } : {}) });
+      sent.set(url, signature); found.push({ url, title: document.title.slice(0, 200), mime: mime.slice(0, 100), fromElement, ...(protocol ? { observedTransport: protocol } : {}), ...(missavRank === undefined ? {} : { missavRank }) });
     } catch { /* blob/MSE sources are discovered through network manifests instead. */ }
   };
   // MissAV exposes the master HLS UUID in its inline player configuration.
@@ -33,7 +36,7 @@ function scan(rescanId?: string) {
     // Some players use fetched/packed scripts or a MediaSource (blob:) element.
     // Inspect the actual resource URLs independent of HTTP protocol timing data.
     const resources = performance.getEntriesByType('resource').slice(-1500).map(entry => entry.name);
-    for (const url of missavPlaylistURLs(location.href, scripts, resources)) add(url, 'application/vnd.apple.mpegurl', false);
+    for (const candidate of missavPlaylistCandidates(location.href, scripts, resources)) add(candidate.url, 'application/vnd.apple.mpegurl', false, candidate.rank);
   }
   for (const element of document.querySelectorAll(candidates)) {
     if (found.length >= 100) break;
@@ -41,7 +44,7 @@ function scan(rescanId?: string) {
     else if (element instanceof HTMLSourceElement) add(element.src, element.type, true);
     else if (element instanceof HTMLAnchorElement) add(element.href, '', false);
   }
-  for (const url of timings.keys()) { if (found.length >= 100) break; add(url, '', false); }
+  for (const url of timings.keys()) { if (found.length >= 100) break; if (!missavPage || !missavMediaURL(url)) add(url, '', false); }
   // A scan publishes at most 100 discoveries. Preserve the next event as a
   // continuation even when that event itself does not contain media.
   saturated = found.length >= 100;

@@ -71,21 +71,73 @@
       "requiresPython": "<3.16,>=3.10"
     },
     {
+      "id": "curl-cffi",
+      "version": "0.16.3",
+      "filename": "curl_cffi-0.16.3-cp310-abi3-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/9b/72/1732a24ef4a2aeba994b80ec163debe8deda403c07e4abbc0443bca078b8/curl_cffi-0.16.3-cp310-abi3-win_amd64.whl",
+      "sha256": "fe87b66e324ed7318166698e02169f3208dbda32b872a27d2bc61a9c19b335eb",
+      "size": 1978602,
+      "license": "MIT",
+      "metadataUrl": "https://pypi.org/pypi/curl-cffi/0.16.3/json",
+      "sourceUrl": "https://github.com/lexiforest/curl_cffi/tree/v0.16.3"
+    },
+    {
+      "id": "cffi",
+      "version": "2.1.1",
+      "filename": "cffi-2.1.1-cp313-cp313-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/60/a6/8b149b2c3f2e11aaa1618ef64500b45f50f22c57a977a4dff1aff1f91042/cffi-2.1.1-cp313-cp313-win_amd64.whl",
+      "sha256": "1aa5645c30469b09530c4ebca77ebf8f17618293c58f8549cb1a543a50236e7d",
+      "size": 185688,
+      "license": "MIT-0",
+      "metadataUrl": "https://pypi.org/pypi/cffi/2.1.1/json",
+      "sourceUrl": "https://github.com/python-cffi/cffi/tree/v2.1.1"
+    },
+    {
+      "id": "certifi",
+      "version": "2026.10.19",
+      "filename": "certifi-2026.10.19-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c4/51/29046e48f693c54e5b7412216d447a1d8362c9653148d98c02cdf65fa733/certifi-2026.10.19-py3-none-any.whl",
+      "sha256": "42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b",
+      "size": 136464,
+      "license": "MPL-2.0",
+      "metadataUrl": "https://pypi.org/pypi/certifi/2026.10.19/json",
+      "sourceUrl": "https://github.com/certifi/python-certifi/tree/2026.10.19"
+    },
+    {
+      "id": "pycparser",
+      "version": "3.12",
+      "filename": "pycparser-3.12-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b6/ae/315bbeee126a769cbde43cf4908acb4b40408d8bf8bbf334dd7368d8dadf/pycparser-3.12-py3-none-any.whl",
+      "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e",
+      "size": 62600,
+      "license": "BSD-3-Clause",
+      "metadataUrl": "https://pypi.org/pypi/pycparser/3.12/json",
+      "sourceUrl": "https://github.com/eliben/pycparser/tree/release_v3.12"
+    },
+    {
       "id": "ffmpeg",
       "version": "9.0.2-36-g6882969ce9",
-      "filename": "ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0.zip",
-      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-25-13-00/ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0.zip",
-      "sha256": "47526345cc4800f4163337d5db8048a2d06c78a53bb234532f55a30dbfb49868",
-      "size": 171482755,
+      "filename": "my-video-app-desktop-windows-x64.zip",
+      "url": "https://github.com/P-JSL/myapps/releases/download/v1.19.4/my-video-app-desktop-windows-x64.zip",
+      "sha256": "2fb6e36bfc04068a3fe29ccaa6f08518de47ab1e67cd5be5448e419115d83768",
+      "size": 247543816,
       "license": "LGPL-3.0-or-later and included third-party licenses",
       "metadataUrl": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-25-13-00/checksums.sha256",
       "sourceUrl": "https://github.com/FFmpeg/FFmpeg/tree/6882969ce9",
       "buildSourceUrl": "https://github.com/BtbN/FFmpeg-Builds/tree/autobuild-2026-10-25-13-00",
       "buildVersion": "autobuild-2026-10-25-13-00",
-      "archiveRoot": "ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0"
+      "originalArchive": {
+        "filename": "ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0.zip",
+        "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-25-13-00/ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0.zip",
+        "sha256": "47526345cc4800f4163337d5db8048a2d06c78a53bb234532f55a30dbfb49868",
+        "size": 171482755,
+        "archiveRoot": "ffmpeg-n9.0.2-36-g6882969ce9-win64-lgpl-9.0"
+      },
+      "layout": "desktop-baseline",
+      "baselineVersion": "1.19.4"
     }
   ],
-  "version": "1.19.4",
+  "version": "1.20.0",
   "description": "Portable Windows x64 native Qt Widgets application; verified external runtimes only.",
   "notices": [
     {
@@ -108,13 +160,6 @@
       "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
       "size": 18092,
       "destination": "licenses/qt/GPL-2.0-only.txt"
-    },
-    {
-      "filename": "btbn-README.md",
-      "url": "https://raw.githubusercontent.com/BtbN/FFmpeg-Builds/autobuild-2026-10-25-13-00/README.md",
-      "sha256": "4f6f817fd57c5524e0d0832618e8f75d589093e2f05ef1ec2839af98e70e5053",
-      "size": 2777,
-      "destination": "licenses/ffmpeg/BUILD-README.md"
     }
   ]
 }

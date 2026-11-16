@@ -7,10 +7,11 @@ import type { StreamPlan } from './hls.ts';
 import { downloadDiskAssets, inspectDiskBoundaries, DiskInputRiskError } from './disk-assets.ts';
 import { mountDiskFiles, type DiskAccessHandle, type DiskExtent } from './disk-fs.ts';
 import type { Transport } from './transport.ts';
+import { fetchFromParent } from './page-fetch.ts';
 
 interface SyncHandle extends DiskAccessHandle { close(): void; }
 type SyncFile = FileSystemFileHandle & { createSyncAccessHandle(): Promise<SyncHandle>; };
-const scope = globalThis as unknown as { onmessage: ((event: MessageEvent<unknown>) => void) | null; postMessage(value: unknown): void; };
+const scope = globalThis as unknown as { onmessage: ((event: MessageEvent<unknown>) => void) | null; postMessage(value: unknown, transfer?: Transferable[]): void; };
 let busy = false;
 function validatePlan(value: unknown): StreamPlan {
   if (!record(value) || !Array.isArray(value.assets) || !value.assets.length || value.assets.length > 100_000
@@ -74,6 +75,7 @@ scope.onmessage = async event => {
       return { offset: start, length: bytes.length };
     };
     const downloaded = await downloadDiskAssets(plan.assets, { append }, controller.signal, {
+      ...(message.pageContext === true ? { fetch: fetchFromParent((value, transfer) => scope.postMessage(value, transfer)) } : {}),
       progress: (loaded, completed) => scope.postMessage({ type: 'progress', stage: 'fetching', loaded, value: completed / plan.assets.length * 0.8 }),
       protocol: value => protocols.add(value),
     });

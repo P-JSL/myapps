@@ -9,6 +9,10 @@ recorded in `licenses/dependencies-lock.json` and `APPMANIFEST.json`.
 | CPython | 3.13.17 | PSF-2.0 and the notices in `runtime/python/LICENSE.txt`; original NuGet metadata is in `licenses/python-package/`. |
 | yt-dlp | 2026.10.21 | Unlicense; original package metadata and license files remain in `runtime/python/Lib/site-packages/yt_dlp-*.dist-info/`. |
 | yt-dlp EJS | 0.8.0 | Unlicense, MIT and ISC; all wheel metadata/notices are preserved beside the package. |
+| curl-cffi (MissAV requests only) | 0.16.3 | MIT; wheel metadata, licenses and compiled distribution remain in `runtime/python/Lib/site-packages/curl_cffi*`. Bundled curl/browser TLS support is used with certificate verification and the configured proxy. |
+| cffi | 2.1.1 | MIT-0; original wheel metadata and licenses are retained. |
+| certifi | 2026.10.19 | MPL-2.0; original CA bundle, metadata and licenses are retained. |
+| pycparser | 3.12 | BSD-3-Clause; original metadata and licenses are retained. |
 | Deno | 2.9.8 | MIT; original distribution metadata/license files are in `licenses/deno/`. |
 | PySide6 Essentials and shiboken6 | 6.12.0 | Open-source LGPL-3.0-only, GPL-2.0-only or GPL-3.0-only, as stated by the original wheel METADATA. Original license files/dist-info remain beside the packages. |
 | Qt libraries and plugins shipped by PySide6 | 6.12.0 | Applicable Qt and third-party licenses; see the Qt source trees and original wheel notices. LGPL-3.0, GPL-3.0 and GPL-2.0 texts are supplied in `licenses/qt/`. |

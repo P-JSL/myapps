@@ -1,13 +1,6 @@
-name: Publish two Chrome extension variants (standard and MissAV)
+name: Legacy 1.19 - publish two Chrome extension variants (standard and MissAV)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/release-missav-extension.yml
-      - tests/missav-build.test.ts
-      - tests/missav.test.ts
-      - scripts/audit-source.mjs
   workflow_dispatch:
 
 permissions:

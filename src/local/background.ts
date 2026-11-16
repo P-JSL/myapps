@@ -1,6 +1,8 @@
 import { boundedData, record } from '../security/validation.ts';
-import { isMissavPage, missavMediaURL } from './missav.ts';
+import { isMissavPage, missavMediaURL, missavVideoId } from './missav.ts';
+import { bindMissavJob, unbindMissavJob, installMissavRelay } from './missav-relay.ts';
 import { appStorage } from '../data/database.ts';
+installMissavRelay();
 import { offerUpscale, revokeDownloadOffers, authorizeDownloadOffers } from '../upscale/completion.ts';
 import { jobs } from '../upscale/storage.ts';
 import { SCOPE, OFFSCREEN_SCOPE, HISTORY_KEY, isActiveHistoryState, MediaCatalog, retainHistory, filenameFor, isHistory, mediaKind, mediaURL, browserMediaURL, trustedCapture, trustedUI, type MediaItem, type HistoryItem } from './model.ts';
@@ -143,9 +145,17 @@ async function missingDownload(item: HistoryItem) {
   if (item.downloadId !== undefined) await revokeDownloadOffers(item.downloadId).catch(() => {});
   if (next) await reviewNotice(next);
 }
-function add(tabId: number, address: unknown, mime: string, title: string, fromElement: boolean, size?: number, observed?: unknown) {
+function add(tabId: number, address: unknown, mime: string, title: string, fromElement: boolean, size?: number, observed?: unknown, missavRank?: number) {
   try {
     const url = mediaURL(address).href;
+    const videoId = missavVideoId(url);
+    if (videoId && missavRank !== undefined) {
+      for (const previous of media.items(tabId)) {
+        if (missavVideoId(previous.url) !== videoId) continue;
+        if ((previous.missavRank ?? 0) > missavRank) return;
+        if ((previous.missavRank ?? 0) < missavRank) media.delete(previous.id);
+      }
+    }
     const existing = media.get(tabId, url);
     const mergedMime = mime || existing?.mime || '';
     const kind = existing && existing.kind !== 'file' ? existing.kind : mediaKind(url, mergedMime, fromElement);
@@ -153,6 +163,7 @@ function add(tabId: number, address: unknown, mime: string, title: string, fromE
     const item: MediaItem = { ...existing, id: existing?.id ?? crypto.randomUUID(), tabId, url, title: (title || existing?.title || '').slice(0, 200), mime: mergedMime.slice(0, 100), kind, createdAt: Date.now() };
     if (Number.isSafeInteger(size) && size! > 0) item.size = size!;
     const protocol = transport(observed); if (protocol) item.observedTransport = protocol;
+    if (missavRank !== undefined && videoId) item.missavRank = missavRank;
     media.set(item);
   } catch { /* Unsupported URLs and protocols are not media candidates. */ }
 }
@@ -336,7 +347,10 @@ async function download(item: MediaItem, options: DownloadOptions = downloadOpti
         try {
           await ensureOffscreen();
           if (cancelled.has(entry.id)) throw new DOMException('작업을 취소했습니다.', 'AbortError');
-          result = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: 'prepare', id: entry.id, url: item.url, kind: item.kind, options });
+          const pageContext = await bindMissavJob(entry.id, tab, item.url);
+          try {
+            result = await chrome.runtime.sendMessage({ scope: OFFSCREEN_SCOPE, type: 'prepare', id: entry.id, url: item.url, kind: item.kind, options, ...(pageContext ? { pageContext: true } : {}) });
+          } finally { if (pageContext) await unbindMissavJob(entry.id); }
         } catch (error) {
           if (!directOriginal || cancelled.has(entry.id)) throw error;
         }
@@ -456,7 +470,8 @@ export async function handleLocalMessage(value: unknown, sender: chrome.runtime.
       if (!ticket || value.rescanId !== ticket.id || ticket.epoch !== discoveryEpochs.get(sender.tab!.id!)
         || mediaURL(sender.url).href !== mediaURL(ticket.url).href) throw new Error('페이지가 변경되어 감지 결과를 취소했습니다.');
     }
-    for (const item of value.items) if (record(item) && typeof item.url === 'string') add(sender.tab!.id!, item.url, typeof item.mime === 'string' ? item.mime : '', typeof item.title === 'string' ? item.title : '', item.fromElement === true, undefined, item.observedTransport);
+    for (const item of value.items) if (record(item) && typeof item.url === 'string') add(sender.tab!.id!, item.url, typeof item.mime === 'string' ? item.mime : '', typeof item.title === 'string' ? item.title : '', item.fromElement === true, undefined, item.observedTransport,
+      isMissavPage(sender.url ?? '') && [0, 1, 2].includes(Number(item.missavRank)) ? Number(item.missavRank) : undefined);
     return { ok: true };
   }
   if (!trustedUI(sender, chrome.runtime.id, chrome.runtime.getURL(''))) throw new Error('확장 화면에서만 사용할 수 있습니다.');
@@ -565,7 +580,7 @@ chrome.webRequest.onBeforeRequest?.addListener((details): undefined => {
     if (discoveryEpochs.get(details.tabId) === epoch
       && !!tab.incognito === chrome.extension.inIncognitoContext
       && typeof tab.url === 'string' && isMissavPage(tab.url)) {
-      add(details.tabId, playlist, 'application/vnd.apple.mpegurl', tab.title ?? '', false);
+      add(details.tabId, playlist, 'application/vnd.apple.mpegurl', tab.title ?? '', false, undefined, undefined, playlist === details.url ? 2 : 0);
     }
   }).catch(() => {});
   return undefined;
@@ -581,7 +596,8 @@ chrome.webRequest.onHeadersReceived.addListener((details): undefined => {
   discoveryEpochs.set(details.tabId, epoch);
   // webRequest does not include an incognito field; resolve its tab before retaining URLs.
   void chrome.tabs.get(details.tabId).then(tab => {
-    if (discoveryEpochs.get(details.tabId) === epoch && !!tab.incognito === chrome.extension.inIncognitoContext) add(details.tabId, details.url, type, '', false, size);
+    if (discoveryEpochs.get(details.tabId) === epoch && !!tab.incognito === chrome.extension.inIncognitoContext) add(details.tabId, details.url, type, '', false, size, undefined,
+      isMissavPage(tab.url ?? '') && missavMediaURL(details.url) === details.url ? 2 : undefined);
   }).catch(() => {});
   return undefined;
 }, { urls: ['http://*/*', 'https://*/*'] }, ['responseHeaders']);

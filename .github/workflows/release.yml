@@ -1,24 +1,6 @@
-name: Publish extension and Windows desktop app
+name: Legacy 1.19 - publish extension and Windows desktop app
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - package.json
-      - desktop/**
-      - scripts/build-desktop.py
-      - scripts/publish-release.py
-      - scripts/package.mjs
-      - tests/test_transport_release.py
-      - tests/desktop_transport_server.py
-      - tests/requirements-desktop-transport.lock
-      - tests/test_activity_release.py
-      - tests/test_no_http3_release.py
-      - tests/test_v18_restore_release.py
-      - artifacts/my-video-app-extension.zip
-      - artifacts/my-video-app-source.zip
-      - artifacts/SHA256SUMS
-      - .github/workflows/release.yml
   workflow_dispatch:
 
 permissions:

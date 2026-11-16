@@ -9,6 +9,7 @@ import { ownedTransferBuffer } from '../security/transfer.ts';
 import { ENCODER_ARGUMENTS } from '../shared/media.ts';
 import { hardenMediaCore } from '../security/decoder-policy.ts';
 import { scanBytes, type InternalScanResult } from '../security/internal-scan.ts';
+import { fetchFromParent } from './page-fetch.ts';
 
 const scope = globalThis as unknown as { onmessage: ((event: MessageEvent<unknown>) => void) | null; postMessage(value: unknown, transfer?: Transferable[]): void };
 let busy = false;
@@ -50,7 +51,7 @@ scope.onmessage = async event => {
       core.FS.writeFile(name, bytes);
     }, new AbortController().signal,
       completed => scope.postMessage({ type: 'progress', value: completed / plan.assets.length * 0.8, stage: 'fetching' }),
-      value => protocols.add(value));
+      value => protocols.add(value), data.pageContext === true ? fetchFromParent((message, transfer) => scope.postMessage(message, transfer)) : undefined);
     scope.postMessage({ type: 'progress', value: 0.8, stage: 'processing' });
     const args = ['-hide_banner', '-nostdin', '-max_alloc', '67108864'];
     for (const input of plan.inputs) {

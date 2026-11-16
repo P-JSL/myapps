@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-11-16T17:54:14.243803+00:00",
+  "manifestUrl": "https://surrit.com/00b3d04e-11d2-4b39-b591-ea2af84f8756/1080p/video.m3u8",
+  "status": 200,
+  "validHls": true,
+  "selectedFormats": 1,
+  "protocol": "m3u8_native",
+  "container": "mp4",
+  "tlsVerified": true,
+  "inheritedProxyPreserved": true,
+  "http3Forced": false,
+  "targetMediaDownloaded": false
+}

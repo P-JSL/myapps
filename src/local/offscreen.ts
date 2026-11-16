@@ -12,6 +12,7 @@ import { planDash } from './dash.ts';
 import { downloadOptions } from './preferences.ts';
 import { PreparationQueue } from './queue.ts';
 import { transport, type Transport } from './transport.ts';
+import { PAGE_FETCH, chromeWire, fetchOverWire, messageWire, serveFetch } from './page-fetch.ts';
 
 class PreparedInspectionError extends Error {
   constructor(message: string, readonly internalScan: InternalScanResult, readonly invalidMedia = false) { super(message); }
@@ -37,7 +38,7 @@ export async function disposeLocal(id: string) {
 export function cancelLocal(id: string) {
   queue.cancel(id);
 }
-export async function prepareLocal(id: string, url: string, kind: string, settings?: unknown) {
+export async function prepareLocal(id: string, url: string, kind: string, settings?: unknown, pageContext = false) {
   if (!/^[0-9a-f-]{36}$/.test(id) || prepared.has(id) || !['file', 'hls', 'dash'].includes(kind)) throw new Error('잘못된 파일 준비 요청입니다.');
   const options = downloadOptions(settings);
   const address = browserMediaURL(url).href;
@@ -51,12 +52,14 @@ export async function prepareLocal(id: string, url: string, kind: string, settin
   }
   report(latest, true);
   const heartbeat = setInterval(() => report(latest, true), 15_000);
-  try { return await queue.run(id, signal => prepareOne(id, address, kind, options, signal, report)); }
+  try { return await queue.run(id, signal => prepareOne(id, address, kind, options, signal, report, pageContext)); }
   finally { clearInterval(heartbeat); }
 }
 async function prepareOne(id: string, url: string, kind: string, options: ReturnType<typeof downloadOptions>, signal: AbortSignal,
-  report: (value: Record<string, unknown>, force?: boolean) => void) {
+  report: (value: Record<string, unknown>, force?: boolean) => void, pageContext = false) {
   const task: ActiveTask = { id, controller: new AbortController() };
+  const bridges = new Set<() => void>();
+  const fetcher = pageContext ? fetchOverWire(() => chromeWire(chrome.runtime.connect({ name: PAGE_FETCH + id }))) : undefined;
   const abort = () => { task.controller.abort(); task.worker?.terminate(); task.reject?.(new DOMException('작업을 취소했습니다.', 'AbortError')); };
   signal.addEventListener('abort', abort, { once: true }); if (signal.aborted) abort();
   // Downloads are bounded by storage and request inactivity, not video duration.
@@ -87,7 +90,7 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
     else {
       let plan: StreamPlan;
       if (kind === 'file') plan = { assets: [{ url, filename: 'asset-00000.data' }], inputs: [{ filename: 'input-0.mp4', parts: ['asset-00000.data'] }] };
-      else if (kind === 'hls') plan = await planHls(url, address => fetchManifestResource(address, task.controller.signal, options.output === 'original' ? MAX_DISK_MANIFEST_BYTES : undefined), options, options.output === 'original');
+      else if (kind === 'hls') plan = await planHls(url, address => fetchManifestResource(address, task.controller.signal, options.output === 'original' ? MAX_DISK_MANIFEST_BYTES : undefined, fetcher), options, options.output === 'original');
       else {
         const resource = await fetchManifestResource(url, task.controller.signal, options.output === 'original' ? MAX_DISK_MANIFEST_BYTES : undefined);
         plan = planDash(resource.text, resource.url, options, options.output === 'original');
@@ -99,6 +102,12 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
         worker.addEventListener('error', () => reject(new Error('스트림 처리 엔진을 실행할 수 없습니다.')));
         worker.addEventListener('message', (event: MessageEvent<unknown>) => {
           if (!record(event.data)) return;
+          if (event.data.type === 'page-fetch' && event.data.port instanceof MessagePort) {
+            if (!fetcher || task.controller.signal.aborted) { event.data.port.close(); return; }
+            let stop = () => {};
+            stop = serveFetch(messageWire(event.data.port), fetcher, address => { try { browserMediaURL(address); return true; } catch { return false; } }, () => bridges.delete(stop));
+            bridges.add(stop); return;
+          }
           if (event.data.type === 'progress' && typeof event.data.value === 'number') report({ stage: event.data.stage === 'processing' ? 'processing' : 'fetching', progress: event.data.value,
             ...(Number.isSafeInteger(event.data.loaded) && Number(event.data.loaded) >= 0 ? { loaded: event.data.loaded } : {}) }, event.data.stage === 'processing');
           else if (event.data.type === 'done' && event.data.disk === true && options.output === 'original') {
@@ -119,7 +128,7 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
             } else reject(new Error(message));
           }
         });
-        worker.postMessage({ id, plan, options });
+        worker.postMessage({ id, plan, options, ...(fetcher ? { pageContext: true } : {}) });
       });
     }
     if (task.controller.signal.aborted) throw new Error('작업을 취소했습니다.');
@@ -157,7 +166,7 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
     await disposeLocal(id).catch(() => {});
     throw error;
   }
-  finally { clearTimeout(timeout); signal.removeEventListener('abort', abort); task.worker?.terminate(); }
+  finally { clearTimeout(timeout); for (const close of bridges) close(); signal.removeEventListener('abort', abort); task.worker?.terminate(); }
 }
 chrome.runtime.onMessage.addListener((message: unknown, sender, reply) => {
   if (!record(message) || message.scope !== OFFSCREEN_SCOPE || sender.id !== chrome.runtime.id || sender.tab
@@ -169,7 +178,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, reply) => {
   if (message.type !== 'prepare' || !['file', 'hls', 'dash'].includes(String(message.kind))) return false;
   let url: string;
   try { url = mediaURL(message.url).href; } catch { reply({ ok: false, error: '미디어 주소가 올바르지 않습니다.' }); return false; }
-  void prepareLocal(id, url, String(message.kind), message.options).then(reply).catch((error: unknown) => { reply({ ok: false, error: error instanceof Error ? error.message : '파일 준비 오류', invalidMedia: error instanceof InvalidMediaFileError || (error instanceof PreparedInspectionError && error.invalidMedia),
+  void prepareLocal(id, url, String(message.kind), message.options, message.pageContext === true).then(reply).catch((error: unknown) => { reply({ ok: false, error: error instanceof Error ? error.message : '파일 준비 오류', invalidMedia: error instanceof InvalidMediaFileError || (error instanceof PreparedInspectionError && error.invalidMedia),
     ...(error instanceof PreparedInspectionError ? { internalRisk: true, internalScan: error.internalScan } : {}) }); });
   return true;
 });

@@ -31,7 +31,7 @@ export class ByteBudget {
   release(bytes: number) { this.used -= bytes; }
   get remaining() { return this.limit - this.used; }
 }
-interface FetchMonitor { budget?: ByteBudget; progress?: (loaded: number, total?: number) => void; protocol?: (value: Transport) => void; finalURL?: (value: string) => void; expectedSize?: number; }
+interface FetchMonitor { budget?: ByteBudget; progress?: (loaded: number, total?: number) => void; protocol?: (value: Transport) => void; finalURL?: (value: string) => void; expectedSize?: number; fetch?: typeof fetch; }
 class Retryable extends Error { readonly delay: number | undefined; constructor(message: string, delay?: number) { super(message); this.delay = delay; } }
 const RETRY_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 export function retryDelay(header: string | null, now = Date.now()): number | undefined {
@@ -71,7 +71,7 @@ export async function fetchBytes(url: string, maximum: number, signal: AbortSign
       observation = observeTransport(address, started);
       const options: RequestInit = { credentials: 'include', redirect: 'follow', signal: AbortSignal.any([signal, controller.signal]) };
       if (range) options.headers = { Range: `bytes=${range.offset}-${range.offset + range.length - 1}` };
-      response = await fetch(address, options);
+      response = await (monitor.fetch ?? fetch)(address, options);
       if (!response.ok) {
         const delay = retryDelay(response.headers.get('Retry-After'));
         const message = `미디어 요청 실패 (${response.status})${delay !== undefined && delay > 5000 ? ' · 서버가 더 긴 대기를 요청했습니다. 나중에 다시 시도하세요.' : ''}`;
@@ -134,8 +134,8 @@ export async function fetchBytes(url: string, maximum: number, signal: AbortSign
 }
 export interface ManifestResource { text: string; url: string; }
 /** Relative manifest references use the URL of the successful response, after redirects. */
-export async function fetchManifestResource(url: string, signal: AbortSignal, maximum = 2 * 1024 * 1024): Promise<ManifestResource> {
+export async function fetchManifestResource(url: string, signal: AbortSignal, maximum = 2 * 1024 * 1024, fetcher?: typeof fetch): Promise<ManifestResource> {
   let address = mediaURL(url).href;
-  const bytes = await fetchBytes(address, maximum, signal, undefined, { finalURL: value => { address = value; } });
+  const bytes = await fetchBytes(address, maximum, signal, undefined, { ...(fetcher ? { fetch: fetcher } : {}), finalURL: value => { address = value; } });
   return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), url: address };
 }

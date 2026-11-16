@@ -24,7 +24,7 @@ import zipfile
 
 PREFIX = "MyVideoApp/"
 INPUT_IDS = ("python", "yt-dlp", "yt-dlp-ejs", "deno", "pyside6-essentials", "shiboken6",
-             "ffmpeg")
+             "curl-cffi", "cffi", "certifi", "pycparser", "ffmpeg")
 MAX_FILES = 30_000
 MAX_FILE_BYTES = 300 * 1024 * 1024
 MAX_TOTAL_BYTES = 1200 * 1024 * 1024
@@ -107,7 +107,13 @@ def load_lock(path):
     if inputs[4]["version"] != inputs[5]["version"]:
         raise ValueError("PySide6 Essentials and shiboken6 versions must match")
     ffmpeg = inputs[-1]
-    if safe_name(ffmpeg.get("archiveRoot", "")) != ffmpeg["filename"][:-4]:
+    if ffmpeg.get("layout") == "desktop-baseline":
+        original = ffmpeg.get("originalArchive", {})
+        if (ffmpeg.get("baselineVersion") != "1.19.4"
+                or ffmpeg["sha256"] != "2fb6e36bfc04068a3fe29ccaa6f08518de47ab1e67cd5be5448e419115d83768"
+                or original.get("sha256") != "47526345cc4800f4163337d5db8048a2d06c78a53bb234532f55a30dbfb49868"):
+            raise ValueError("FFmpeg baseline reuse must match the verified v1.19.4 runtime")
+    elif safe_name(ffmpeg.get("archiveRoot", "")) != ffmpeg["filename"][:-4]:
         raise ValueError("FFmpeg archive root does not match its pinned ZIP")
     for item in lock.get("localNotices", []):
         if (not safe_name(item["source"]).startswith("licenses/")
@@ -261,9 +267,19 @@ def build_bundle(root, lock_path, cache, output, offline=False):
     for name in ("main.py", "engine.py", "README.ko.md", "THIRD_PARTY_NOTICES.md"):
         if "desktop/" + name not in plan:
             raise ValueError(f"Missing desktop application source: {name}")
-    if app_version in ("1.19.2", "1.19.3", "1.19.4") and "desktop/activity.py" not in plan:
+    if "desktop/activity.py" not in plan or "desktop/missav.py" not in plan:
         raise ValueError("Missing desktop activity logging source: activity.py")
     launcher = root / "desktop/launcher/MyVideoApp.exe"
+    if not launcher.exists():
+        # The launcher is unchanged. Reuse its verified v1.19.4 bytes when
+        # building a fresh checkout, without requiring a compiler on Windows.
+        baseline_path = next(path for item, path in archives if item.get("layout") == "desktop-baseline")
+        with zipfile.ZipFile(baseline_path) as baseline:
+            payload = baseline.read("MyVideoApp/My Video App.exe")
+        if hashlib.sha256(payload).hexdigest() != "5e2109ad9deb62e87065bc48c08871fe0bf0ca7a6b8db2b2ad07f51a20f6093c":
+            raise ValueError("Baseline launcher identity mismatch")
+        launcher.parent.mkdir(parents=True, exist_ok=True)
+        launcher.write_bytes(payload)
     if launcher.is_symlink() or not launcher.is_file():
         raise ValueError("Build desktop/launcher/MyVideoApp.exe before packaging")
     add("My Video App.exe", launcher.stat().st_size, launcher)
@@ -291,6 +307,21 @@ def build_bundle(root, lock_path, cache, output, offline=False):
         for item, path in archives:
             archive = stack.enter_context(zipfile.ZipFile(path))
             package = item["id"]
+            if package == "ffmpeg" and item.get("layout") == "desktop-baseline":
+                baseline = json.loads(archive.read("MyVideoApp/APPMANIFEST.json"))
+                original = next(entry for entry in baseline["inputs"] if entry["id"] == "ffmpeg")
+                if (baseline["version"] != item["baselineVersion"] or original["version"] != item["version"]
+                        or original["sha256"] != item["originalArchive"]["sha256"]):
+                    raise ValueError("Baseline FFmpeg provenance mismatch")
+                for name, info in archive_members(archive):
+                    if not name.startswith(("MyVideoApp/runtime/ffmpeg/", "MyVideoApp/licenses/ffmpeg/")):
+                        continue
+                    destination = name.removeprefix("MyVideoApp/")
+                    with archive.open(info) as source:
+                        if hashlib.file_digest(source, "sha256").hexdigest() != baseline["files"].get(destination):
+                            raise ValueError("Baseline FFmpeg member identity mismatch")
+                    add(destination, info.file_size, (archive, info))
+                continue
             for name, info in archive_members(archive):
                 if package == "python":
                     destination = "runtime/python/" + name[6:] if name.startswith("tools/") else f"licenses/python-package/{name}"
@@ -325,6 +356,10 @@ def build_bundle(root, lock_path, cache, output, offline=False):
             "runtime/python/Lib/site-packages/PySide6/QtWidgets.pyd", "runtime/python/Lib/site-packages/PySide6/plugins/platforms/qwindows.dll",
             "runtime/python/Lib/site-packages/PySide6/Qt6Core.dll", "runtime/python/Lib/site-packages/PySide6/Qt6Gui.dll",
             "runtime/python/Lib/site-packages/PySide6/Qt6Widgets.dll", "runtime/python/Lib/site-packages/PySide6/msvcp140.dll",
+            "runtime/python/Lib/site-packages/curl_cffi/__init__.py", "runtime/python/Lib/site-packages/curl_cffi/_wrapper.pyd",
+            "runtime/python/Lib/site-packages/_cffi_backend.cp313-win_amd64.pyd", "runtime/python/Lib/site-packages/cffi/__init__.py",
+            "runtime/python/Lib/site-packages/certifi/cacert.pem", "runtime/python/Lib/site-packages/pycparser/__init__.py",
+            "runtime/python/Lib/site-packages/curl_cffi.libs/libcurl-impersonate-1172405423dc93b7aeed557f2a2ca325.dll",
         )
         if any(name not in plan for name in required):
             raise ValueError("Pinned desktop runtime archives are incomplete")
@@ -337,7 +372,9 @@ def build_bundle(root, lock_path, cache, output, offline=False):
             archive, info = source
             return archive.open(info)
 
-        checked = ["My Video App.exe", "runtime/python/python.exe", "runtime/python/pythonw.exe", "runtime/deno.exe", "runtime/ffmpeg/ffmpeg.exe", "runtime/ffmpeg/ffprobe.exe", "runtime/python/Lib/site-packages/PySide6/QtWidgets.pyd"]
+        checked = ["My Video App.exe", "runtime/python/python.exe", "runtime/python/pythonw.exe", "runtime/deno.exe", "runtime/ffmpeg/ffmpeg.exe", "runtime/ffmpeg/ffprobe.exe", "runtime/python/Lib/site-packages/PySide6/QtWidgets.pyd",
+                   "runtime/python/Lib/site-packages/curl_cffi/_wrapper.pyd", "runtime/python/Lib/site-packages/_cffi_backend.cp313-win_amd64.pyd",
+                   "runtime/python/Lib/site-packages/curl_cffi.libs/libcurl-impersonate-1172405423dc93b7aeed557f2a2ca325.dll"]
         for name in checked:
             with open_source(plan[name][1]) as source:
                 validate_pe(source, name)

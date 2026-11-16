@@ -26,6 +26,7 @@ export type MediaKind = 'file' | 'hls' | 'dash';
 export interface MediaItem {
   id: string; tabId: number; url: string; title: string; mime: string;
   kind: MediaKind; createdAt: number; size?: number; observedTransport?: Transport;
+  missavRank?: number;
 }
 /** Own both indexes so selecting an ID never scans or copies unrelated tabs. */
 export class MediaCatalog {

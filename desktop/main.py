@@ -63,7 +63,7 @@ except ImportError:
     )
 
 
-VERSION = "1.19.4"
+VERSION = "1.20.0"
 APP_ROOT = Path(__file__).resolve().parent.parent
 ACTIVE_STAGES = {"queued", "preparing", "waiting", "downloading", "processing", "scanning"}
 STAGE_NAMES = {
@@ -895,7 +895,7 @@ class MainWindow(QMainWindow):
         address_row = row(9)
         self.url_input = QLineEdit()
         self.url_input.setObjectName("UrlInput")
-        self.url_input.setPlaceholderText("https://www.youtube.com/watch?v=…")
+        self.url_input.setPlaceholderText("YouTube · MissAV 페이지 · 미디어 직접 주소")
         self.url_input.setAccessibleName("다운로드할 영상 주소")
         self.url_input.setClearButtonEnabled(True)
         self.url_input.setMinimumHeight(49)
@@ -1138,7 +1138,7 @@ class MainWindow(QMainWindow):
         text.addWidget(label(f"버전 {VERSION}  ·  내 PC에서 사용하는 영상 다운로드 앱", "Small", True))
         about_row.addLayout(text, 1)
         layout.addLayout(about_row)
-        layout.addWidget(label("YouTube 공개 영상과 지원되는 직접 영상 주소를 저장할 수 있습니다. 본인에게 저장 권한이 있는 콘텐츠를 이용하세요.", "Small", True))
+        layout.addWidget(label("YouTube 공개 영상, MissAV 페이지와 지원되는 직접 영상 주소를 저장할 수 있습니다. 본인에게 저장 권한이 있는 콘텐츠를 이용하세요.", "Small", True))
         content.addWidget(about)
         content.addStretch()
         return page

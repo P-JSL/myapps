@@ -1,71 +1,103 @@
 {
   "status": "passed",
-  "release": "1.17.0",
+  "release": "1.20.0",
   "sourceSha256": {
+    "desktop/activity.py": "f2b042d920375ab51c5a42beb3a356087c0fed7875963192534f446c504c4092",
+    "desktop/concurrency.py": "8d149124f8f12899622838909e87cae9fe831f4da7f367ddd315cf831030e162",
+    "desktop/dependencies-lock.json": "70d2060c80932678fe4cc8366e2b583ccd8cefcdee9a3899a136070e58c3a137",
+    "desktop/engine.py": "c9745cabebcad101ebdedc6a77aeb67dbdd76c5022af522e84df0f286e66431d",
+    "desktop/launcher/build.py": "4902f425398b11e24a3b6b3c6fc8ebfe63b605b2c73b45b0470830a62caa3285",
+    "desktop/launcher/launcher.c": "019910f3f2a0f464ed9d99a302fb68ffa99333d711ed625879824dd0e3585637",
+    "desktop/launcher/launcher.manifest": "fa3fe4a06c11341e3100060be1ff94a86dc3c31d2a1085236d2da10bc70f806f",
+    "desktop/launcher/launcher.rc": "e2f212f79a2e5d7a7c149ad282a4b354e2b309d4eeb0f12638322af301b737ce",
+    "desktop/launcher/test_launcher.py": "7cc241f34c0d64eb5871e8b1b08901484c149230186b08376b291bc4cdb00552",
+    "desktop/launcher/toolchain-lock.json": "e30a59ade77d6a2cd4c84296004617f840809e557430c445050e79d94149751f",
+    "desktop/launcher/verify_pe.py": "ef29dabcff593ac562301ef7f35535bbb831f727f66676ec0b381eacc3ecfd70",
+    "desktop/main.py": "9909d977517a6f8eab7df6426492c1784dd9c140766a87aa40553c4c21f9e179",
+    "desktop/missav.py": "2a5d97d28836b2a7066589313d38ec5d6281c8779df3e07227743840a203b5e1",
+    "desktop/storage.py": "5c9f6732334cfff70a9ae7bc9f90c95de76af5abf19c46c9b0d07ceb22968b3b",
+    "desktop/test_activity.py": "9bb75e45350689dba31704fd93c0aa5f61154aab1c0586e48b895a53f2962fd7",
+    "desktop/test_activity_gui.py": "804f2f6dac47f9692e9eaac2bf4a391236c839023e57d746f94508a6dc433890",
+    "desktop/test_bandwidth.py": "2c6e2b873b829ea1fb7ce727d6d34ce8a826350779b0d172f47cb019357716ab",
+    "desktop/test_concurrency.py": "7563318557fad7acfd4f87f1ebb513178aa365b7c5a96e027f1543261361aef4",
+    "desktop/test_concurrency_gui.py": "5e7767d9d6b1145faee88f06ee37e175493fd40f5876e490362cd41ff36d6651",
+    "desktop/test_download_recovery.py": "1203281608f9392b74f5b32a2e32da18c526b21140fe0dfc82742077ed2bb309",
+    "desktop/test_engine.py": "899c820ecb43d5af71da7e3b3a4a07c6276d45e721f34e138d6784b9f72379ef",
+    "desktop/test_gui.py": "37499eecef5598d0f1b3f533fe8086435a058c2e0a9dd90d0aa46197e67fb767",
+    "desktop/test_missav.py": "a12964b1d6a0c28d892e2eac92324f15cb92c8dd1ecd9f65e60446e850892dc3",
+    "desktop/test_missav_gui.py": "fc9d6f0e13942a07d783bef7f920be1a0c783c7f2c7cd2dcbe2f25016b7fe93b",
+    "desktop/test_no_http3.py": "7845c4db6b9ee3016c0328dbf4bb75db7291b30b0bd7bbdcffc872e3b51fbced",
+    "desktop/test_no_http3_gui.py": "0e45b4ceaeb6f54215429302f29ee15cf650468e15f83d13f1c2508cc755d03d",
+    "desktop/test_runtime.py": "e7130c2178e2b6288b2bd8f65bb6690f21d212ae2b767a9341140707d46ff494",
+    "desktop/test_transfer.py": "2c3189360d97dd6e60433a37f52152bfaf5ad2dae8a21f52b99667d2a518e92b",
+    "desktop/test_transport.py": "ebc405d63955cfdc1c01b76c1c18cea16bcb4b8cdfe63ac0a54db3393e842852",
+    "desktop/test_transport_engine.py": "6be28e951b538715e618b5224a7842ef1bda44e28a22eea7b2477ecbb9be9701",
+    "desktop/test_v18_restore.py": "0dd0a0a588da4a88601a74d0ffb3d88e1b7eac4f3e010bd5da59606b696f309f",
+    "desktop/test_v18_restore_gui.py": "d26a149ce5b05ed538aa87032f4a18b400bdef042669a43bf177f46f0626ad56",
+    "desktop/theme.py": "8214e4fc4786608388e8ecc3e7b501eb206d18ba34fcb32304db990b1544defe",
     "native/antivirus_host.py": "5c555bf12109fdf7fef83de4d1be95613777cc1b5cc95f1700961894ccd6c17c",
     "native/install.py": "29fb91151ace9eafe0fb04508cffb33b4fa28fa31176ffb5fa65f9b6eb0b3c6e",
-    "native/install_youtube.py": "83ac725e351768977b16798e59d8fcc6ae5580c7638f34caddb0ed5479d8515f",
-    "native/install_youtube_bundle.py": "b1108e86556bb6dad72768b6d6f8d4ed2329be86b9799294643cdea8414ec711",
     "native/internal_scan.py": "7ea25bb21ff73c0055beba1d85f351389d737f02587189c91f84129754c7d6f7",
     "native/test_antivirus_host.py": "c5c92942a638c831dcee78fb1fe70b9f9ede870273cc844cdfe076a2f258cfb0",
     "native/test_antivirus_status.py": "0468c19f8dca636046ed7424326e2158f84d2e8a2778863b05d67044a1485c4f",
     "native/test_clamav_integration.py": "0d0d6989790a6a75eeb8a7ffae5a2c625ecaa1f1fa13837c835664f200edf29a",
     "native/test_internal_scan.py": "1f6bf1e60fe50fc4f00ae3dc2a0cb1c6037122e41a170c8ac70284511c2ee4b9",
     "native/test_windows_antivirus.py": "bd64dfa7b0f374602374eefd46b655779bcbdea46d5187e75ff38aaef8ec84fb",
-    "native/test_youtube_bundle_installer.py": "5f97a7b089887193159482d12a14f47680d38de3581db8a7506f8c6a61f22557",
-    "native/test_youtube_host.py": "e4837064a81a1320a0fc853c898354d263e5d727eb4fe5223d865e51448ac2cb",
-    "native/test_youtube_installer.py": "4c70cf1710bc6dec88f69776cc76e7e160f8c5ba2c1c0b49a27aa47848ab1532",
-    "native/test_youtube_integration.py": "cbac6f997d17f8fea0181cf765a618053ba323cdc9f29ff42b3e6f734a6b2f93",
-    "native/test_youtube_personal_installer.py": "ed186468bb1e6ea640252edea10c646776feaf217e6ecc0acd3624f17d258a8e",
     "native/windows_antivirus.py": "d31d257a74e3f4f676f82ad7f5b2f0d4a04172d72af52fe8cb40999b83c30c88",
-    "native/youtube-requirements.txt": "aa4d45e5bc75c6c6443e8036f5a11d12d0e9c4927d6edb10448c5f3937ebeda6",
-    "native/youtube_host.py": "df078b86a473fd033d5c925ec2bd7d56ee263d52b80091603a33d164f8d18c2b",
-    "package-lock.json": "382c36f83c25db3b7d46f6717168b17e921ea6af0b87100d8652d6eff9a657c4",
-    "package.json": "45a5b6961dac60b4e8dccd2fc35c287ff82c2d408e0f9e126d84bbe7c9cc2e36",
-    "scripts/archive.py": "e4ca8117fd00e110ad19f1e216f09881efb35565f34073da62d6cc9c536c060e",
+    "package-lock.json": "0576ca8d1e3edf99f9a3da19d40db3fa906247c276aa7e5edd631075c706ac76",
+    "package.json": "6ff0ca76c0fee7663f3edf2d046917b8bdd9325b93b36d5fd6900b7f0616f663",
+    "scripts/archive.py": "7d79bf3eb2e930b68193fdc7ba82bb31caf1190b95aeeb5aa3c0d4f9d01f6388",
+    "scripts/assemble-release-bundle.py": "aea12e2249195f9c7dcf1bca89b6f32bc5b34a25024af654ca559310e1b29e44",
     "scripts/audit-dependencies.mjs": "986733aa350a0ab382270e16cf992375193554cf32c9073fee3e36cb8c7a376c",
-    "scripts/audit-source.mjs": "790b84d7be982dc1af0bf16149d25052f6b1c8e1a74c571f986d13f3852ae23f",
+    "scripts/audit-source.mjs": "1e2dcddb4ca13d8adc7770c2bf7c00294b0443b2b50c15d677c0d4322d03001a",
     "scripts/benchmark-native.py": "91da1493e146253925494991f952e76eaa2daa7b6a4eb37819e2be9b822dccef",
     "scripts/benchmark-security.mjs": "7b8f2ed9740502bf2c4ac27d27a8827fcebacd44a425a6fb5316fc047e7c1d54",
     "scripts/benchmark.mjs": "9953ff872a0cc2139864c98a2655fb4b46c741cd0e810dbf5990946be01efa3c",
+    "scripts/build-desktop.py": "14337dfea9181c195a24573cb9f4a3915f711f32f51a6cb991d6d1e9b5b3ca36",
     "scripts/build-local.mjs": "37d29c7b99e1f3bbf3ff81fc43c44b52916ca5d4540f110c9637bb1f593d2610",
-    "scripts/build-youtube-kit.py": "40642994b46c2e8b08d4bb256a5a63d27540b86dd1ff699ee1f15f5eb0806b92",
     "scripts/build.mjs": "6fc094bb2411a4eb531fb602ab55587d5d1849d6cb76e94e9bd80cc2b8b4a460",
     "scripts/encrypt-source.mjs": "c85c9d89423c0c4d7d4bf896e4d5b37311b1d9879ae33c858becaa2fcc4ac666",
-    "scripts/lib/artifacts.mjs": "88390ae5d2d5eb12ea72b96dddcb5d1cc893d42b530fa45ed57db3c2e2ef019e",
+    "scripts/lib/artifacts.mjs": "5ef5f50c28234547d6dcdc592ddd157bbac0ebad3f3857e855e42721fda0673f",
     "scripts/lib/browser-brotli.mjs": "717bed4a4d2b5352ff663b4f3abec771f6fbd99d9a875f602c9efec01a54890c",
     "scripts/lib/dependency-policy.mjs": "8a732a5a99b05455552113e4a671fb303f8284e918e3181f3e2918ef7d90ae66",
     "scripts/lib/encryption.mjs": "3dc8529b82a50378e6a02ca54ecf79de2157ec9e662388e4dee819f88aa1da43",
     "scripts/lib/engine-cipher.mjs": "86d5ecd6bbe240cbebf869144d5609944162053fb725f64dac0b91a802071906",
     "scripts/lib/protect-build.mjs": "f7ba19ec5edd1adcb821d744dee56cd8e7f5d77c711cc10c8814a0da1a49a5c5",
     "scripts/lib/release-safety.mjs": "f2aa593317defaf3cb8d3a12f3014e6725c948a9b86a62d351236d82fd79870c",
-    "scripts/package.mjs": "23a87811554d58e6d45459c37daf141a6beb2a83160938f29c48470e3b1a430e",
-    "scripts/project.mjs": "eba685b7486bd16b789ea1ce5c57c37f604d2eed1ff8f88905cf2ae589eaf66f",
-    "scripts/test-native.mjs": "41b05fb19af40d2a2d550df276cf586b3d26e301f762958bde9b02e097783eff",
+    "scripts/package.mjs": "5ac926f643fd6ec40e7cf4297efeb85006c8eab88656b91eabf77a0ea17de714",
+    "scripts/project.mjs": "c96e2c128d30c1d49d7f88b48df7b8bdd31f039c586d4a57ef8949054fa98df3",
+    "scripts/publish-release.py": "e5043b6c8f352bc174ef00e608f77dbff163be8ce102641f09ef0c5082206f84",
+    "scripts/release-missav-v120.py": "3ce14053ae640d36f0c7bd60cc986fe67a82d48a42ca0bf39755ac0d693e0990",
+    "scripts/test-native.mjs": "df51aab957aec7d02e8f577783a8c94d356e1ccebca8cb2dda093504a72e3282",
     "src/data/database.ts": "9ad2a7536462d778885eecc1340fb649437fd4f3fe6791869dfd1e7b50a26cf5",
     "src/local/antivirus.ts": "93f0e263b6de9e885b4b220cfcc9edf8cebc84ee505560db67fc59bb39bb6e3f",
-    "src/local/assets.ts": "2fec9d4c513bc655b31ff5ff411c01ec9b631ce275b3eab8666c3230ed2966a9",
-    "src/local/background.ts": "fefe58b900d93ca018670005d6f39d19dff32d524c0aa6d7140f64f7818b3eda",
+    "src/local/assets.ts": "c0aeef5bec7186e64d1160b17765ad0ed22880410e0c7f19151a5ee345cb9a25",
+    "src/local/background-standard.ts": "fefe58b900d93ca018670005d6f39d19dff32d524c0aa6d7140f64f7818b3eda",
+    "src/local/background.ts": "3790794e3c2dc1165e511394cb80afe3a339b86132c5ae9beedf0417a6728926",
     "src/local/byte-assembly.ts": "e606342bc7097df6da427e10fa404a357f5d992931f01ee2f6f257a95077425c",
-    "src/local/collect.ts": "eb36555aa3441a421eafab00d1f449d09fd3d72aac5144a665894c95c00cce2a",
+    "src/local/collect-standard.ts": "eb36555aa3441a421eafab00d1f449d09fd3d72aac5144a665894c95c00cce2a",
+    "src/local/collect.ts": "d365306814ead9ff6fa9145a1b72bda509aed825c024b9f5d32191190288297b",
     "src/local/dash.ts": "b95dc958ce1840208595567d1042a83e4ff2146ec37bdb17e1d36904429eeba4",
     "src/local/disk-assets.ts": "006e4dde8e173b68b5687864f1b2fca501a0e78f98db8cbf1d84bc8915dc817c",
     "src/local/disk-fs.ts": "c718a62c1211d42898876561b023f0790d9d713e15ffe309ea95f129c8e1ef3b",
     "src/local/download-folder.ts": "235b25a28365daaf87240ac5b2489e8628be689e2bf01337f03164b21a6869ba",
     "src/local/hls.ts": "e622ad85e18cfb528e0685fffe2c5c7cea9a39df0a7ac782eab5fa732f1e6a71",
     "src/local/labels.ts": "13b8b8954d20421530010e70e39e959fb03218a0144f49b0190fa71b92a8891b",
-    "src/local/large-stream-worker.ts": "6067c588b7ad93ce015819b13758ffa6feb0e42cfb705d194a9455db20c1ae6a",
+    "src/local/large-stream-worker.ts": "3ff23abf26462e3f73ffeb03a59fd00c084fefc38238afc2616087eebe21614f",
     "src/local/media-copy.ts": "4e98253a9d0c547e2e876fa30970cfa7e4eab074e986d7c0d36fd1ada887a4bb",
     "src/local/media-file.ts": "1909efaf0c12135ca0dffffa7d9fdd1c6691e6f348494bec6b708cfe0a54c13b",
-    "src/local/model.ts": "7a62d16debea1f7d0514e3c03d4217d382ede91b5c1b0cbb761126951868cdfb",
-    "src/local/network.ts": "ed5e3b7b7d01ba3895172b532c422244f8e69e23460817213d5231666ee2ef7e",
-    "src/local/offscreen.ts": "8a486ef7f5af1d35cd9647e2eda77665e9d0c5bc208582b0faec9ec481a57348",
+    "src/local/missav-relay.ts": "85df540ab68a24fc5f5f63b8f1c1bc013b817b127997556716a17dd0e23d2b75",
+    "src/local/missav.ts": "b5501e161c3333d49493bfd9592947a29e76e7439a99b926a0522b460bd86b3f",
+    "src/local/model.ts": "fd69fdbfad878d4c83027ec6625f5da81fe928bd1df63ccf4901d3a6434d48b3",
+    "src/local/network.ts": "95e16459bef38a35aff6a7186162ccae93783463a91e79a157c260fce5137039",
+    "src/local/offscreen.ts": "2c3410024e3ecae80cb0d969d3d7c609b74bb0f21576a792813b44857b852c0e",
+    "src/local/page-fetch.ts": "9a9bd29b1d83369c01d85d52e908a792efe344bc5428b37201c79bbce5d4042c",
     "src/local/parallel-download.ts": "ca6d0c055a456508c267fbb2c3ad8ca0b837b85a123bf6edb6fdf76e2e1c57e4",
     "src/local/popup.ts": "ee104985d2f8ad45d2fc0f30bd9948728a3a37dbd011f2b768f79a207530bee4",
     "src/local/preferences.ts": "f2cb22149e84490d22a2a2106f7d87dfa48aa4902e09c72b6d4665814aeb82a1",
     "src/local/queue.ts": "70e7d979c58b9ff25031798d76a72e03e97d1d18917b1dad62a92be48b495def",
     "src/local/security-preferences.ts": "338bec94ac2fd74d9369fc00767073e99eca089e027a3ce82d34c20297b510f5",
-    "src/local/stream-worker.ts": "9cb2ab346f017b85be18612e767f08208d1d2d0e24fdaa51eacb576fbb4fb537",
+    "src/local/stream-worker.ts": "ad8bb9e7e4f20dc006c54e74987a349b75b276ec2d2e5279526f878f6f2d522d",
     "src/local/transport.ts": "8ffac2103d76a6e6d7425478bf95c7f9ddb013f236f283a176e1164124e4ea76",
     "src/local/ui.ts": "1d6d7620fe65ce17782f66e358e3adf2ed1074f62ad3051101d207233b05f113",
     "src/security/decoder-policy.ts": "d22a0691c9dd496591cc7e8af410139d395f507620405ce25c93e1f138d429fb",
@@ -102,6 +134,7 @@
     "tests/database-audit.mjs": "1ee2ae1edd639a52882444f7f5b0786a2e6571ae0b4f6185cdb135691637527e",
     "tests/decoder-policy.test.ts": "0eece0255176d3a33b9b0f564e4b83c021462486234c807bfb5dd653cd73ce4b",
     "tests/dependency-policy.test.mjs": "72b3172835d9c5cb95a7a90b5755faf9c24e07c0ab5873ae29fe037442d97a0a",
+    "tests/desktop_transport_server.py": "9fcd780356ddde50f729234905cbcff2db990a2235381be006b0938ae6a9642c",
     "tests/disk-assets.test.ts": "d56da71f83d0f39bc1f2a120e0138dba3acd93d5d9b656ab65ea423320a5817b",
     "tests/disk-fs.test.mjs": "3040cc2b0b4ee6dfa4c2b8ec0f7bda69a83bcb97906e0745af45a7d9d0b1db8b",
     "tests/download-folder-audit.mjs": "813fb5db86ca70c993c0b686f87b5532303579cf8ca9921d7a42d4e236ade6b7",
@@ -109,7 +142,7 @@
     "tests/download.test.ts": "05d91dc8ae36aa213c7b69bb40b43994edba9209d8a04905e512eb754a8c415a",
     "tests/encryption.test.mjs": "14f3acceb2051eacbf70d8f8703e4c9646c2dadc5219d52ecc039082341d0d00",
     "tests/engine-cipher.test.mjs": "af6cb495f4bb04b64173915bd889236c19cb80ea675b357106f77a68883b4d5f",
-    "tests/extension-without-youtube.test.ts": "ba59dca919854cd540fb7a2e86cbc6b253540b9791494acc7672776db34ffd3d",
+    "tests/extension-without-youtube.test.ts": "243c1f3b554e3545a6b891a16bf81fb31455ed8dc39ab9f736db2cb937391a89",
     "tests/features.test.ts": "df875e43caf4b869ae65feba293278e3932a069768c90f90e7411bd2b65cacc0",
     "tests/file-digest.test.ts": "90ace33d61c2c7a21ef4252496543cea2af364c3a9ba695087fe9ba4b3d2eee6",
     "tests/http3-server.py": "37c42deb235b8040d48d3ed7ab0320dd85ddb173d2f2c6dbc66a33d85fdd5fca",
@@ -125,15 +158,32 @@
     "tests/media-optimization.test.ts": "dfe60418deffa16ebafe96698817ad10f90281ba5d4da991d6fd19c6dbbc948c",
     "tests/media-probe.test.ts": "4af62cc36e0e3e4e739503649cdcec60eba814926c3c1868a552e6fab51f77e1",
     "tests/metadata.test.ts": "299533bdb70296183b8cb7498cd8013664184d93a3c6d18b41bb9e1986ae9eed",
-    "tests/package.test.ts": "e15e082864681402ff4b19fd8e0b03d15304014563c15a2b7752a4245c7658fa",
+    "tests/missav-browser.mjs": "cf14ad8193c7a49457569c56efa57dadb91769a7b40ca860262842c4a46ed718",
+    "tests/missav-build.test.ts": "c092b132a580ff7346c468a623cdc9eb77bb3d47dd808988dab647617db74560",
+    "tests/missav-collector.test.ts": "737ad5bea9f296efcb698023121b714e11e4886da4719432498510fd9f422a00",
+    "tests/missav-request-url.test.ts": "881a0c8aed7d92aa4d3ccad9e0aaafaab83491ffdc840886d17fd1e204d14e14",
+    "tests/missav.test.ts": "9b093d4c39ffa40e3d4e4d1b92708c0e5ea24fe026a487b86fdb861aeca67bde",
+    "tests/missav_fixture_server.mjs": "5cc209f4ffadf4e20107e697f9b6089c24514e61fb2704b057d9aac381a57f5a",
+    "tests/package.test.ts": "7350d935d542440e8de316f5f38ddf5530b8e261a23d6a607f27a15ee72a5806",
+    "tests/page-fetch.test.ts": "78c01ae2c836d98b324347053fed6cdd4fe5a82e6a13a6b40b5fac249a5f89c9",
     "tests/parallel-download.test.ts": "fea54d1fadc5fb42dd4a024fa57266a3bf22bdbd3d93b5fb0ae9616ac96e0bbe",
     "tests/policy.test.ts": "64389249434841cdc3a1b565a2524b9fd3c1cd78afd38e7100b988c3f4896021",
     "tests/popup-audit.mjs": "af07c05d8b05954a0eda62b0a9daa1c3436b8933fc416860e52a0438125095d9",
     "tests/protect-build.test.mjs": "b47c7a4f56e0047b76f3c7d49e11b237d75e22559107398f5ddf39572b47974a",
     "tests/queue-privacy.test.ts": "067fd865093d6da4bd27fde290e9236096885485f83cf1a01f8c6d3562ac732d",
     "tests/release-safety.test.mjs": "1709938412c9b0670a376ea2863db1bf06bcb166771a1c6715b7244863bc510e",
-    "tests/release-workflow.test.mjs": "d3a857e907820d848bf251b5396a707dfb1465e4ef8a91d4578c007433f75faa",
     "tests/security-runtime.test.ts": "63777d2928c72248107c1b342e71d7b3096705daf33a85b2f197ca1a37ffc664",
+    "tests/test_activity_release.py": "f252762468687d9cfe5639130fa90eda9441351281d3670c34f2276f0dfcdb2e",
+    "tests/test_concurrency_release.py": "ff4cbdd868eadc4fd8dae225c9beffa2af9c97b309168a09cfe4588ca8878b82",
+    "tests/test_desktop_bundle.py": "dfdd8e49dca0ab5925ea0b7299ae6f65d5adb79ebb18bea22371ede7a4d096d2",
+    "tests/test_download_recovery_release.py": "77398b76d1373656a0e56783786cbf81f788fa3593f41157d0db0aaf3eded658",
+    "tests/test_missav_release.py": "d503bfcb78df2b3318081ba164660064dcebcaf137ceb37e954a57ea8d3db39d",
+    "tests/test_no_http3_release.py": "1580c64a9d097f4278b59e634b3a47c0b1ff72b5d3a15a3ed26fb0c43bf36ddd",
+    "tests/test_publish_release.py": "896a2cd9f100574a09328d1437bb8046c88ef93bf73385257a58ee34a2059635",
+    "tests/test_release_bundle.py": "3463f78928b73eac11932f8d49fd7a959c796e3abee4ec24f3fac93540f71ca2",
+    "tests/test_runtime_paths.py": "a282e6765e5ebd4ff837f1646795c8c9f50e89718840d638e2b1a3d8cf501ad6",
+    "tests/test_transport_release.py": "baa27f19276fdf37213f1a991e76f228ef00d6dcff485d7008349669715be61a",
+    "tests/test_v18_restore_release.py": "79d628c7c861cc49d095242abfec8f4254b75e4730854ad208e437124e946e7e",
     "tests/tooling.test.mjs": "406a7f0ffe0f5214ec0b53652ba66c8d5049234fcb89a23a549a9b109655d174",
     "tests/transfer.test.ts": "0ec03cafdd950d6f8e3a73695eea02a5edd3ee04d358a24254884671caf451c7",
     "tests/validation-budget.test.ts": "5dc21fbdd3a1b30be8199ad32b1b4a77e9cf1cf6a9920b2328f9f3cbd082ceb1",
@@ -141,7 +191,7 @@
     "tests/worker-input-audit.mjs": "12645b4ae989474b2a8edabdb5ea3fe960586e14efcf9e850299f2cb8429a148",
     "tsconfig.json": "a447c838b1d18d1c8500c2dc125198660e6a600dde1bceed697a58c186758529"
   },
-  "moduleCount": 40,
+  "moduleCount": 45,
   "entryCount": 9,
   "vendorEntryCount": 1,
   "vendorEntries": [
@@ -191,6 +241,50 @@
       "to": "src/local/network.ts"
     },
     {
+      "from": "src/local/background-standard.ts",
+      "to": "src/data/database.ts"
+    },
+    {
+      "from": "src/local/background-standard.ts",
+      "to": "src/local/antivirus.ts"
+    },
+    {
+      "from": "src/local/background-standard.ts",
+      "to": "src/local/download-folder.ts"
+    },
+    {
+      "from": "src/local/background-standard.ts",
+      "to": "src/local/media-file.ts"
+    },
+    {
+      "from": "src/local/background-standard.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/background-standard.ts",
+      "to": "src/local/preferences.ts"
+    },
+    {
+      "from": "src/local/background-standard.ts",
+      "to": "src/local/security-preferences.ts"
+    },
+    {
+      "from": "src/local/background-standard.ts",
+      "to": "src/local/transport.ts"
+    },
+    {
+      "from": "src/local/background-standard.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/local/background-standard.ts",
+      "to": "src/upscale/completion.ts"
+    },
+    {
+      "from": "src/local/background-standard.ts",
+      "to": "src/upscale/storage.ts"
+    },
+    {
       "from": "src/local/background.ts",
       "to": "src/data/database.ts"
     },
@@ -205,6 +299,14 @@
     {
       "from": "src/local/background.ts",
       "to": "src/local/media-file.ts"
+    },
+    {
+      "from": "src/local/background.ts",
+      "to": "src/local/missav-relay.ts"
+    },
+    {
+      "from": "src/local/background.ts",
+      "to": "src/local/missav.ts"
     },
     {
       "from": "src/local/background.ts",
@@ -233,6 +335,26 @@
     {
       "from": "src/local/background.ts",
       "to": "src/upscale/storage.ts"
+    },
+    {
+      "from": "src/local/collect-standard.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/collect-standard.ts",
+      "to": "src/local/transport.ts"
+    },
+    {
+      "from": "src/local/collect-standard.ts",
+      "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/local/collect.ts",
+      "to": "src/local/missav-relay.ts"
+    },
+    {
+      "from": "src/local/collect.ts",
+      "to": "src/local/missav.ts"
     },
     {
       "from": "src/local/collect.ts",
@@ -308,6 +430,10 @@
     },
     {
       "from": "src/local/large-stream-worker.ts",
+      "to": "src/local/page-fetch.ts"
+    },
+    {
+      "from": "src/local/large-stream-worker.ts",
       "to": "src/security/decoder-policy.ts"
     },
     {
@@ -329,6 +455,18 @@
     {
       "from": "src/local/media-file.ts",
       "to": "src/shared/media.ts"
+    },
+    {
+      "from": "src/local/missav-relay.ts",
+      "to": "src/local/missav.ts"
+    },
+    {
+      "from": "src/local/missav-relay.ts",
+      "to": "src/local/page-fetch.ts"
+    },
+    {
+      "from": "src/local/missav-relay.ts",
+      "to": "src/security/validation.ts"
     },
     {
       "from": "src/local/model.ts",
@@ -380,6 +518,10 @@
     },
     {
       "from": "src/local/offscreen.ts",
+      "to": "src/local/page-fetch.ts"
+    },
+    {
+      "from": "src/local/offscreen.ts",
       "to": "src/local/parallel-download.ts"
     },
     {
@@ -409,6 +551,10 @@
     {
       "from": "src/local/offscreen.ts",
       "to": "src/upscale/policy.ts"
+    },
+    {
+      "from": "src/local/page-fetch.ts",
+      "to": "src/security/validation.ts"
     },
     {
       "from": "src/local/parallel-download.ts",
@@ -469,6 +615,10 @@
     {
       "from": "src/local/stream-worker.ts",
       "to": "src/local/network.ts"
+    },
+    {
+      "from": "src/local/stream-worker.ts",
+      "to": "src/local/page-fetch.ts"
     },
     {
       "from": "src/local/stream-worker.ts",

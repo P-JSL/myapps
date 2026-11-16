@@ -33,7 +33,7 @@ test('handle explicit, escaped and unicode-escaped CDN playlist URLs', () => {
     'var src="https:\\/\\/surrit.com\\/' + uuid + '\\/playlist.m3u8";',
     'var duplicate="https://surrit.com/' + uuid + '/playlist.m3u8";',
     'var escape="https:\\u002f\\u002fsurrit.com\\u002f' + uuid + '\\u002fplaylist.m3u8";',
-  ]), [playlist]);
+  ]), ['https://surrit.com/' + uuid + '/playlist.m3u8']);
 });
 
 test('resolve CDN variants and preserve the actually requested playlist', () => {
@@ -49,8 +49,7 @@ test('support reference player alternative CDN hosts without allowing arbitrary 
   assert.deepEqual(missavPlaylistURLs(page, [
     'https://nineyu.com/' + uuid + '/seek',
     'https://fourhoi.store/' + uuid + '/playlist.m3u8',
-  ]), ['https://nineyu.com/' + id + '/playlist.m3u8',
-    'https://fourhoi.store/' + id + '/playlist.m3u8']);
+  ]), ['https://fourhoi.store/' + uuid + '/playlist.m3u8']);
   for (const url of [
     'https://surrit.com.evil.test/' + uuid + '/playlist.m3u8',
     'http://surrit.com/' + uuid + '/playlist.m3u8',
@@ -82,6 +81,6 @@ test('strict bounds prevent scanning excessive inline scripts and resource URLs'
 
 test('observed HLS requests are recognized without nextHopProtocol/ALPN metadata', () => {
   const observed = 'https://surrit.com/' + uuid + '/playlist.m3u8';
-  assert.deepEqual(missavPlaylistURLs(page, [], [observed]), [playlist]);
+  assert.deepEqual(missavPlaylistURLs(page, [], [observed]), [observed]);
   assert.equal(missavMediaURL('https://surrit.com/' + uuid + '/seek'), playlist);
 });

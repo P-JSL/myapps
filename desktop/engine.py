@@ -35,6 +35,7 @@ try:
     from .concurrency import (FFMPEG_THREADS, PROCESS_RESOURCES, ResourceBudget, ResourceCancelled,
                               fragment_parallelism, normalize_concurrency)
     from .storage import Storage
+    from . import missav
 except ImportError:
     # Isolated Python does not put the script directory on sys.path.
     _policy_name = "_myvideoapp_concurrency"
@@ -54,6 +55,9 @@ except ImportError:
     _storage_module = importlib.util.module_from_spec(_storage_spec)
     _storage_spec.loader.exec_module(_storage_module)
     Storage = _storage_module.Storage
+    _missav_spec = importlib.util.spec_from_file_location("_myvideoapp_missav", Path(__file__).absolute().with_name("missav.py"))
+    missav = importlib.util.module_from_spec(_missav_spec)
+    _missav_spec.loader.exec_module(missav)
 
 YT_DLP_VERSION = "2026.10.21"
 EJS_VERSION = "0.8.0"
@@ -552,9 +556,26 @@ class Engine:
 
     def _extract(self, downloader, url: str, youtube: bool, cancel: threading.Event) -> dict:
         current = url
+        page_title = None
+        context = None
+        if not youtube and missav.applies(url):
+            try:
+                context = missav.configure(downloader, url)
+                if missav.is_page(url):
+                    current, page_title = missav.resolve_page(downloader, url, context)
+            except (missav.MissavError, ImportError, importlib.metadata.PackageNotFoundError) as error:
+                raise EngineError(str(error) if isinstance(error, missav.MissavError) else
+                                  "MissAV 통신 구성요소가 없습니다. 새 데스크톱 ZIP 전체를 압축 해제하세요.") from None
+        else:
+            missav.ordinary_transport(downloader)
         for _ in range(6):
             _check_cancel(cancel)
-            info = downloader.extract_info(current, download=False, process=False, ie_key="Youtube" if youtube else "Generic")
+            try:
+                info = downloader.extract_info(current, download=False, process=False, ie_key="Youtube" if youtube else "Generic")
+            except Exception:
+                if context is not None:
+                    raise EngineError(context.get("error") or "MissAV 미디어 요청에 실패했습니다. Chrome에서 영상을 재생하고 확장의 ‘주소 복사’로 얻은 최신 m3u8 주소를 사용하세요.") from None
+                raise
             _check_cancel(cancel)
             if not isinstance(info, dict):
                 raise EngineError("원본에서 사용할 수 있는 동영상 정보를 받지 못했습니다.")
@@ -579,10 +600,12 @@ class Engine:
             if info.get("id") != urlsplit(url).query.removeprefix("v="):
                 raise EngineError("원본이 요청과 다른 YouTube 동영상을 반환했습니다.")
         else:
-            manifest = any(isinstance(track, dict) and track.get("manifest_url") == current for track in formats)
+            manifest = any(isinstance(track, dict) and (track.get("manifest_url") == current
+                           or (missav.is_media(current) and track.get("url") == current
+                               and track.get("protocol") in ("m3u8", "m3u8_native"))) for track in formats)
             if info.get("direct") is not True and not manifest:
                 raise EngineError("웹 페이지 주소입니다. 동영상·오디오·HLS·DASH 미디어 직접 주소를 붙여 넣으세요.")
-        info["title"] = _title(info.get("title"), "YouTube video" if youtube else "Media")
+        info["title"] = _title(page_title or info.get("title"), "YouTube video" if youtube else "Media")
         return info
 
     def get_info(self, request: DownloadRequest, cancel: threading.Event | None = None) -> dict:
@@ -953,6 +976,15 @@ class Engine:
             # dl() creates a new FileDownloader for each track, so its fragment
             # count must match that track's network lease before the call.
             with module.YoutubeDL(self._options(deno, hook, cancel=cancel)) as downloader:
+                if not youtube and missav.applies(url):
+                    manifest = tracks[0].get("manifest_url") or tracks[0].get("url")
+                    try:
+                        missav.configure(downloader, url, manifest)
+                    except (missav.MissavError, ImportError, importlib.metadata.PackageNotFoundError) as error:
+                        raise EngineError(str(error) if isinstance(error, missav.MissavError) else
+                                          "MissAV 통신 구성요소가 없습니다. 새 데스크톱 ZIP 전체를 압축 해제하세요.") from None
+                else:
+                    missav.ordinary_transport(downloader)
                 for track_index, track in enumerate(tracks):
                     _check_cancel(cancel)
                     with self._activity_phase("track", job_id=job_id, stage="downloading", state=activity_state,

@@ -1,0 +1,126 @@
+name: Verify and release MissAV 1.20 extension and Windows app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/release-missav-v120.yml
+      - src/local/**
+      - desktop/**
+      - scripts/build-desktop.py
+      - scripts/release-missav-v120.py
+      - tests/missav*
+      - tests/page-fetch.test.ts
+      - tests/test_missav_release.py
+      - package.json
+      - package-lock.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-v1.20.0-preview.1
+  cancel-in-progress: false
+
+jobs:
+  verify-release:
+    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/main'
+    runs-on: windows-2025
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: '1'
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Preserve committed source bytes on Windows
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Check the changed extension and publication scope
+        run: |
+          npm ci --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run typecheck
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run check:source
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --experimental-strip-types --test tests/missav.test.ts tests/missav-collector.test.ts tests/missav-build.test.ts tests/missav-request-url.test.ts tests/page-fetch.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B tests/test_missav_release.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build the MissAV extension
+        env:
+          MY_VIDEO_APP_EXTENSION_VARIANT: missav
+        run: |
+          npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B scripts/archive.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Move-Item artifacts/my-video-app-extension.zip artifacts/my-video-app-extension-missav.zip
+
+      - name: Restore the verified runtime archive cache
+        id: runtime-cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: .cache/desktop-runtime
+          key: ${{ runner.os }}-desktop-missav-${{ hashFiles('desktop/dependencies-lock.json') }}
+
+      - name: Fetch the pinned baseline binaries and unchanged standard extension
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Force .cache/desktop-runtime | Out-Null
+          if (!(Test-Path .cache/desktop-runtime/my-video-app-desktop-windows-x64.zip)) {
+            gh release download v1.19.4 --repo $env:GITHUB_REPOSITORY --dir .cache/desktop-runtime --pattern my-video-app-desktop-windows-x64.zip
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          gh release download v1.19.4-bundle.1 --repo $env:GITHUB_REPOSITORY --dir artifacts --pattern my-video-app-extension-standard.zip --pattern my-video-app-antivirus-helper.zip --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build the pinned Windows package
+        run: python -B scripts/build-desktop.py
+
+      - name: Execute MissAV integration and GUI checks with the bundled Windows Python
+        run: |
+          $testRoot = Join-Path $env:RUNNER_TEMP 'myvideoapp-missav'
+          Expand-Archive -LiteralPath artifacts/my-video-app-desktop-windows-x64.zip -DestinationPath $testRoot
+          $appRoot = Join-Path $testRoot 'MyVideoApp'
+          $python = Join-Path $appRoot 'runtime/python/python.exe'
+          & $python -I -B desktop/test_missav.py --app-root $appRoot -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B desktop/test_missav_gui.py --app-root $appRoot -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Join-Path $appRoot 'runtime/ffmpeg' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          @{version='1.20.0'; commit=$env:GITHUB_SHA; platform='windows-x64'; scope='focused-missav-v120'; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); nativeMissavTests=11; nativeGuiTests=1; previousFullSuites='not repeated per user'; targetFullVideoVerified=$false} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
+
+      - name: Verify original-page requests with the locked browser and real workers
+        run: |
+          node node_modules/playwright-core/cli.js install chromium
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/missav-browser.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item .cache/missav-browser/BROWSER-VALIDATION.json artifacts/BROWSER-VALIDATION.json
+
+      - name: Verify all archive hashes and publish the complete preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -B scripts/release-missav-v120.py --artifacts artifacts --publish
+
+      - name: Cache verified dependency archives
+        if: success() && steps.runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: .cache/desktop-runtime
+          key: ${{ runner.os }}-desktop-missav-${{ hashFiles('desktop/dependencies-lock.json') }}
