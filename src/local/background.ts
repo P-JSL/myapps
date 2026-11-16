@@ -1,6 +1,7 @@
 import { boundedData, record } from '../security/validation.ts';
 import { isMissavPage, missavMediaURL, missavVideoId } from './missav.ts';
 import { bindMissavJob, unbindMissavJob, installMissavRelay } from './missav-relay.ts';
+import { recoverMissavContext } from './missav-context.ts';
 import { appStorage } from '../data/database.ts';
 installMissavRelay();
 import { offerUpscale, revokeDownloadOffers, authorizeDownloadOffers } from '../upscale/completion.ts';
@@ -154,6 +155,10 @@ function add(tabId: number, address: unknown, mime: string, title: string, fromE
         if (missavVideoId(previous.url) !== videoId) continue;
         if ((previous.missavRank ?? 0) > missavRank) return;
         if ((previous.missavRank ?? 0) < missavRank) media.delete(previous.id);
+        else if (missavRank === 2 && previous.url !== url) {
+          const before = new URL(previous.url), next = new URL(url);
+          if (before.origin === next.origin && before.pathname === next.pathname) media.delete(previous.id);
+        }
       }
     }
     const existing = media.get(tabId, url);
@@ -322,6 +327,7 @@ async function securityDecision(id: string, token: string, action: 'keep' | 'del
 }
 async function download(item: MediaItem, options: DownloadOptions = downloadOptions()) {
   browserMediaURL(item.url);
+  item = await recoverMissavContext(item, media);
   const tab = item.tabId < 0 ? { incognito: chrome.extension.inIncognitoContext } : await chrome.tabs.get(item.tabId);
   if (!!tab.incognito !== chrome.extension.inIncognitoContext) throw new Error('다른 브라우징 모드의 미디어에는 접근할 수 없습니다.');
   // Gate every entry point before creating history, preparing bytes or starting a transfer.

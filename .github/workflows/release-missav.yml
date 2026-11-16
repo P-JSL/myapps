@@ -1,14 +1,14 @@
-name: Verify and release MissAV 1.20 extension and Windows app
+name: Verify and release MissAV 1.20.1 extension and Windows app
 
 on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/release-missav-v120.yml
+      - .github/workflows/release-missav.yml
       - src/local/**
       - desktop/**
       - scripts/build-desktop.py
-      - scripts/release-missav-v120.py
+      - scripts/release-missav.py
       - tests/missav*
       - tests/page-fetch.test.ts
       - tests/test_missav_release.py
@@ -20,7 +20,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-v1.20.0-preview.1
+  group: release-v1.20.1-preview.1
   cancel-in-progress: false
 
 jobs:
@@ -55,7 +55,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run check:source
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node --experimental-strip-types --test tests/missav.test.ts tests/missav-collector.test.ts tests/missav-build.test.ts tests/missav-request-url.test.ts tests/page-fetch.test.ts
+          node --experimental-strip-types --test tests/missav.test.ts tests/missav-collector.test.ts tests/missav-build.test.ts tests/missav-request-url.test.ts tests/missav-context.test.ts tests/page-fetch.test.ts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -B tests/test_missav_release.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -76,6 +76,8 @@ jobs:
         with:
           path: .cache/desktop-runtime
           key: ${{ runner.os }}-desktop-missav-${{ hashFiles('desktop/dependencies-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-desktop-missav-
 
       - name: Fetch the pinned baseline binaries and unchanged standard extension
         env:
@@ -103,7 +105,7 @@ jobs:
           & $python -I -B desktop/test_missav_gui.py --app-root $appRoot -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Join-Path $appRoot 'runtime/ffmpeg' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          @{version='1.20.0'; commit=$env:GITHUB_SHA; platform='windows-x64'; scope='focused-missav-v120'; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); nativeMissavTests=11; nativeGuiTests=1; previousFullSuites='not repeated per user'; targetFullVideoVerified=$false} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
+          @{version='1.20.1'; commit=$env:GITHUB_SHA; platform='windows-x64'; scope='focused-missav-v121'; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); nativeMissavTests=11; nativeGuiTests=1; previousFullSuites='not repeated per user'; targetFullVideoVerified=$false} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
 
       - name: Verify original-page requests with the locked browser and real workers
         run: |
@@ -111,12 +113,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/missav-browser.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/missav-installed-browser.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item .cache/missav-browser/BROWSER-VALIDATION.json artifacts/BROWSER-VALIDATION.json
+          Copy-Item .cache/missav-installed-browser/INSTALLED-EXTENSION-VALIDATION.json artifacts/INSTALLED-EXTENSION-VALIDATION.json
 
       - name: Verify all archive hashes and publish the complete preview
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python -B scripts/release-missav-v120.py --artifacts artifacts --publish
+        run: python -B scripts/release-missav.py --artifacts artifacts --publish
 
       - name: Cache verified dependency archives
         if: success() && steps.runtime-cache.outputs.cache-hit != 'true'

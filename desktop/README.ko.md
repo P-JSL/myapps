@@ -1,4 +1,4 @@
-# My Video App 1.20.0 · Windows 앱
+# My Video App 1.20.1 · Windows 앱
 
 **MissAV 페이지와 감지된 HLS 직접 주소를 지원합니다.** MissAV 요청에만 브라우저 호환 HTTP/2 통신을 적용하며, 재생목록과 영상 조각에 같은 사이트 요청 정보를 사용합니다. YouTube·일반 직접 주소는 기존 yt-dlp 경로를 유지합니다.
 
@@ -66,4 +66,4 @@ Python·yt-dlp·EJS·Deno·FFmpeg·Qt가 포함되어 있어 별도 Python 설�
 
 다운로드 파일은 사용자가 고른 폴더에 저장합니다. 기록·설정은 `%LOCALAPPDATA%\MyVideoApp\Desktop` 아래의 SQLite DB에서 관리합니다. 앱 폴더를 삭제해 프로그램을 제거할 수 있으며, 기록·설정도 지우려면 앱을 종료한 뒤 해당 사용자 데이터 폴더를 별도로 삭제합니다.
 
-현재 변경과 신규 검사 범위는 저장소의 `reports/MISSAV_1_20_0.ko.md`에 기록합니다. 요청에 따라 이전 검사 전체는 다시 실행하지 않습니다. 실제 YouTube 사이트 접근과 Windows 사용자 환경은 사이트·OS 조건에 따라 추가 확인이 필요합니다.
+현재 변경과 신규 검사 범위는 저장소의 `reports/MISSAV_1_20_1.ko.md`에 기록합니다. 요청에 따라 이전 검사 전체는 다시 실행하지 않습니다. 실제 YouTube 사이트 접근과 Windows 사용자 환경은 사이트·OS 조건에 따라 추가 확인이 필요합니다.

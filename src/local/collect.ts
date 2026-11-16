@@ -1,6 +1,7 @@
 import { mediaKind, mediaURL, SCOPE } from './model.ts';
 import { isMissavPage, missavPlaylistCandidates, missavMediaURL } from './missav.ts';
 import { installMissavPageFetch } from './missav-relay.ts';
+import { missavPageSource } from './missav-context.ts';
 import { record } from '../security/validation.ts';
 import { resourceTransport, transport, type Transport } from './transport.ts';
 
@@ -89,9 +90,15 @@ new MutationObserver(records => {
 }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'href', 'type'] });
 document.addEventListener('loadedmetadata', schedule, true);
 chrome.runtime.onMessage?.addListener((message: unknown, sender, reply) => {
-  if (!record(message) || message.scope !== SCOPE || message.type !== 'rescan'
-    || typeof sender.id !== 'string' || sender.id !== chrome.runtime.id || sender.tab
-    || typeof message.rescanId !== 'string' || !/^[0-9a-f-]{36}$/.test(message.rescanId)) return false;
+  if (!record(message) || message.scope !== SCOPE
+    || typeof sender.id !== 'string' || sender.id !== chrome.runtime.id || sender.tab) return false;
+  if (message.type === 'missav-context' && missavPage && typeof message.url === 'string') {
+    const url = missavPageSource(location.href,
+      Array.from(document.scripts).slice(0, 256).map(script => script.textContent ?? ''),
+      performance.getEntriesByType('resource').slice(-1500).map(entry => entry.name), message.url);
+    reply(url ? { ok: true, url, title: document.title.slice(0, 200) } : { ok: false }); return false;
+  }
+  if (message.type !== 'rescan' || typeof message.rescanId !== 'string' || !/^[0-9a-f-]{36}$/.test(message.rescanId)) return false;
   const rescanId = message.rescanId;
   clearTimeout(timer);
   sent.clear();

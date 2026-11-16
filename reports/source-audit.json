@@ -1,10 +1,10 @@
 {
   "status": "passed",
-  "release": "1.20.0",
+  "release": "1.20.1",
   "sourceSha256": {
     "desktop/activity.py": "f2b042d920375ab51c5a42beb3a356087c0fed7875963192534f446c504c4092",
     "desktop/concurrency.py": "8d149124f8f12899622838909e87cae9fe831f4da7f367ddd315cf831030e162",
-    "desktop/dependencies-lock.json": "70d2060c80932678fe4cc8366e2b583ccd8cefcdee9a3899a136070e58c3a137",
+    "desktop/dependencies-lock.json": "718ae609274900cac7409beae79ff543ebb09e5b51850ec8f96f32afe45e4450",
     "desktop/engine.py": "c9745cabebcad101ebdedc6a77aeb67dbdd76c5022af522e84df0f286e66431d",
     "desktop/launcher/build.py": "4902f425398b11e24a3b6b3c6fc8ebfe63b605b2c73b45b0470830a62caa3285",
     "desktop/launcher/launcher.c": "019910f3f2a0f464ed9d99a302fb68ffa99333d711ed625879824dd0e3585637",
@@ -13,7 +13,7 @@
     "desktop/launcher/test_launcher.py": "7cc241f34c0d64eb5871e8b1b08901484c149230186b08376b291bc4cdb00552",
     "desktop/launcher/toolchain-lock.json": "e30a59ade77d6a2cd4c84296004617f840809e557430c445050e79d94149751f",
     "desktop/launcher/verify_pe.py": "ef29dabcff593ac562301ef7f35535bbb831f727f66676ec0b381eacc3ecfd70",
-    "desktop/main.py": "9909d977517a6f8eab7df6426492c1784dd9c140766a87aa40553c4c21f9e179",
+    "desktop/main.py": "423a8d67d7997a08d08f90b0ff5f82d8c597e455cb8bdc06422e145a67db660d",
     "desktop/missav.py": "2a5d97d28836b2a7066589313d38ec5d6281c8779df3e07227743840a203b5e1",
     "desktop/storage.py": "5c9f6732334cfff70a9ae7bc9f90c95de76af5abf19c46c9b0d07ceb22968b3b",
     "desktop/test_activity.py": "9bb75e45350689dba31704fd93c0aa5f61154aab1c0586e48b895a53f2962fd7",
@@ -25,7 +25,7 @@
     "desktop/test_engine.py": "899c820ecb43d5af71da7e3b3a4a07c6276d45e721f34e138d6784b9f72379ef",
     "desktop/test_gui.py": "37499eecef5598d0f1b3f533fe8086435a058c2e0a9dd90d0aa46197e67fb767",
     "desktop/test_missav.py": "a12964b1d6a0c28d892e2eac92324f15cb92c8dd1ecd9f65e60446e850892dc3",
-    "desktop/test_missav_gui.py": "fc9d6f0e13942a07d783bef7f920be1a0c783c7f2c7cd2dcbe2f25016b7fe93b",
+    "desktop/test_missav_gui.py": "a00e49ba7ba6d74becfcdc2b01e4ba518231492eef1c09297c6b0a368f0ba517",
     "desktop/test_no_http3.py": "7845c4db6b9ee3016c0328dbf4bb75db7291b30b0bd7bbdcffc872e3b51fbced",
     "desktop/test_no_http3_gui.py": "0e45b4ceaeb6f54215429302f29ee15cf650468e15f83d13f1c2508cc755d03d",
     "desktop/test_runtime.py": "e7130c2178e2b6288b2bd8f65bb6690f21d212ae2b767a9341140707d46ff494",
@@ -44,8 +44,8 @@
     "native/test_internal_scan.py": "1f6bf1e60fe50fc4f00ae3dc2a0cb1c6037122e41a170c8ac70284511c2ee4b9",
     "native/test_windows_antivirus.py": "bd64dfa7b0f374602374eefd46b655779bcbdea46d5187e75ff38aaef8ec84fb",
     "native/windows_antivirus.py": "d31d257a74e3f4f676f82ad7f5b2f0d4a04172d72af52fe8cb40999b83c30c88",
-    "package-lock.json": "0576ca8d1e3edf99f9a3da19d40db3fa906247c276aa7e5edd631075c706ac76",
-    "package.json": "6ff0ca76c0fee7663f3edf2d046917b8bdd9325b93b36d5fd6900b7f0616f663",
+    "package-lock.json": "6c85d2efc932f121c2363779b347123ddc659798c433e8389bde68754af3bffe",
+    "package.json": "b6b4146c0f40d45967286db384faca6caab6749c7827242d11b355d132c86be0",
     "scripts/archive.py": "7d79bf3eb2e930b68193fdc7ba82bb31caf1190b95aeeb5aa3c0d4f9d01f6388",
     "scripts/assemble-release-bundle.py": "aea12e2249195f9c7dcf1bca89b6f32bc5b34a25024af654ca559310e1b29e44",
     "scripts/audit-dependencies.mjs": "986733aa350a0ab382270e16cf992375193554cf32c9073fee3e36cb8c7a376c",
@@ -67,16 +67,16 @@
     "scripts/package.mjs": "5ac926f643fd6ec40e7cf4297efeb85006c8eab88656b91eabf77a0ea17de714",
     "scripts/project.mjs": "c96e2c128d30c1d49d7f88b48df7b8bdd31f039c586d4a57ef8949054fa98df3",
     "scripts/publish-release.py": "e5043b6c8f352bc174ef00e608f77dbff163be8ce102641f09ef0c5082206f84",
-    "scripts/release-missav-v120.py": "3ce14053ae640d36f0c7bd60cc986fe67a82d48a42ca0bf39755ac0d693e0990",
+    "scripts/release-missav.py": "96f10b650ba9e28b33fd9ac6e4cfed0c2eb831e0f1c7741d0561af55798122c8",
     "scripts/test-native.mjs": "df51aab957aec7d02e8f577783a8c94d356e1ccebca8cb2dda093504a72e3282",
     "src/data/database.ts": "9ad2a7536462d778885eecc1340fb649437fd4f3fe6791869dfd1e7b50a26cf5",
     "src/local/antivirus.ts": "93f0e263b6de9e885b4b220cfcc9edf8cebc84ee505560db67fc59bb39bb6e3f",
     "src/local/assets.ts": "c0aeef5bec7186e64d1160b17765ad0ed22880410e0c7f19151a5ee345cb9a25",
     "src/local/background-standard.ts": "fefe58b900d93ca018670005d6f39d19dff32d524c0aa6d7140f64f7818b3eda",
-    "src/local/background.ts": "3790794e3c2dc1165e511394cb80afe3a339b86132c5ae9beedf0417a6728926",
+    "src/local/background.ts": "ab24a63344107621c954e2caa7365b33fcbbead8f099a569743127003dcc9b6c",
     "src/local/byte-assembly.ts": "e606342bc7097df6da427e10fa404a357f5d992931f01ee2f6f257a95077425c",
     "src/local/collect-standard.ts": "eb36555aa3441a421eafab00d1f449d09fd3d72aac5144a665894c95c00cce2a",
-    "src/local/collect.ts": "d365306814ead9ff6fa9145a1b72bda509aed825c024b9f5d32191190288297b",
+    "src/local/collect.ts": "255c8edad097a0aba6d236d3b4f9a016b85f10fee562759d4d7ed68dfeae9c9a",
     "src/local/dash.ts": "b95dc958ce1840208595567d1042a83e4ff2146ec37bdb17e1d36904429eeba4",
     "src/local/disk-assets.ts": "006e4dde8e173b68b5687864f1b2fca501a0e78f98db8cbf1d84bc8915dc817c",
     "src/local/disk-fs.ts": "c718a62c1211d42898876561b023f0790d9d713e15ffe309ea95f129c8e1ef3b",
@@ -86,8 +86,9 @@
     "src/local/large-stream-worker.ts": "3ff23abf26462e3f73ffeb03a59fd00c084fefc38238afc2616087eebe21614f",
     "src/local/media-copy.ts": "4e98253a9d0c547e2e876fa30970cfa7e4eab074e986d7c0d36fd1ada887a4bb",
     "src/local/media-file.ts": "1909efaf0c12135ca0dffffa7d9fdd1c6691e6f348494bec6b708cfe0a54c13b",
+    "src/local/missav-context.ts": "92ca1cd9e5ec9527f4d5a5fbcd4836664e8139e10eef46998a956399db8302e8",
     "src/local/missav-relay.ts": "85df540ab68a24fc5f5f63b8f1c1bc013b817b127997556716a17dd0e23d2b75",
-    "src/local/missav.ts": "b5501e161c3333d49493bfd9592947a29e76e7439a99b926a0522b460bd86b3f",
+    "src/local/missav.ts": "def23a9588dc0c735843ca128eca0edc59ace253338ac360b98a6fffa51c6d14",
     "src/local/model.ts": "fd69fdbfad878d4c83027ec6625f5da81fe928bd1df63ccf4901d3a6434d48b3",
     "src/local/network.ts": "95e16459bef38a35aff6a7186162ccae93783463a91e79a157c260fce5137039",
     "src/local/offscreen.ts": "2c3410024e3ecae80cb0d969d3d7c609b74bb0f21576a792813b44857b852c0e",
@@ -158,9 +159,11 @@
     "tests/media-optimization.test.ts": "dfe60418deffa16ebafe96698817ad10f90281ba5d4da991d6fd19c6dbbc948c",
     "tests/media-probe.test.ts": "4af62cc36e0e3e4e739503649cdcec60eba814926c3c1868a552e6fab51f77e1",
     "tests/metadata.test.ts": "299533bdb70296183b8cb7498cd8013664184d93a3c6d18b41bb9e1986ae9eed",
-    "tests/missav-browser.mjs": "cf14ad8193c7a49457569c56efa57dadb91769a7b40ca860262842c4a46ed718",
+    "tests/missav-browser.mjs": "ca89f3c42db918b0e42b219f971490a80f21e5049069491dfc17891d7da43a43",
     "tests/missav-build.test.ts": "c092b132a580ff7346c468a623cdc9eb77bb3d47dd808988dab647617db74560",
     "tests/missav-collector.test.ts": "737ad5bea9f296efcb698023121b714e11e4886da4719432498510fd9f422a00",
+    "tests/missav-context.test.ts": "1870219b0e1f3c47f600a1782cfa3959dd972f8cf1b1aa3434782e9a9c3c8b77",
+    "tests/missav-installed-browser.mjs": "2860d2a7108988bc397b0595298b3659eeb0f976ed25e4405fc5dacd92f6eaf1",
     "tests/missav-request-url.test.ts": "881a0c8aed7d92aa4d3ccad9e0aaafaab83491ffdc840886d17fd1e204d14e14",
     "tests/missav.test.ts": "9b093d4c39ffa40e3d4e4d1b92708c0e5ea24fe026a487b86fdb861aeca67bde",
     "tests/missav_fixture_server.mjs": "5cc209f4ffadf4e20107e697f9b6089c24514e61fb2704b057d9aac381a57f5a",
@@ -177,7 +180,7 @@
     "tests/test_concurrency_release.py": "ff4cbdd868eadc4fd8dae225c9beffa2af9c97b309168a09cfe4588ca8878b82",
     "tests/test_desktop_bundle.py": "dfdd8e49dca0ab5925ea0b7299ae6f65d5adb79ebb18bea22371ede7a4d096d2",
     "tests/test_download_recovery_release.py": "77398b76d1373656a0e56783786cbf81f788fa3593f41157d0db0aaf3eded658",
-    "tests/test_missav_release.py": "d503bfcb78df2b3318081ba164660064dcebcaf137ceb37e954a57ea8d3db39d",
+    "tests/test_missav_release.py": "d042bbd742737f3b329b931e9e92a41c82cbcb0d70d9b4952f06d0d00af87227",
     "tests/test_no_http3_release.py": "1580c64a9d097f4278b59e634b3a47c0b1ff72b5d3a15a3ed26fb0c43bf36ddd",
     "tests/test_publish_release.py": "896a2cd9f100574a09328d1437bb8046c88ef93bf73385257a58ee34a2059635",
     "tests/test_release_bundle.py": "3463f78928b73eac11932f8d49fd7a959c796e3abee4ec24f3fac93540f71ca2",
@@ -191,7 +194,7 @@
     "tests/worker-input-audit.mjs": "12645b4ae989474b2a8edabdb5ea3fe960586e14efcf9e850299f2cb8429a148",
     "tsconfig.json": "a447c838b1d18d1c8500c2dc125198660e6a600dde1bceed697a58c186758529"
   },
-  "moduleCount": 45,
+  "moduleCount": 46,
   "entryCount": 9,
   "vendorEntryCount": 1,
   "vendorEntries": [
@@ -302,6 +305,10 @@
     },
     {
       "from": "src/local/background.ts",
+      "to": "src/local/missav-context.ts"
+    },
+    {
+      "from": "src/local/background.ts",
       "to": "src/local/missav-relay.ts"
     },
     {
@@ -347,6 +354,10 @@
     {
       "from": "src/local/collect-standard.ts",
       "to": "src/security/validation.ts"
+    },
+    {
+      "from": "src/local/collect.ts",
+      "to": "src/local/missav-context.ts"
     },
     {
       "from": "src/local/collect.ts",
@@ -455,6 +466,18 @@
     {
       "from": "src/local/media-file.ts",
       "to": "src/shared/media.ts"
+    },
+    {
+      "from": "src/local/missav-context.ts",
+      "to": "src/local/missav.ts"
+    },
+    {
+      "from": "src/local/missav-context.ts",
+      "to": "src/local/model.ts"
+    },
+    {
+      "from": "src/local/missav-context.ts",
+      "to": "src/security/validation.ts"
     },
     {
       "from": "src/local/missav-relay.ts",

@@ -77,7 +77,16 @@ export function missavPlaylistCandidates(pageURL: string, scripts: Iterable<stri
     const previous = found.get(id);
     if (previous && previous.rank > rank) return;
     if (!previous || previous.rank < rank) found.set(id, { rank, urls: new Set([value]) });
-    else previous.urls.add(value);
+    else {
+      if (rank === 2) {
+        const next = new URL(value);
+        for (const old of previous.urls) {
+          const before = new URL(old);
+          if (before.origin === next.origin && before.pathname === next.pathname) previous.urls.delete(old);
+        }
+      }
+      previous.urls.add(value);
+    }
   };
   let inspectedResources = 0;
   for (const url of resourceURLs) {

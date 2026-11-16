@@ -24,7 +24,7 @@ class MissavGuiTests(unittest.TestCase):
             window = gui.MainWindow(engine)
             try:
                 window.show(); app.processEvents()
-                self.assertEqual(gui.VERSION, '1.20.0')
+                self.assertEqual(gui.VERSION, '1.20.1')
                 self.assertIn('MissAV', window.url_input.placeholderText())
                 self.assertTrue(any('MissAV' in label.text() for label in window.findChildren(QLabel)))
                 url = 'https://missav123.com/ko/owned-fixture'

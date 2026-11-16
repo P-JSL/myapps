@@ -8,7 +8,7 @@ from unittest import mock
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location('missav_release', ROOT / 'scripts/release-missav-v120.py')
+spec = importlib.util.spec_from_file_location('missav_release', ROOT / 'scripts/release-missav.py')
 release = importlib.util.module_from_spec(spec); spec.loader.exec_module(release)
 
 
@@ -37,11 +37,20 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Original asset changed'): release.verify(path, 'a' * 40)
 
     def test_tag_and_standard_assets_remain_fixed(self):
-        self.assertEqual(release.TAG, 'v1.20.0-preview.1')
+        self.assertEqual(release.TAG, 'v1.20.1-preview.1')
         self.assertEqual(release.PINNED['my-video-app-extension-standard.zip'], '70ebcc3a49788d8fd1c61263914b386b612e9253bd3d937c9d3dec3b6e776942')
-        source = (ROOT / 'scripts/release-missav-v120.py').read_text(encoding='utf-8')
+        source = (ROOT / 'scripts/release-missav.py').read_text(encoding='utf-8')
         self.assertIn("'--latest=false'", source)
         self.assertNotIn('--clobber', source)
+
+    def test_mocked_or_other_build_browser_evidence_cannot_pass_the_installed_gate(self):
+        evidence = {'buildSha256': 'a' * 64, 'version': release.VERSION, 'extensionInstalled': True,
+                    'chromeAPIsMocked': False, 'checks': ['passed'] * 6, 'errors': []}
+        release.verify_installed_evidence(evidence, 'a' * 64)
+        for changed in [{'chromeAPIsMocked': True}, {'extensionInstalled': False}, {'checks': ['passed'] * 5},
+                        {'buildSha256': 'b' * 64}, {'errors': ['runtime failure']}]:
+            with self.assertRaisesRegex(ValueError, 'installed-extension'):
+                release.verify_installed_evidence({**evidence, **changed}, 'a' * 64)
 
 
 if __name__ == '__main__': unittest.main()

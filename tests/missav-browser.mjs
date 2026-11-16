@@ -122,7 +122,7 @@ try {
   assert.deepEqual(errors, []);
   console.log(`${checks.length} focused browser checks passed.`);
 } finally {
-  await writeFile(path.join(output, 'BROWSER-VALIDATION.json'), JSON.stringify({ version: '1.20.0', buildSha256: info.buildSha256, mode: 'real cross-origin page fetch; production offscreen, workers, WASM and OPFS; Chrome ports are test doubles', extensionInstallationVerified: false, targetFullVideoVerified: false, checks, errors, requests }, null, 2));
+  await writeFile(path.join(output, 'BROWSER-VALIDATION.json'), JSON.stringify({ version: JSON.parse(await readFile(path.join(root, 'package.json'))).version, buildSha256: info.buildSha256, mode: 'real cross-origin page fetch; production offscreen, workers, WASM and OPFS; Chrome ports are test doubles', extensionInstallationVerified: false, targetFullVideoVerified: false, checks, errors, requests }, null, 2));
   await context?.close();
   await Promise.all([original, media, application].map(server => new Promise(resolve => server.close(resolve))));
   await rm(profile, { recursive: true, force: true });
