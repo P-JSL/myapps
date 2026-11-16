@@ -2,7 +2,7 @@
 
 확인일: 2026-11-16, 한국 시간 기준. 통합 릴리즈 태그: `v1.19.4-bundle.1`.
 
-**MissAV 감지 추가판, MissAV 미추가 일반판 확장, Windows 앱을 한 릴리즈에서 각각 제공합니다.** 앱 코드는 기존 원격 `main`의 `748c332c1eb40a94b653f01fbad363631ec22857`을 유지합니다. 이 변경은 점검 근거와 다운로드 안내를 추가합니다.
+**MissAV 감지 추가판, MissAV 미추가 일반판 확장, Windows 앱을 한 릴리즈에서 각각 제공합니다.** 앱 코드는 기존 원격 `main`의 `748c332c1eb40a94b653f01fbad363631ec22857`을 유지합니다. 이 변경은 점검 근거·다운로드 안내와 통합 릴리즈 게시 절차를 추가합니다.
 
 ## 파일과 원본
 
@@ -32,6 +32,7 @@
 - `npm run typecheck`: 통과.
 - `node --experimental-strip-types --test tests/missav.test.ts tests/missav-collector.test.ts tests/missav-build.test.ts`: **12개 통과**.
 - 일반판 환경변수를 지정한 `tests/missav-build.test.ts`: **2개 통과**. 일반판 파일의 원본 바이트 일치와 빌드 진입점 분리를 확인했습니다.
+- `python3 -B tests/test_release_bundle.py -v`: **6개 통과**. 원본 자산 변조·누락, 다른 Windows 빌드의 검사 기록, 누락된 검사 결과, 로컬에서의 게시 시도를 거부하는지 확인했습니다.
 - 두 확장 ZIP, Windows ZIP, 백신 도우미를 원본 릴리즈에서 재다운로드하여 원본 체크섬·GitHub 자산 SHA-256·파일 크기·ZIP CRC·경로·중복 항목을 확인했습니다.
 - 두 확장의 수집 스크립트 해시가 서로 다른 것을 확인했습니다.
 - Windows ZIP의 모든 파일을 `APPMANIFEST.json`과 대조하고, manifest의 소스 해시를 현재 체크아웃과 대조했습니다. 기존 Windows 검사 기록의 버전·원래 빌드 커밋·ZIP 해시도 일치합니다.
@@ -47,3 +48,5 @@
 ```
 
 현재 소스 ZIP 및 기타 증거 파일의 해시는 릴리즈에 첨부하는 `SHA256SUMS-RELEASE.txt`를 기준으로 합니다. 환경 설정의 게시 작업은 수행하지 않습니다.
+
+통합 게시 작업은 [전용 GitHub Actions](../.github/workflows/release-bundle.yml)에서 실행합니다. [준비·게시 스크립트](../scripts/assemble-release-bundle.py)가 원본 설치 파일과 현재 소스의 일치를 검증하고, 모든 첨부 파일의 원격 크기·해시가 일치한 뒤에만 초안을 게시합니다. 이미 게시된 릴리즈의 파일이나 기존 태그는 덮어쓰지 않습니다.

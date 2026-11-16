@@ -1,0 +1,45 @@
+name: Publish standard extension, MissAV extension and Windows bundle
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/release-bundle.yml
+      - scripts/assemble-release-bundle.py
+      - tests/test_release_bundle.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-v1.19.4-bundle.1
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the exact release commit
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Check only aggregate release integrity rules
+        run: python3 -B tests/test_release_bundle.py -v
+
+      - name: Download the existing, pinned installation files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/release-bundle
+          gh release download v1.19.4-missav.2 --repo "$GITHUB_REPOSITORY" --dir .cache/release-bundle --pattern my-video-app-extension-missav.zip --pattern my-video-app-extension-standard.zip --pattern my-video-app-antivirus-helper.zip
+          gh release download v1.19.4 --repo "$GITHUB_REPOSITORY" --dir .cache/release-bundle --pattern my-video-app-desktop-windows-x64.zip --pattern WINDOWS-VALIDATION.json
+
+      - name: Verify all files, prepare current source and publish the complete draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -B scripts/assemble-release-bundle.py --artifacts .cache/release-bundle --publish
