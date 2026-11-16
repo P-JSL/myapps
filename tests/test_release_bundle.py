@@ -1,6 +1,7 @@
 """Focused release-integrity checks, independent of the earlier application suites."""
 import copy
 import importlib.util
+import hashlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -50,6 +51,47 @@ class BundleTests(unittest.TestCase):
     def test_local_or_wrong_repository_publication_is_blocked(self):
         with patch.dict(bundle.os.environ, {'GITHUB_ACTIONS': 'false'}, clear=True), self.assertRaisesRegex(ValueError, 'authorized'):
             bundle.publish(Path('/not-used'), 'c' * 40, [])
+
+    def test_empty_untagged_draft_uses_creation_upload_before_publication(self):
+        commit = 'c' * 40
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            (directory / 'sample.zip').write_bytes(b'verified package')
+            (directory / 'release-notes.md').write_text('test notes', encoding='utf-8')
+            asset = {'name': 'sample.zip', 'size': len(b'verified package'),
+                     'digest': 'sha256:' + hashlib.sha256(b'verified package').hexdigest()}
+            state = {'created': False, 'published': False}
+            old = {'tag_name': bundle.TAG, 'id': 1, 'draft': True, 'assets': []}
+
+            def api(args):
+                endpoint = args[-1]
+                if endpoint.endswith('releases?per_page=100'):
+                    return [dict(old, id=2, assets=[asset])] if state['created'] else [old]
+                if endpoint.endswith('/releases/2'):
+                    return {'assets': [asset], 'draft': not state['published'], 'prerelease': True, 'html_url': 'https://example.test/release'}
+                if '/git/ref/tags/' in endpoint:
+                    return {'object': {'sha': commit}}
+                self.fail(endpoint)
+
+            def command(args, **kwargs):
+                if '/git/ref/tags/' in ' '.join(args):
+                    return bundle.subprocess.CompletedProcess(args, 1, '', 'HTTP 404')
+                self.assertNotEqual(args[1:3], ['release', 'upload'])
+                if args[1:3] == ['release', 'create']:
+                    self.assertIn(str(directory / 'sample.zip'), args)
+                    self.assertIn('--draft', args)
+                    state['created'] = True
+                if 'PATCH' in args:
+                    self.assertTrue(state['created'])
+                    state['published'] = True
+                return bundle.subprocess.CompletedProcess(args, 0, '', '')
+
+            env = {'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': bundle.REPOSITORY,
+                   'GITHUB_REF': 'refs/heads/main', 'GITHUB_SHA': commit}
+            with patch.dict(bundle.os.environ, env, clear=True), patch.object(bundle, 'gh_json', side_effect=api), \
+                    patch.object(bundle.subprocess, 'run', side_effect=command), patch('builtins.print'):
+                bundle.publish(directory, commit, ['sample.zip'])
+            self.assertTrue(state['created'] and state['published'])
 
 
 if __name__ == '__main__':

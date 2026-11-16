@@ -32,7 +32,7 @@
 - `npm run typecheck`: 통과.
 - `node --experimental-strip-types --test tests/missav.test.ts tests/missav-collector.test.ts tests/missav-build.test.ts`: **12개 통과**.
 - 일반판 환경변수를 지정한 `tests/missav-build.test.ts`: **2개 통과**. 일반판 파일의 원본 바이트 일치와 빌드 진입점 분리를 확인했습니다.
-- `python3 -B tests/test_release_bundle.py -v`: **6개 통과**. 원본 자산 변조·누락, 다른 Windows 빌드의 검사 기록, 누락된 검사 결과, 로컬에서의 게시 시도를 거부하는지 확인했습니다.
+- `python3 -B tests/test_release_bundle.py -v`: **7개 통과**. 원본 자산 변조·누락, 다른 Windows 빌드의 검사 기록, 누락된 검사 결과, 로컬에서의 게시 시도를 거부하는지 확인했습니다. 태그가 없는 빈 초안도 생성·파일 첨부 후에만 게시하는지 회귀 검사했습니다.
 - 두 확장 ZIP, Windows ZIP, 백신 도우미를 원본 릴리즈에서 재다운로드하여 원본 체크섬·GitHub 자산 SHA-256·파일 크기·ZIP CRC·경로·중복 항목을 확인했습니다.
 - 두 확장의 수집 스크립트 해시가 서로 다른 것을 확인했습니다.
 - Windows ZIP의 모든 파일을 `APPMANIFEST.json`과 대조하고, manifest의 소스 해시를 현재 체크아웃과 대조했습니다. 기존 Windows 검사 기록의 버전·원래 빌드 커밋·ZIP 해시도 일치합니다.

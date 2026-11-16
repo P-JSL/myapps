@@ -121,7 +121,7 @@ def prepare(directory):
         'appCodeChangedInBundleCommit': False, 'siteVideoVerified': False,
         'siteAccess': 'Cloudflare HTTP 403 human verification',
         'currentChecks': {'typecheck': 'passed', 'missavFocusedTests': 12, 'standardBuildTests': 2,
-                          'bundleIntegrityTests': 6,
+                          'bundleIntegrityTests': 7,
                           'originalAssetChecksums': 'passed', 'zipCRCAndInventory': 'passed',
                           'desktopCurrentSourceIdentity': 'passed', 'previousFullSuites': 'not repeated'},
         'files': {name: {'sha256': sha256(directory / name), 'bytes': (directory / name).stat().st_size,
@@ -143,7 +143,7 @@ def prepare(directory):
 
 전체 소스 ZIP은 현재 커밋 `{commit}`의 코드와 점검 보고서입니다. 파일 출처는 `RELEASE-CONTENTS.json`, 모든 첨부 파일의 체크섬은 `SHA256SUMS-RELEASE.txt`에 있습니다. 선택적 백신 도우미와 원래 Windows 빌드의 `WINDOWS-VALIDATION.json`도 제공합니다.
 
-타입 검사와 MissAV·일반판 구분 검사 14개가 통과했습니다. 이번 통합 배포의 원본 자산·Windows 검사 기록 검증 6개도 통과해야 게시합니다. 기존 전체 회귀 검사와 Windows 실행 검사는 반복하지 않았습니다.
+타입 검사와 MissAV·일반판 구분 검사 14개가 통과했습니다. 이번 통합 배포의 원본 자산·Windows 검사 기록 및 게시 절차 검증 7개도 통과해야 게시합니다. 기존 전체 회귀 검사와 Windows 실행 검사는 반복하지 않았습니다.
 
 [사이트 접속 결과와 검사 범위](https://github.com/{REPOSITORY}/blob/{commit}/reports/RELEASE_BUNDLE_2026_11_16.ko.md)
 
@@ -166,14 +166,8 @@ def publish(directory, commit, names):
     # explicitly so an earlier failed local upload cannot create another draft.
     matches = [r for r in gh_json(['api', f'repos/{REPOSITORY}/releases?per_page=100']) if r['tag_name'] == TAG]
     require(len(matches) <= 1, 'Multiple matching releases require review')
-    if not matches:
-        subprocess.run(['gh', 'release', 'create', TAG, '--repo', REPOSITORY, '--target', commit,
-                        '--draft', '--prerelease', '--latest=false', '--title', 'My Video App v1.19.4 · 확장 2종 + Windows 앱'], check=True)
-        matches = [r for r in gh_json(['api', f'repos/{REPOSITORY}/releases?per_page=100']) if r['tag_name'] == TAG]
-        require(len(matches) == 1, 'Created draft was not found')
-        release = matches[0]
-    else:
-        release = matches[0]
+    release = matches[0] if matches else None
+    if release is not None:
         require(release['draft'], 'Refusing to modify an already published release')
     # A draft may point to the preceding documentation commit; only an absent tag
     # can use this updated target. Existing published/annotated tags never move.
@@ -182,25 +176,27 @@ def publish(directory, commit, names):
         require(json.loads(tag.stdout)['object']['sha'] == commit, 'Existing tag belongs to another commit')
     else:
         require('404' in tag.stderr, 'Cannot inspect release tag')
-    edit = directory / 'release-edit.json'
-    edit.write_text(json.dumps({'target_commitish': commit, 'name': 'My Video App v1.19.4 · MissAV 확장 / 일반 확장 / Windows 앱',
-                                'body': (directory / 'release-notes.md').read_text(encoding='utf-8'),
-                                'draft': True, 'prerelease': True, 'make_latest': 'false'}, ensure_ascii=False), encoding='utf-8')
+    if release is None or not release['assets']:
+        if release is not None:
+            # Only our empty unpublished draft is disposable. No asset or tag is deleted.
+            subprocess.run(['gh', 'api', '--method', 'DELETE', f'repos/{REPOSITORY}/releases/{release["id"]}', '--silent'], check=True)
+        # gh release upload cannot always resolve an untagged draft. Creation
+        # with assets keeps the release ID throughout upload, as in the main publisher.
+        subprocess.run(['gh', 'release', 'create', TAG, *[str(directory / n) for n in names],
+                        '--repo', REPOSITORY, '--target', commit, '--draft', '--prerelease', '--latest=false',
+                        '--title', 'My Video App v1.19.4 · MissAV 확장 / 일반 확장 / Windows 앱',
+                        '--notes-file', str(directory / 'release-notes.md')], check=True)
+        matches = [r for r in gh_json(['api', f'repos/{REPOSITORY}/releases?per_page=100']) if r['tag_name'] == TAG]
+        require(len(matches) == 1 and matches[0]['draft'], 'Created draft was not found')
+        release = matches[0]
     endpoint = f'repos/{REPOSITORY}/releases/{release["id"]}'
-    subprocess.run(['gh', 'api', '--method', 'PATCH', endpoint, '--input', str(edit), '--silent'], check=True)
-    for name in names:
-        current = gh_json(['api', endpoint])
-        existing = [a for a in current['assets'] if a['name'] == name]
-        if existing:
-            require(len(existing) == 1 and existing[0]['size'] == expected[name]
-                    and existing[0].get('digest') == 'sha256:' + hashes[name], 'Existing asset differs: ' + name)
-        else:
-            subprocess.run(['gh', 'release', 'upload', TAG, str(directory / name), '--repo', REPOSITORY], check=True)
     current = gh_json(['api', endpoint])
     require(set(a['name'] for a in current['assets']) == set(names), 'Release asset inventory mismatch')
     for a in current['assets']:
         require(a['size'] == expected[a['name']] and a.get('digest') == 'sha256:' + hashes[a['name']], 'Uploaded asset mismatch: ' + a['name'])
-    edit.write_text(json.dumps({'draft': False, 'prerelease': True, 'make_latest': 'false'}), encoding='utf-8')
+    edit = directory / 'release-edit.json'
+    edit.write_text(json.dumps({'target_commitish': commit, 'draft': False, 'prerelease': True, 'make_latest': 'false',
+                                'body': (directory / 'release-notes.md').read_text(encoding='utf-8')}, ensure_ascii=False), encoding='utf-8')
     subprocess.run(['gh', 'api', '--method', 'PATCH', endpoint, '--input', str(edit), '--silent'], check=True)
     published = gh_json(['api', endpoint])
     require(not published['draft'] and published['prerelease'], 'Release publication did not complete')
