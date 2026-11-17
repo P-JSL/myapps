@@ -9,6 +9,7 @@ from __future__ import annotations
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 import hashlib
+import gc
 import errno
 import importlib.metadata
 import importlib.util
@@ -24,6 +25,7 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 from typing import Callable, TYPE_CHECKING
 from urllib.parse import parse_qs, unquote, urlsplit, urlunsplit
 import uuid
@@ -289,6 +291,35 @@ def preload_downloader(app_root: str | Path) -> bool:
         return True
     except (ImportError, OSError, EngineError, importlib.metadata.PackageNotFoundError):
         return False
+
+
+def _close_aborted_fragments(error: BaseException, directory: Path):
+    """Close owned outputs retained by the pinned fragment downloader on abort.
+
+    yt-dlp closes dest_stream on success, but a progress-hook exception can leave
+    it in its traceback's fragment context. Windows then prevents cleanup and
+    the next attempt's rename. All fragment futures have unwound before this.
+    """
+    frame = error.__traceback__
+    while frame is not None:
+        if frame.tb_frame.f_globals.get("__name__", "").startswith("yt_dlp.downloader."):
+            context = frame.tb_frame.f_locals.get("ctx")
+            if isinstance(context, dict):
+                stream, filename = context.get("dest_stream") or context.get("stream"), context.get("tmpfilename")
+                if stream is not None and isinstance(filename, str):
+                    try:
+                        path = Path(filename).absolute()
+                        path.relative_to(directory)
+                        if path.is_file() and not path.is_symlink():
+                            stream.close()
+                    except (OSError, ValueError):
+                        pass
+        frame = frame.tb_next
+    # Other completed fragment futures can retain their own exception cycles.
+    # Release unwound locals before collecting those unreachable file handles;
+    # active workers remain reachable and are unaffected.
+    traceback.clear_frames(error.__traceback__)
+    gc.collect()
 
 
 def _has_video(track: dict) -> bool:
@@ -1049,7 +1080,11 @@ class Engine:
                         workers = self._fragment_workers(track)
                         downloader.params["concurrent_fragment_downloads"] = workers
                         with self._resource("network", cancel, workers):
-                            success = downloader.dl(str(path), item)
+                            try:
+                                success = downloader.dl(str(path), item)
+                            except BaseException as error:
+                                _close_aborted_fragments(error, directory)
+                                raise
                         if not (success[0] if isinstance(success, tuple) else success) or not path.is_file() or path.is_symlink():
                             raise EngineError("다운로드가 끝나지 않았습니다. 다시 시도하면 새 원본을 확인하고 안전하게 이어받습니다.")
                         with self._resource("processing", cancel):

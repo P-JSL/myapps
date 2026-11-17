@@ -95,6 +95,25 @@ jobs:
           & $python -I -B desktop/test_windows_gui_download.py --app-root $env:MYVIDEOAPP_TEST_ROOT --output artifacts/windows-verification/gui 2>&1 | Tee-Object artifacts/windows-verification/gui-download.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Operate the actual UI of both installed extension builds
+        run: |
+          New-Item -ItemType Directory -Force artifacts/windows-verification/extension-ui | Out-Null
+          foreach ($variant in @('missav', 'standard')) {
+            $env:MY_VIDEO_APP_EXTENSION_VARIANT = $variant
+            npm run build
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            node --experimental-strip-types --test tests/missav-build.test.ts 2>&1 | Tee-Object "artifacts/windows-verification/extension-ui/$variant-build.log"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            node tests/extension-ui-installed-browser.mjs 2>&1 | Tee-Object "artifacts/windows-verification/extension-ui/$variant.log"
+            $verificationExit = $LASTEXITCODE
+            Copy-Item ".cache/extension-ui-installed-browser/$variant/VALIDATION.json" "artifacts/windows-verification/extension-ui/$variant.json"
+            Get-ChildItem ".cache/extension-ui-installed-browser/$variant/*.png" | ForEach-Object {
+              Copy-Item $_.FullName "artifacts/windows-verification/extension-ui/$variant-$($_.Name)"
+            }
+            if ($verificationExit -ne 0) { exit $verificationExit }
+          }
+          Remove-Item Env:MY_VIDEO_APP_EXTENSION_VARIANT
+
       - name: Retain verification evidence without releasing a build
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -107,4 +126,7 @@ jobs:
             artifacts/windows-verification/gui/*.json
             artifacts/windows-verification/gui/*.log
             artifacts/windows-verification/gui/fixture-requests.jsonl
+            artifacts/windows-verification/extension-ui/*.json
+            artifacts/windows-verification/extension-ui/*.png
+            artifacts/windows-verification/extension-ui/*.log
           retention-days: 7
