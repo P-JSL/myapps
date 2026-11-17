@@ -243,7 +243,9 @@ try:
     checks.append('HTTP 403 creates an error card and the real retry button completes the same job')
 
     slow = enter(ROOT + 'slow/video.m3u8')
-    wait(lambda: window.items[slow].stage == 'downloading', 'Slow job did not reach downloading')
+    wait(lambda: window.items[slow].stage == 'downloading'
+         and '/slow/clip-' in (OUT / 'fixture-requests.jsonl').read_text(encoding='utf-8'),
+         'Slow job did not request a media fragment')
     QTest.mouseClick(window.cards[slow].action, Qt.MouseButton.LeftButton)
     finish(slow, 'cancelled'); screenshot('06-cancelled')
     assert not window.items[slow].filepath
