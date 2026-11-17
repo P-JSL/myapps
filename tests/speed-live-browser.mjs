@@ -1,4 +1,4 @@
-// Compare an immutable published extension with the candidate on one Windows
+// Compare the pinned decoder-optimized source with the encoding candidate on one Windows
 // runner. ABBA order reduces simple warmup/time-order bias. No media is retained.
 import { spawnSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -28,10 +28,13 @@ for (const [index, method] of ['baseline', 'candidate', 'candidate', 'baseline']
 }
 assert.equal(new Set(runs.map(row => row.sha256)).size, 1, 'Saved media changed between comparison runs');
 assert.equal(new Set(runs.map(row => row.browserVersion)).size, 1);
+for (const method of ['baseline', 'candidate']) assert.equal(new Set(runs.filter(row => row.method === method).map(row => row.buildSha256)).size, 1);
+assert.notEqual(runs[0].buildSha256, runs[1].buildSha256, 'Both methods loaded the same extension build');
 const baseline = runs.filter(row => row.method === 'baseline').map(row => row.downloadElapsedMs);
 const candidate = runs.filter(row => row.method === 'candidate').map(row => row.downloadElapsedMs);
 const mean = values => values.reduce((sum, value) => sum + value, 0) / values.length;
 const result = { platform: process.platform, order: 'ABBA', runs, sampleCountPerMethod: 2,
+  baselineSourceCommit: process.env.MYVIDEOAPP_SPEED_BASELINE_COMMIT, candidateSourceCommit: process.env.GITHUB_SHA,
   baselineMeanMs: mean(baseline), candidateMeanMs: mean(candidate),
   timeReductionPercent: (1 - mean(candidate) / mean(baseline)) * 100,
   identicalSavedFileSha256: runs[0].sha256,

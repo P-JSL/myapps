@@ -99,3 +99,16 @@ test('a content-script disconnect fails the in-flight request rather than leavin
   });
   await assert.rejects(fetcher(manifest), /연결이 끊겼/);
 });
+
+test('Chrome JSON encoding preserves offset views and base64/chunk boundary tails', async () => {
+  for (const length of [0, 1, 2, 3, 8191, 8192, 8193, 128 * 1024 - 1, 128 * 1024, 128 * 1024 + 1, 256 * 1024 + 2]) {
+    const allocation = new Uint8Array(length + 19).fill(0xa5);
+    const bytes = allocation.subarray(7, 7 + length);
+    for (let index = 0; index < bytes.length; index++) bytes[index] = index % 256;
+    const fetcher = relay(async () => new Response(new ReadableStream<Uint8Array>({
+      start(controller) { controller.enqueue(bytes); controller.close(); },
+    })));
+    const response = await fetcher(root + '1080p/view.ts');
+    assert.deepEqual(new Uint8Array(await response.arrayBuffer()), bytes, `offset view of ${length} bytes`);
+  }
+});

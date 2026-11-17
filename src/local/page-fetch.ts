@@ -22,7 +22,7 @@ export function messageWire(port: MessagePort): FetchWire {
 }
 function encode(bytes: Uint8Array): string {
   let value = '';
-  for (let at = 0; at < bytes.length; at += 8192) value += String.fromCharCode(...bytes.subarray(at, at + 8192));
+  for (let at = 0; at < bytes.length; at += 8192) value += Reflect.apply(String.fromCharCode, undefined, bytes.subarray(at, at + 8192));
   return btoa(value);
 }
 function decode(value: unknown): Uint8Array<ArrayBuffer> {

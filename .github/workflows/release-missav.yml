@@ -1,4 +1,4 @@
-name: Measure download speed without publishing
+name: Measure additional encoding speed without publishing
 on:
   workflow_dispatch:
     inputs:
@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   speed-comparison:
-    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/codex/speed-verify-20261117'
+    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/codex/speed-encode-20261117'
     runs-on: windows-2025
     timeout-minutes: 65
     defaults:
@@ -40,23 +40,33 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node node_modules/playwright-core/cli.js install chromium
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Prepare the exact published baseline and media verifier
+      - name: Check out the exact decoder-optimized baseline
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 9e0999e56a3bff484f3c4b3e306594897778df6d
+          path: .cache/speed-baseline/source
+          persist-credentials: false
+      - name: Build the fixed baseline in a separate directory
+        working-directory: .cache/speed-baseline/source
+        run: |
+          if ((git rev-parse HEAD) -ne '9e0999e56a3bff484f3c4b3e306594897778df6d') { throw 'Baseline source mismatch' }
+          npm ci --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $report = Get-Content reports/build-missav.json -Raw | ConvertFrom-Json
+          if ($report.buildSha256 -ne 'd2370d847b54dbf12c5583769ae9ef71fd882ff3b206c3a80c12fb23dafffcd7') { throw 'Baseline build identity mismatch' }
+          Copy-Item -Recurse extensions/missav ../my-video-app-missav
+          Copy-Item reports/build-missav.json ../MISSAV-BUILD.json
+      - name: Prepare the pinned media verifier
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          New-Item -ItemType Directory -Force .cache/speed-baseline, .cache/speed-ffmpeg, artifacts/speed-verification | Out-Null
-          gh release download v1.20.3 --repo $env:GITHUB_REPOSITORY --dir .cache/speed-baseline --pattern my-video-app-extension-missav.zip --pattern MISSAV-BUILD.json --pattern my-video-app-desktop-windows-x64.zip
+          New-Item -ItemType Directory -Force .cache/speed-ffmpeg, artifacts/speed-verification | Out-Null
+          gh release download v1.20.3 --repo $env:GITHUB_REPOSITORY --dir .cache/speed-ffmpeg --pattern my-video-app-desktop-windows-x64.zip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $pins = @{
-            'my-video-app-extension-missav.zip'='aa00ef6f23b233f561d89fa59c8fb7e65c45ea43bed6acc6bb8963716e9e6c82';
-            'MISSAV-BUILD.json'='71b5082b76a010475375c8aecbab459029f3a692761452c89119173082a9d627';
-            'my-video-app-desktop-windows-x64.zip'='e80ce5c39000559c0241a7796e0ea0af8e5db7775e44f413d0d8a24d6557c095'
-          }
-          foreach ($file in $pins.Keys) {
-            if ((Get-FileHash ".cache/speed-baseline/$file" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pins[$file]) { throw 'Published baseline mismatch' }
-          }
-          Expand-Archive .cache/speed-baseline/my-video-app-extension-missav.zip .cache/speed-baseline
-          $archive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path .cache/speed-baseline/my-video-app-desktop-windows-x64.zip))
+          if ((Get-FileHash .cache/speed-ffmpeg/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'e80ce5c39000559c0241a7796e0ea0af8e5db7775e44f413d0d8a24d6557c095') { throw 'Pinned media verifier mismatch' }
+          $archive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path .cache/speed-ffmpeg/my-video-app-desktop-windows-x64.zip))
           try {
             foreach ($tool in @('ffmpeg', 'ffprobe')) {
               $entry = $archive.GetEntry("MyVideoApp/runtime/ffmpeg/$tool.exe")
@@ -69,6 +79,7 @@ jobs:
         env:
           MYVIDEOAPP_LIVE_PAGE_URL: ${{ inputs.live_page_url }}
           MYVIDEOAPP_LIVE_MEDIA_URL: ${{ inputs.live_media_url }}
+          MYVIDEOAPP_SPEED_BASELINE_COMMIT: 9e0999e56a3bff484f3c4b3e306594897778df6d
         run: |
           node tests/speed-live-browser.mjs 2>&1 | Tee-Object artifacts/speed-verification/compare.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
