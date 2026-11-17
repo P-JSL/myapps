@@ -2,13 +2,22 @@ name: Verify Windows draft without publication
 
 on:
   workflow_dispatch:
+    inputs:
+      live_page_url:
+        description: 'Explicit source page for an optional real-site verification'
+        required: false
+        default: ''
+      live_media_url:
+        description: 'Explicit HLS URL; leave empty for owned-fixture checks'
+        required: false
+        default: ''
 
 permissions:
   contents: read
 
 jobs:
   windows-verification:
-    if: github.repository == 'P-JSL/myapps' && startsWith(github.ref, 'refs/heads/codex/windows-verify-')
+    if: github.repository == 'P-JSL/myapps' && startsWith(github.ref, 'refs/heads/codex/windows-verify-') && inputs.live_media_url == ''
     runs-on: windows-2025
     timeout-minutes: 35
     env:
@@ -129,4 +138,62 @@ jobs:
             artifacts/windows-verification/extension-ui/*.json
             artifacts/windows-verification/extension-ui/*.png
             artifacts/windows-verification/extension-ui/*.log
+          retention-days: 7
+
+  windows-live-verification:
+    if: github.repository == 'P-JSL/myapps' && startsWith(github.ref, 'refs/heads/codex/windows-verify-') && inputs.live_media_url != ''
+    runs-on: windows-2025
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Preserve source bytes
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Prepare a fresh installed extension and pinned media verifier
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          npm ci --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node node_modules/playwright-core/cli.js install chromium
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force .cache/live-ffmpeg, artifacts/live-windows-verification | Out-Null
+          gh release download v1.19.4 --repo $env:GITHUB_REPOSITORY --pattern my-video-app-desktop-windows-x64.zip --output .cache/live-runtime.zip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-FileHash .cache/live-runtime.zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne '2fb6e36bfc04068a3fe29ccaa6f08518de47ab1e67cd5be5448e419115d83768') { throw 'Pinned verifier archive mismatch' }
+          $archive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path .cache/live-runtime.zip))
+          try {
+            foreach ($tool in @('ffmpeg', 'ffprobe')) {
+              $entry = $archive.GetEntry("MyVideoApp/runtime/ffmpeg/$tool.exe")
+              if ($null -eq $entry) { throw 'Missing pinned verifier' }
+              [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, (Join-Path (Resolve-Path .cache/live-ffmpeg) "$tool.exe"), $true)
+            }
+          } finally { $archive.Dispose() }
+          (Resolve-Path .cache/live-ffmpeg).Path | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Download the explicit real URL through the installed extension UI
+        env:
+          MYVIDEOAPP_LIVE_PAGE_URL: ${{ inputs.live_page_url }}
+          MYVIDEOAPP_LIVE_MEDIA_URL: ${{ inputs.live_media_url }}
+        run: |
+          node tests/extension-live-browser.mjs 2>&1 | Tee-Object artifacts/live-windows-verification/live.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain status only without publishing the video or a build
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: live-windows-verification-${{ github.run_id }}
+          path: |
+            artifacts/live-windows-verification/*.json
+            artifacts/live-windows-verification/*.log
           retention-days: 7
