@@ -6,6 +6,10 @@ import sys
 import threading
 import unittest
 
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, 'reconfigure'):
+        stream.reconfigure(encoding='utf-8', errors='backslashreplace')
+
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument('--app-root', type=Path, default=Path(__file__).resolve().parent.parent)
 args, remaining = parser.parse_known_args()

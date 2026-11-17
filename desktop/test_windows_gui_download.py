@@ -4,6 +4,8 @@ No engine or extraction worker is replaced. A localhost-only TLS fixture tunnel
 is inherited by the real isolated metadata child. TLS verification stays on.
 """
 import argparse
+import ctypes
+from ctypes import wintypes
 import json
 import os
 from pathlib import Path
@@ -19,6 +21,9 @@ parser.add_argument('--output', type=Path, required=True)
 args = parser.parse_args()
 if sys.platform != 'win32':
     raise SystemExit('This verification requires native Windows; Linux/Wine cannot pass it.')
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, 'reconfigure'):
+        stream.reconfigure(encoding='utf-8', errors='backslashreplace')
 APP = args.app_root.resolve()
 REPO = Path(__file__).resolve().parent.parent
 OUT = args.output.resolve(); OUT.mkdir(parents=True, exist_ok=True)
@@ -57,6 +62,50 @@ def wait(predicate, message, seconds=35):
 def screenshot(name):
     QApplication.processEvents()
     assert window.grab().save(str(OUT / (name + '.png')))
+
+
+def launcher_window(parent_pid):
+    """Find only a visible window belonging to this owned launcher's child."""
+    class ProcessEntry(ctypes.Structure):
+        _fields_ = [('size', wintypes.DWORD), ('usage', wintypes.DWORD), ('pid', wintypes.DWORD),
+                    ('heap', ctypes.c_size_t), ('module', wintypes.DWORD), ('threads', wintypes.DWORD),
+                    ('parent', wintypes.DWORD), ('priority', wintypes.LONG), ('flags', wintypes.DWORD),
+                    ('name', wintypes.WCHAR * 260)]
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+    kernel.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    kernel.Process32FirstW.argtypes = kernel.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessEntry)]
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    handle = kernel.CreateToolhelp32Snapshot(2, 0)
+    assert handle not in (None, ctypes.c_void_p(-1).value)
+    children = set()
+    try:
+        entry = ProcessEntry(); entry.size = ctypes.sizeof(entry)
+        available = kernel.Process32FirstW(handle, ctypes.byref(entry))
+        while available:
+            if entry.parent == parent_pid:
+                children.add(entry.pid)
+            available = kernel.Process32NextW(handle, ctypes.byref(entry))
+    finally:
+        kernel.CloseHandle(handle)
+    user = ctypes.WinDLL('user32', use_last_error=True)
+    callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    user.EnumWindows.argtypes = [callback_type, wintypes.LPARAM]
+    user.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+    user.IsWindowVisible.argtypes = [wintypes.HWND]
+    user.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    found = []
+    @callback_type
+    def visit(hwnd, _):
+        pid = wintypes.DWORD()
+        user.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        title = ctypes.create_unicode_buffer(256)
+        user.GetWindowTextW(hwnd, title, len(title))
+        if pid.value in children and user.IsWindowVisible(hwnd) and title.value == f'MyVideoApp {gui.VERSION}':
+            found.append(hwnd)
+        return True
+    user.EnumWindows(visit, 0)
+    return found[0] if found else None
 
 
 def enter(url):
@@ -105,18 +154,26 @@ try:
     proxy_port = json.loads(fixture.stdout.readline())['proxy']
     os.environ.update({'HTTPS_PROXY': f'http://127.0.0.1:{proxy_port}', 'https_proxy': f'http://127.0.0.1:{proxy_port}',
                        'SSL_CERT_FILE': str(cert), 'REQUESTS_CA_BUNDLE': str(cert), 'NO_PROXY': '127.0.0.1,localhost', 'no_proxy': '127.0.0.1,localhost'})
-    launcher = subprocess.Popen([str(APP / 'My Video App.exe'), '--smoke-test', '--data-dir', str(OUT / '런처 시작 데이터'),
-                                 '--screenshot', str(OUT / '00-native-launcher.png')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    app = QApplication.instance() or QApplication([])
+    app.setStyle('Fusion'); app.setQuitOnLastWindowClosed(False)
+    assert app.platformName() == 'windows'
+    child_environment = {**os.environ, 'LOCALAPPDATA': str(OUT / '런처 개별 데이터')}
+    launcher = subprocess.Popen([str(APP / 'My Video App.exe')], env=child_environment,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
+        wait(lambda: launcher_window(launcher.pid) is not None, 'Actual EXE did not show its native window', 20)
+        handle = launcher_window(launcher.pid)
+        wait(lambda: app.primaryScreen().grabWindow(int(handle)).save(str(OUT / '00-native-launcher.png')),
+             'Could not capture the real launcher window', 5)
+        user = ctypes.WinDLL('user32', use_last_error=True)
+        user.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+        assert user.PostMessageW(handle, 0x0010, 0, 0)
         assert launcher.wait(timeout=20) == 0
     except Exception:
         subprocess.run(['taskkill', '/PID', str(launcher.pid), '/T', '/F'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         raise
     assert (OUT / '00-native-launcher.png').is_file()
     checks.append('the actual EXE launcher opens native Qt from a Unicode installation path')
-    app = QApplication.instance() or QApplication([])
-    app.setStyle('Fusion')
-    assert app.platformName() == 'windows'
     destination = OUT / '한글 저장 폴더'; destination.mkdir(exist_ok=True)
     data = OUT / '개별 테스트 데이터'
     activity = ActivityLog(data, version=gui.VERSION)

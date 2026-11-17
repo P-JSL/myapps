@@ -88,7 +88,7 @@ jobs:
           & $python -I -B desktop/test_windows_gui_download.py --app-root $env:MYVIDEOAPP_TEST_ROOT --output artifacts/windows-verification/gui 2>&1 | Tee-Object artifacts/windows-verification/gui-download.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Retain private verification evidence only
+      - name: Retain verification evidence without releasing a build
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
