@@ -1,4 +1,4 @@
-"""Verify three freshly built products and publish the immutable 1.20.3 release."""
+"""Verify three freshly built products and publish the immutable 1.20.4 release."""
 import argparse
 import hashlib
 import importlib.util
@@ -11,7 +11,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 REPO = 'P-JSL/myapps'
-VERSION = '1.20.3'
+VERSION = '1.20.4'
 TAG = 'v' + VERSION
 RELEASE_REF = 'refs/heads/codex/release-' + VERSION
 PINNED = {'my-video-app-antivirus-helper.zip': '88818c9cc0ea443be213ac0c2c20cbeebf3796444026824ac3f9306aef55c959'}
@@ -86,7 +86,7 @@ def verify(directory, commit):
             == {name: sha(ROOT / 'native' / name) for name in helper_files}, 'Pinned antivirus helper differs from current source')
     windows = read_json(directory / 'WINDOWS-VALIDATION.json')
     require(windows.get('commit') == commit and windows.get('version') == VERSION
-            and windows.get('platform') == 'windows-x64' and windows.get('scope') == 'release-three-variants-v1203', 'Windows validation provenance mismatch')
+            and windows.get('platform') == 'windows-x64' and windows.get('scope') == 'release-three-variants-v1204', 'Windows validation provenance mismatch')
     require(windows.get('nativeMissavTests') == 12 and windows.get('nativeGuiTests') == 1
             and windows.get('directHlsTests') == 4 and windows.get('nativeDownloadGuiChecks') == 7, 'Windows runtime checks are missing')
     require(windows.get('desktopSha256') == sha(directory / PRODUCTS[2]), 'Windows validation belongs to another ZIP')
@@ -143,7 +143,8 @@ def prepare(directory):
     spec = importlib.util.spec_from_file_location('_release_source_archive', ROOT / 'scripts/assemble-release-bundle.py')
     helper = importlib.util.module_from_spec(spec); spec.loader.exec_module(helper)
     helper.source_zip(directory / 'my-video-app-source.zip', commit)
-    names = PRODUCTS + list(PINNED) + ['my-video-app-source.zip', 'WINDOWS-VALIDATION.json', 'WINDOWS-GUI-VALIDATION.json',
+    (directory / 'DOWNLOAD-SPEED-COMPARISON.json').write_text((ROOT / 'reports/DOWNLOAD_SPEED_COMPARISON.json').read_text(encoding='utf-8'), encoding='utf-8')
+    names = PRODUCTS + list(PINNED) + ['DOWNLOAD-SPEED-COMPARISON.json', 'my-video-app-source.zip', 'WINDOWS-VALIDATION.json', 'WINDOWS-GUI-VALIDATION.json',
         'STANDARD-BUILD.json', 'MISSAV-BUILD.json', 'STANDARD-UI-VALIDATION.json', 'MISSAV-UI-VALIDATION.json',
         'INSTALLED-EXTENSION-VALIDATION.json', 'LIVE-VALIDATION.json']
     live = read_json(directory / 'LIVE-VALIDATION.json')
@@ -160,7 +161,7 @@ def prepare(directory):
     names.append('RELEASE-CONTENTS.json')
     (directory / 'SHA256SUMS-RELEASE.txt').write_text(''.join(sha(directory / name) + '  ' + name + '\n' for name in names), encoding='utf-8')
     names.append('SHA256SUMS-RELEASE.txt')
-    (directory / 'release-notes.md').write_text(f'''기본 확장, MissAV 포함 확장, 두 경로를 지원하는 Windows 통합 앱을 **1.20.3 새 빌드**로 제공합니다.
+    (directory / 'release-notes.md').write_text(f'''기본 확장, MissAV 포함 확장, 두 경로를 지원하는 Windows 통합 앱을 **1.20.4 새 빌드**로 제공합니다.
 
 | 설치 파일 | 용도 |
 | --- | --- |
@@ -168,7 +169,7 @@ def prepare(directory):
 | **my-video-app-extension-missav.zip** | MissAV 포함판. 원본 탭 복원·최신 감지 주소와 원본 사이트 요청 정보를 사용 |
 | **my-video-app-desktop-windows-x64.zip** | 일반 직접 미디어·YouTube와 MissAV를 한 앱에서 지원하는 Windows x64 포터블 앱 |
 
-Windows 앱의 다운로드 준비 멈춤, 한글 설치 경로의 TLS 오류, HLS 취소 후 재시도 파일 잠금, 일반 직접 HLS 주소 거부를 수정했습니다. MissAV 확장은 페이지 정책에 따라 원본 요청 정보가 달라지는 문제를 보완했습니다. 기존 런타임 버전은 유지합니다.
+MissAV 확장에서 미디어를 바이트 배열로 변환하는 비용을 줄였습니다. 같은 Windows 러너에서 실제 61분 영상 전체를 기존판·수정판·수정판·기존판 순으로 저장해 비교했습니다. 평균 **273.82초 → 170.92초, 저장 시간 37.58% 감소**를 확인했고, 네 파일의 SHA-256·용량·재생 시간·영상과 음성 트랙이 일치했습니다. 두 번씩 측정한 한 환경의 결과이며 회선·사이트 상태에 따라 달라집니다. 일반판과 Windows 앱은 버전을 맞춘 새 빌드로 제공하며, 이번 속도 수치는 MissAV 확장에 해당합니다. 데이터 검사·취소·요청 범위와 병렬 수 제한은 유지합니다. 상세 측정값은 `DOWNLOAD-SPEED-COMPARISON.json`에 있습니다.
 
 확장은 **둘 중 하나만 설치**하세요. 저장소에서는 `extensions/standard/`와 `extensions/missav/`로 분리했습니다. ZIP 안의 폴더도 각각 `my-video-app-standard/`와 `my-video-app-missav/`이므로 서로 덮어쓰지 않습니다. 기존 재생 탭을 새로고침하세요. Windows ZIP은 **새 폴더에 전체 압축 해제**한 뒤 `My Video App.exe`를 실행하세요. 확장에는 YouTube 기능이 없으며 데스크톱 앱에서 사용합니다.
 
@@ -178,7 +179,7 @@ Windows 앱의 다운로드 준비 멈춤, 한글 설치 경로의 TLS 오류, H
 
 테스트 프로필에는 백신 도우미가 없어 파일 저장 뒤 앱의 상태는 ‘보안 확인 필요’입니다. 실제 백신 검사 성공이나 전체 프레임 재생 검증을 뜻하지 않습니다. 실제 영상은 릴리즈에 포함하지 않습니다. 사용자 PC·Windows 10/11·실제 YouTube 사이트 및 백신 연동은 별도 확인 대상입니다.
 
-[소스 커밋](https://github.com/{REPO}/commit/{commit}) · [Windows 검증 보고서](https://github.com/{REPO}/blob/{commit}/reports/WINDOWS_VERIFICATION_PLAN.ko.md)
+[속도 비교와 변경 범위](https://github.com/{REPO}/blob/{commit}/reports/RELEASE_1_20_4.ko.md) · [소스 커밋](https://github.com/{REPO}/commit/{commit}) · [Windows 검증 보고서](https://github.com/{REPO}/blob/{commit}/reports/WINDOWS_VERIFICATION_PLAN.ko.md)
 
 전체 소스, 선택적 백신 도우미, 검증 JSON과 파일별 SHA-256을 함께 제공합니다. 기존 태그·릴리즈 파일은 유지하며 작업 환경 자체는 게시하지 않습니다.
 ''', encoding='utf-8')

@@ -31,7 +31,9 @@ function decode(value: unknown): Uint8Array<ArrayBuffer> {
   if (typeof value.base64 !== 'string' || value.base64.length > Math.ceil(CHUNK / 3) * 4) throw new Error('페이지 미디어 응답이 처리 한도를 초과했습니다.');
   const raw = atob(value.base64);
   if (raw.length > CHUNK) throw new Error('페이지 미디어 응답이 처리 한도를 초과했습니다.');
-  return Uint8Array.from(raw, character => character.charCodeAt(0));
+  const bytes = new Uint8Array(raw.length);
+  for (let index = 0; index < raw.length; index++) bytes[index] = raw.charCodeAt(index);
+  return bytes;
 }
 export function requestHeaders(value: unknown): Record<string, string> {
   if (!record(value) || Object.keys(value).length > 2) throw new Error('허용되지 않은 페이지 요청 헤더입니다.');

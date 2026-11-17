@@ -1,0 +1,53 @@
+{
+  "platform": "win32",
+  "order": "ABBA",
+  "runs": [
+    {
+      "method": "baseline",
+      "downloadElapsedMs": 275756.0762,
+      "bytes": 1974360037,
+      "sha256": "63836dd54a9c26beb61d47344d8d25e02bec2832e5015144e991f49231eac893",
+      "duration": "3682.965333",
+      "buildSha256": "e2552ece87940d5aa7bab54521a2ff83ba863e920d60f7527a615ff61056981d",
+      "browserVersion": "156.0.8078.4"
+    },
+    {
+      "method": "candidate",
+      "downloadElapsedMs": 180805.3417,
+      "bytes": 1974360037,
+      "sha256": "63836dd54a9c26beb61d47344d8d25e02bec2832e5015144e991f49231eac893",
+      "duration": "3682.965333",
+      "buildSha256": "d2370d847b54dbf12c5583769ae9ef71fd882ff3b206c3a80c12fb23dafffcd7",
+      "browserVersion": "156.0.8078.4"
+    },
+    {
+      "method": "candidate",
+      "downloadElapsedMs": 161026.8236,
+      "bytes": 1974360037,
+      "sha256": "63836dd54a9c26beb61d47344d8d25e02bec2832e5015144e991f49231eac893",
+      "duration": "3682.965333",
+      "buildSha256": "d2370d847b54dbf12c5583769ae9ef71fd882ff3b206c3a80c12fb23dafffcd7",
+      "browserVersion": "156.0.8078.4"
+    },
+    {
+      "method": "baseline",
+      "downloadElapsedMs": 271888.4391,
+      "bytes": 1974360037,
+      "sha256": "63836dd54a9c26beb61d47344d8d25e02bec2832e5015144e991f49231eac893",
+      "duration": "3682.965333",
+      "buildSha256": "e2552ece87940d5aa7bab54521a2ff83ba863e920d60f7527a615ff61056981d",
+      "browserVersion": "156.0.8078.4"
+    }
+  ],
+  "sampleCountPerMethod": 2,
+  "baselineMeanMs": 273822.25765000004,
+  "candidateMeanMs": 170916.08265,
+  "timeReductionPercent": 37.58137701557295,
+  "identicalSavedFileSha256": "63836dd54a9c26beb61d47344d8d25e02bec2832e5015144e991f49231eac893",
+  "benefitConfirmed": true,
+  "limitations": "Two full downloads per method on one runner; site/network load can still vary. No universal bandwidth claim.",
+  "workflowRun": "https://github.com/P-JSL/myapps/actions/runs/44084167377",
+  "baselineTag": "v1.20.3",
+  "candidateCommit": "9e0999e56a3bff484f3c4b3e306594897778df6d",
+  "measurement": "From submitting the actual URL form until Chrome finishes saving; hashing and media validation excluded."
+}

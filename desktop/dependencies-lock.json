@@ -137,7 +137,7 @@
       "baselineVersion": "1.19.4"
     }
   ],
-  "version": "1.20.3",
+  "version": "1.20.4",
   "description": "Portable Windows x64 native Qt Widgets application; verified external runtimes only.",
   "notices": [
     {

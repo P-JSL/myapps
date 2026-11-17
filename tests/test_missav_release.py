@@ -49,7 +49,7 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Original asset changed'): release.verify(path, 'a' * 40)
 
     def test_tag_and_unchanged_helper_remain_fixed(self):
-        self.assertEqual(release.TAG, 'v1.20.3')
+        self.assertEqual(release.TAG, 'v1.20.4')
         self.assertNotIn('my-video-app-extension-standard.zip', release.PINNED)
         self.assertEqual(release.PINNED['my-video-app-antivirus-helper.zip'], '88818c9cc0ea443be213ac0c2c20cbeebf3796444026824ac3f9306aef55c959')
         source = (ROOT / 'scripts/release-missav.py').read_text(encoding='utf-8')
