@@ -29,7 +29,7 @@ function relay(fetcher: typeof fetch, binary = false): typeof fetch {
 }
 
 for (const binary of [false, true]) test(`stream a response with bounded pulls over ${binary ? 'worker' : 'Chrome JSON'} messages`, async () => {
-  const bytes = Uint8Array.from({ length: 1024 * 1024 + 137 }, (_, index) => index % 251);
+  const bytes = Uint8Array.from({ length: 1024 * 1024 + 137 }, (_, index) => index % 256);
   let pulls = 0, stopped = false;
   const fetcher = relay(async (_input, options) => {
     assert.equal(options?.credentials, 'omit'); assert.equal(options?.redirect, 'error');

@@ -3,6 +3,8 @@
 import { chromium } from 'playwright-core';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
+import { createReadStream } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 
@@ -11,12 +13,13 @@ const mediaURL = process.env.MYVIDEOAPP_LIVE_MEDIA_URL;
 assert(pageURL && mediaURL, 'Explicit page and media URLs are required');
 assert.equal(new URL(pageURL).protocol, 'https:');
 assert.equal(new URL(mediaURL).protocol, 'https:');
-const root = process.cwd(), output = path.join(root, 'artifacts/live-windows-verification');
+const root = process.cwd(), output = path.resolve(process.env.MYVIDEOAPP_LIVE_OUTPUT_DIR || path.join(root, 'artifacts/live-windows-verification'));
 const work = path.join(root, '.cache/live-extension-verification');
 await mkdir(output, { recursive: true }); await mkdir(work, { recursive: true });
 const profile = await mkdtemp(path.join(work, 'profile-'));
 const downloadDirectory = await mkdtemp(path.join(work, 'downloads-'));
-const build = JSON.parse(await readFile(path.join(root, 'reports/build-missav.json')));
+const build = JSON.parse(await readFile(path.resolve(process.env.MYVIDEOAPP_LIVE_BUILD_REPORT || path.join(root, 'reports/build-missav.json'))));
+const extensionDirectory = path.resolve(process.env.MYVIDEOAPP_LIVE_EXTENSION_DIR || path.join(root, 'extensions/missav'));
 const media = new URL(mediaURL), mediaPrefix = media.pathname.split('/').slice(0, 2).join('/') + '/';
 const result = { platform: process.platform, buildSha256: build.buildSha256, chromeAPIsMocked: false,
   responsesMocked: false, pageHost: new URL(pageURL).hostname, mediaHost: media.hostname,
@@ -39,7 +42,7 @@ try {
   context = await chromium.launchPersistentContext(profile, {
     ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
     channel: 'chromium', headless: process.platform !== 'win32', acceptDownloads: true, ignoreDefaultArgs: ['--disable-extensions'],
-    args: ['--no-sandbox', `--disable-extensions-except=${path.join(root, 'extensions', 'missav')}`, `--load-extension=${path.join(root, 'extensions', 'missav')}`],
+    args: ['--no-sandbox', `--disable-extensions-except=${extensionDirectory}`, `--load-extension=${extensionDirectory}`],
   });
   result.browserVersion = context.browser().version();
   context.on('response', response => {
@@ -112,6 +115,7 @@ try {
     result.events.push('Probe-only run: full extension download was not attempted');
   } else {
     const existing = new Set((await state()).history.map(item => item.id));
+    const downloadStarted = performance.now();
     await ui.locator('details:has(#url-form) > summary').click();
     await ui.locator('#url').fill(mediaURL); await ui.locator('#url-form button[type="submit"]').click();
     const job = await until(async () => (await state()).history.find(item => !existing.has(item.id)), 'Real direct-address form did not create a job');
@@ -135,6 +139,10 @@ try {
       const value = await ui.evaluate(async id => (await chrome.downloads.search({ id }))[0], row.downloadId);
       return value?.state === 'complete' && value.exists ? value : undefined;
     }, 'Chrome did not finish saving the full file', 120_000);
+    result.downloadElapsedMs = performance.now() - downloadStarted;
+    const digest = createHash('sha256');
+    for await (const block of createReadStream(download.filename)) digest.update(block);
+    result.savedFileSha256 = digest.digest('hex');
     const probe = JSON.parse(command('ffprobe', ['-v', 'error', '-show_entries', 'format=duration,size:stream=codec_type,codec_name,width,height', '-of', 'json', download.filename]));
     assert(probe.streams.some(stream => stream.codec_type === 'video') && probe.streams.some(stream => stream.codec_type === 'audio'));
     const duration = Number(probe.format.duration);
