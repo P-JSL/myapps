@@ -37,7 +37,7 @@ try {
   await context.route('https://missav123.com/**', async route => {
     const fixture = fixtures.get(new URL(route.request().url()).pathname.split('/').at(-1));
     assert(fixture);
-    await route.fulfill({ contentType: 'text/html', body: `<!doctype html><title>Owned installed extension fixture</title><video controls></video><script>const source=${JSON.stringify(fixture.url)};fetch(source).then(r=>r.text()).catch(()=>{});</script>` });
+    await route.fulfill({ contentType: 'text/html', headers: { 'Referrer-Policy': 'no-referrer' }, body: `<!doctype html><title>Owned installed extension fixture</title><video controls></video><script>const source=${JSON.stringify(fixture.url)};fetch(source).then(r=>r.text()).catch(()=>{});</script>` });
   });
   await context.route('https://surrit.com/**', async route => {
     const request = route.request(), url = new URL(request.url());

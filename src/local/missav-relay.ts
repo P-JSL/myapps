@@ -58,7 +58,13 @@ export function installMissavPageFetch(): void {
     const release = () => { if (!done) { done = true; active--; } };
     port.onDisconnect.addListener(release);
     const hide = () => { close(); release(); };
-    const close = serveFetch(chromeWire(port), fetch, address => isMissavAssetURL(address, manifest), () => { removeEventListener('pagehide', hide); release(); });
+    // A source document can set no-referrer even though its player supplies an
+    // explicit referrer. Keep the CDN's required page origin on these authorized
+    // job requests; never send the page path or query string.
+    const mediaFetch: typeof fetch = (address, options) => fetch(address, {
+      ...options, referrer: location.origin + '/', referrerPolicy: 'origin',
+    });
+    const close = serveFetch(chromeWire(port), mediaFetch, address => isMissavAssetURL(address, manifest), () => { removeEventListener('pagehide', hide); release(); });
     addEventListener('pagehide', hide, { once: true });
   });
 }

@@ -38,7 +38,7 @@ async function until(predicate, message, milliseconds = 30_000) {
 try {
   context = await chromium.launchPersistentContext(profile, {
     ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
-    channel: 'chromium', headless: true, acceptDownloads: true, ignoreDefaultArgs: ['--disable-extensions'],
+    channel: 'chromium', headless: process.platform !== 'win32', acceptDownloads: true, ignoreDefaultArgs: ['--disable-extensions'],
     args: ['--no-sandbox', `--disable-extensions-except=${path.join(root, 'dist')}`, `--load-extension=${path.join(root, 'dist')}`],
   });
   result.browserVersion = context.browser().version();
@@ -47,6 +47,12 @@ try {
     if (url.hostname === media.hostname && url.pathname.startsWith(mediaPrefix)) {
       if (response.status() >= 200 && response.status() < 300) result.mediaResponses.ok++;
       else result.mediaResponses.failed++;
+      if (url.pathname.endsWith('.m3u8')) void response.request().allHeaders().then(headers => {
+        result.manifestRequests ??= [];
+        result.manifestRequests.push({ status: response.status(), origin: headers.origin,
+          refererOrigin: headers.referer ? new URL(headers.referer).origin : null,
+          fetchSite: headers['sec-fetch-site'] });
+      }).catch(() => {});
     }
   });
   const cdp = await context.browser().newBrowserCDPSession();
@@ -63,6 +69,14 @@ try {
   result.pageStatus = response?.status();
   await new Promise(resolve => setTimeout(resolve, 5000));
   result.pageChallenge = await page.evaluate(() => /cf-chl-|challenge-platform|just a moment/i.test(document.documentElement.outerHTML));
+  result.pageSummary = await page.evaluate(id => ({ origin: location.origin,
+    challengeTitle: /just a moment|attention required|checking your browser/i.test(document.title),
+    challengeForm: !!document.querySelector('#challenge-running, #challenge-stage, form#challenge-form'),
+    htmlCharacters: document.documentElement.outerHTML.length,
+    videoElements: document.querySelectorAll('video').length,
+    requestedIdInPage: document.documentElement.outerHTML.includes(id),
+    pageReferrerPolicy: document.querySelector('meta[name="referrer"]')?.content,
+  }), media.pathname.split('/')[1]);
   // First test ordinary discovery from the real page as it currently exists.
   let found;
   try {
@@ -80,7 +94,8 @@ try {
   const manifest = await page.evaluate(async address => {
     const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 30_000);
     try {
-      const response = await fetch(address, { signal: controller.signal });
+      const response = await fetch(address, { signal: controller.signal,
+        referrer: location.origin + '/', referrerPolicy: 'origin' });
       const text = await response.text();
       return { status: response.status, hls: text.trimStart().startsWith('#EXTM3U'),
         vod: text.includes('#EXT-X-ENDLIST'), encrypted: /#EXT-X-KEY:(?!METHOD=NONE)/.test(text),
