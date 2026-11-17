@@ -64,7 +64,7 @@ def screenshot(name):
     assert window.grab().save(str(OUT / (name + '.png')))
 
 
-def launcher_window(parent_pid):
+def launcher_window(parent_pid, diagnostics=False):
     """Find only a visible window belonging to this owned launcher's child."""
     class ProcessEntry(ctypes.Structure):
         _fields_ = [('size', wintypes.DWORD), ('usage', wintypes.DWORD), ('pid', wintypes.DWORD),
@@ -94,6 +94,7 @@ def launcher_window(parent_pid):
     user.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
     user.IsWindowVisible.argtypes = [wintypes.HWND]
     user.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user.EnumChildWindows.argtypes = [wintypes.HWND, callback_type, wintypes.LPARAM]
     found = []
     @callback_type
     def visit(hwnd, _):
@@ -101,11 +102,23 @@ def launcher_window(parent_pid):
         user.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
         title = ctypes.create_unicode_buffer(256)
         user.GetWindowTextW(hwnd, title, len(title))
-        if pid.value in children and user.IsWindowVisible(hwnd) and title.value == f'MyVideoApp {gui.VERSION}':
-            found.append(hwnd)
+        if pid.value in children | {parent_pid} and user.IsWindowVisible(hwnd):
+            if diagnostics:
+                texts = []
+                @callback_type
+                def child_text(child, _):
+                    text = ctypes.create_unicode_buffer(2048)
+                    user.GetWindowTextW(child, text, len(text))
+                    if text.value:
+                        texts.append(text.value)
+                    return True
+                user.EnumChildWindows(hwnd, child_text, 0)
+                found.append({'handle': int(hwnd), 'pid': pid.value, 'title': title.value, 'controls': texts})
+            elif pid.value in children and title.value.startswith(f'MyVideoApp {gui.VERSION}'):
+                found.append(hwnd)
         return True
     user.EnumWindows(visit, 0)
-    return found[0] if found else None
+    return found if diagnostics else (found[0] if found else None)
 
 
 def enter(url):
@@ -169,11 +182,18 @@ try:
         user.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
         assert user.PostMessageW(handle, 0x0010, 0, 0)
         assert launcher.wait(timeout=20) == 0
+        assert (OUT / '00-native-launcher.png').is_file()
+        checks.append('the actual EXE launcher opens native Qt from a Unicode installation path')
     except Exception:
-        subprocess.run(['taskkill', '/PID', str(launcher.pid), '/T', '/F'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
-        raise
-    assert (OUT / '00-native-launcher.png').is_file()
-    checks.append('the actual EXE launcher opens native Qt from a Unicode installation path')
+        failures.append('Launcher verification:\n' + traceback.format_exc())
+        try:
+            dialogs = launcher_window(launcher.pid, diagnostics=True)
+            (OUT / 'LAUNCHER-DIAGNOSTICS.json').write_text(json.dumps({'exitCode': launcher.poll(), 'windows': dialogs}, ensure_ascii=False, indent=2), encoding='utf-8')
+            for index, dialog in enumerate(dialogs):
+                app.primaryScreen().grabWindow(dialog['handle']).save(str(OUT / f'launcher-dialog-{index}.png'))
+        finally:
+            if launcher.poll() is None:
+                subprocess.run(['taskkill', '/PID', str(launcher.pid), '/T', '/F'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
     destination = OUT / '한글 저장 폴더'; destination.mkdir(exist_ok=True)
     data = OUT / '개별 테스트 데이터'
     activity = ActivityLog(data, version=gui.VERSION)

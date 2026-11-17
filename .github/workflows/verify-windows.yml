@@ -60,6 +60,13 @@ jobs:
           python -B scripts/build-desktop.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $testRoot = Join-Path $env:RUNNER_TEMP 'Windows 앱 실행 검사'
+          $ancestors = @()
+          $cursor = Get-Item -Force $env:RUNNER_TEMP
+          while ($null -ne $cursor) {
+            $ancestors += @{path=$cursor.FullName; attributes=$cursor.Attributes.ToString(); linkType=$cursor.LinkType; target=$cursor.Target}
+            $cursor = $cursor.Parent
+          }
+          $ancestors | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 artifacts/windows-verification/path-diagnostics.json
           Expand-Archive -LiteralPath artifacts/my-video-app-desktop-windows-x64.zip -DestinationPath $testRoot
           "MYVIDEOAPP_TEST_ROOT=$(Join-Path $testRoot 'MyVideoApp')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Join-Path (Join-Path $testRoot 'MyVideoApp') 'runtime/ffmpeg' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
