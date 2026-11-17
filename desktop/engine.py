@@ -265,6 +265,32 @@ def _trusted_file(path: Path, root: Path, *, executable=False) -> Path:
         raise EngineError("내장 실행 파일이 없거나 안전하지 않습니다. 데스크톱 ZIP 전체를 다시 압축 해제하세요.") from None
 
 
+def preload_downloader(app_root: str | Path) -> bool:
+    """Load only the pinned bundled downloader before Qt installs import hooks.
+
+    Shiboken feature detection inspects imported source files. Loading yt-dlp's
+    large module graph for the first time from a Qt worker can stall Windows
+    preparation and postpone cancellation. Missing components remain an ordinary
+    dependency error when a download is requested, rather than hiding the GUI.
+    """
+    try:
+        if importlib.metadata.version("yt-dlp") != YT_DLP_VERSION or importlib.metadata.version("yt-dlp-ejs") != EJS_VERSION:
+            return False
+        specification = importlib.util.find_spec("yt_dlp")
+        if specification is None or specification.origin is None:
+            return False
+        _trusted_file(Path(specification.origin).absolute(), Path(app_root).absolute() / "runtime/python/Lib/site-packages")
+        with _DEPENDENCY_LOCK:
+            import yt_dlp
+            from yt_dlp.globals import plugin_dirs
+            from yt_dlp.extractor import gen_extractor_classes
+            plugin_dirs.value = []
+            tuple(gen_extractor_classes())
+        return True
+    except (ImportError, OSError, EngineError, importlib.metadata.PackageNotFoundError):
+        return False
+
+
 def _has_video(track: dict) -> bool:
     return track.get("vcodec") != "none" and track.get("ext") not in AUDIO_EXTENSIONS
 

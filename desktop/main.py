@@ -25,6 +25,35 @@ DESKTOP_DIR = Path(__file__).resolve().parent
 if str(DESKTOP_DIR) not in sys.path:
     sys.path.insert(0, str(DESKTOP_DIR))
 
+try:
+    from .engine import (
+        DownloadCancelled, DownloadProgress, DownloadRequest, DownloadResult, Engine, EngineError, preload_downloader,
+    )
+    from .theme import DARK, LIGHT, stylesheet
+    from .storage import default_data_dir
+    from .activity import ActivityLog
+    from .concurrency import (
+        MAX_CONCURRENT_DOWNLOADS, MAX_HOST_DOWNLOADS, effective_concurrency,
+        normalize_concurrency, normalize_host_concurrency, source_key,
+    )
+except ImportError:
+    from engine import (
+        DownloadCancelled, DownloadProgress, DownloadRequest, DownloadResult, Engine, EngineError, preload_downloader,
+    )
+    from theme import DARK, LIGHT, stylesheet
+    from storage import default_data_dir
+    from activity import ActivityLog
+    from concurrency import (
+        MAX_CONCURRENT_DOWNLOADS, MAX_HOST_DOWNLOADS, effective_concurrency,
+        normalize_concurrency, normalize_host_concurrency, source_key,
+    )
+
+
+# Keep Shiboken feature inspection out of the downloader module graph.
+# Embedded GUI tests may already own Qt; the standalone app always enters here first.
+if "PySide6" not in sys.modules:
+    preload_downloader(Path(__file__).resolve().parent.parent)
+
 from PySide6.QtCore import (
     QLockFile, QObject, QPointF, QRectF, QRunnable, QSize, QStandardPaths, Qt, QThreadPool, QTimer, QUrl, Signal, Slot,
 )
@@ -39,28 +68,6 @@ from PySide6.QtWidgets import (
     QPlainTextEdit, QScrollArea, QSizePolicy, QStackedWidget, QVBoxLayout, QWidget,
 )
 
-try:
-    from .engine import (
-        DownloadCancelled, DownloadProgress, DownloadRequest, DownloadResult, Engine, EngineError,
-    )
-    from .theme import DARK, LIGHT, stylesheet
-    from .storage import default_data_dir
-    from .activity import ActivityLog
-    from .concurrency import (
-        MAX_CONCURRENT_DOWNLOADS, MAX_HOST_DOWNLOADS, effective_concurrency,
-        normalize_concurrency, normalize_host_concurrency, source_key,
-    )
-except ImportError:
-    from engine import (
-        DownloadCancelled, DownloadProgress, DownloadRequest, DownloadResult, Engine, EngineError,
-    )
-    from theme import DARK, LIGHT, stylesheet
-    from storage import default_data_dir
-    from activity import ActivityLog
-    from concurrency import (
-        MAX_CONCURRENT_DOWNLOADS, MAX_HOST_DOWNLOADS, effective_concurrency,
-        normalize_concurrency, normalize_host_concurrency, source_key,
-    )
 
 
 VERSION = "1.20.1"

@@ -30,10 +30,10 @@ REPO = Path(__file__).resolve().parent.parent
 OUT = args.output.resolve(); OUT.mkdir(parents=True, exist_ok=True)
 sys.path.insert(0, str(APP / 'desktop'))
 os.environ['QT_QPA_PLATFORM'] = 'windows'
+import main as gui
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
-import main as gui
 from activity import ActivityLog
 from engine import Engine
 
