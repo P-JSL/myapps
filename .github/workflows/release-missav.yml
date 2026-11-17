@@ -40,6 +40,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node node_modules/playwright-core/cli.js install chromium
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force artifacts/speed-verification | Out-Null
+          Copy-Item reports/build-missav.json artifacts/speed-verification/CANDIDATE-BUILD.json
       - name: Check out the exact decoder-optimized baseline
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -55,7 +57,15 @@ jobs:
           npm run build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $report = Get-Content reports/build-missav.json -Raw | ConvertFrom-Json
-          if ($report.buildSha256 -ne 'd2370d847b54dbf12c5583769ae9ef71fd882ff3b206c3a80c12fb23dafffcd7') { throw 'Baseline build identity mismatch' }
+          # Production packaging deliberately uses a fresh cryptographic salt.
+          # Pin the source and retain this build identity, rather than expecting
+          # two independent builds to have identical encrypted package bytes.
+          if ($report.buildSha256 -notmatch '^[a-f0-9]{64}$') { throw 'Invalid baseline build identity' }
+          $changed = git diff --name-only HEAD -- src scripts package.json package-lock.json
+          if ($LASTEXITCODE -ne 0 -or $changed) { throw 'Baseline application source changed during its build' }
+          $evidence = Join-Path $env:GITHUB_WORKSPACE 'artifacts/speed-verification'
+          Copy-Item reports/build-missav.json (Join-Path $evidence 'BASELINE-BUILD.json')
+          @{sourceCommit='9e0999e56a3bff484f3c4b3e306594897778df6d'; buildSha256=$report.buildSha256; packagingRandomized=$true; applicationSourceUnchanged=$true} | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $evidence 'BASELINE-SOURCE.json')
           Copy-Item -Recurse extensions/missav ../my-video-app-missav
           Copy-Item reports/build-missav.json ../MISSAV-BUILD.json
       - name: Prepare the pinned media verifier
