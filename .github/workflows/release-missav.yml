@@ -1,63 +1,63 @@
-name: Verify Windows draft without publication
+name: Build, verify and release 1.20.2 - standard, MissAV and shared Windows app
 
 on:
   workflow_dispatch:
     inputs:
       live_page_url:
-        description: 'Explicit source page for an optional real-site verification'
-        required: false
-        default: ''
+        description: 'Source page for the authorized full-video verification'
+        required: true
       live_media_url:
-        description: 'Explicit HLS URL; leave empty for owned-fixture checks'
-        required: false
-        default: ''
+        description: 'Actual HLS VOD URL to verify before publishing'
+        required: true
 
 permissions:
   contents: read
 
+concurrency:
+  group: release-v1.20.2
+  cancel-in-progress: false
+
 jobs:
-  windows-verification:
-    if: github.repository == 'P-JSL/myapps' && startsWith(github.ref, 'refs/heads/codex/windows-verify-') && inputs.live_media_url == ''
+  build-and-verify:
+    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/codex/release-1.20.2'
     runs-on: windows-2025
-    timeout-minutes: 35
+    timeout-minutes: 45
     env:
       PYTHONUTF8: '1'
     defaults:
       run:
         shell: pwsh
     steps:
-      - name: Preserve source bytes
+      - name: Preserve committed source bytes
         run: git config --global core.autocrlf false
-
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
           cache: npm
-
-      - name: Build extension for verification
+      - name: Check changed code and release guards
         run: |
+          New-Item -ItemType Directory -Force artifacts | Out-Null
           npm ci --no-audit --no-fund
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run typecheck
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run check:source
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          npm run build
+          node --experimental-strip-types --test tests/missav.test.ts tests/missav-collector.test.ts tests/missav-build.test.ts tests/missav-request-url.test.ts tests/missav-context.test.ts tests/page-fetch.test.ts 2>&1 | Tee-Object artifacts/extension-regression.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
+          python -B tests/test_missav_release.py -v 2>&1 | Tee-Object artifacts/release-guards.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
         with:
           path: .cache/desktop-runtime
           key: ${{ runner.os }}-desktop-missav-${{ hashFiles('desktop/dependencies-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-desktop-missav-
-
-      - name: Prepare the unpublished Windows build
+      - name: Build the dual-purpose Windows application
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -69,18 +69,11 @@ jobs:
           python -B scripts/build-desktop.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $testRoot = Join-Path $env:RUNNER_TEMP 'Windows 앱 실행 검사'
-          $ancestors = @()
-          $cursor = Get-Item -Force $env:RUNNER_TEMP
-          while ($null -ne $cursor) {
-            $ancestors += @{path=$cursor.FullName; attributes=$cursor.Attributes.ToString(); linkType=$cursor.LinkType; target=$cursor.Target}
-            $cursor = $cursor.Parent
-          }
-          $ancestors | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 artifacts/windows-verification/path-diagnostics.json
           Expand-Archive -LiteralPath artifacts/my-video-app-desktop-windows-x64.zip -DestinationPath $testRoot
-          "MYVIDEOAPP_TEST_ROOT=$(Join-Path $testRoot 'MyVideoApp')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Join-Path (Join-Path $testRoot 'MyVideoApp') 'runtime/ffmpeg' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Verify pinned Windows runtime and direct HLS regression
+          $appRoot = Join-Path $testRoot 'MyVideoApp'
+          "MYVIDEOAPP_TEST_ROOT=$appRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Join-Path $appRoot 'runtime/ffmpeg' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Operate the packaged Windows GUI with both download paths
         run: |
           $python = Join-Path $env:MYVIDEOAPP_TEST_ROOT 'runtime/python/python.exe'
           & $python -I -B tests/test_direct_hls.py --app-root $env:MYVIDEOAPP_TEST_ROOT -v 2>&1 | Tee-Object artifacts/windows-verification/direct-hls.log
@@ -89,111 +82,99 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B desktop/test_missav_gui.py --app-root $env:MYVIDEOAPP_TEST_ROOT -v 2>&1 | Tee-Object artifacts/windows-verification/gui-smoke.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Test the actual installed extension on Windows
+          & $python -I -B desktop/test_windows_gui_download.py --app-root $env:MYVIDEOAPP_TEST_ROOT --output artifacts/windows-verification/gui 2>&1 | Tee-Object artifacts/windows-verification/gui-download.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item artifacts/windows-verification/gui/WINDOWS-GUI-VALIDATION.json artifacts/WINDOWS-GUI-VALIDATION.json
+          @{version='1.20.2'; commit=$env:GITHUB_SHA; platform='windows-x64'; scope='release-three-variants-v1202'; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); nativeMissavTests=12; nativeGuiTests=1; directHlsTests=4; nativeDownloadGuiChecks=7; previousFullSuites='not repeated per user'} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
+      - name: Install the locked verification browser
         run: |
           node node_modules/playwright-core/cli.js install chromium
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node tests/missav-installed-browser.mjs 2>&1 | Tee-Object artifacts/windows-verification/installed-extension.log
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Copy-Item .cache/missav-installed-browser/INSTALLED-EXTENSION-VALIDATION.json artifacts/windows-verification/
-
-      - name: Operate the native Windows GUI and real download workers
+      - name: Build and operate both freshly installed extension variants
         run: |
-          $python = Join-Path $env:MYVIDEOAPP_TEST_ROOT 'runtime/python/python.exe'
-          & $python -I -B desktop/test_windows_gui_download.py --app-root $env:MYVIDEOAPP_TEST_ROOT --output artifacts/windows-verification/gui 2>&1 | Tee-Object artifacts/windows-verification/gui-download.log
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Operate the actual UI of both installed extension builds
-        run: |
-          New-Item -ItemType Directory -Force artifacts/windows-verification/extension-ui | Out-Null
-          foreach ($variant in @('missav', 'standard')) {
+          foreach ($variant in @('standard', 'missav')) {
             $env:MY_VIDEO_APP_EXTENSION_VARIANT = $variant
             npm run build
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            node --experimental-strip-types --test tests/missav-build.test.ts 2>&1 | Tee-Object "artifacts/windows-verification/extension-ui/$variant-build.log"
+            node --experimental-strip-types --test tests/missav-build.test.ts 2>&1 | Tee-Object "artifacts/$variant-build-check.log"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            node tests/extension-ui-installed-browser.mjs 2>&1 | Tee-Object "artifacts/windows-verification/extension-ui/$variant.log"
-            $verificationExit = $LASTEXITCODE
-            Copy-Item ".cache/extension-ui-installed-browser/$variant/VALIDATION.json" "artifacts/windows-verification/extension-ui/$variant.json"
-            Get-ChildItem ".cache/extension-ui-installed-browser/$variant/*.png" | ForEach-Object {
-              Copy-Item $_.FullName "artifacts/windows-verification/extension-ui/$variant-$($_.Name)"
-            }
-            if ($verificationExit -ne 0) { exit $verificationExit }
+            node tests/extension-ui-installed-browser.mjs 2>&1 | Tee-Object "artifacts/$variant-ui.log"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            Copy-Item ".cache/extension-ui-installed-browser/$variant/VALIDATION.json" "artifacts/$($variant.ToUpperInvariant())-UI-VALIDATION.json"
+            Copy-Item reports/build.json "artifacts/$($variant.ToUpperInvariant())-BUILD.json"
+            python -B scripts/archive.py
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            Move-Item artifacts/my-video-app-extension.zip "artifacts/my-video-app-extension-$variant.zip"
           }
           Remove-Item Env:MY_VIDEO_APP_EXTENSION_VARIANT
-
-      - name: Retain verification evidence without releasing a build
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: windows-verification-${{ github.run_id }}
-          path: |
-            artifacts/windows-verification/*.log
-            artifacts/windows-verification/*.json
-            artifacts/windows-verification/gui/*.png
-            artifacts/windows-verification/gui/*.json
-            artifacts/windows-verification/gui/*.log
-            artifacts/windows-verification/gui/fixture-requests.jsonl
-            artifacts/windows-verification/extension-ui/*.json
-            artifacts/windows-verification/extension-ui/*.png
-            artifacts/windows-verification/extension-ui/*.log
-          retention-days: 7
-
-  windows-live-verification:
-    if: github.repository == 'P-JSL/myapps' && startsWith(github.ref, 'refs/heads/codex/windows-verify-') && inputs.live_media_url != ''
-    runs-on: windows-2025
-    timeout-minutes: 35
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - name: Preserve source bytes
-        run: git config --global core.autocrlf false
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: '24'
-          cache: npm
-      - name: Prepare a fresh installed extension and pinned media verifier
+          node tests/missav-installed-browser.mjs 2>&1 | Tee-Object artifacts/installed-extension.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item .cache/missav-installed-browser/INSTALLED-EXTENSION-VALIDATION.json artifacts/INSTALLED-EXTENSION-VALIDATION.json
+      - name: Retain the unchanged optional antivirus helper
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          npm ci --no-audit --no-fund
+          Remove-Item artifacts/my-video-app-antivirus-helper.zip
+          gh release download v1.19.4-bundle.1 --repo $env:GITHUB_REPOSITORY --dir artifacts --pattern my-video-app-antivirus-helper.zip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          npm run build
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node node_modules/playwright-core/cli.js install chromium
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          New-Item -ItemType Directory -Force .cache/live-ffmpeg, artifacts/live-windows-verification | Out-Null
-          gh release download v1.19.4 --repo $env:GITHUB_REPOSITORY --pattern my-video-app-desktop-windows-x64.zip --output .cache/live-runtime.zip
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if ((Get-FileHash .cache/live-runtime.zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne '2fb6e36bfc04068a3fe29ccaa6f08518de47ab1e67cd5be5448e419115d83768') { throw 'Pinned verifier archive mismatch' }
-          $archive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path .cache/live-runtime.zip))
-          try {
-            foreach ($tool in @('ffmpeg', 'ffprobe')) {
-              $entry = $archive.GetEntry("MyVideoApp/runtime/ffmpeg/$tool.exe")
-              if ($null -eq $entry) { throw 'Missing pinned verifier' }
-              [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, (Join-Path (Resolve-Path .cache/live-ffmpeg) "$tool.exe"), $true)
-            }
-          } finally { $archive.Dispose() }
-          (Resolve-Path .cache/live-ffmpeg).Path | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - name: Download the explicit real URL through the installed extension UI
+      - name: Verify the full actual video through the release extension UI
         env:
           MYVIDEOAPP_LIVE_PAGE_URL: ${{ inputs.live_page_url }}
           MYVIDEOAPP_LIVE_MEDIA_URL: ${{ inputs.live_media_url }}
         run: |
-          node tests/extension-live-browser.mjs 2>&1 | Tee-Object artifacts/live-windows-verification/live.log
+          node tests/extension-live-browser.mjs 2>&1 | Tee-Object artifacts/live-download.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Retain status only without publishing the video or a build
+          Copy-Item artifacts/live-windows-verification/LIVE-VALIDATION.json artifacts/LIVE-VALIDATION.json
+      - name: Prepare and verify the exact release archives
+        run: |
+          python -B scripts/release-missav.py --artifacts artifacts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Transfer only verified release files to the publisher
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-1.20.2-${{ github.sha }}
+          path: |
+            artifacts/my-video-app-extension-standard.zip
+            artifacts/my-video-app-extension-missav.zip
+            artifacts/my-video-app-desktop-windows-x64.zip
+            artifacts/my-video-app-antivirus-helper.zip
+            artifacts/my-video-app-source.zip
+            artifacts/*.json
+            artifacts/SHA256SUMS-RELEASE.txt
+            artifacts/release-notes.md
+          retention-days: 7
+      - name: Retain verification diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: live-windows-verification-${{ github.run_id }}
+          name: release-verification-${{ github.run_id }}
           path: |
+            artifacts/*.log
+            artifacts/*.json
+            artifacts/windows-verification/*.log
+            artifacts/windows-verification/gui/*.json
+            artifacts/windows-verification/gui/*.png
+            artifacts/windows-verification/gui/*.log
             artifacts/live-windows-verification/*.json
             artifacts/live-windows-verification/*.log
           retention-days: 7
+
+  publish:
+    needs: build-and-verify
+    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/codex/release-1.20.2'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-1.20.2-${{ github.sha }}
+          path: artifacts
+      - name: Recheck every ZIP and publish the complete stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -B scripts/release-missav.py --artifacts artifacts --publish

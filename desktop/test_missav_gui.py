@@ -1,5 +1,6 @@
 """Focused UI smoke check using the extracted Windows package and native Qt."""
 import argparse
+import json
 import os
 from pathlib import Path
 import sys
@@ -24,7 +25,7 @@ class MissavGuiTests(unittest.TestCase):
             window = gui.MainWindow(engine)
             try:
                 window.show(); app.processEvents()
-                self.assertEqual(gui.VERSION, '1.20.1')
+                self.assertEqual(gui.VERSION, json.loads((args.app_root / 'APPMANIFEST.json').read_text(encoding='utf-8'))['version'])
                 self.assertIn('MissAV', window.url_input.placeholderText())
                 self.assertTrue(any('MissAV' in label.text() for label in window.findChildren(QLabel)))
                 url = 'https://missav123.com/ko/owned-fixture'
