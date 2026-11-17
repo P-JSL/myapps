@@ -3,6 +3,7 @@ from pathlib import Path
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 import hashlib
 import shutil
+import os
 
 root = Path.cwd()
 out = root / 'artifacts'
@@ -10,12 +11,17 @@ out.mkdir(exist_ok=True)
 # Failed packaging must not leave an old checksum manifest implying success.
 (out / 'SHA256SUMS').unlink(missing_ok=True)
 antivirus_files = {'README.ko.md', 'antivirus_host.py', 'windows_antivirus.py', 'internal_scan.py', 'install.py'}
+variant = os.environ.get('MY_VIDEO_APP_EXTENSION_VARIANT')
+if variant not in (None, 'standard', 'missav'):
+    raise ValueError('Unknown extension variant')
+extension_source = root / 'extensions' / variant if variant else root / 'dist'
+extension_prefix = 'my-video-app-' + variant if variant else 'my-video-app'
 packages = [
-    ('my-video-app-extension.zip', root / 'dist', 'my-video-app', None),
+    ('my-video-app-extension.zip', extension_source, extension_prefix, None),
     ('my-video-app-source.zip', root, 'my-video-app-source', None),
     ('my-video-app-antivirus-helper.zip', root / 'native', 'my-video-app-antivirus-helper', antivirus_files),
 ]
-source_exclusions = {'.git', 'node_modules', 'dist', 'dist-compat', 'artifacts', 'test-results', '.cache', '.venv', 'venv'}
+source_exclusions = {'.git', 'node_modules', 'dist', 'dist-compat', 'extensions', 'artifacts', 'test-results', '.cache', '.venv', 'venv'}
 private_configs = {'native/config.json', 'native/youtube-config.json'}
 for name, source, prefix, allowed in packages:
     included = set()

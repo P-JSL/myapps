@@ -1,12 +1,6 @@
-name: Publish standard extension, MissAV extension and Windows bundle
+name: Legacy 1.19 - publish the original aggregate bundle
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/release-bundle.yml
-      - scripts/assemble-release-bundle.py
-      - tests/test_release_bundle.py
   workflow_dispatch:
 
 permissions:

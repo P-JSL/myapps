@@ -1,4 +1,4 @@
-"""Verify three freshly built products and publish the immutable 1.20.2 release."""
+"""Verify three freshly built products and publish the immutable 1.20.3 release."""
 import argparse
 import hashlib
 import importlib.util
@@ -11,7 +11,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 REPO = 'P-JSL/myapps'
-VERSION = '1.20.2'
+VERSION = '1.20.3'
 TAG = 'v' + VERSION
 RELEASE_REF = 'refs/heads/codex/release-' + VERSION
 PINNED = {'my-video-app-antivirus-helper.zip': '88818c9cc0ea443be213ac0c2c20cbeebf3796444026824ac3f9306aef55c959'}
@@ -86,7 +86,7 @@ def verify(directory, commit):
             == {name: sha(ROOT / 'native' / name) for name in helper_files}, 'Pinned antivirus helper differs from current source')
     windows = read_json(directory / 'WINDOWS-VALIDATION.json')
     require(windows.get('commit') == commit and windows.get('version') == VERSION
-            and windows.get('platform') == 'windows-x64' and windows.get('scope') == 'release-three-variants-v1202', 'Windows validation provenance mismatch')
+            and windows.get('platform') == 'windows-x64' and windows.get('scope') == 'release-three-variants-v1203', 'Windows validation provenance mismatch')
     require(windows.get('nativeMissavTests') == 12 and windows.get('nativeGuiTests') == 1
             and windows.get('directHlsTests') == 4 and windows.get('nativeDownloadGuiChecks') == 7, 'Windows runtime checks are missing')
     require(windows.get('desktopSha256') == sha(directory / PRODUCTS[2]), 'Windows validation belongs to another ZIP')
@@ -110,11 +110,11 @@ def verify(directory, commit):
     identities, manifests = {}, []
     for variant in ['standard', 'missav']:
         build = read_json(directory / (variant.upper() + '-BUILD.json'))
-        extension = zip_inventory(directory / f'my-video-app-extension-{variant}.zip', 'my-video-app/')
+        extension = zip_inventory(directory / f'my-video-app-extension-{variant}.zip', f'my-video-app-{variant}/')
         identity = tree_identity(extension); identities[variant] = identity
         require(build['version'] == VERSION and build['buildSha256'] == identity, 'Extension ZIP is not its verified build: ' + variant)
         with zipfile.ZipFile(directory / f'my-video-app-extension-{variant}.zip') as archive:
-            extension_manifest = json.loads(archive.read('my-video-app/manifest.json'))
+            extension_manifest = json.loads(archive.read(f'my-video-app-{variant}/manifest.json'))
         require(extension_manifest['version'] == VERSION, 'Extension version mismatch: ' + variant)
         manifests.append(extension_manifest)
         entries = {entry['logicalOutput']: entry for entry in build['entries']}
@@ -150,7 +150,8 @@ def prepare(directory):
     seconds = round(float(live['savedMedia']['format']['duration']))
     minutes, seconds = divmod(seconds, 60)
     contents = {'tag': TAG, 'version': VERSION, 'sourceCommit': commit, 'standardExtensionRebuilt': True,
-                'desktopSupports': ['YouTube', 'ordinary direct media', 'MissAV'], 'targetFullVideoVerified': True,
+                'desktopSupports': ['YouTube', 'ordinary direct media', 'MissAV'],
+                'extensionFolders': {'standard': 'extensions/standard', 'missav': 'extensions/missav'}, 'targetFullVideoVerified': True,
                 'liveVerification': {'manifestProbeForDiscovery': live.get('manifestProbeForDiscovery'), 'savedMedia': live['savedMedia'],
                                      'manifest': live['manifest'], 'mediaResponses': live['mediaResponses'], 'jobState': live.get('jobState')},
                 'previousFullSuites': 'not repeated per user',
@@ -159,7 +160,7 @@ def prepare(directory):
     names.append('RELEASE-CONTENTS.json')
     (directory / 'SHA256SUMS-RELEASE.txt').write_text(''.join(sha(directory / name) + '  ' + name + '\n' for name in names), encoding='utf-8')
     names.append('SHA256SUMS-RELEASE.txt')
-    (directory / 'release-notes.md').write_text(f'''기본 확장, MissAV 포함 확장, 두 경로를 지원하는 Windows 통합 앱을 **1.20.2 새 빌드**로 제공합니다.
+    (directory / 'release-notes.md').write_text(f'''기본 확장, MissAV 포함 확장, 두 경로를 지원하는 Windows 통합 앱을 **1.20.3 새 빌드**로 제공합니다.
 
 | 설치 파일 | 용도 |
 | --- | --- |
@@ -169,7 +170,7 @@ def prepare(directory):
 
 Windows 앱의 다운로드 준비 멈춤, 한글 설치 경로의 TLS 오류, HLS 취소 후 재시도 파일 잠금, 일반 직접 HLS 주소 거부를 수정했습니다. MissAV 확장은 페이지 정책에 따라 원본 요청 정보가 달라지는 문제를 보완했습니다. 기존 런타임 버전은 유지합니다.
 
-확장 ZIP은 **둘 중 하나만 설치**하고 기존 재생 탭을 새로고침하세요. Windows ZIP은 **새 폴더에 전체 압축 해제**한 뒤 `My Video App.exe`를 실행하세요. 확장에는 YouTube 기능이 없으며 데스크톱 앱에서 사용합니다.
+확장은 **둘 중 하나만 설치**하세요. 저장소에서는 `extensions/standard/`와 `extensions/missav/`로 분리했습니다. ZIP 안의 폴더도 각각 `my-video-app-standard/`와 `my-video-app-missav/`이므로 서로 덮어쓰지 않습니다. 기존 재생 탭을 새로고침하세요. Windows ZIP은 **새 폴더에 전체 압축 해제**한 뒤 `My Video App.exe`를 실행하세요. 확장에는 YouTube 기능이 없으며 데스크톱 앱에서 사용합니다.
 
 검증: 이 릴리즈의 실제 ZIP과 빌드 해시가 일치하는지 확인하고 Windows 네이티브 GUI 7개, 기본판·MissAV판 UI 각 3개, 실제 설치 MissAV 확장 6개, HLS·TLS 회귀 검사를 통과한 뒤 게시했습니다. 일반판의 기존 수집기·백그라운드 소스 바이트도 확인했습니다.
 

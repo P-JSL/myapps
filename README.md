@@ -4,9 +4,9 @@
 
 **YouTube 공개 단일 영상·Shorts는 Windows 앱**으로 다운로드하고, **Chrome 확장은 일반 웹페이지의 미디어 및 비암호화 HLS/DASH 다운로드**에 사용합니다. 두 프로그램의 지원 기능은 서로 다릅니다.
 
-- **최신 버전:** [v1.20.2 릴리스](https://github.com/P-JSL/myapps/releases/tag/v1.20.2) · [항상 최신 릴리스 보기](https://github.com/P-JSL/myapps/releases/latest)
+- **최신 버전:** [v1.20.3 릴리스](https://github.com/P-JSL/myapps/releases/tag/v1.20.3) · [항상 최신 릴리스 보기](https://github.com/P-JSL/myapps/releases/latest)
 - **Windows 앱:** Windows 10/11 x64, 압축 해제 후 바로 실행. Python, yt-dlp, FFmpeg 등 필요 구성요소 포함
-- **세 가지 설치 파일:** [MissAV 감지 추가판·일반판 확장·Windows 앱 통합 릴리즈](https://github.com/P-JSL/myapps/releases/tag/v1.20.2) · MissAV 확장·Windows 앱의 403 요청 처리 개선
+- **세 가지 설치 파일:** [MissAV 감지 추가판·일반판 확장·Windows 앱 통합 릴리즈](https://github.com/P-JSL/myapps/releases/tag/v1.20.3) · MissAV 확장·Windows 앱의 403 요청 처리 개선
 - **Chrome 확장:** 개발자 모드로 로드. 두 확장 ZIP 중 하나만 설치
 - **서비스 계정·구독·API 키:** 프로그램 사용에 필요하지 않음
 
@@ -25,14 +25,14 @@
 
 ## 다운로드
 
-**[세 가지 설치 파일을 한 릴리즈에서 받기](https://github.com/P-JSL/myapps/releases/tag/v1.20.2)** · [Downloads 폴더](Downloads/) · [정식 Windows 릴리즈](https://github.com/P-JSL/myapps/releases/latest)
+**[세 가지 설치 파일을 한 릴리즈에서 받기](https://github.com/P-JSL/myapps/releases/tag/v1.20.3)** · [Downloads 폴더](Downloads/) · [정식 Windows 릴리즈](https://github.com/P-JSL/myapps/releases/latest)
 
 | 파일 | 사용자에게 필요한 내용 |
 | --- | --- |
-| **[Windows 앱 ZIP 다운로드](https://github.com/P-JSL/myapps/releases/download/v1.20.2/my-video-app-desktop-windows-x64.zip)** | v1.20.2: 일반 미디어·YouTube·MissAV 공용. 준비 멈춤·한글 경로 TLS·취소 재시도 수정. **ZIP 전체를 새 폴더에 풀고 My Video App.exe 실행.** |
-| **[Chrome 확장 · MissAV 감지 추가판](https://github.com/P-JSL/myapps/releases/download/v1.20.2/my-video-app-extension-missav.zip)** | 직접 주소 입력·실패 재시도의 재생 탭 복원, 최신 서명 주소 사용. 업데이트 후 원래 재생 탭을 새로고침 |
-| **[Chrome 확장 · 일반판](https://github.com/P-JSL/myapps/releases/download/v1.20.2/my-video-app-extension-standard.zip)** | MissAV 전용 코드 없이 기존 원본 감지·다운로드 로직을 유지한 1.20.2 새 빌드 |
-| [전체 소스 ZIP](https://github.com/P-JSL/myapps/releases/download/v1.20.2/my-video-app-source.zip) | 현재 커밋의 확장·앱·빌드 스크립트·의존성 잠금·검사 코드·사이트 점검 보고서 |
+| **[Windows 앱 ZIP 다운로드](https://github.com/P-JSL/myapps/releases/download/v1.20.3/my-video-app-desktop-windows-x64.zip)** | v1.20.3: 일반 미디어·YouTube·MissAV 공용. 준비 멈춤·한글 경로 TLS·취소 재시도 수정. **ZIP 전체를 새 폴더에 풀고 My Video App.exe 실행.** |
+| **[Chrome 확장 · MissAV 감지 추가판](https://github.com/P-JSL/myapps/releases/download/v1.20.3/my-video-app-extension-missav.zip)** | 직접 주소 입력·실패 재시도의 재생 탭 복원, 최신 서명 주소 사용. 업데이트 후 원래 재생 탭을 새로고침 |
+| **[Chrome 확장 · 일반판](https://github.com/P-JSL/myapps/releases/download/v1.20.3/my-video-app-extension-standard.zip)** | MissAV 전용 코드 없이 기존 원본 감지·다운로드 로직을 유지한 1.20.3 새 빌드 |
+| [전체 소스 ZIP](https://github.com/P-JSL/myapps/releases/download/v1.20.3/my-video-app-source.zip) | 현재 커밋의 확장·앱·빌드 스크립트·의존성 잠금·검사 코드·사이트 점검 보고서 |
 | [확장 백신 도우미](artifacts/my-video-app-antivirus-helper.zip) | Chrome 확장의 선택적 로컬 백신 연동. 데스크톱 앱의 YouTube에는 필요하지 않음 |
 
 **Windows 앱 ZIP은 GitHub 일반 Git 파일 제한(100MiB)을 넘으므로 Release에 보관합니다.** 저장소의 [Downloads 폴더](Downloads/)에는 실제 ZIP을 내려받는 링크를 제공합니다. [배포 워크플로](.github/workflows/release-missav.yml)가 버전·코드·고정 의존성으로 앱을 빌드하고 확장 ZIP과 함께 게시합니다. 비공개 저장소의 Release는 권한 있는 계정으로 로그인해야 접근할 수 있습니다.
@@ -44,7 +44,7 @@
 ## 설치 전에 확인할 점
 
 - **Windows 앱**은 ZIP을 반드시 **새 폴더에 전체 압축 해제**하세요. 기존 버전 폴더에 덮어쓰면 제거된 런타임 파일이 남아 오류를 일으킬 수 있습니다.
-- **Chrome 확장**은 `manifest.json`이 있는 폴더를 지정해야 합니다.
+- **Chrome 확장**은 각 버전의 `manifest.json`이 있는 폴더를 지정해야 합니다.
 - `Code → Download ZIP`은 소스 코드입니다. Windows 실행 파일은 **GitHub Release**에서 받으세요.
 - 파일이 정상 다운로드되었는지 확인하려면 릴리스의 `SHA256SUMS-RELEASE.txt`와 체크섬을 비교할 수 있습니다.
 
@@ -134,3 +134,10 @@ python3 -B scripts/build-desktop.py
 - [제3자 저작권 및 라이선스](THIRD_PARTY_NOTICES.md) · [데스크톱 고지](desktop/THIRD_PARTY_NOTICES.md)
 
 콘텐츠의 저작권과 원본 사이트의 이용 조건은 사용자가 확인해야 합니다. 이 프로그램은 접근 권한이 없는 콘텐츠를 가져오는 기능을 제공하지 않습니다.
+
+### 확장 버전별 폴더
+
+- [기본판 설치 폴더](extensions/standard/)
+- [MissAV판 설치 폴더](extensions/missav/)
+
+`npm run build:extensions`로 두 버전을 함께 빌드합니다. ZIP 안의 루트 폴더도 `my-video-app-standard/`, `my-video-app-missav/`로 구분합니다.

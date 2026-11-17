@@ -102,3 +102,9 @@ await writeFile('reports/build.json', JSON.stringify({
   distBytes: (await Promise.all(names.map(name => stat(`dist/${name}`).then(s => s.size)))).reduce((a, b) => a + b, 0),
 }, null, 2) + '\n');
 console.log(`Local build complete: ${names.length} files; ${entries.length} runtime entries; ${sharedChunks.length} shared modules; no test-only completion bundle.`);
+const variant = process.env.MY_VIDEO_APP_EXTENSION_VARIANT === 'standard' ? 'standard' : 'missav';
+const installDirectory = path.join('extensions', variant);
+await rm(installDirectory, { recursive: true, force: true });
+await cp('dist', installDirectory, { recursive: true });
+await cp('reports/build.json', `reports/build-${variant}.json`);
+console.log(`Installable ${variant} extension: ${installDirectory}`);

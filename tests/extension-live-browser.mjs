@@ -16,7 +16,7 @@ const work = path.join(root, '.cache/live-extension-verification');
 await mkdir(output, { recursive: true }); await mkdir(work, { recursive: true });
 const profile = await mkdtemp(path.join(work, 'profile-'));
 const downloadDirectory = await mkdtemp(path.join(work, 'downloads-'));
-const build = JSON.parse(await readFile(path.join(root, 'reports/build.json')));
+const build = JSON.parse(await readFile(path.join(root, 'reports/build-missav.json')));
 const media = new URL(mediaURL), mediaPrefix = media.pathname.split('/').slice(0, 2).join('/') + '/';
 const result = { platform: process.platform, buildSha256: build.buildSha256, chromeAPIsMocked: false,
   responsesMocked: false, pageHost: new URL(pageURL).hostname, mediaHost: media.hostname,
@@ -39,7 +39,7 @@ try {
   context = await chromium.launchPersistentContext(profile, {
     ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
     channel: 'chromium', headless: process.platform !== 'win32', acceptDownloads: true, ignoreDefaultArgs: ['--disable-extensions'],
-    args: ['--no-sandbox', `--disable-extensions-except=${path.join(root, 'dist')}`, `--load-extension=${path.join(root, 'dist')}`],
+    args: ['--no-sandbox', `--disable-extensions-except=${path.join(root, 'extensions', 'missav')}`, `--load-extension=${path.join(root, 'extensions', 'missav')}`],
   });
   result.browserVersion = context.browser().version();
   context.on('response', response => {

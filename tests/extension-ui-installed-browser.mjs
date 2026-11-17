@@ -20,7 +20,7 @@ const source = path.join(root, 'tests/fixtures/desktop-source.mp4');
 const fragmentFile = path.join(output, 'clip.ts');
 command('ffmpeg', ['-v', 'error', '-i', source, '-c', 'copy', '-f', 'mpegts', '-y', fragmentFile]);
 const mp4 = await readFile(source), fragment = await readFile(fragmentFile);
-const build = JSON.parse(await readFile(path.join(root, 'reports/build.json')));
+const build = JSON.parse(await readFile(path.join(root, `reports/build-${variant}.json`)));
 for (const [logical, stem] of [['local/background.js', 'background'], ['local/collect.js', 'collect']]) {
   assert.equal(build.entries.find(entry => entry.logicalOutput === logical)?.input,
     `src/local/${stem}${variant === 'standard' ? '-standard' : ''}.ts`, 'Test the requested build variant');
@@ -59,7 +59,7 @@ try {
   context = await chromium.launchPersistentContext(profile, {
     ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
     channel: 'chromium', headless: true, acceptDownloads: true, ignoreDefaultArgs: ['--disable-extensions'],
-    args: ['--no-sandbox', `--disable-extensions-except=${path.join(root, 'dist')}`, `--load-extension=${path.join(root, 'dist')}`],
+    args: ['--no-sandbox', `--disable-extensions-except=${path.join(root, 'extensions', variant)}`, `--load-extension=${path.join(root, 'extensions', variant)}`],
   });
   browserVersion = context.browser().version();
   const cdp = await context.browser().newBrowserCDPSession();

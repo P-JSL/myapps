@@ -18,7 +18,7 @@ const source = path.join(root, 'tests/fixtures/desktop-source.mp4');
 const clipFile = path.join(output, 'clip.ts');
 command('ffmpeg', ['-v', 'error', '-i', source, '-c', 'copy', '-f', 'mpegts', '-y', clipFile]);
 const clip = await readFile(clipFile);
-const build = JSON.parse(await readFile(path.join(root, 'reports/build.json')));
+const build = JSON.parse(await readFile(path.join(root, 'reports/build-missav.json')));
 const version = JSON.parse(await readFile(path.join(root, 'package.json'))).version;
 const profile = await mkdtemp(path.join(output, 'profile-'));
 const requests = [], checks = [], errors = [], downloads = [];
@@ -29,7 +29,7 @@ try {
   context = await chromium.launchPersistentContext(profile, {
     ...(executablePath ? { executablePath } : {}), channel: 'chromium', headless: true, acceptDownloads: true,
     ignoreDefaultArgs: ['--disable-extensions'],
-    args: ['--no-sandbox', `--disable-extensions-except=${path.join(root, 'dist')}`, `--load-extension=${path.join(root, 'dist')}`],
+    args: ['--no-sandbox', `--disable-extensions-except=${path.join(root, 'extensions', 'missav')}`, `--load-extension=${path.join(root, 'extensions', 'missav')}`],
   });
   browserVersion = context.browser().version();
   const cdp = await context.browser().newBrowserCDPSession();

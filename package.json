@@ -1,6 +1,6 @@
 {
   "name": "my-video-app",
-  "version": "1.20.2",
+  "version": "1.20.3",
   "private": true,
   "type": "module",
   "engines": {
@@ -19,7 +19,8 @@
     "check:source": "node scripts/audit-source.mjs",
     "check:dependencies": "node scripts/audit-dependencies.mjs",
     "encrypt:source": "node scripts/encrypt-source.mjs encrypt",
-    "decrypt:source": "node scripts/encrypt-source.mjs decrypt"
+    "decrypt:source": "node scripts/encrypt-source.mjs decrypt",
+    "build:extensions": "node scripts/build-extensions.mjs"
   },
   "devDependencies": {
     "@ffmpeg/core": "0.12.10",

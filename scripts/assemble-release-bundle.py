@@ -84,7 +84,7 @@ def verify_archives(directory):
 
 
 def source_zip(destination, commit):
-    excluded = {'.git', 'node_modules', 'dist', 'dist-compat', 'artifacts', 'test-results', '.cache', '.venv', 'venv'}
+    excluded = {'.git', 'node_modules', 'dist', 'dist-compat', 'extensions', 'artifacts', 'test-results', '.cache', '.venv', 'venv'}
     private = {'native/config.json', 'native/youtube-config.json'}
     process = subprocess.Popen(['git', '-C', str(ROOT), 'archive', '--format=tar', commit], stdout=subprocess.PIPE)
     try:

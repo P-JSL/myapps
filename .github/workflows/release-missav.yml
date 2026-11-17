@@ -1,4 +1,4 @@
-name: Build, verify and release 1.20.2 - standard, MissAV and shared Windows app
+name: Build, verify and release 1.20.3 - standard, MissAV and shared Windows app
 
 on:
   workflow_dispatch:
@@ -14,12 +14,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-v1.20.2
+  group: release-v1.20.3
   cancel-in-progress: false
 
 jobs:
   build-and-verify:
-    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/codex/release-1.20.2'
+    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/codex/release-1.20.3'
     runs-on: windows-2025
     timeout-minutes: 45
     env:
@@ -50,6 +50,8 @@ jobs:
           node --experimental-strip-types --test tests/missav.test.ts tests/missav-collector.test.ts tests/missav-build.test.ts tests/missav-request-url.test.ts tests/missav-context.test.ts tests/page-fetch.test.ts 2>&1 | Tee-Object artifacts/extension-regression.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -B tests/test_missav_release.py -v 2>&1 | Tee-Object artifacts/release-guards.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B tests/test_extension_folders.py -v 2>&1 | Tee-Object artifacts/extension-folders.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25
         with:
@@ -85,7 +87,7 @@ jobs:
           & $python -I -B desktop/test_windows_gui_download.py --app-root $env:MYVIDEOAPP_TEST_ROOT --output artifacts/windows-verification/gui 2>&1 | Tee-Object artifacts/windows-verification/gui-download.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item artifacts/windows-verification/gui/WINDOWS-GUI-VALIDATION.json artifacts/WINDOWS-GUI-VALIDATION.json
-          @{version='1.20.2'; commit=$env:GITHUB_SHA; platform='windows-x64'; scope='release-three-variants-v1202'; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); nativeMissavTests=12; nativeGuiTests=1; directHlsTests=4; nativeDownloadGuiChecks=7; previousFullSuites='not repeated per user'} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
+          @{version='1.20.3'; commit=$env:GITHUB_SHA; platform='windows-x64'; scope='release-three-variants-v1203'; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); nativeMissavTests=12; nativeGuiTests=1; directHlsTests=4; nativeDownloadGuiChecks=7; previousFullSuites='not repeated per user'} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
       - name: Install the locked verification browser
         run: |
           node node_modules/playwright-core/cli.js install chromium
@@ -132,7 +134,7 @@ jobs:
       - name: Transfer only verified release files to the publisher
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: release-1.20.2-${{ github.sha }}
+          name: release-1.20.3-${{ github.sha }}
           path: |
             artifacts/my-video-app-extension-standard.zip
             artifacts/my-video-app-extension-missav.zip
@@ -161,7 +163,7 @@ jobs:
 
   publish:
     needs: build-and-verify
-    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/codex/release-1.20.2'
+    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/codex/release-1.20.3'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -172,7 +174,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: release-1.20.2-${{ github.sha }}
+          name: release-1.20.3-${{ github.sha }}
           path: artifacts
       - name: Recheck every ZIP and publish the complete stable release
         env:

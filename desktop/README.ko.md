@@ -1,4 +1,4 @@
-# My Video App 1.20.2 · Windows 앱
+# My Video App 1.20.3 · Windows 앱
 
 **MissAV 페이지와 감지된 HLS 직접 주소를 지원합니다.** MissAV 요청에만 브라우저 호환 HTTP/2 통신을 적용하며, 재생목록과 영상 조각에 같은 사이트 요청 정보를 사용합니다. YouTube·일반 직접 주소는 기존 yt-dlp 경로를 유지합니다.
 
