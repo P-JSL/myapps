@@ -12,6 +12,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import traceback
 
@@ -56,6 +57,19 @@ def wait(predicate, message, seconds=35):
         if predicate():
             return
         QTest.qWait(20)
+    # Capture the blocked Python stack before cancellation changes the state.
+    frames = sys._current_frames()
+    names = {thread.ident: thread.name for thread in threading.enumerate()}
+    details = {'reason': message, 'threads': {}, 'jobs': {}, 'fixtureExitCode': fixture.poll() if fixture else None}
+    for ident, frame in frames.items():
+        details['threads'][str(ident)] = {'name': names.get(ident, 'Qt thread'), 'stack': traceback.format_stack(frame)}
+    if window is not None:
+        details['jobs'] = {job_id: {'stage': item.stage, 'cancelled': item.cancel.is_set(), 'message': item.message,
+                                    'activeWorker': job_id in window.workers} for job_id, item in window.items.items()}
+    traffic = OUT / 'fixture-requests.jsonl'
+    if traffic.exists():
+        details['fixtureTraffic'] = traffic.read_text(encoding='utf-8').splitlines()[-100:]
+    (OUT / f'timeout-{int(time.monotonic() * 1000)}.json').write_text(json.dumps(details, ensure_ascii=False, indent=2), encoding='utf-8')
     raise AssertionError(message)
 
 
@@ -258,6 +272,10 @@ finally:
         window.close(); window.deleteLater(); QApplication.processEvents()
     if activity is not None:
         activity.close()
+        logs = []
+        for log in (OUT / '개별 테스트 데이터').rglob('*.jsonl'):
+            logs.extend(log.read_text(encoding='utf-8').splitlines()[-200:])
+        (OUT / 'runtime-activity.log').write_text('\n'.join(logs), encoding='utf-8')
     if fixture is not None:
         fixture.terminate()
         try: fixture.communicate(timeout=5)

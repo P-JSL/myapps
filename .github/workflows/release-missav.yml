@@ -105,4 +105,6 @@ jobs:
             artifacts/windows-verification/*.json
             artifacts/windows-verification/gui/*.png
             artifacts/windows-verification/gui/*.json
+            artifacts/windows-verification/gui/*.log
+            artifacts/windows-verification/gui/fixture-requests.jsonl
           retention-days: 7
