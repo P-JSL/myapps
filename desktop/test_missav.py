@@ -85,6 +85,7 @@ class TransportTests(unittest.TestCase):
         cls.ffprobe = runtime / 'ffprobe.exe' if args.app_root else Path(shutil.which('ffprobe'))
         clip = cls.root / 'clip.ts'
         subprocess.run([str(cls.ffmpeg), '-v', 'error', '-i', str(REPO / 'tests/fixtures/desktop-source.mp4'), '-c', 'copy', '-f', 'mpegts', '-y', str(clip)], check=True)
+        cls.cert = cert
         cls.log = cls.root / 'requests.jsonl'
         cls.server = subprocess.Popen([shutil.which('node'), str(REPO / 'tests/missav_fixture_server.mjs'), str(cert), str(key), str(clip), str(cls.log)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
@@ -103,7 +104,7 @@ class TransportTests(unittest.TestCase):
             for host in ['surrit.com', 'nineyu.com', 'missav123.com']:
                 routes = lib.curl_slist_append(routes, f'{host}:443:127.0.0.1:{port}'.encode())
             cls.connect_lists.append(routes)
-            session.curl_options.update({CurlOpt.CONNECT_TO: routes, CurlOpt.PROXY: '', CurlOpt.CAINFO: str(cert)})
+            session.curl_options.update({CurlOpt.CONNECT_TO: routes, CurlOpt.PROXY: ''})
         cls.session_patch = mock.patch.object(requests.Session, '__init__', initialize)
         cls.session_patch.start()
         cls.environment = mock.patch.dict(os.environ, {'SSL_CERT_FILE': str(cert), 'REQUESTS_CA_BUNDLE': str(cert)})
@@ -144,6 +145,24 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(info['title'], 'Owned MissAV fixture')
         self.assertEqual(tracks[0]['height'], 720)
         self.assertEqual(container, 'mp4')
+
+    def test_unicode_trust_bundle_works_and_untrusted_certificate_is_rejected(self):
+        from yt_dlp.networking.exceptions import CertificateVerifyError
+        unicode_cert = self.root / '한글 인증서.pem'
+        shutil.copyfile(self.cert, unicode_cert)
+        with mock.patch.dict(os.environ, {'SSL_CERT_FILE': str(unicode_cert), 'REQUESTS_CA_BUNDLE': str(unicode_cert)}):
+            with self.downloader() as ydl:
+                missav.configure(ydl, ROOT + 'playlist.m3u8')
+                with ydl.urlopen(ROOT + 'playlist.m3u8') as response:
+                    self.assertTrue(response.read().startswith(b'#EXTM3U'))
+        # The bundled public CA roots do not trust our self-signed fixture.
+        import certifi
+        shutil.copyfile(certifi.where(), unicode_cert)
+        with mock.patch.dict(os.environ, {'SSL_CERT_FILE': str(unicode_cert), 'REQUESTS_CA_BUNDLE': str(unicode_cert)}):
+            with self.downloader() as ydl:
+                missav.configure(ydl, ROOT + 'playlist.m3u8')
+                with self.assertRaises(CertificateVerifyError):
+                    ydl.urlopen(ROOT + 'playlist.m3u8')
 
     def test_direct_variant_does_not_get_rejected_as_an_html_page(self):
         subject = object.__new__(engine.Engine)

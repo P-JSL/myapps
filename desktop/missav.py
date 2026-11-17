@@ -121,7 +121,8 @@ def configure(downloader, source: str, manifest: str | None = None):
         return None
     if importlib.metadata.version("curl-cffi") != "0.16.3":
         raise MissavError("MissAV 통신 구성요소 버전이 맞지 않습니다. 새 데스크톱 ZIP 전체를 압축 해제하세요.")
-    from curl_cffi import CurlHttpVersion, CurlOpt, requests
+    import ctypes
+    from curl_cffi import Curl, CurlHttpVersion, CurlOpt, ffi, lib, requests
     from yt_dlp.networking._curlcffi import CurlCFFIRH
     from yt_dlp.networking.common import Response
     from yt_dlp.networking.exceptions import RequestError
@@ -143,7 +144,52 @@ def configure(downloader, source: str, manifest: str | None = None):
     def allowed(address):
         return address == page or (context["id"] is not None and media_id(address) == context["id"])
 
+    class CertificateBlob(ctypes.Structure):
+        _fields_ = [("data", ctypes.c_void_p), ("length", ctypes.c_size_t), ("flags", ctypes.c_uint)]
+
+    certificates = {}
+
+    class CertificateCurl(Curl):
+        def setopt(self, option, value):
+            # curl-cffi encodes CA filenames with the Windows ANSI code page.
+            # Read the same trust bundle with Python's Unicode file API and use
+            # libcurl's copying CA blob option. TLS checks remain enabled.
+            blobs = {CurlOpt.CAINFO: CurlOpt.CAINFO_BLOB, CurlOpt.PROXY_CAINFO: CurlOpt.PROXY_CAINFO_BLOB}
+            if self._curl is None or option not in blobs or not isinstance(value, (str, bytes, os.PathLike)):
+                return super().setopt(option, value)
+            path = os.fspath(value)
+            if path not in certificates:
+                try:
+                    with open(path, "rb") as certificate:
+                        data = certificate.read(16 * 1024 * 1024 + 1)
+                except OSError:
+                    raise MissavError("설정된 TLS 인증서 파일을 읽을 수 없습니다.") from None
+                if not data or len(data) > 16 * 1024 * 1024:
+                    raise MissavError("설정된 TLS 인증서 파일이 비어 있거나 너무 큽니다.")
+                certificates[path] = data
+            data = certificates[path]
+            buffer = ctypes.create_string_buffer(data)
+            blob = CertificateBlob(ctypes.cast(buffer, ctypes.c_void_p), len(data), 1)  # CURL_BLOB_COPY
+            result = lib._curl_easy_setopt(self._curl, blobs[option], ffi.cast("void *", ctypes.addressof(blob)))
+            self._check_error(result, "set trusted CA contents")
+            if option == CurlOpt.CAINFO:
+                self._is_cert_set = True
+            return result
+
+        def duphandle(self):
+            # Streaming requests duplicate the handle before applying options.
+            if self._curl is None:
+                return super().duphandle()
+            return CertificateCurl(cacert=self._cacert, debug=self._debug, handle=lib.curl_easy_duphandle(self._curl))
+
     class ScopedSession(requests.Session):
+        @property
+        def curl(self):
+            # Keep separate handles for parallel fragment download threads.
+            if not getattr(self._local, "curl", None):
+                self._local.curl = CertificateCurl(debug=self.debug)
+            return self._local.curl
+
         def request(self, method, url, *args, **kwargs):
             kwargs["allow_redirects"] = False
             for _ in range(6):
@@ -186,7 +232,7 @@ def configure(downloader, source: str, manifest: str | None = None):
                     raise MissavError("설정된 TLS 인증서 파일을 읽을 수 없습니다.")
                 options[CurlOpt.CAINFO] = ca
                 options[CurlOpt.PROXY_CAINFO] = ca
-            return ScopedSession(cookies=cookiejar, curl_options=options, trust_env=True)
+            return ScopedSession(curl=CertificateCurl(), cookies=cookiejar, curl_options=options, trust_env=True)
 
         def _get_impersonate_headers(self, request):
             headers = super()._get_impersonate_headers(request)
