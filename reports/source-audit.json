@@ -34,7 +34,7 @@
     "desktop/test_transport_engine.py": "6be28e951b538715e618b5224a7842ef1bda44e28a22eea7b2477ecbb9be9701",
     "desktop/test_v18_restore.py": "0dd0a0a588da4a88601a74d0ffb3d88e1b7eac4f3e010bd5da59606b696f309f",
     "desktop/test_v18_restore_gui.py": "d26a149ce5b05ed538aa87032f4a18b400bdef042669a43bf177f46f0626ad56",
-    "desktop/test_windows_gui_download.py": "eb967e331db4b762ea2e02b2ea503c3739dbbcfd132a2e09ed557bec041a8a13",
+    "desktop/test_windows_gui_download.py": "e1e953b1a26a6417560beeb4303240877e426a67fe8b0667f37a6dac8ab94dc5",
     "desktop/theme.py": "8214e4fc4786608388e8ecc3e7b501eb206d18ba34fcb32304db990b1544defe",
     "native/antivirus_host.py": "5c555bf12109fdf7fef83de4d1be95613777cc1b5cc95f1700961894ccd6c17c",
     "native/install.py": "29fb91151ace9eafe0fb04508cffb33b4fa28fa31176ffb5fa65f9b6eb0b3c6e",

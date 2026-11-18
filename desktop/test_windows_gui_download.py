@@ -39,6 +39,7 @@ from engine import Engine
 
 ID = 'a1b2c3d4-1234-5678-abcd-1234567890ab'
 ROOT = f'https://surrit.com/{ID}/'
+LAUNCH_WINDOW_TIMEOUT_SECONDS = 60
 checks, failures = [], []
 window = None
 fixture = None
@@ -54,8 +55,9 @@ def wait(predicate, message, seconds=35):
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
         QApplication.processEvents()
-        if predicate():
-            return
+        result = predicate()
+        if result:
+            return result
         QTest.qWait(20)
     # Capture the blocked Python stack before cancellation changes the state.
     frames = sys._current_frames()
@@ -92,13 +94,13 @@ def launcher_window(parent_pid, diagnostics=False):
     kernel.CloseHandle.argtypes = [wintypes.HANDLE]
     handle = kernel.CreateToolhelp32Snapshot(2, 0)
     assert handle not in (None, ctypes.c_void_p(-1).value)
-    children = set()
+    children = {}
     try:
         entry = ProcessEntry(); entry.size = ctypes.sizeof(entry)
         available = kernel.Process32FirstW(handle, ctypes.byref(entry))
         while available:
             if entry.parent == parent_pid:
-                children.add(entry.pid)
+                children[entry.pid] = entry.name
             available = kernel.Process32NextW(handle, ctypes.byref(entry))
     finally:
         kernel.CloseHandle(handle)
@@ -116,7 +118,7 @@ def launcher_window(parent_pid, diagnostics=False):
         user.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
         title = ctypes.create_unicode_buffer(256)
         user.GetWindowTextW(hwnd, title, len(title))
-        if pid.value in children | {parent_pid} and user.IsWindowVisible(hwnd):
+        if (pid.value in children or pid.value == parent_pid) and user.IsWindowVisible(hwnd):
             if diagnostics:
                 texts = []
                 @callback_type
@@ -132,7 +134,9 @@ def launcher_window(parent_pid, diagnostics=False):
                 found.append(hwnd)
         return True
     user.EnumWindows(visit, 0)
-    return found if diagnostics else (found[0] if found else None)
+    if diagnostics:
+        return {'children': [{'pid': pid, 'name': name} for pid, name in children.items()], 'windows': found}
+    return found[0] if found else None
 
 
 def enter(url):
@@ -185,11 +189,18 @@ try:
     app.setStyle('Fusion'); app.setQuitOnLastWindowClosed(False)
     assert app.platformName() == 'windows'
     child_environment = {**os.environ, 'LOCALAPPDATA': str(OUT / '런처 개별 데이터')}
+    launcher_started = time.monotonic()
     launcher = subprocess.Popen([str(APP / 'My Video App.exe')], env=child_environment,
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
-        wait(lambda: launcher_window(launcher.pid) is not None, 'Actual EXE did not show its native window', 20)
-        handle = launcher_window(launcher.pid)
+        def find_started_window():
+            code = launcher.poll()
+            if code is not None:
+                raise AssertionError(f'Actual EXE exited before its window appeared (exit code {code})')
+            return launcher_window(launcher.pid)
+
+        handle = wait(find_started_window, 'Actual EXE did not show its native window', LAUNCH_WINDOW_TIMEOUT_SECONDS)
+        print(f'Actual EXE window appeared after {time.monotonic() - launcher_started:.2f} seconds.', flush=True)
         wait(lambda: app.primaryScreen().grabWindow(int(handle)).save(str(OUT / '00-native-launcher.png')),
              'Could not capture the real launcher window', 5)
         user = ctypes.WinDLL('user32', use_last_error=True)
@@ -201,9 +212,10 @@ try:
     except Exception:
         failures.append('Launcher verification:\n' + traceback.format_exc())
         try:
-            dialogs = launcher_window(launcher.pid, diagnostics=True)
-            (OUT / 'LAUNCHER-DIAGNOSTICS.json').write_text(json.dumps({'exitCode': launcher.poll(), 'windows': dialogs}, ensure_ascii=False, indent=2), encoding='utf-8')
-            for index, dialog in enumerate(dialogs):
+            diagnostics = launcher_window(launcher.pid, diagnostics=True)
+            diagnostics.update(exitCode=launcher.poll(), elapsedSeconds=time.monotonic() - launcher_started)
+            (OUT / 'LAUNCHER-DIAGNOSTICS.json').write_text(json.dumps(diagnostics, ensure_ascii=False, indent=2), encoding='utf-8')
+            for index, dialog in enumerate(diagnostics['windows']):
                 app.primaryScreen().grabWindow(dialog['handle']).save(str(OUT / f'launcher-dialog-{index}.png'))
         finally:
             if launcher.poll() is None:
