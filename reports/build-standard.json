@@ -1,8 +1,8 @@
 {
   "engine": "independent-local",
   "productName": "My Video App",
-  "version": "1.20.4",
-  "buildSha256": "ea2559503c453467996675980258e5af481e238c0e5fa550109bf0c65d2ed84f",
+  "version": "1.20.5",
+  "buildSha256": "2a2ad96abca5c5f8a2ef5133b8c96effdc1594da9b6b18f2c4f3214fe005fc4e",
   "originalRuntimeIncluded": false,
   "accountActivationIncluded": false,
   "capabilities": [
@@ -49,43 +49,43 @@
     "offline-brotli-engine-packaging"
   ],
   "assetMap": {
-    "bitmaps/logo-128-color.png": "assets/41e77e6a17b532749fa8de32de1022fb.png",
-    "bitmaps/logo-128-nooutline.png": "assets/41e77e6a17b532749fa8de32de1022fb.png",
-    "hardening/upscale-worker.js": "assets/d9eb9c4ba6ec4fe8bf8bda96f3bf0c37.js",
-    "local/background.js": "assets/94cade99d21358a4a85e9cf0019d8122.js",
-    "local/collect.js": "assets/90ef7cccb0ebb6614ba75ebe50d00f5d.js",
-    "local/index.html": "assets/6ece658cac0e119a9e65d3c47b159754.html",
-    "local/large-stream-worker.js": "assets/070dc54548787761d522fcddc29b0c09.js",
-    "local/offscreen.html": "assets/1d9e8bdc720824239408bbf68d46d340.html",
-    "local/offscreen.js": "assets/7b4782046a3283a2ba176d0db1aaca47.js",
-    "local/popup.css": "assets/7d10ee8a1d60131bbc9a974f30a8f24f.css",
-    "local/popup.html": "assets/849feea4b7957227adff7938a4b44e73.html",
-    "local/popup.js": "assets/3788aec875b93588b43b2b4973627b8b.js",
-    "local/stream-worker.js": "assets/42d5c5095d47d5ce83a812c35afd1c8b.js",
-    "local/style.css": "assets/72cc14c2eb721725e60cd036c355ffa9.css",
-    "local/ui.js": "assets/806297e3a5b55934b0c48f186053ccb3.js",
-    "shared/2CXEORVD.js": "assets/45226191795799ce23bd1618bfbd11d0.js",
-    "shared/3VXXW3GS.js": "assets/233ab7cf13a6edf821fda75904910fb9.js",
-    "shared/53VOBGCH.js": "assets/29253c71fc33b4df178149430b551d88.js",
-    "shared/7YKBYJBT.js": "assets/bc9ac785a075a63b407d50e163de233a.js",
-    "shared/CQIA5YMQ.js": "assets/d775559a6ba969a0b74c9e80116c4cc2.js",
-    "shared/EVWXJ7SO.js": "assets/c7c8f905d5e3fc09c74053126abc6472.js",
-    "shared/FIDA7D5F.js": "assets/752f2f14e3340ca7260aaef9c27201d5.js",
-    "shared/IXTHZPC5.js": "assets/98f971237407245b070baf6c8b048ed8.js",
-    "shared/JPET4HVS.js": "assets/1db7d3ce1df48d9ffd858940b866f8bc.js",
-    "shared/LBQYAN7B.js": "assets/754a33673c8de431097a10868311b978.js",
-    "shared/LPHU7KWM.js": "assets/b1d391f64ea6b35aa192a917c27fbe4c.js",
-    "shared/PAS6SJFN.js": "assets/64055798a5e72c9a55d95f1815f819eb.js",
-    "shared/TNOLK5G5.js": "assets/1d0465f0a0368a18c55ef5885a582645.js",
-    "shared/URTQBOKN.js": "assets/cb3fc7c63eddaf12d4baa83ed3ef0345.js",
-    "shared/Z4K4I4CB.js": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
-    "upscale/app.js": "assets/f9567591ceac747063c7dba42225fb0b.js",
-    "upscale/index.html": "assets/b898671f32bd5c49829f412e587464b2.html",
-    "upscale/style.css": "assets/24eb1d2f01eaaf96be8097855d3296cd.css",
-    "vendor/brotli/brotli_dec_wasm_bg.wasm": "assets/4e1ce771cfda3b5497d6b8c431981a7c.bin",
-    "vendor/brotli/decoder.js": "assets/cf91644074853f7a4a1cfe0fbadc8035.js",
-    "vendor/ffmpeg/ffmpeg-core.js": "assets/86f1c394892a863edfe79f5eb2ebb91c.js",
-    "vendor/ffmpeg/ffmpeg-core.wasm": "assets/78f1894dbe30ff8bc26e5fa3ff50e1e0.bin"
+    "bitmaps/logo-128-color.png": "assets/b8a8a59c79b24059c13a86916b55a9df.png",
+    "bitmaps/logo-128-nooutline.png": "assets/b8a8a59c79b24059c13a86916b55a9df.png",
+    "hardening/upscale-worker.js": "assets/877d0c515afeb44d603946507eabf86b.js",
+    "local/background.js": "assets/9e03f2decc44d94fce5e10380fb284c7.js",
+    "local/collect.js": "assets/257f263d6038dc8dbeb09249a1378d14.js",
+    "local/index.html": "assets/fced3d2c90dedaa5499a4ea72f14c97f.html",
+    "local/large-stream-worker.js": "assets/e63251cb00832ad6cd24c360b37e4b7e.js",
+    "local/offscreen.html": "assets/56ffb75eada495af1b8852e6dd0134a5.html",
+    "local/offscreen.js": "assets/93f43c6e3a7370cf53ea1ce1b03f26ac.js",
+    "local/popup.css": "assets/e1c613db76779d39c770dab2d7b11c23.css",
+    "local/popup.html": "assets/dbd62afd102553941fc73c9041cdef82.html",
+    "local/popup.js": "assets/59ac882f2224c34aed1db11fb01ecc17.js",
+    "local/stream-worker.js": "assets/6ae753caad7b02c9e1d923a2d4d2ab4c.js",
+    "local/style.css": "assets/a04c3e356b0b00b06772fcd7e7ac28a8.css",
+    "local/ui.js": "assets/5b725a698cfab87f591af9d0229d924c.js",
+    "shared/2CXEORVD.js": "assets/5b68e6e70ab8dc8afb9dd42b9632ed1e.js",
+    "shared/3VXXW3GS.js": "assets/485747ea05e02b7852d6d470f40c1c0e.js",
+    "shared/53VOBGCH.js": "assets/8a7fc0a30092b9826e9599b0266b3a5b.js",
+    "shared/7YKBYJBT.js": "assets/f97f521f81ad4676f951ab23a1db98e6.js",
+    "shared/7YUUS4JX.js": "assets/e2aca1d62ca212e68b110189bf5319e0.js",
+    "shared/CQIA5YMQ.js": "assets/a481fbea7c46314ecaac22b24825ffab.js",
+    "shared/EVWXJ7SO.js": "assets/c391bd9f6d9e55666e54811f7e45d36a.js",
+    "shared/FIDA7D5F.js": "assets/f52c2340b77f9a1d9188cce70c8aee16.js",
+    "shared/IXTHZPC5.js": "assets/62840716fdd0bbea892e324390658a49.js",
+    "shared/JPET4HVS.js": "assets/157a1e5e8f1a7a7c7275a780350659b0.js",
+    "shared/LBQYAN7B.js": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
+    "shared/PAS6SJFN.js": "assets/ab909a1ff1b35ba34831c200856fa8f4.js",
+    "shared/TNOLK5G5.js": "assets/9fc756a59936b3a07490f0c990764cab.js",
+    "shared/URTQBOKN.js": "assets/b64adce1f04b1a7592088be10b25e397.js",
+    "shared/Z4K4I4CB.js": "assets/e21473128df1b1689cb3f5c183c0a765.js",
+    "upscale/app.js": "assets/815bf3986b17e717ceb6abff1babbda7.js",
+    "upscale/index.html": "assets/f7ed226c7ab319cb11344842cf2dfa4c.html",
+    "upscale/style.css": "assets/70bc8761594aa08cf5b19e02bf8fc227.css",
+    "vendor/brotli/brotli_dec_wasm_bg.wasm": "assets/adfe8a7835462343e7b471944079f5aa.bin",
+    "vendor/brotli/decoder.js": "assets/c1e765126ff8688d85226c39ac963c2c.js",
+    "vendor/ffmpeg/ffmpeg-core.js": "assets/bb3b439c51ded2de2d2d4d146e844388.js",
+    "vendor/ffmpeg/ffmpeg-core.wasm": "assets/df0342510d20cae571b5412015e015a0.bin"
   },
   "protection": {
     "version": 2,
@@ -106,9 +106,9 @@
       "format": "my-video-engine-v2",
       "algorithm": "AES-256-GCM",
       "compression": "brotli",
-      "cipherPath": "assets/78f1894dbe30ff8bc26e5fa3ff50e1e0.bin",
-      "coreModulePath": "assets/6a0d11176712fd359715342c120cb8b9.js",
-      "iv": "PAuulpta317gwd6q",
+      "cipherPath": "assets/df0342510d20cae571b5412015e015a0.bin",
+      "coreModulePath": "assets/321e6cc4785e334489888c19acd024dd.js",
+      "iv": "SRWB/xzQT+Lf+c0G",
       "tagBits": 128,
       "plaintextBytes": 32232419,
       "compressedBytes": 7280521,
@@ -119,8 +119,8 @@
         "windowBits": 22
       },
       "decoder": {
-        "modulePath": "assets/cf91644074853f7a4a1cfe0fbadc8035.js",
-        "wasmPath": "assets/4e1ce771cfda3b5497d6b8c431981a7c.bin",
+        "modulePath": "assets/c1e765126ff8688d85226c39ac963c2c.js",
+        "wasmPath": "assets/adfe8a7835462343e7b471944079f5aa.bin",
         "wasmBytes": 208439,
         "wasmSha256": "79b29cb1790560f0a0f32b4a31d935e2782875e4a367fde23c81d986b327ec3f"
       }
@@ -130,7 +130,7 @@
   "entries": [
     {
       "input": "src/local/background-standard.ts",
-      "output": "assets/94cade99d21358a4a85e9cf0019d8122.js",
+      "output": "assets/9e03f2decc44d94fce5e10380fb284c7.js",
       "format": "esm",
       "inputs": [
         "src/data/database.ts",
@@ -151,55 +151,55 @@
       ],
       "imports": [
         {
-          "path": "assets/c7c8f905d5e3fc09c74053126abc6472.js",
+          "path": "assets/c391bd9f6d9e55666e54811f7e45d36a.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/EVWXJ7SO.js"
         },
         {
-          "path": "assets/98f971237407245b070baf6c8b048ed8.js",
+          "path": "assets/62840716fdd0bbea892e324390658a49.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/IXTHZPC5.js"
         },
         {
-          "path": "assets/d775559a6ba969a0b74c9e80116c4cc2.js",
+          "path": "assets/a481fbea7c46314ecaac22b24825ffab.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/CQIA5YMQ.js"
         },
         {
-          "path": "assets/752f2f14e3340ca7260aaef9c27201d5.js",
+          "path": "assets/f52c2340b77f9a1d9188cce70c8aee16.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/FIDA7D5F.js"
         },
         {
-          "path": "assets/233ab7cf13a6edf821fda75904910fb9.js",
+          "path": "assets/485747ea05e02b7852d6d470f40c1c0e.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/3VXXW3GS.js"
         },
         {
-          "path": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
+          "path": "assets/e21473128df1b1689cb3f5c183c0a765.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/Z4K4I4CB.js"
         },
         {
-          "path": "assets/1db7d3ce1df48d9ffd858940b866f8bc.js",
+          "path": "assets/157a1e5e8f1a7a7c7275a780350659b0.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/JPET4HVS.js"
         },
         {
-          "path": "assets/cb3fc7c63eddaf12d4baa83ed3ef0345.js",
+          "path": "assets/b64adce1f04b1a7592088be10b25e397.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/URTQBOKN.js"
         },
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
@@ -210,7 +210,7 @@
     },
     {
       "input": "src/local/collect-standard.ts",
-      "output": "assets/90ef7cccb0ebb6614ba75ebe50d00f5d.js",
+      "output": "assets/257f263d6038dc8dbeb09249a1378d14.js",
       "format": "iife",
       "inputs": [
         "src/local/antivirus.ts",
@@ -226,7 +226,7 @@
     },
     {
       "input": "src/local/offscreen.ts",
-      "output": "assets/7b4782046a3283a2ba176d0db1aaca47.js",
+      "output": "assets/93f43c6e3a7370cf53ea1ce1b03f26ac.js",
       "format": "esm",
       "inputs": [
         "src/local/antivirus.ts",
@@ -251,55 +251,55 @@
       ],
       "imports": [
         {
-          "path": "assets/c7c8f905d5e3fc09c74053126abc6472.js",
+          "path": "assets/c391bd9f6d9e55666e54811f7e45d36a.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/EVWXJ7SO.js"
         },
         {
-          "path": "assets/b1d391f64ea6b35aa192a917c27fbe4c.js",
+          "path": "assets/e2aca1d62ca212e68b110189bf5319e0.js",
           "kind": "import-statement",
           "external": false,
-          "logicalPath": "shared/LPHU7KWM.js"
+          "logicalPath": "shared/7YUUS4JX.js"
         },
         {
-          "path": "assets/98f971237407245b070baf6c8b048ed8.js",
+          "path": "assets/62840716fdd0bbea892e324390658a49.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/IXTHZPC5.js"
         },
         {
-          "path": "assets/45226191795799ce23bd1618bfbd11d0.js",
+          "path": "assets/5b68e6e70ab8dc8afb9dd42b9632ed1e.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/2CXEORVD.js"
         },
         {
-          "path": "assets/233ab7cf13a6edf821fda75904910fb9.js",
+          "path": "assets/485747ea05e02b7852d6d470f40c1c0e.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/3VXXW3GS.js"
         },
         {
-          "path": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
+          "path": "assets/e21473128df1b1689cb3f5c183c0a765.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/Z4K4I4CB.js"
         },
         {
-          "path": "assets/1db7d3ce1df48d9ffd858940b866f8bc.js",
+          "path": "assets/157a1e5e8f1a7a7c7275a780350659b0.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/JPET4HVS.js"
         },
         {
-          "path": "assets/cb3fc7c63eddaf12d4baa83ed3ef0345.js",
+          "path": "assets/b64adce1f04b1a7592088be10b25e397.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/URTQBOKN.js"
         },
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
@@ -310,7 +310,7 @@
     },
     {
       "input": "src/local/ui.ts",
-      "output": "assets/806297e3a5b55934b0c48f186053ccb3.js",
+      "output": "assets/5b725a698cfab87f591af9d0229d924c.js",
       "format": "esm",
       "inputs": [
         "src/data/database.ts",
@@ -330,49 +330,49 @@
       ],
       "imports": [
         {
-          "path": "assets/bc9ac785a075a63b407d50e163de233a.js",
+          "path": "assets/f97f521f81ad4676f951ab23a1db98e6.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/7YKBYJBT.js"
         },
         {
-          "path": "assets/98f971237407245b070baf6c8b048ed8.js",
+          "path": "assets/62840716fdd0bbea892e324390658a49.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/IXTHZPC5.js"
         },
         {
-          "path": "assets/752f2f14e3340ca7260aaef9c27201d5.js",
+          "path": "assets/f52c2340b77f9a1d9188cce70c8aee16.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/FIDA7D5F.js"
         },
         {
-          "path": "assets/233ab7cf13a6edf821fda75904910fb9.js",
+          "path": "assets/485747ea05e02b7852d6d470f40c1c0e.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/3VXXW3GS.js"
         },
         {
-          "path": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
+          "path": "assets/e21473128df1b1689cb3f5c183c0a765.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/Z4K4I4CB.js"
         },
         {
-          "path": "assets/1db7d3ce1df48d9ffd858940b866f8bc.js",
+          "path": "assets/157a1e5e8f1a7a7c7275a780350659b0.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/JPET4HVS.js"
         },
         {
-          "path": "assets/cb3fc7c63eddaf12d4baa83ed3ef0345.js",
+          "path": "assets/b64adce1f04b1a7592088be10b25e397.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/URTQBOKN.js"
         },
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
@@ -383,7 +383,7 @@
     },
     {
       "input": "src/local/popup.ts",
-      "output": "assets/3788aec875b93588b43b2b4973627b8b.js",
+      "output": "assets/59ac882f2224c34aed1db11fb01ecc17.js",
       "format": "esm",
       "inputs": [
         "src/data/database.ts",
@@ -402,43 +402,43 @@
       ],
       "imports": [
         {
-          "path": "assets/bc9ac785a075a63b407d50e163de233a.js",
+          "path": "assets/f97f521f81ad4676f951ab23a1db98e6.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/7YKBYJBT.js"
         },
         {
-          "path": "assets/752f2f14e3340ca7260aaef9c27201d5.js",
+          "path": "assets/f52c2340b77f9a1d9188cce70c8aee16.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/FIDA7D5F.js"
         },
         {
-          "path": "assets/233ab7cf13a6edf821fda75904910fb9.js",
+          "path": "assets/485747ea05e02b7852d6d470f40c1c0e.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/3VXXW3GS.js"
         },
         {
-          "path": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
+          "path": "assets/e21473128df1b1689cb3f5c183c0a765.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/Z4K4I4CB.js"
         },
         {
-          "path": "assets/1db7d3ce1df48d9ffd858940b866f8bc.js",
+          "path": "assets/157a1e5e8f1a7a7c7275a780350659b0.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/JPET4HVS.js"
         },
         {
-          "path": "assets/cb3fc7c63eddaf12d4baa83ed3ef0345.js",
+          "path": "assets/b64adce1f04b1a7592088be10b25e397.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/URTQBOKN.js"
         },
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
@@ -449,7 +449,7 @@
     },
     {
       "input": "src/local/stream-worker.ts",
-      "output": "assets/42d5c5095d47d5ce83a812c35afd1c8b.js",
+      "output": "assets/6ae753caad7b02c9e1d923a2d4d2ab4c.js",
       "format": "esm",
       "external": [
         "../vendor/ffmpeg/ffmpeg-core.js"
@@ -473,61 +473,61 @@
       ],
       "imports": [
         {
-          "path": "assets/b1d391f64ea6b35aa192a917c27fbe4c.js",
+          "path": "assets/e2aca1d62ca212e68b110189bf5319e0.js",
           "kind": "import-statement",
           "external": false,
-          "logicalPath": "shared/LPHU7KWM.js"
+          "logicalPath": "shared/7YUUS4JX.js"
         },
         {
-          "path": "assets/98f971237407245b070baf6c8b048ed8.js",
+          "path": "assets/62840716fdd0bbea892e324390658a49.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/IXTHZPC5.js"
         },
         {
-          "path": "assets/64055798a5e72c9a55d95f1815f819eb.js",
+          "path": "assets/ab909a1ff1b35ba34831c200856fa8f4.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/PAS6SJFN.js"
         },
         {
-          "path": "assets/1d0465f0a0368a18c55ef5885a582645.js",
+          "path": "assets/9fc756a59936b3a07490f0c990764cab.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/TNOLK5G5.js"
         },
         {
-          "path": "assets/45226191795799ce23bd1618bfbd11d0.js",
+          "path": "assets/5b68e6e70ab8dc8afb9dd42b9632ed1e.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/2CXEORVD.js"
         },
         {
-          "path": "assets/233ab7cf13a6edf821fda75904910fb9.js",
+          "path": "assets/485747ea05e02b7852d6d470f40c1c0e.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/3VXXW3GS.js"
         },
         {
-          "path": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
+          "path": "assets/e21473128df1b1689cb3f5c183c0a765.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/Z4K4I4CB.js"
         },
         {
-          "path": "assets/cb3fc7c63eddaf12d4baa83ed3ef0345.js",
+          "path": "assets/b64adce1f04b1a7592088be10b25e397.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/URTQBOKN.js"
         },
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
         },
         {
-          "path": "assets/86f1c394892a863edfe79f5eb2ebb91c.js",
+          "path": "assets/bb3b439c51ded2de2d2d4d146e844388.js",
           "kind": "import-statement",
           "external": true,
           "logicalPath": "vendor/ffmpeg/ffmpeg-core.js"
@@ -538,7 +538,7 @@
     },
     {
       "input": "src/local/large-stream-worker.ts",
-      "output": "assets/070dc54548787761d522fcddc29b0c09.js",
+      "output": "assets/e63251cb00832ad6cd24c360b37e4b7e.js",
       "format": "esm",
       "external": [
         "../vendor/ffmpeg/ffmpeg-core.js"
@@ -560,43 +560,43 @@
       ],
       "imports": [
         {
-          "path": "assets/b1d391f64ea6b35aa192a917c27fbe4c.js",
+          "path": "assets/e2aca1d62ca212e68b110189bf5319e0.js",
           "kind": "import-statement",
           "external": false,
-          "logicalPath": "shared/LPHU7KWM.js"
+          "logicalPath": "shared/7YUUS4JX.js"
         },
         {
-          "path": "assets/98f971237407245b070baf6c8b048ed8.js",
+          "path": "assets/62840716fdd0bbea892e324390658a49.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/IXTHZPC5.js"
         },
         {
-          "path": "assets/1d0465f0a0368a18c55ef5885a582645.js",
+          "path": "assets/9fc756a59936b3a07490f0c990764cab.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/TNOLK5G5.js"
         },
         {
-          "path": "assets/45226191795799ce23bd1618bfbd11d0.js",
+          "path": "assets/5b68e6e70ab8dc8afb9dd42b9632ed1e.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/2CXEORVD.js"
         },
         {
-          "path": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
+          "path": "assets/e21473128df1b1689cb3f5c183c0a765.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/Z4K4I4CB.js"
         },
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
         },
         {
-          "path": "assets/86f1c394892a863edfe79f5eb2ebb91c.js",
+          "path": "assets/bb3b439c51ded2de2d2d4d146e844388.js",
           "kind": "import-statement",
           "external": true,
           "logicalPath": "vendor/ffmpeg/ffmpeg-core.js"
@@ -607,7 +607,7 @@
     },
     {
       "input": "src/upscale/worker.ts",
-      "output": "assets/d9eb9c4ba6ec4fe8bf8bda96f3bf0c37.js",
+      "output": "assets/877d0c515afeb44d603946507eabf86b.js",
       "format": "esm",
       "external": [
         "../vendor/ffmpeg/ffmpeg-core.js"
@@ -626,49 +626,49 @@
       ],
       "imports": [
         {
-          "path": "assets/64055798a5e72c9a55d95f1815f819eb.js",
+          "path": "assets/ab909a1ff1b35ba34831c200856fa8f4.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/PAS6SJFN.js"
         },
         {
-          "path": "assets/1d0465f0a0368a18c55ef5885a582645.js",
+          "path": "assets/9fc756a59936b3a07490f0c990764cab.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/TNOLK5G5.js"
         },
         {
-          "path": "assets/45226191795799ce23bd1618bfbd11d0.js",
+          "path": "assets/5b68e6e70ab8dc8afb9dd42b9632ed1e.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/2CXEORVD.js"
         },
         {
-          "path": "assets/29253c71fc33b4df178149430b551d88.js",
+          "path": "assets/8a7fc0a30092b9826e9599b0266b3a5b.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/53VOBGCH.js"
         },
         {
-          "path": "assets/1db7d3ce1df48d9ffd858940b866f8bc.js",
+          "path": "assets/157a1e5e8f1a7a7c7275a780350659b0.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/JPET4HVS.js"
         },
         {
-          "path": "assets/cb3fc7c63eddaf12d4baa83ed3ef0345.js",
+          "path": "assets/b64adce1f04b1a7592088be10b25e397.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/URTQBOKN.js"
         },
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
         },
         {
-          "path": "assets/86f1c394892a863edfe79f5eb2ebb91c.js",
+          "path": "assets/bb3b439c51ded2de2d2d4d146e844388.js",
           "kind": "import-statement",
           "external": true,
           "logicalPath": "vendor/ffmpeg/ffmpeg-core.js"
@@ -679,7 +679,7 @@
     },
     {
       "input": "src/ui/app.ts",
-      "output": "assets/f9567591ceac747063c7dba42225fb0b.js",
+      "output": "assets/815bf3986b17e717ceb6abff1babbda7.js",
       "format": "esm",
       "inputs": [
         "src/data/database.ts",
@@ -698,49 +698,49 @@
       ],
       "imports": [
         {
-          "path": "assets/d775559a6ba969a0b74c9e80116c4cc2.js",
+          "path": "assets/a481fbea7c46314ecaac22b24825ffab.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/CQIA5YMQ.js"
         },
         {
-          "path": "assets/752f2f14e3340ca7260aaef9c27201d5.js",
+          "path": "assets/f52c2340b77f9a1d9188cce70c8aee16.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/FIDA7D5F.js"
         },
         {
-          "path": "assets/233ab7cf13a6edf821fda75904910fb9.js",
+          "path": "assets/485747ea05e02b7852d6d470f40c1c0e.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/3VXXW3GS.js"
         },
         {
-          "path": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
+          "path": "assets/e21473128df1b1689cb3f5c183c0a765.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/Z4K4I4CB.js"
         },
         {
-          "path": "assets/29253c71fc33b4df178149430b551d88.js",
+          "path": "assets/8a7fc0a30092b9826e9599b0266b3a5b.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/53VOBGCH.js"
         },
         {
-          "path": "assets/1db7d3ce1df48d9ffd858940b866f8bc.js",
+          "path": "assets/157a1e5e8f1a7a7c7275a780350659b0.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/JPET4HVS.js"
         },
         {
-          "path": "assets/cb3fc7c63eddaf12d4baa83ed3ef0345.js",
+          "path": "assets/b64adce1f04b1a7592088be10b25e397.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/URTQBOKN.js"
         },
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
@@ -752,25 +752,25 @@
   ],
   "sharedChunks": [
     {
-      "output": "assets/c7c8f905d5e3fc09c74053126abc6472.js",
+      "output": "assets/c391bd9f6d9e55666e54811f7e45d36a.js",
       "inputs": [
         "src/local/media-file.ts"
       ],
       "imports": [
         {
-          "path": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
+          "path": "assets/e21473128df1b1689cb3f5c183c0a765.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/Z4K4I4CB.js"
         },
         {
-          "path": "assets/cb3fc7c63eddaf12d4baa83ed3ef0345.js",
+          "path": "assets/b64adce1f04b1a7592088be10b25e397.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/URTQBOKN.js"
         },
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
@@ -788,14 +788,14 @@
       "bytes": 5896
     },
     {
-      "output": "assets/bc9ac785a075a63b407d50e163de233a.js",
+      "output": "assets/f97f521f81ad4676f951ab23a1db98e6.js",
       "inputs": [
         "src/local/labels.ts",
         "src/local/media-copy.ts"
       ],
       "imports": [
         {
-          "path": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
+          "path": "assets/e21473128df1b1689cb3f5c183c0a765.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/Z4K4I4CB.js"
@@ -813,7 +813,7 @@
       "bytes": 3982
     },
     {
-      "output": "assets/b1d391f64ea6b35aa192a917c27fbe4c.js",
+      "output": "assets/e2aca1d62ca212e68b110189bf5319e0.js",
       "inputs": [
         "src/local/byte-assembly.ts",
         "src/local/network.ts",
@@ -821,19 +821,19 @@
       ],
       "imports": [
         {
-          "path": "assets/98f971237407245b070baf6c8b048ed8.js",
+          "path": "assets/62840716fdd0bbea892e324390658a49.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/IXTHZPC5.js"
         },
         {
-          "path": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
+          "path": "assets/e21473128df1b1689cb3f5c183c0a765.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/Z4K4I4CB.js"
         },
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
@@ -854,11 +854,11 @@
         "l",
         "m"
       ],
-      "logicalOutput": "shared/LPHU7KWM.js",
-      "bytes": 11515
+      "logicalOutput": "shared/7YUUS4JX.js",
+      "bytes": 11533
     },
     {
-      "output": "assets/98f971237407245b070baf6c8b048ed8.js",
+      "output": "assets/62840716fdd0bbea892e324390658a49.js",
       "inputs": [
         "src/local/transport.ts"
       ],
@@ -872,7 +872,7 @@
       "bytes": 828
     },
     {
-      "output": "assets/64055798a5e72c9a55d95f1815f819eb.js",
+      "output": "assets/ab909a1ff1b35ba34831c200856fa8f4.js",
       "inputs": [
         "src/security/transfer.ts"
       ],
@@ -884,7 +884,7 @@
       "bytes": 157
     },
     {
-      "output": "assets/1d0465f0a0368a18c55ef5885a582645.js",
+      "output": "assets/9fc756a59936b3a07490f0c990764cab.js",
       "inputs": [
         "src/security/decoder-policy.ts"
       ],
@@ -897,7 +897,7 @@
       "bytes": 1015
     },
     {
-      "output": "assets/45226191795799ce23bd1618bfbd11d0.js",
+      "output": "assets/5b68e6e70ab8dc8afb9dd42b9632ed1e.js",
       "inputs": [
         "src/security/internal-scan.ts"
       ],
@@ -909,19 +909,19 @@
       "bytes": 7284
     },
     {
-      "output": "assets/d775559a6ba969a0b74c9e80116c4cc2.js",
+      "output": "assets/a481fbea7c46314ecaac22b24825ffab.js",
       "inputs": [
         "src/upscale/storage.ts"
       ],
       "imports": [
         {
-          "path": "assets/752f2f14e3340ca7260aaef9c27201d5.js",
+          "path": "assets/f52c2340b77f9a1d9188cce70c8aee16.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/FIDA7D5F.js"
         },
         {
-          "path": "assets/1db7d3ce1df48d9ffd858940b866f8bc.js",
+          "path": "assets/157a1e5e8f1a7a7c7275a780350659b0.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/JPET4HVS.js"
@@ -940,7 +940,7 @@
       "bytes": 1414
     },
     {
-      "output": "assets/752f2f14e3340ca7260aaef9c27201d5.js",
+      "output": "assets/f52c2340b77f9a1d9188cce70c8aee16.js",
       "inputs": [
         "src/data/database.ts",
         "src/local/download-folder.ts",
@@ -948,19 +948,19 @@
       ],
       "imports": [
         {
-          "path": "assets/233ab7cf13a6edf821fda75904910fb9.js",
+          "path": "assets/485747ea05e02b7852d6d470f40c1c0e.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/3VXXW3GS.js"
         },
         {
-          "path": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
+          "path": "assets/e21473128df1b1689cb3f5c183c0a765.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/Z4K4I4CB.js"
         },
         {
-          "path": "assets/1db7d3ce1df48d9ffd858940b866f8bc.js",
+          "path": "assets/157a1e5e8f1a7a7c7275a780350659b0.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/JPET4HVS.js"
@@ -978,19 +978,19 @@
       "bytes": 9430
     },
     {
-      "output": "assets/233ab7cf13a6edf821fda75904910fb9.js",
+      "output": "assets/485747ea05e02b7852d6d470f40c1c0e.js",
       "inputs": [
         "src/local/preferences.ts"
       ],
       "imports": [
         {
-          "path": "assets/cb3fc7c63eddaf12d4baa83ed3ef0345.js",
+          "path": "assets/b64adce1f04b1a7592088be10b25e397.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/URTQBOKN.js"
         },
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
@@ -1004,14 +1004,14 @@
       "bytes": 1084
     },
     {
-      "output": "assets/939e9cdb3a1751cea52d46aad1c237e2.js",
+      "output": "assets/e21473128df1b1689cb3f5c183c0a765.js",
       "inputs": [
         "src/local/antivirus.ts",
         "src/local/model.ts"
       ],
       "imports": [
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
@@ -1048,25 +1048,25 @@
       "bytes": 11958
     },
     {
-      "output": "assets/29253c71fc33b4df178149430b551d88.js",
+      "output": "assets/8a7fc0a30092b9826e9599b0266b3a5b.js",
       "inputs": [
         "src/upscale/processing.ts"
       ],
       "imports": [
         {
-          "path": "assets/1db7d3ce1df48d9ffd858940b866f8bc.js",
+          "path": "assets/157a1e5e8f1a7a7c7275a780350659b0.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/JPET4HVS.js"
         },
         {
-          "path": "assets/cb3fc7c63eddaf12d4baa83ed3ef0345.js",
+          "path": "assets/b64adce1f04b1a7592088be10b25e397.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/URTQBOKN.js"
         },
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
@@ -1086,13 +1086,13 @@
       "bytes": 3185
     },
     {
-      "output": "assets/1db7d3ce1df48d9ffd858940b866f8bc.js",
+      "output": "assets/157a1e5e8f1a7a7c7275a780350659b0.js",
       "inputs": [
         "src/upscale/policy.ts"
       ],
       "imports": [
         {
-          "path": "assets/754a33673c8de431097a10868311b978.js",
+          "path": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
           "kind": "import-statement",
           "external": false,
           "logicalPath": "shared/LBQYAN7B.js"
@@ -1121,7 +1121,7 @@
       "bytes": 2332
     },
     {
-      "output": "assets/cb3fc7c63eddaf12d4baa83ed3ef0345.js",
+      "output": "assets/b64adce1f04b1a7592088be10b25e397.js",
       "inputs": [
         "src/shared/media.ts"
       ],
@@ -1140,7 +1140,7 @@
       "bytes": 977
     },
     {
-      "output": "assets/754a33673c8de431097a10868311b978.js",
+      "output": "assets/8cc36be4fdfdd8cb63100e2225079153.js",
       "inputs": [
         "src/security/validation.ts",
         "src/shared/filename.ts"
@@ -1158,7 +1158,7 @@
   "vendorModules": [
     {
       "input": "scripts/lib/browser-brotli.mjs",
-      "output": "assets/cf91644074853f7a4a1cfe0fbadc8035.js",
+      "output": "assets/c1e765126ff8688d85226c39ac963c2c.js",
       "format": "esm",
       "inputs": [
         "node_modules/brotli-dec-wasm/pkg/brotli_dec_wasm.js",
@@ -1169,7 +1169,7 @@
       "bytes": 9387
     }
   ],
-  "appJavaScriptBytes": 187615,
+  "appJavaScriptBytes": 187633,
   "ffmpeg": {
     "package": "@ffmpeg/core",
     "version": "0.12.10",
@@ -1177,5 +1177,5 @@
     "bytes": 32232419
   },
   "distFiles": 48,
-  "distBytes": 7905528
+  "distBytes": 7905547
 }

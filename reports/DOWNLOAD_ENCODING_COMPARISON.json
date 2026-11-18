@@ -1,0 +1,57 @@
+{
+  "platform": "win32",
+  "order": "ABBA",
+  "runs": [
+    {
+      "method": "baseline",
+      "downloadElapsedMs": 136350.31220000001,
+      "bytes": 1974360037,
+      "sha256": "63836dd54a9c26beb61d47344d8d25e02bec2832e5015144e991f49231eac893",
+      "duration": "3682.965333",
+      "buildSha256": "023947d3c505d8f9c2004978576ea268d2869b5539a2eb8dccae834aa8099c52",
+      "browserVersion": "156.0.8078.4"
+    },
+    {
+      "method": "candidate",
+      "downloadElapsedMs": 116598.8226,
+      "bytes": 1974360037,
+      "sha256": "63836dd54a9c26beb61d47344d8d25e02bec2832e5015144e991f49231eac893",
+      "duration": "3682.965333",
+      "buildSha256": "463773737efb8d5f7a929a6c773d1ea1fe0a888e89114d5d576e9b80827ddeab",
+      "browserVersion": "156.0.8078.4"
+    },
+    {
+      "method": "candidate",
+      "downloadElapsedMs": 111601.0742,
+      "bytes": 1974360037,
+      "sha256": "63836dd54a9c26beb61d47344d8d25e02bec2832e5015144e991f49231eac893",
+      "duration": "3682.965333",
+      "buildSha256": "463773737efb8d5f7a929a6c773d1ea1fe0a888e89114d5d576e9b80827ddeab",
+      "browserVersion": "156.0.8078.4"
+    },
+    {
+      "method": "baseline",
+      "downloadElapsedMs": 129141.0949,
+      "bytes": 1974360037,
+      "sha256": "63836dd54a9c26beb61d47344d8d25e02bec2832e5015144e991f49231eac893",
+      "duration": "3682.965333",
+      "buildSha256": "023947d3c505d8f9c2004978576ea268d2869b5539a2eb8dccae834aa8099c52",
+      "browserVersion": "156.0.8078.4"
+    }
+  ],
+  "sampleCountPerMethod": 2,
+  "baselineSourceCommit": "9e0999e56a3bff484f3c4b3e306594897778df6d",
+  "candidateSourceCommit": "e115c7637d525f1cb78b85f0db0f4aa8c7e050ef",
+  "baselineMeanMs": 132745.70355,
+  "candidateMeanMs": 114099.9484,
+  "timeReductionPercent": 14.046221196889363,
+  "identicalSavedFileSha256": "63836dd54a9c26beb61d47344d8d25e02bec2832e5015144e991f49231eac893",
+  "benefitConfirmed": true,
+  "limitations": "Two full downloads per method on one runner; site/network load can still vary. No universal bandwidth claim.",
+  "workflowRun": "https://github.com/P-JSL/myapps/actions/runs/44164895530",
+  "baselineDescription": "Decoder optimization shipped in v1.20.4, rebuilt from the pinned benchmark source.",
+  "candidateDescription": "The same source plus the bounded Base64 encoding change shipped in v1.20.5.",
+  "measurement": "Wall time from submitting the URL form until Chrome finishes saving the complete file. File hashing and media verification follow the timed interval.",
+  "successfulMediaResponsesPerRun": 923,
+  "failedMediaResponsesPerRun": 0
+}
