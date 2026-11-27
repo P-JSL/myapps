@@ -7,24 +7,24 @@
   "description": "계정·구독 없이 미디어를 감지하고 다운로드하며, 기록과 업스케일링을 브라우저 안에서 처리합니다.",
   "minimum_chrome_version": "120",
   "background": {
-    "service_worker": "assets/58c8f81fcbf4ac1dd492fe0db7fab41f.js",
+    "service_worker": "assets/26ec7bd68e4c3fbe7e99b887278869b2.js",
     "type": "module"
   },
   "action": {
     "default_title": "My Video App",
-    "default_popup": "assets/7f014e47a9b49876ff471e2bf0f78df3.html",
+    "default_popup": "assets/8d4b51878a6cf09cde653f0efb2af73d.html",
     "default_icon": {
-      "128": "assets/a5edbf3ddc888cdb77c35cc2af5e2281.png"
+      "128": "assets/0cad2973c202b17991a7f67af2bf473d.png"
     }
   },
   "icons": {
-    "128": "assets/a5edbf3ddc888cdb77c35cc2af5e2281.png"
+    "128": "assets/0cad2973c202b17991a7f67af2bf473d.png"
   },
   "side_panel": {
-    "default_path": "assets/8dd359fc9fe789de4a3b94e6cd417338.html"
+    "default_path": "assets/57dd604e8322242cc6a6ec58f416f195.html"
   },
   "options_ui": {
-    "page": "assets/8dd359fc9fe789de4a3b94e6cd417338.html",
+    "page": "assets/57dd604e8322242cc6a6ec58f416f195.html",
     "open_in_tab": true
   },
   "permissions": [
@@ -52,7 +52,7 @@
         "https://*/*"
       ],
       "js": [
-        "assets/913c85b89f2535a2e3708138a7cb4058.js"
+        "assets/1228aff5b8d217387a6757717ccb1de8.js"
       ],
       "all_frames": true,
       "run_at": "document_idle"
