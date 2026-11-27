@@ -115,6 +115,16 @@ try {
     result.events.push('Probe-only run: full extension download was not attempted');
   } else {
     const existing = new Set((await state()).history.map(item => item.id));
+    const phases = await ui.evaluateHandle(() => {
+      const started = {};
+      chrome.runtime.onMessage.addListener(message => {
+        if (message?.scope === 'my-video-app/local' && message.type === 'preparing-progress'
+          && ['fetching', 'processing', 'saving'].includes(message.stage)) started[message.stage] ??= Date.now();
+      });
+      chrome.downloads.onCreated.addListener(() => { started.browserWrite ??= Date.now(); });
+      return started;
+    });
+    const downloadStartedAt = Date.now();
     const downloadStarted = performance.now();
     await ui.locator('details:has(#url-form) > summary').click();
     await ui.locator('#url').fill(mediaURL); await ui.locator('#url-form button[type="submit"]').click();
@@ -140,6 +150,7 @@ try {
       return value?.state === 'complete' && value.exists ? value : undefined;
     }, 'Chrome did not finish saving the full file', 120_000);
     result.downloadElapsedMs = performance.now() - downloadStarted;
+    result.stageOffsetsMs = Object.fromEntries(Object.entries(await phases.jsonValue()).map(([stage, time]) => [stage, time - downloadStartedAt]));
     const digest = createHash('sha256');
     for await (const block of createReadStream(download.filename)) digest.update(block);
     result.savedFileSha256 = digest.digest('hex');

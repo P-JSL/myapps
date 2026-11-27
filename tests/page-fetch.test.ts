@@ -13,8 +13,18 @@ function pair(binary = false): [FetchWire, FetchWire] {
   const listeners: Array<((value: unknown) => void) | undefined> = [];
   const disconnected: Array<(() => void) | undefined> = [];
   const closed = [false, false];
-  return [0, 1].map(index => ({ binary,
-    send(value: unknown) { if (closed[index]) throw new Error('closed'); const copy: unknown = binary ? structuredClone(value) : JSON.parse(JSON.stringify(value)); queueMicrotask(() => listeners[1 - index]?.(copy)); },
+  return [0, 1].map(index => ({
+    send(value: unknown) {
+      if (closed[index]) throw new Error('closed');
+      if (value && typeof value === 'object' && 'type' in value && value.type === 'data') {
+        if (binary) {
+          assert('bytes' in value && value.bytes instanceof Uint8Array);
+          assert.equal(value.bytes.buffer.byteLength, value.bytes.byteLength);
+        } else assert('base64' in value && typeof value.base64 === 'string');
+      }
+      const copy: unknown = binary ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+      queueMicrotask(() => listeners[1 - index]?.(copy));
+    },
     listen(listener: (value: unknown) => void) { listeners[index] = listener; },
     disconnected(listener: () => void) { disconnected[index] = listener; },
     close() { if (!closed[index]) { closed[index] = true; queueMicrotask(() => disconnected[1 - index]?.()); } },

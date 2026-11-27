@@ -5,7 +5,6 @@ export const PAGE_FETCH = 'my-video-app/missav-fetch/';
 export const PAGE_SERVER = 'my-video-app/missav-page/';
 const CHUNK = 128 * 1024;
 export interface FetchWire {
-  binary?: boolean;
   send(value: unknown): void;
   listen(listener: (value: unknown) => void): void;
   disconnected(listener: () => void): void;
@@ -17,7 +16,7 @@ export function chromeWire(port: chrome.runtime.Port): FetchWire {
 }
 export function messageWire(port: MessagePort): FetchWire {
   port.start();
-  return { binary: true, send: value => port.postMessage(value), listen: listener => port.addEventListener('message', event => listener(event.data)),
+  return { send: value => port.postMessage(value), listen: listener => port.addEventListener('message', event => listener(event.data)),
     disconnected: listener => port.addEventListener('messageerror', listener), close: () => port.close() };
 }
 function encode(bytes: Uint8Array): string {
@@ -51,6 +50,7 @@ export function serveFetch(wire: FetchWire, fetcher: typeof fetch, allowed: (url
   const controller = new AbortController();
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   let remaining: Uint8Array | undefined, requested = false, pulling = false, ended = false;
+  let binary = false;
   let timer: ReturnType<typeof setTimeout>;
   const close = () => { if (ended) return; ended = true; clearTimeout(timer); controller.abort(); void reader?.cancel().catch(() => {}); wire.close(); onClose(); };
   const touch = () => { clearTimeout(timer); timer = setTimeout(close, 45_000); };
@@ -63,6 +63,8 @@ export function serveFetch(wire: FetchWire, fetcher: typeof fetch, allowed: (url
     if (value.type === 'request') {
       if (requested || typeof value.url !== 'string' || value.url.length > 8192 || !allowed(value.url)) throw new Error('잘못된 요청 범위입니다.');
       requested = true;
+      // Older Chrome versions deserialize the probe as a plain object.
+      binary = value.binaryProbe instanceof Uint8Array && value.binaryProbe.byteLength === 1;
       const response = await fetcher(value.url, { method: 'GET', headers: requestHeaders(value.headers),
         credentials: 'omit', redirect: 'error', signal: controller.signal });
       if (ended) { await response.body?.cancel(); return; }
@@ -84,7 +86,10 @@ export function serveFetch(wire: FetchWire, fetcher: typeof fetch, allowed: (url
         }
         if (ended) return;
         const bytes = remaining.subarray(0, CHUNK); remaining = remaining.subarray(bytes.length);
-        wire.send({ type: 'data', ...(wire.binary ? { bytes } : { base64: encode(bytes) }) });
+        if (binary) {
+          // Structured clone copies the backing buffer, so send only this view's bytes.
+          wire.send({ type: 'data', bytes: bytes.byteLength === bytes.buffer.byteLength ? bytes : bytes.slice() });
+        } else wire.send({ type: 'data', base64: encode(bytes) });
       } finally { pulling = false; }
     } else throw new Error('잘못된 페이지 요청입니다.');
   })().catch(fail); });
@@ -122,7 +127,7 @@ export function fetchOverWire(open: () => FetchWire): typeof fetch {
         try {
           if (ended || !record(value)) return;
           touch();
-          if (value.type === 'ready') wire.send({ type: 'request', url, headers });
+          if (value.type === 'ready') wire.send({ type: 'request', url, headers, binaryProbe: new Uint8Array(1) });
           else if (value.type === 'error') fail(new Error(typeof value.message === 'string' ? value.message.slice(0, 300) : '페이지 미디어 요청 실패'));
           else if (value.type === 'headers') {
             if (gotHeaders || !Number.isInteger(value.status) || Number(value.status) < 200 || Number(value.status) > 599 || !record(value.headers)

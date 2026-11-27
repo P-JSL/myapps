@@ -13,6 +13,7 @@ await rm('dist', { recursive: true, force: true });
 await mkdir('dist', { recursive: true });
 const common = { bundle: true, platform: 'browser', target: 'chrome120', logLevel: 'warning', minify: true, charset: 'utf8', legalComments: 'eof', metafile: true };
 const entries = [];
+const variant = process.env.MY_VIDEO_APP_EXTENSION_VARIANT === 'standard' ? 'standard' : 'missav';
 const sharedChunks = [];
 const vendorModules = [];
 const esmEntries = browserEntries.filter(entry => entry.format === 'esm');
@@ -65,6 +66,11 @@ for (const asset of [...staticFiles, ...directoryCopies]) {
   await cp(asset.input, destination, { recursive: true });
 }
 const pkg = JSON.parse(await readFile('package.json', 'utf8'));
+if (variant === 'missav') {
+  const manifest = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
+  manifest.message_serialization = 'structured_clone';
+  await writeFile('dist/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+}
 const { assetMap, protection } = await protectBuild('dist', {
   version: pkg.version, formats: Object.fromEntries(browserEntries.map(entry => [entry.output, entry.format])),
   sharedModules: sharedChunks.map(chunk => ({ logicalOutput: chunk.output, exports: chunk.exports })),
@@ -102,7 +108,6 @@ await writeFile('reports/build.json', JSON.stringify({
   distBytes: (await Promise.all(names.map(name => stat(`dist/${name}`).then(s => s.size)))).reduce((a, b) => a + b, 0),
 }, null, 2) + '\n');
 console.log(`Local build complete: ${names.length} files; ${entries.length} runtime entries; ${sharedChunks.length} shared modules; no test-only completion bundle.`);
-const variant = process.env.MY_VIDEO_APP_EXTENSION_VARIANT === 'standard' ? 'standard' : 'missav';
 const installDirectory = path.join('extensions', variant);
 await rm(installDirectory, { recursive: true, force: true });
 await cp('dist', installDirectory, { recursive: true });

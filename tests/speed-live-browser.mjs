@@ -23,11 +23,12 @@ for (const [index, method] of ['baseline', 'candidate', 'candidate', 'baseline']
   assert(evidence.fullVideoVerified && evidence.downloadElapsedMs > 0 && /^[a-f0-9]{64}$/.test(evidence.savedFileSha256));
   runs.push({ method, downloadElapsedMs: evidence.downloadElapsedMs, bytes: evidence.savedMedia.bytes,
     sha256: evidence.savedFileSha256, duration: evidence.savedMedia.format.duration,
-    buildSha256: evidence.buildSha256, browserVersion: evidence.browserVersion });
+    buildSha256: evidence.buildSha256, browserVersion: evidence.browserVersion, stageOffsetsMs: evidence.stageOffsetsMs });
   await writeFile(path.join(output, 'RUNS.json'), JSON.stringify(runs, null, 2));
 }
 assert.equal(new Set(runs.map(row => row.sha256)).size, 1, 'Saved media changed between comparison runs');
 assert.equal(new Set(runs.map(row => row.browserVersion)).size, 1);
+assert.equal(new Set(runs.map(row => row.buildSha256)).size, 2, 'Expected two different installed builds');
 const baseline = runs.filter(row => row.method === 'baseline').map(row => row.downloadElapsedMs);
 const candidate = runs.filter(row => row.method === 'candidate').map(row => row.downloadElapsedMs);
 const mean = values => values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -35,9 +36,9 @@ const result = { platform: process.platform, order: 'ABBA', runs, sampleCountPer
   baselineMeanMs: mean(baseline), candidateMeanMs: mean(candidate),
   timeReductionPercent: (1 - mean(candidate) / mean(baseline)) * 100,
   identicalSavedFileSha256: runs[0].sha256,
-  // Require non-overlapping outcomes with at least a 5% margin, rather than
-  // promoting a small mean change that could be site/network variation.
-  benefitConfirmed: Math.max(...candidate) < Math.min(...baseline) * .95,
+  minimumReductionPercent: 30,
+  minimumObservedReductionPercent: (1 - Math.max(...candidate) / Math.min(...baseline)) * 100,
+  benefitConfirmed: Math.max(...candidate) <= Math.min(...baseline) * .70,
   limitations: 'Two full downloads per method on one runner; site/network load can still vary. No universal bandwidth claim.' };
 await writeFile(path.join(output, 'COMPARISON.json'), JSON.stringify(result, null, 2));
 console.log(JSON.stringify(result));

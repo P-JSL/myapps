@@ -74,9 +74,15 @@ scope.onmessage = async event => {
       }
       return { offset: start, length: bytes.length };
     };
+    let lastProgress = -Infinity;
     const downloaded = await downloadDiskAssets(plan.assets, { append }, controller.signal, {
-      ...(message.pageContext === true ? { fetch: fetchFromParent((value, transfer) => scope.postMessage(value, transfer)) } : {}),
-      progress: (loaded, completed) => scope.postMessage({ type: 'progress', stage: 'fetching', loaded, value: completed / plan.assets.length * 0.8 }),
+      ...(message.pageContext === true ? { fetch: fetchFromParent((value, transfer) => scope.postMessage(value, transfer)), observeLocalTransport: false } : {}),
+      progress: (loaded, completed) => {
+        const now = performance.now();
+        if (now - lastProgress < 200 && completed < plan.assets.length) return;
+        lastProgress = now;
+        scope.postMessage({ type: 'progress', stage: 'fetching', loaded, value: completed / plan.assets.length * 0.8 });
+      },
       protocol: value => protocols.add(value),
     });
     const inputs = new Map<string, readonly DiskExtent[]>();
