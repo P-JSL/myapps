@@ -49,8 +49,9 @@ test('unknown, empty, partial and over-limit inputs remain incomplete', () => {
 
 test('the harmless standard AV marker is detected at arbitrary offsets and labelled as a test', () => {
   const testBytes = marker(); assert.equal(testBytes.length, 68);
-  for (const offset of [20, 65_530, 131_070]) {
-    const bytes = media(offset + testBytes.length + 4); bytes.set(testBytes, offset);
+  for (const offset of [20, 21, 22, 23, 65_530, 131_070]) {
+    const bytes = new Uint8Array(offset + testBytes.length + 7).subarray(3);
+    bytes.set(media(20)); bytes.set(testBytes, offset);
     const actual = scanBytes(bytes); assert.equal(actual.status, 'suspicious'); const finding = actual.findings.find(f => f.id === 'eicar-test-marker'); assert.equal(finding?.offset, offset); assert.match(finding!.message, /무해.*시험/);
   }
   const prefix = append(media(20), testBytes.subarray(0, testBytes.length - 1)); assert.equal(scanBytes(prefix).status, 'no-signals');

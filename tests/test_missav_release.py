@@ -49,7 +49,7 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Original asset changed'): release.verify(path, 'a' * 40)
 
     def test_tag_and_unchanged_helper_remain_fixed(self):
-        self.assertEqual(release.TAG, 'v1.20.5')
+        self.assertEqual(release.TAG, 'v1.20.6')
         self.assertNotIn('my-video-app-extension-standard.zip', release.PINNED)
         self.assertEqual(release.PINNED['my-video-app-antivirus-helper.zip'], '88818c9cc0ea443be213ac0c2c20cbeebf3796444026824ac3f9306aef55c959')
         source = (ROOT / 'scripts/release-missav.py').read_text(encoding='utf-8')
@@ -77,16 +77,13 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'UI evidence'):
                 release.verify_ui_evidence({**evidence, **changed}, 'a' * 64, 'standard')
 
-    def test_incomplete_or_fixture_live_download_cannot_pass(self):
-        evidence = {'platform': 'win32', 'buildSha256': 'a' * 64, 'chromeAPIsMocked': False,
-                    'responsesMocked': False, 'fullVideoVerified': True,
-                    'manifest': {'status': 200, 'hls': True, 'vod': True, 'encrypted': False, 'segments': 10, 'durationSeconds': 60},
-                    'savedMedia': {'bytes': 100, 'format': {'duration': '60'}, 'streams': [{'codec_type': 'video'}, {'codec_type': 'audio'}]}}
-        release.verify_live_evidence(evidence, 'a' * 64)
-        for changed in [{'fullVideoVerified': False}, {'responsesMocked': True}, {'chromeAPIsMocked': True},
-                        {'failure': {'message': '403'}}, {'savedMedia': {'bytes': 0}}]:
-            with self.assertRaises(ValueError):
-                release.verify_live_evidence({**evidence, **changed}, 'a' * 64)
+    def test_large_video_benchmark_requires_identical_files_and_at_least_30_percent_reduction(self):
+        evidence = release.read_json(ROOT / release.SPEED_REPORT)
+        self.assertGreaterEqual(release.verify_speed_evidence(evidence)['minimumObservedReductionPercent'], 30)
+        for changed in [{'fullVideoVerified': False}, {'savedFileSha256': 'b' * 64}, {'downloadElapsedMs': 110_000}]:
+            rows = [{**evidence['runs'][0], **changed}, *evidence['runs'][1:]]
+            with self.assertRaisesRegex(ValueError, '([Ll]arge video|30 percent)'):
+                release.verify_speed_evidence({**evidence, 'runs': rows})
 
 
 if __name__ == '__main__': unittest.main()

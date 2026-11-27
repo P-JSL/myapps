@@ -20,6 +20,8 @@ export interface DiskAssetStore { append(bytes: Uint8Array): DiskExtent; }
 interface Monitor {
   progress?: (loaded: number, completed: number) => void;
   protocol?: (value: Transport) => void;
+  /** A page relay fetches in another document, outside this performance timeline. */
+  observeLocalTransport?: boolean;
   fetch?: typeof globalThis.fetch;
   inactivityMs?: number;
 }
@@ -72,7 +74,7 @@ export async function downloadDiskAssets(assets: readonly RemoteAsset[], store: 
       const requestSignal = AbortSignal.any([combined, requestController.signal]);
       let timer: ReturnType<typeof setTimeout> | undefined, timedOut = false;
       const touch = () => { if (timer) clearTimeout(timer); timer = setTimeout(() => { timedOut = true; requestController.abort(new Error('미디어 조각 응답 대기 시간이 초과되었습니다.')); }, inactivityMs); };
-      const observation = observeTransport(address, performance.now());
+      const observation = monitor.observeLocalTransport === false ? undefined : observeTransport(address, performance.now());
       let response: Response | undefined, reader: ReadableStreamDefaultReader<Uint8Array> | undefined, failed: unknown;
       try {
         touch();
@@ -155,14 +157,14 @@ export async function downloadDiskAssets(assets: readonly RemoteAsset[], store: 
         if (expectedSize !== undefined && total !== expectedSize) throw new Error('전체 미디어가 예상 크기보다 작아 불완전합니다.');
         if ((declared !== undefined && total !== declared) || (range && total !== range.length)) throw new Retryable('미디어 조각이 불완전합니다.');
         flush(); if (timer) clearTimeout(timer);
-        const protocol = await observation.finish(); if (protocol) monitor.protocol?.(protocol);
+        const protocol = await observation?.finish(); if (protocol) monitor.protocol?.(protocol);
         combined.throwIfAborted(); return { extents, size: total };
       } catch (error) {
         failed = error;
         if (attempt >= 2 || (!(error instanceof Retryable) && !(error instanceof TypeError) && !timedOut)) controller.abort(error);
       }
       finally {
-        if (timer) clearTimeout(timer); requestController.abort(); observation.cancel();
+        if (timer) clearTimeout(timer); requestController.abort(); observation?.cancel();
         if (reader) await reader.cancel().catch(() => {}); else await response?.body?.cancel().catch(() => {});
       }
       combined.throwIfAborted();

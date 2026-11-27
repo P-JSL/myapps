@@ -13,8 +13,18 @@ function pair(binary = false): [FetchWire, FetchWire] {
   const listeners: Array<((value: unknown) => void) | undefined> = [];
   const disconnected: Array<(() => void) | undefined> = [];
   const closed = [false, false];
-  return [0, 1].map(index => ({ binary,
-    send(value: unknown) { if (closed[index]) throw new Error('closed'); const copy: unknown = binary ? structuredClone(value) : JSON.parse(JSON.stringify(value)); queueMicrotask(() => listeners[1 - index]?.(copy)); },
+  return [0, 1].map(index => ({
+    send(value: unknown) {
+      if (closed[index]) throw new Error('closed');
+      if (value && typeof value === 'object' && 'type' in value && value.type === 'data') {
+        if (binary) {
+          assert('bytes' in value && value.bytes instanceof Uint8Array);
+          assert.equal(value.bytes.buffer.byteLength, value.bytes.byteLength);
+        } else assert('base64' in value && typeof value.base64 === 'string');
+      }
+      const copy: unknown = binary ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+      queueMicrotask(() => listeners[1 - index]?.(copy));
+    },
     listen(listener: (value: unknown) => void) { listeners[index] = listener; },
     disconnected(listener: () => void) { disconnected[index] = listener; },
     close() { if (!closed[index]) { closed[index] = true; queueMicrotask(() => disconnected[1 - index]?.()); } },
@@ -59,6 +69,25 @@ test('cancelling a pending page request aborts its actual source request', async
   await new Promise(resolve => setImmediate(resolve)); controller.abort();
   await assert.rejects(pending, { name: 'AbortError' });
   await new Promise(resolve => setImmediate(resolve)); assert.equal(aborted, true);
+});
+
+test('a paused reader grants only one bounded window and cancellation reaches the source', async () => {
+  let reads = 0, cancelled = false;
+  const bytes = new Uint8Array(128 * 1024);
+  const fetcher = relay(async () => new Response(new ReadableStream<Uint8Array>({
+    pull(controller) { reads++; controller.enqueue(bytes); },
+    cancel() { cancelled = true; },
+  }, { highWaterMark: 0 })), true);
+  const response = await fetcher(manifest);
+  assert.equal(reads, 0);
+  const reader = response.body!.getReader();
+  assert.equal((await reader.read()).value?.byteLength, bytes.length);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(reads, 4);
+  await reader.cancel();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(cancelled, true);
+  assert.equal(reads, 4);
 });
 
 test('a different host, video UUID, local address, credentials or port never reaches fetch', async () => {

@@ -17,7 +17,8 @@ export const browserEntries = freeze([
   {
     "input": "src/local/offscreen.ts",
     "output": "local/offscreen.js",
-    "format": "esm"
+    "format": "esm",
+    "external": ["../vendor/sha256/hasher.js"]
   },
   {
     "input": "src/local/ui.ts",
@@ -59,7 +60,8 @@ export const browserEntries = freeze([
 ]);
 // Vendor wrappers are bundled separately and retain only their required default export.
 export const vendorEntries = freeze([
-  { "input": "scripts/lib/browser-brotli.mjs", "output": "vendor/brotli/decoder.js", "format": "esm" }
+  { "input": "scripts/lib/browser-brotli.mjs", "output": "vendor/brotli/decoder.js", "format": "esm" },
+  { "input": "scripts/lib/browser-sha256.mjs", "output": "vendor/sha256/hasher.js", "format": "esm" }
 ]);
 export const staticFiles = freeze([
   {
@@ -105,6 +107,10 @@ export const staticFiles = freeze([
   {
     "input": "licenses/brotli-dec-wasm-MIT.txt",
     "output": "licenses/brotli-dec-wasm-MIT.txt"
+  },
+  {
+    "input": "licenses/hash-wasm-MIT.txt",
+    "output": "licenses/hash-wasm-MIT.txt"
   },
   {
     "input": "reports/LOCAL_MODE.ko.md",

@@ -1,6 +1,6 @@
 {
   "name": "my-video-app",
-  "version": "1.20.5",
+  "version": "1.20.6",
   "private": true,
   "type": "module",
   "engines": {
@@ -28,6 +28,7 @@
     "@types/node": "24.10.1",
     "brotli-dec-wasm": "2.3.2",
     "esbuild": "0.28.2",
+    "hash-wasm": "4.13.0",
     "playwright-core": "1.64.1",
     "typescript": "5.9.3"
   }

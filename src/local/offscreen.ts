@@ -1,6 +1,7 @@
 import { record } from '../security/validation.ts';
 import { scanBytes, type InternalScanResult } from '../security/internal-scan.ts';
 import { inspectPreparedFile } from '../security/file-digest.ts';
+import createFileSha256 from '../vendor/sha256/hasher.js';
 import { internalScanResponse, incompleteInternalScan } from './antivirus.ts';
 import { MAX_INPUT_BYTES } from '../upscale/policy.ts';
 import { OFFSCREEN_SCOPE, PREPARE_TIMEOUT_MS, MAX_DISK_MANIFEST_BYTES, SCOPE, mediaURL, browserMediaURL } from './model.ts';
@@ -149,7 +150,8 @@ async function prepareOne(id: string, url: string, kind: string, options: Return
         const digest = await crypto.subtle.digest('SHA-256', data);
         internalScanSha256 = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
       } else {
-        const inspection = await inspectPreparedFile(file, task.controller.signal, (loaded, total) => report({ stage: 'saving', loaded, total, progress: loaded / total }));
+        const inspection = await inspectPreparedFile(file, task.controller.signal,
+          (loaded, total) => report({ stage: 'saving', loaded, total, progress: loaded / total }), createFileSha256);
         internalScan = internalScanResponse(inspection.internalScan, file.size); internalScanSha256 = inspection.sha256;
       }
     }

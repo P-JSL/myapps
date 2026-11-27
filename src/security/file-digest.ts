@@ -93,15 +93,20 @@ export interface PreparedFileInspection {
   prefix: Uint8Array<ArrayBuffer>;
   internalScan: InternalScanResult;
 }
+export interface FileSha256 {
+  readonly byteLength: number;
+  update(bytes: Uint8Array): void;
+  digestHex(): string;
+}
 
 /** Hash every byte while retaining only an 8 MiB static-analysis prefix. */
 export async function inspectPreparedFile(file: Blob, signal: AbortSignal,
-  progress?: (loaded: number, total: number) => void): Promise<PreparedFileInspection> {
+  progress?: (loaded: number, total: number) => void, createDigest?: () => Promise<FileSha256>): Promise<PreparedFileInspection> {
   signal.throwIfAborted();
   const size = file.size;
   if (!Number.isSafeInteger(size) || size < 0) throw new RangeError('파일 크기를 정확하게 확인할 수 없습니다.');
   const prefix = new Uint8Array(Math.min(size, PREFIX_BYTES));
-  const digest = new IncrementalSha256();
+  const digest = await createDigest?.().catch(() => undefined) ?? new IncrementalSha256();
   for (let offset = 0; offset < size;) {
     signal.throwIfAborted();
     const end = Math.min(size, offset + READ_BYTES);

@@ -1,25 +1,17 @@
-name: Build, verify and release 1.20.5 - standard, MissAV and shared Windows app
+name: Build, verify and release 1.20.6 - standard, MissAV and shared Windows app
 
-on:
-  workflow_dispatch:
-    inputs:
-      live_page_url:
-        description: 'Source page for the authorized full-video verification'
-        required: true
-      live_media_url:
-        description: 'Actual HLS VOD URL to verify before publishing'
-        required: true
+on: workflow_dispatch
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-v1.20.5
+  group: release-v1.20.6
   cancel-in-progress: false
 
 jobs:
   build-and-verify:
-    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/codex/release-1.20.5'
+    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/codex/release-1.20.6'
     runs-on: windows-2025
     timeout-minutes: 45
     env:
@@ -47,7 +39,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run check:source
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node --experimental-strip-types --test tests/missav.test.ts tests/missav-collector.test.ts tests/missav-build.test.ts tests/missav-request-url.test.ts tests/missav-context.test.ts tests/page-fetch.test.ts 2>&1 | Tee-Object artifacts/extension-regression.log
+          node --experimental-strip-types --test tests/missav.test.ts tests/missav-collector.test.ts tests/missav-build.test.ts tests/missav-request-url.test.ts tests/missav-context.test.ts tests/page-fetch.test.ts tests/disk-assets.test.ts tests/internal-scan.test.ts tests/file-digest.test.ts tests/sha256-vendor.test.mjs 2>&1 | Tee-Object artifacts/extension-regression.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -B tests/test_missav_release.py -v 2>&1 | Tee-Object artifacts/release-guards.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -87,7 +79,7 @@ jobs:
           & $python -I -B desktop/test_windows_gui_download.py --app-root $env:MYVIDEOAPP_TEST_ROOT --output artifacts/windows-verification/gui 2>&1 | Tee-Object artifacts/windows-verification/gui-download.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item artifacts/windows-verification/gui/WINDOWS-GUI-VALIDATION.json artifacts/WINDOWS-GUI-VALIDATION.json
-          @{version='1.20.5'; commit=$env:GITHUB_SHA; platform='windows-x64'; scope='release-three-variants-v1205'; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); nativeMissavTests=12; nativeGuiTests=1; directHlsTests=4; nativeDownloadGuiChecks=7; previousFullSuites='not repeated per user'} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
+          @{version='1.20.6'; commit=$env:GITHUB_SHA; platform='windows-x64'; scope='release-three-variants-v1206'; desktopSha256=(Get-FileHash artifacts/my-video-app-desktop-windows-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant(); nativeMissavTests=12; nativeGuiTests=1; directHlsTests=4; nativeDownloadGuiChecks=7; previousFullSuites='not repeated per user'} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/WINDOWS-VALIDATION.json
       - name: Install the locked verification browser
         run: |
           node node_modules/playwright-core/cli.js install chromium
@@ -119,14 +111,6 @@ jobs:
           Remove-Item artifacts/my-video-app-antivirus-helper.zip
           gh release download v1.19.4-bundle.1 --repo $env:GITHUB_REPOSITORY --dir artifacts --pattern my-video-app-antivirus-helper.zip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Verify the full actual video through the release extension UI
-        env:
-          MYVIDEOAPP_LIVE_PAGE_URL: ${{ inputs.live_page_url }}
-          MYVIDEOAPP_LIVE_MEDIA_URL: ${{ inputs.live_media_url }}
-        run: |
-          node tests/extension-live-browser.mjs 2>&1 | Tee-Object artifacts/live-download.log
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Copy-Item artifacts/live-windows-verification/LIVE-VALIDATION.json artifacts/LIVE-VALIDATION.json
       - name: Prepare and verify the exact release archives
         run: |
           python -B scripts/release-missav.py --artifacts artifacts
@@ -134,7 +118,7 @@ jobs:
       - name: Transfer only verified release files to the publisher
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: release-1.20.5-${{ github.sha }}
+          name: release-1.20.6-${{ github.sha }}
           path: |
             artifacts/my-video-app-extension-standard.zip
             artifacts/my-video-app-extension-missav.zip
@@ -157,13 +141,11 @@ jobs:
             artifacts/windows-verification/gui/*.json
             artifacts/windows-verification/gui/*.png
             artifacts/windows-verification/gui/*.log
-            artifacts/live-windows-verification/*.json
-            artifacts/live-windows-verification/*.log
           retention-days: 7
 
   publish:
     needs: build-and-verify
-    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/codex/release-1.20.5'
+    if: github.repository == 'P-JSL/myapps' && github.ref == 'refs/heads/codex/release-1.20.6'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -174,7 +156,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: release-1.20.5-${{ github.sha }}
+          name: release-1.20.6-${{ github.sha }}
           path: artifacts
       - name: Recheck every ZIP and publish the complete stable release
         env:

@@ -7,9 +7,7 @@ import * as project from './project.mjs';
 import { files, sourceIdentity } from './lib/artifacts.mjs';
 
 const repository = fileURLToPath(new URL('../', import.meta.url));
-// This one build-bundled vendor wrapper is deliberately outside the application
-// TypeScript graph. Keep its package permission narrow and its lock identity
-// explicit rather than accepting arbitrary bare imports in runtime sources.
+// Vendor wrappers have exact package and build paths outside the TypeScript graph.
 const brotliVendor = Object.freeze({
   input: 'scripts/lib/browser-brotli.mjs', output: 'vendor/brotli/decoder.js',
   package: 'brotli-dec-wasm', specifier: 'brotli-dec-wasm/web', version: '2.3.2',
@@ -18,6 +16,13 @@ const brotliVendor = Object.freeze({
   wasmInput: 'node_modules/brotli-dec-wasm/pkg/brotli_dec_wasm_bg.wasm',
   wasmOutput: 'vendor/brotli/brotli_dec_wasm_bg.wasm',
 });
+const sha256Vendor = Object.freeze({
+  input: 'scripts/lib/browser-sha256.mjs', output: 'vendor/sha256/hasher.js',
+  package: 'hash-wasm', specifier: 'hash-wasm', version: '4.13.0',
+  resolved: 'https://registry.npmjs.org/hash-wasm/-/hash-wasm-4.13.0.tgz',
+  integrity: 'sha512-GrWl7wsV46fKIXQZB5ebskLZLAmKL6d9RS0fspCxDeQyjoNu1AfTJTMLPOJyfzaQm0ldFiwFN21/w+sE/kgEFQ==',
+});
+const approvedVendors = [brotliVendor, sha256Vendor];
 const isDeclaration = node => node.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DeclareKeyword);
 const typeOnlyBindings = bindings => bindings && ts.isNamedImports(bindings) && bindings.elements.length > 0 && bindings.elements.every(item => item.isTypeOnly);
 const typeOnlyImport = node => Boolean(node.importClause && (node.importClause.isTypeOnly || (!node.importClause.name && typeOnlyBindings(node.importClause.namedBindings))));
@@ -141,19 +146,19 @@ export async function auditSource(root = repository, catalog = project) {
   for (const entry of vendorEntries) {
     const input = relativeName(entry.input, 'Vendor entry');
     const destination = output(entry.output);
-    assert(input === brotliVendor.input && destination === brotliVendor.output && entry.format === 'esm',
-      `Uncatalogued vendor wrapper: ${input}`);
-    assert.equal(packageJson.devDependencies?.[brotliVendor.package], brotliVendor.version, 'Vendor dependency must use its exact approved version');
+    const vendor = approvedVendors.find(item => item.input === input && item.output === destination);
+    assert(vendor && entry.format === 'esm', `Uncatalogued vendor wrapper: ${input}`);
+    assert.equal(packageJson.devDependencies?.[vendor.package], vendor.version, 'Vendor dependency must use its exact approved version');
     const lock = JSON.parse(await readFile(path.join(root, 'package-lock.json'), 'utf8'));
-    const dependency = lock.packages?.[`node_modules/${brotliVendor.package}`];
-    assert(dependency?.version === brotliVendor.version && dependency?.integrity === brotliVendor.integrity
-      && dependency?.resolved === brotliVendor.resolved, 'Vendor dependency lock identity does not match the approved package');
+    const dependency = lock.packages?.[`node_modules/${vendor.package}`];
+    assert(dependency?.version === vendor.version && dependency?.integrity === vendor.integrity
+      && dependency?.resolved === vendor.resolved, 'Vendor dependency lock identity does not match the approved package');
     const source = ts.createSourceFile(input, await readFile(path.join(root, input), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
     assert.equal(source.parseDiagnostics.length, 0, `Invalid vendor wrapper syntax: ${input}`);
     const imports = [], exported = [];
     function inspectVendor(node) {
       if (ts.isImportDeclaration(node)) {
-        assert(ts.isStringLiteralLike(node.moduleSpecifier) && node.moduleSpecifier.text === brotliVendor.specifier,
+        assert(ts.isStringLiteralLike(node.moduleSpecifier) && node.moduleSpecifier.text === vendor.specifier,
           `Unapproved vendor import in ${input}`);
         imports.push(node.moduleSpecifier.text);
       } else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword
@@ -163,7 +168,7 @@ export async function auditSource(root = repository, catalog = project) {
       ts.forEachChild(node, inspectVendor);
     }
     inspectVendor(source);
-    assert.deepEqual(imports, [brotliVendor.specifier], 'Vendor wrapper must statically import only its approved dependency');
+    assert.deepEqual(imports, [vendor.specifier], 'Vendor wrapper must statically import only its approved dependency');
     for (const statement of source.statements) {
       if (ts.isExportAssignment(statement)) {
         assert(!statement.isExportEquals, 'CommonJS vendor exports are unsupported'); exported.push('default');
@@ -175,10 +180,11 @@ export async function auditSource(root = repository, catalog = project) {
     }
     assert.deepEqual(exported, ['default'], 'Vendor wrapper must have exactly its required default export');
     vendorRecords.push({ input, output: destination, format: entry.format,
-      dependency: { package: brotliVendor.package, specifier: brotliVendor.specifier, version: dependency.version, integrity: dependency.integrity } });
+      dependency: { package: vendor.package, specifier: vendor.specifier, version: dependency.version, integrity: dependency.integrity } });
   }
-  if (packageJson.devDependencies?.[brotliVendor.package] !== undefined) {
-    assert.equal(vendorRecords.length, 1, 'Pinned Brotli dependency requires its one audited vendor wrapper');
+  for (const vendor of approvedVendors) if (packageJson.devDependencies?.[vendor.package] !== undefined) {
+    assert.equal(vendorRecords.filter(record => record.input === vendor.input).length, 1,
+      `Pinned ${vendor.package} dependency requires its one audited vendor wrapper`);
   }
   for (const item of catalog.staticFiles ?? []) copied.push({ input: relativeName(item.input, 'Static input'), output: output(item.output) });
   for (const item of catalog.directoryCopies ?? []) {
@@ -186,7 +192,7 @@ export async function auditSource(root = repository, catalog = project) {
     const destination = relativeName(item.output, 'Directory output');
     for (const name of await files(path.join(root, input))) copied.push({ input: path.posix.join(input, name), output: output(path.posix.join(destination, name)) });
   }
-  if (vendorRecords.length) assert(copied.some(item => item.input === brotliVendor.wasmInput && item.output === brotliVendor.wasmOutput),
+  if (vendorRecords.some(record => record.input === brotliVendor.input)) assert(copied.some(item => item.input === brotliVendor.wasmInput && item.output === brotliVendor.wasmOutput),
     'Pinned vendor decoder Wasm must be included in the static build catalog');
 
   const names = (await files(path.join(root, 'src'), { skipDirectories: ['__pycache__'] }))
@@ -251,8 +257,10 @@ export async function auditSource(root = repository, catalog = project) {
       if (!owners.has(name)) owners.set(name, []);
       owners.get(name).push(entry);
       for (const specifier of external.get(name) ?? []) {
-        assert(specifier.startsWith('.') && /(?:^|\/)vendor\/ffmpeg\/ffmpeg-core\.js$/.test(specifier)
-          && entry.external?.includes(specifier), `Uncatalogued runtime import for ${entry.input} in ${name}: ${specifier}`);
+        const approved = /(?:^|\/)vendor\/ffmpeg\/ffmpeg-core\.js$/.test(specifier)
+          || (entry.input === 'src/local/offscreen.ts' && specifier === '../vendor/sha256/hasher.js');
+        assert(specifier.startsWith('.') && approved && entry.external?.includes(specifier),
+          `Uncatalogued runtime import for ${entry.input} in ${name}: ${specifier}`);
         const destination = localName(entry.output, specifier);
         assert(outputs.has(destination), `External runtime resource missing from build catalog: ${destination}`);
       }

@@ -18,7 +18,7 @@ class FolderArchiveTests(unittest.TestCase):
             for name in ['standard', 'missav']:
                 folder = root / 'extensions' / name
                 folder.mkdir(parents=True)
-                (folder / 'manifest.json').write_text(json.dumps({'version': '1.20.5'}))
+                (folder / 'manifest.json').write_text(json.dumps({'version': '1.20.6'}))
                 (folder / 'variant.txt').write_text(name)
             native = root / 'native'; native.mkdir()
             for name in ['README.ko.md', 'antivirus_host.py', 'windows_antivirus.py', 'internal_scan.py', 'install.py']:

@@ -1,21 +1,29 @@
-"""Verify three freshly built products and publish the immutable 1.20.5 release."""
+"""Verify three freshly built products and publish the immutable 1.20.6 release."""
 import argparse
 import hashlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
+import re
 import stat
 import subprocess
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 REPO = 'P-JSL/myapps'
-VERSION = '1.20.5'
+VERSION = '1.20.6'
 TAG = 'v' + VERSION
 RELEASE_REF = 'refs/heads/codex/release-' + VERSION
 PINNED = {'my-video-app-antivirus-helper.zip': '88818c9cc0ea443be213ac0c2c20cbeebf3796444026824ac3f9306aef55c959'}
 PRODUCTS = ['my-video-app-extension-standard.zip', 'my-video-app-extension-missav.zip', 'my-video-app-desktop-windows-x64.zip']
+SPEED_REPORT = 'reports/LARGE_VIDEO_SPEED_COMPARISON.json'
+SPEED_SOURCES = (
+    'scripts/build-local.mjs', 'scripts/project.mjs', 'scripts/lib/browser-sha256.mjs', 'scripts/lib/protect-build.mjs',
+    'src/local/page-fetch.ts', 'src/local/disk-assets.ts', 'src/local/large-stream-worker.ts', 'src/local/offscreen.ts',
+    'src/security/file-digest.ts', 'src/security/internal-scan.ts',
+)
 
 
 def require(value, message):
@@ -66,15 +74,33 @@ def verify_ui_evidence(evidence, identity, variant):
             'Real installed-extension UI evidence mismatch: ' + variant)
 
 
-def verify_live_evidence(evidence, identity):
-    require(evidence.get('platform') == 'win32' and evidence.get('buildSha256') == identity
-            and evidence.get('chromeAPIsMocked') is False and evidence.get('responsesMocked') is False
-            and evidence.get('fullVideoVerified') is True and not evidence.get('failure'), 'Full live video verification is missing')
-    manifest, saved = evidence.get('manifest', {}), evidence.get('savedMedia', {})
-    require(manifest.get('status') == 200 and manifest.get('hls') is True and manifest.get('vod') is True
-            and manifest.get('encrypted') is False and manifest.get('segments', 0) > 0, 'Live manifest verification is missing')
-    require(saved.get('bytes', 0) > 0 and abs(float(saved.get('format', {}).get('duration', 0)) - manifest.get('durationSeconds', 0)) < 3
-            and {row.get('codec_type') for row in saved.get('streams', [])} >= {'video', 'audio'}, 'Full saved live media is missing')
+def verify_speed_evidence(evidence):
+    require(evidence.get('baselineTag') == 'v1.20.5' and evidence.get('chromeAPIsMocked') is False
+            and evidence.get('fixture') == 'owned-synthetic-hls' and evidence.get('platform') == 'linux',
+            'Large video benchmark conditions are missing')
+    require(evidence.get('sourceSha256') == {name: sha(ROOT / name) for name in SPEED_SOURCES},
+            'Large video benchmark source differs from release')
+    lock = read_json(ROOT / 'package-lock.json')['packages']['node_modules/hash-wasm']
+    require(evidence.get('hashWasmIntegrity') == lock['integrity'], 'Large video benchmark hasher differs from release')
+    rows = evidence.get('runs', [])
+    require([row.get('method') for row in rows] == ['candidate', 'baseline', 'baseline', 'candidate'], 'Missing paired large video runs')
+    digest = evidence.get('savedFileSha256', '')
+    require(re.fullmatch(r'[a-f0-9]{64}', digest) is not None, 'Missing large video SHA-256')
+    times = {'baseline': [], 'candidate': []}
+    for row in rows:
+        elapsed = row.get('downloadElapsedMs', 0)
+        require(isinstance(elapsed, (int, float)) and math.isfinite(elapsed) and elapsed > 0
+                and row.get('fullVideoVerified') is True and row.get('savedFileSha256') == digest
+                and row.get('bytes') == evidence.get('savedBytes') and row['bytes'] > 2 * 1024**3
+                and row.get('browserVersion') == evidence.get('browserVersion'), 'Large video comparison output differs')
+        times[row['method']].append(elapsed)
+    base = sum(times['baseline']) / 2
+    fast = sum(times['candidate']) / 2
+    minimum = (1 - max(times['candidate']) / min(times['baseline'])) * 100
+    require(minimum >= 30, 'Large video save-time reduction must meet the 30 percent target')
+    return {'baselineMeanMs': base, 'candidateMeanMs': fast, 'timeReductionPercent': (1 - fast / base) * 100,
+            'minimumObservedReductionPercent': minimum,
+            'savedBytes': evidence['savedBytes'], 'savedFileSha256': digest, 'fixture': evidence['fixture']}
 
 
 def verify(directory, commit):
@@ -86,7 +112,7 @@ def verify(directory, commit):
             == {name: sha(ROOT / 'native' / name) for name in helper_files}, 'Pinned antivirus helper differs from current source')
     windows = read_json(directory / 'WINDOWS-VALIDATION.json')
     require(windows.get('commit') == commit and windows.get('version') == VERSION
-            and windows.get('platform') == 'windows-x64' and windows.get('scope') == 'release-three-variants-v1205', 'Windows validation provenance mismatch')
+            and windows.get('platform') == 'windows-x64' and windows.get('scope') == 'release-three-variants-v1206', 'Windows validation provenance mismatch')
     require(windows.get('nativeMissavTests') == 12 and windows.get('nativeGuiTests') == 1
             and windows.get('directHlsTests') == 4 and windows.get('nativeDownloadGuiChecks') == 7, 'Windows runtime checks are missing')
     require(windows.get('desktopSha256') == sha(directory / PRODUCTS[2]), 'Windows validation belongs to another ZIP')
@@ -116,6 +142,11 @@ def verify(directory, commit):
         with zipfile.ZipFile(directory / f'my-video-app-extension-{variant}.zip') as archive:
             extension_manifest = json.loads(archive.read(f'my-video-app-{variant}/manifest.json'))
         require(extension_manifest['version'] == VERSION, 'Extension version mismatch: ' + variant)
+        require(extension_manifest.get('message_serialization') == ('structured_clone' if variant == 'missav' else None),
+                'Extension relay transport mismatch: ' + variant)
+        require(build['assetMap'].get('vendor/sha256/hasher.js') in extension
+                and extension.get('licenses/hash-wasm-MIT.txt') == sha(ROOT / 'licenses/hash-wasm-MIT.txt'),
+                'File SHA-256 module or license is missing: ' + variant)
         manifests.append(extension_manifest)
         entries = {entry['logicalOutput']: entry for entry in build['entries']}
         for logical, stem in [('local/background.js', 'background'), ('local/collect.js', 'collect')]:
@@ -131,7 +162,6 @@ def verify(directory, commit):
     require(manifests[0]['permissions'] == manifests[1]['permissions']
             and manifests[0]['host_permissions'] == manifests[1]['host_permissions'], 'Extension variant permissions differ')
     verify_installed_evidence(read_json(directory / 'INSTALLED-EXTENSION-VALIDATION.json'), identities['missav'])
-    verify_live_evidence(read_json(directory / 'LIVE-VALIDATION.json'), identities['missav'])
 
 
 def prepare(directory):
@@ -140,28 +170,24 @@ def prepare(directory):
     require(not subprocess.check_output(['git', '-C', str(ROOT), 'diff', '--name-only', 'HEAD', '--',
             'src', 'desktop', 'scripts', 'tests', 'package.json', 'package-lock.json'], text=True).strip(), 'Application source changed after commit')
     verify(directory, commit)
+    speed = verify_speed_evidence(read_json(ROOT / SPEED_REPORT))
     spec = importlib.util.spec_from_file_location('_release_source_archive', ROOT / 'scripts/assemble-release-bundle.py')
     helper = importlib.util.module_from_spec(spec); spec.loader.exec_module(helper)
     helper.source_zip(directory / 'my-video-app-source.zip', commit)
-    (directory / 'DOWNLOAD-SPEED-COMPARISON.json').write_bytes((ROOT / 'reports/DOWNLOAD_ENCODING_COMPARISON.json').read_bytes())
+    (directory / 'DOWNLOAD-SPEED-COMPARISON.json').write_bytes((ROOT / SPEED_REPORT).read_bytes())
     names = PRODUCTS + list(PINNED) + ['DOWNLOAD-SPEED-COMPARISON.json', 'my-video-app-source.zip', 'WINDOWS-VALIDATION.json', 'WINDOWS-GUI-VALIDATION.json',
         'STANDARD-BUILD.json', 'MISSAV-BUILD.json', 'STANDARD-UI-VALIDATION.json', 'MISSAV-UI-VALIDATION.json',
-        'INSTALLED-EXTENSION-VALIDATION.json', 'LIVE-VALIDATION.json']
-    live = read_json(directory / 'LIVE-VALIDATION.json')
-    seconds = round(float(live['savedMedia']['format']['duration']))
-    minutes, seconds = divmod(seconds, 60)
+        'INSTALLED-EXTENSION-VALIDATION.json']
     contents = {'tag': TAG, 'version': VERSION, 'sourceCommit': commit, 'standardExtensionRebuilt': True,
                 'desktopSupports': ['YouTube', 'ordinary direct media', 'MissAV'],
-                'extensionFolders': {'standard': 'extensions/standard', 'missav': 'extensions/missav'}, 'targetFullVideoVerified': True,
-                'liveVerification': {'manifestProbeForDiscovery': live.get('manifestProbeForDiscovery'), 'savedMedia': live['savedMedia'],
-                                     'manifest': live['manifest'], 'mediaResponses': live['mediaResponses'], 'jobState': live.get('jobState')},
+                'extensionFolders': {'standard': 'extensions/standard', 'missav': 'extensions/missav'}, 'largeVideoBenchmark': speed,
                 'previousFullSuites': 'not repeated per user',
                 'files': {name: {'sha256': sha(directory / name), 'bytes': (directory / name).stat().st_size} for name in names}}
     (directory / 'RELEASE-CONTENTS.json').write_text(json.dumps(contents, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     names.append('RELEASE-CONTENTS.json')
     (directory / 'SHA256SUMS-RELEASE.txt').write_text(''.join(sha(directory / name) + '  ' + name + '\n' for name in names), encoding='utf-8')
     names.append('SHA256SUMS-RELEASE.txt')
-    (directory / 'release-notes.md').write_text(f'''**v{VERSION}**에서 MissAV 확장이 영상 데이터를 전달할 때 쓰는 Base64 변환을 최적화했습니다. 같은 Windows 러너에서 61분 영상을 각 방식으로 두 번 끝까지 저장했습니다. v1.20.4의 최적화가 적용된 기준판과 비교해 평균 저장 시간이 **132.75초에서 114.10초로 14.0% 줄었고**, 네 결과물의 SHA-256이 일치했습니다. 회선과 서버 상태에 따라 저장 시간은 달라집니다. [측정 방법과 원본 수치](https://github.com/{REPO}/blob/{commit}/reports/RELEASE_1_20_5.ko.md)
+    (directory / 'release-notes.md').write_text(f'''**v{VERSION}**에서 대용량 영상의 Chrome 내부 전송과 전체 파일 SHA-256 계산을 최적화했습니다. Linux에서 같은 합성 HLS 영상을 MissAV판으로 각 방식 두 번 저장했습니다. **평균 {speed['baselineMeanMs'] / 1000:.2f}초에서 {speed['candidateMeanMs'] / 1000:.2f}초로 {speed['timeReductionPercent']:.1f}% 줄었고**, 네 파일의 SHA-256이 일치했습니다. [측정 방법과 원본 수치](https://github.com/{REPO}/blob/{commit}/reports/RELEASE_1_20_6.ko.md)
 
 | 설치 파일 | 용도 |
 | --- | --- |
@@ -171,7 +197,7 @@ def prepare(directory):
 
 확장 ZIP을 풀고 `my-video-app-standard/` 또는 `my-video-app-missav/` 중 하나를 Chrome에 로드한 뒤 재생 탭을 새로고침하세요. Windows ZIP은 새 폴더에 전체 압축 해제한 뒤 `My Video App.exe`를 실행하세요.
 
-Windows 앱의 GUI 검사 7개, 두 확장의 설치 후 UI 검사 각 3개, MissAV 설치 검사 6개, HLS·TLS 회귀 검사를 통과했습니다. 최종 MissAV 빌드로 원본 탭에서 제공된 m3u8를 요청하고, 주소 입력 폼을 통해 {live['manifest']['segments']:,}개 구간을 모두 저장했습니다. 약 {live['savedMedia']['bytes'] / 1_000_000_000:.2f}GB, {minutes}분 {seconds}초의 파일과 영상·음성 트랙, 시작과 끝의 디코딩을 확인했습니다. [Windows 검증 방법](https://github.com/{REPO}/blob/{commit}/reports/WINDOWS_VERIFICATION_PLAN.ko.md)
+Windows 앱의 GUI 검사 7개, 두 확장의 설치 후 UI 검사 각 3개, MissAV 설치 검사 6개, HLS·TLS 회귀 검사를 통과했습니다. 속도 수치는 약 {speed['savedBytes'] / 1_000_000_000:.2f}GB의 합성 파일을 사용한 Chrome 측정값입니다. 실사이트 Windows 속도 비교는 기준판에서 HTTP 403이 발생해 완료하지 못했습니다. [Windows 검증 방법](https://github.com/{REPO}/blob/{commit}/reports/WINDOWS_VERIFICATION_PLAN.ko.md)
 
 출시 ZIP과 소스, 선택적 백신 도우미, 검증 JSON 및 파일별 SHA-256을 함께 제공합니다. [소스 커밋](https://github.com/{REPO}/commit/{commit})
 ''', encoding='utf-8')

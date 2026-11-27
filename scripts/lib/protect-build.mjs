@@ -168,7 +168,9 @@ export async function protectBuild(directory, { version, formats = {}, sharedMod
       outputs.set(physical, await minifyJS(encrypted.loaderSource, logical, physical));
     } else if (/\.m?js$/.test(logical)) {
       let source = bytes.toString('utf8');
-      if (logical === decoderLogical) assert.deepEqual(moduleExports(source, logical), ['default'], 'Pinned decoder must expose only its default factory');
+      if (logical === decoderLogical || logical === 'vendor/sha256/hasher.js') {
+        assert.deepEqual(moduleExports(source, logical), ['default'], 'Pinned vendor module must expose only its default factory');
+      }
       else if (!shared.has(logical)) {
         const application = privateApplicationModule(source, logical);
         removedApplicationExports += application.removedExports;

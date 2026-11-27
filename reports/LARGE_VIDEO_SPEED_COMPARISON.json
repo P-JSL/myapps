@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "baselineTag": "v1.20.5",
+  "baselineZipSha256": "db0197fdb8a42659761466f3da7be0960099a0190ec48a29351c43713f0c6787",
+  "candidateSourceCommit": "7026fab325af37a52a3c52ae302ea93adabfde5e",
+  "platform": "linux",
+  "browserVersion": "156.0.8078.4",
+  "chromeAPIsMocked": false,
+  "responsesMocked": true,
+  "fixture": "owned-synthetic-hls",
+  "sourceSegments": 921,
+  "sourceBytes": 2455452584,
+  "savedBytes": 2392906379,
+  "savedFileSha256": "e27e2f1fe59fc8ff684a8aa68edbe42d03e0abdd10afdd728fbdfc54552584c3",
+  "hashWasmIntegrity": "sha512-GrWl7wsV46fKIXQZB5ebskLZLAmKL6d9RS0fspCxDeQyjoNu1AfTJTMLPOJyfzaQm0ldFiwFN21/w+sE/kgEFQ==",
+  "sourceSha256": {
+    "scripts/build-local.mjs": "dd59a1db7777190a162123517773f930630b127827a7192c245288aab88dd3c6",
+    "scripts/project.mjs": "f991477c686afe18e103a00cdb9d8ff0c5342a940c3a8e975d6a245eda956b9d",
+    "scripts/lib/browser-sha256.mjs": "eefd6d8029f095ecc889027218ecad31aefeb3cb3d1530fd59c248d2806f4905",
+    "scripts/lib/protect-build.mjs": "cae660c27ca607ff1631bd2df19940f66c44606d8466055f11517a8c131cfae4",
+    "src/local/page-fetch.ts": "c2eefc0d916c02645974f4c25cc511cfbab382708705198daf2d4d2d13870569",
+    "src/local/disk-assets.ts": "746ee5d03d1e57bedc0224fdbdc10d89e7768f408c90f09a60343f4d453e609b",
+    "src/local/large-stream-worker.ts": "79adb27f8becd3be2984c00210a6fe8e1081b579d37bbe892a691fe2e8e12d76",
+    "src/local/offscreen.ts": "6b755931141c4cc3a5799b73e77436353bfd715c801698e92ee2d5ccfd80c131",
+    "src/security/file-digest.ts": "2f2457749315bc599b1a3b0fbcb954abbe28076be99769366327bb34c8834599",
+    "src/security/internal-scan.ts": "24580b291a7740c3a81c0fdd059cd4ec6efdcd5ad150757e288a8f481adfc7c4"
+  },
+  "order": "candidate,baseline,baseline,candidate",
+  "runs": [
+    {
+      "method": "candidate",
+      "downloadElapsedMs": 78276.29142000001,
+      "fullVideoVerified": true,
+      "savedFileSha256": "e27e2f1fe59fc8ff684a8aa68edbe42d03e0abdd10afdd728fbdfc54552584c3",
+      "browserVersion": "156.0.8078.4",
+      "buildSha256": "1b5d071c7b50f50cdfeb635da7e08e430d89c0bf63a52a9659c5ba84b7cf342b",
+      "stageOffsetsMs": {
+        "fetching": 3862,
+        "processing": 51299,
+        "saving": 59278,
+        "browserWrite": 71999
+      },
+      "mediaResponses": {
+        "ok": 923,
+        "failed": 0
+      },
+      "bytes": 2392906379,
+      "durationSeconds": 3703.662333,
+      "preparedSha256MatchesSavedFile": null
+    },
+    {
+      "method": "baseline",
+      "downloadElapsedMs": 121604.85576399999,
+      "fullVideoVerified": true,
+      "savedFileSha256": "e27e2f1fe59fc8ff684a8aa68edbe42d03e0abdd10afdd728fbdfc54552584c3",
+      "browserVersion": "156.0.8078.4",
+      "buildSha256": "787f3d0705b74632d3ee19bbf6e9a7777944597e30ea5e3580e3ea711bc161e4",
+      "stageOffsetsMs": {
+        "fetching": 4055,
+        "processing": 85866,
+        "saving": 94686,
+        "browserWrite": 113196
+      },
+      "mediaResponses": {
+        "ok": 923,
+        "failed": 0
+      },
+      "bytes": 2392906379,
+      "durationSeconds": 3703.662333,
+      "preparedSha256MatchesSavedFile": null
+    },
+    {
+      "method": "baseline",
+      "downloadElapsedMs": 124183.27861200001,
+      "fullVideoVerified": true,
+      "savedFileSha256": "e27e2f1fe59fc8ff684a8aa68edbe42d03e0abdd10afdd728fbdfc54552584c3",
+      "browserVersion": "156.0.8078.4",
+      "buildSha256": "787f3d0705b74632d3ee19bbf6e9a7777944597e30ea5e3580e3ea711bc161e4",
+      "stageOffsetsMs": {
+        "fetching": 3841,
+        "processing": 86270,
+        "saving": 94993,
+        "browserWrite": 115246
+      },
+      "mediaResponses": {
+        "ok": 923,
+        "failed": 0
+      },
+      "bytes": 2392906379,
+      "durationSeconds": 3703.662333,
+      "preparedSha256MatchesSavedFile": true
+    },
+    {
+      "method": "candidate",
+      "downloadElapsedMs": 82808.57561500001,
+      "fullVideoVerified": true,
+      "savedFileSha256": "e27e2f1fe59fc8ff684a8aa68edbe42d03e0abdd10afdd728fbdfc54552584c3",
+      "browserVersion": "156.0.8078.4",
+      "buildSha256": "1b5d071c7b50f50cdfeb635da7e08e430d89c0bf63a52a9659c5ba84b7cf342b",
+      "stageOffsetsMs": {
+        "fetching": 3198,
+        "processing": 53791,
+        "saving": 62187,
+        "browserWrite": 74855
+      },
+      "mediaResponses": {
+        "ok": 923,
+        "failed": 0
+      },
+      "bytes": 2392906379,
+      "durationSeconds": 3703.662333,
+      "preparedSha256MatchesSavedFile": true
+    }
+  ],
+  "baselineMeanMs": 122894.067188,
+  "candidateMeanMs": 80542.4335175,
+  "meanReductionPercent": 34.46190254710313,
+  "minimumObservedReductionPercent": 31.903561667218618,
+  "measurement": "Wall time from opening the URL form until Chrome finished saving the file. Each run uses a fresh profile. Playwright supplies identical owned HLS responses.",
+  "realSiteWindowsComparison": {
+    "run": "https://github.com/P-JSL/myapps/actions/runs/45956169700",
+    "failure": "HTTP 403 before the v1.20.5 baseline completed"
+  },
+  "ownedWindowsComparison": {
+    "run": "https://github.com/P-JSL/myapps/actions/runs/45958114626",
+    "conclusion": "cancelled during certificate setup before the download comparison"
+  }
+}

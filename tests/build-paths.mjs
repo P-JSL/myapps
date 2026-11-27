@@ -81,8 +81,8 @@ export async function assertProtectedBuild(root, buildPaths) {
         else if (statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)) exported.push(statement.modifiers.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword) ? 'default' : statement.name?.text ?? '<declaration>');
       }
       const engine = physical === assetMap['vendor/ffmpeg/ffmpeg-core.js'] || physical === engineModule;
-      const decoder = physical === decoderModule;
-      assert.deepEqual(exported.sort(), engine || decoder ? ['default'] : [...(shared.get(physical)?.exports ?? [])].sort(), `Unexpected public production API in ${physical}`);
+      const vendor = physical === decoderModule || physical === assetMap['vendor/sha256/hasher.js'];
+      assert.deepEqual(exported.sort(), engine || vendor ? ['default'] : [...(shared.get(physical)?.exports ?? [])].sort(), `Unexpected public production API in ${physical}`);
       const actualImports = [];
       const inspectImport = reference => {
         assert(typeof reference === 'string' && /^\.{1,2}\//.test(reference) && !/[\\?#]/.test(reference), `Nonlocal production module import in ${physical}`);

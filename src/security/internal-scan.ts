@@ -27,6 +27,10 @@ function word(bytes: Uint8Array, offset: number, value: string): boolean {
   for (let i = 0; i < value.length; i++) if (bytes[offset + i] !== value.charCodeAt(i)) return false;
   return true;
 }
+function mayContainByte(word: number, repeatedByte: number): boolean {
+  const match = word ^ repeatedByte;
+  return ((match - 0x01010101) & ~match & 0x80808080) !== 0;
+}
 function u16(bytes: Uint8Array, offset: number, little = true): number {
   return little ? bytes[offset]! + bytes[offset + 1]! * 256 : bytes[offset]! * 256 + bytes[offset + 1]!;
 }
@@ -184,7 +188,20 @@ export function scanBytes(input: Uint8Array, options: InternalScanOptions = {}):
     if (type) add({ id: `non-media-${type}`, severity: 'warning', message: type === 'pdf' ? '미디어 대신 PDF 문서의 시작 구조가 발견되었습니다.' : '미디어 대신 스크립트·활성 문서의 시작 구조가 발견되었습니다.', offset: 0 });
   }
   let marker = 0;
+  // Skip aligned groups only with no partial test marker and no possible
+  // signature start. The scalar checks still inspect all candidate bytes.
+  const alignment = (4 - bytes.byteOffset % 4) % 4;
+  const wordCount = Math.max(0, Math.floor((bytes.length - alignment) / 4));
+  const words = wordCount ? new Uint32Array(bytes.buffer, bytes.byteOffset + alignment, wordCount) : undefined;
+  const scanEnd = alignment + wordCount * 4;
   for (let i = 0; i < bytes.length; i++) {
+    if (!marker && i >= alignment && i < scanEnd && (i - alignment) % 4 === 0) {
+      const packed = words![(i - alignment) / 4]!;
+      if (!mayContainByte(packed, 0x4d4d4d4d) && !mayContainByte(packed, 0x58585858)) {
+        i += 3;
+        continue;
+      }
+    }
     const value = bytes[i]!;
     while (marker && value !== TEST_MARKER[marker]) marker = MARKER_FAILURE[marker - 1]!;
     if (value === TEST_MARKER[marker]) marker++;
